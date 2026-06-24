@@ -1,0 +1,39 @@
+[project]
+name = "trocado"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+    "poethepoet>=0.46.0",
+    "pytest>=9.1.1",
+    "ruff>=0.15.19",
+]
+
+[tool.ruff]
+line-length = 120
+exclude = ["**/migrations/*"]
+
+[tool.ruff.lint]
+# N reinforces the project's strict naming conventions; ASYNC reinforces "async everywhere".
+select = ["E", "F", "I", "UP", "B", "N", "ASYNC", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+# `ty` (Astral's type checker) is the intended future swap once it reaches maturity; mypy strict for now.
+python_version = "3.14"
+strict = true
+
+[tool.poe.tasks]
+# Shortcuts for the canonical quality gates. Run with `uv run poe <task>`.
+lint = "ruff check"
+format = "ruff format"
+format-check = "ruff format --check"
+type = "mypy ."
+test = "pytest"
+# `check` runs every gate in sequence with the non-mutating checks — the one command CI uses.
+check = ["format-check", "lint", "type", "test"]
