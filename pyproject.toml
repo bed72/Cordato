@@ -2,7 +2,16 @@
 name = "trocado"
 version = "0.1.0"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "argon2-cffi>=25.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trocado"]
 
 [dependency-groups]
 dev = [
@@ -22,11 +31,15 @@ select = ["E", "F", "I", "UP", "B", "N", "ASYNC", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Put the repo root on sys.path so the `tests` package (shared fakes) is importable across test modules.
+pythonpath = ["."]
 
 [tool.mypy]
 # `ty` (Astral's type checker) is the intended future swap once it reaches maturity; mypy strict for now.
 python_version = "3.14"
 strict = true
+mypy_path = "src"
+explicit_package_bases = true
 
 [tool.poe.tasks]
 # Shortcuts for the canonical quality gates. Run with `uv run poe <task>`.
