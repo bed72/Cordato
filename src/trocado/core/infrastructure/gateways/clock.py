@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from trocado.features.identity.application.interfaces.clock_interface import ClockInterface
+from trocado.core.application.interfaces.clock_interface import ClockInterface
 
 
 class Clock(ClockInterface):

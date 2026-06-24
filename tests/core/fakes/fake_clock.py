@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from trocado.features.identity.application.interfaces.clock_interface import ClockInterface
+from trocado.core.application.interfaces.clock_interface import ClockInterface
 
 
 class FakeClock(ClockInterface):

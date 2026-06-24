@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 from trocado.features.identity.domain.value_objects.email_value_object import EmailValueObject
@@ -17,7 +17,7 @@ class PersonEntity:
     email: EmailValueObject
     name: NameValueObject
     password: str  # the hash; a plain string needs no value object — it carries no invariant
-    status: PersonStatus = field(default=PersonStatus.ACTIVE)
+    status: PersonStatus  # no default: only `create(...)` may birth an ACTIVE person; rehydration states it
 
     @classmethod
     def create(

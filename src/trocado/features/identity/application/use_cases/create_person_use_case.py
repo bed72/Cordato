@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from trocado.features.identity.application.data.create_person_data import CreatePersonData
-from trocado.features.identity.application.data.person_data import PersonData
-from trocado.features.identity.application.interfaces.clock_interface import ClockInterface
-from trocado.features.identity.application.interfaces.identifier_provider_interface import (
+from trocado.core.application.interfaces.clock_interface import ClockInterface
+from trocado.core.application.interfaces.identifier_provider_interface import (
     IdentifierProviderInterface,
 )
+from trocado.features.identity.application.data.create_person_data import CreatePersonData
+from trocado.features.identity.application.data.person_data import PersonData
 from trocado.features.identity.application.interfaces.password_hasher_interface import (
     PasswordHasherInterface,
 )

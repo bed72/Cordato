@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from tests.identity.fakes.fake_clock import FakeClock
-from tests.identity.fakes.fake_identifier_provider import FakeIdentifierProvider
+from tests.core.fakes.fake_clock import FakeClock
+from tests.core.fakes.fake_identifier_provider import FakeIdentifierProvider
 from tests.identity.fakes.fake_password_hasher import FakePasswordHasher
 from tests.identity.fakes.fake_person_repository import FakePersonRepository
 from trocado.features.identity.application.data.create_person_data import CreatePersonData

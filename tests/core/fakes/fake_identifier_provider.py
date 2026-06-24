@@ -1,4 +1,4 @@
-from trocado.features.identity.application.interfaces.identifier_provider_interface import (
+from trocado.core.application.interfaces.identifier_provider_interface import (
     IdentifierProviderInterface,
 )
 
