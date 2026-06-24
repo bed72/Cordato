@@ -24,16 +24,25 @@ Drive a new Trocado/Cordato feature end to end, enforcing the project's non-nego
 2. **Scaffold per conventions.**
    Invoke the `feature-scaffold` skill. It reads the change's specs/tasks and generates only the files the
    change needs — correct layering (`domain` / `application` / `infrastructure`), canonical naming, async
-   ABC ports, dedicated mappers, exact-decimal money, derive-don't-store (no `Expense → Budget` link).
+   ABC ports, dedicated mappers, the `gateways/` bucket, determinism ports (clock/id via uuid7), one-concept-
+   per-file, exact-decimal money, derive-don't-store (no `Expense → Budget` link). No `Model`/`ModelMapper`
+   until the ORM lands — scaffold a runnable in-memory vertical slice.
 
-3. **Implement against the tasks.**
+3. **Scaffold the tests.**
+   Invoke the `feature-tests` skill: one test file per unit mirroring the source, fakes in their own files
+   under `tests/<ctx>/fakes/`, integration tests at the module root under `tests/<ctx>/integrations/`.
+
+4. **Implement against the tasks.**
    Work through the change's tasks (the `openspec-apply-change` skill). Keep code and spec in sync — if
    behavior must change, update the spec in the **same** change, never silently.
 
-4. **Guard before done.**
+5. **Quality gate.**
+   Run `uv run poe check` (format-check → lint → mypy strict → pytest). Everything green before guarding.
+
+6. **Guard before done.**
    Invoke the `architecture-guard` skill on the diff. Resolve every 🔴 blocker. Report the final verdict.
 
-5. **Archive when complete.**
+7. **Archive when complete.**
    Once implemented and guarded, suggest `openspec-archive-change`.
 
 See `CLAUDE.md` → "Non-negotiable process rule: spec first, always" and "Architecture & conventions".

@@ -207,7 +207,19 @@ operation would need I/O, that I/O belongs to a port — and the port is async.
 ### Layers inside each module
 - `domain/` → `entities/`, `value_objects/`, `errors/` (+ `policies/`, `services/` when present). Pure Python.
 - `application/` → `interfaces/` (ports, ABC), `data/` (commands and read-models), `use_cases/`, `mappers/`, `services/`.
-- `infrastructure/` → `models/`, `mappers/`, `repositories/` (adapters). **The only place that knows the lib/ORM.**
+- `infrastructure/` → `models/`, `mappers/`, `repositories/`, `gateways/` (adapters). **The only place that knows the lib/ORM.**
+
+> **Two buckets, by responsibility — never a folder per tool.** Infrastructure groups adapters by *what they
+> are responsible for*, not by which library they use. There are exactly two homes, and the set does not grow
+> as the feature grows:
+> - **Persistence** → `repositories/` (+ `models/`, `mappers/`). The cluster that maps entity ↔ table.
+> - **Everything else** → `gateways/`: every other outbound adapter implementing an application port —
+>   password hasher, clock, identifier provider, and later email/SMS/push senders, token generators, event
+>   publishers, payment gateways, etc. One file per adapter, flat inside `gateways/`.
+>
+> Do **not** create a folder per kind (`hashers/`, `providers/`, `clocks/`, `senders/`…). A new outbound
+> capability is a new *file* in `gateways/`, not a new folder. This keeps `infrastructure/` flat and stable
+> however large the module grows.
 
 ### Naming conventions (apply to ALL modules)
 | Concept | Folder | File | Class |
@@ -228,6 +240,16 @@ Non-negotiable rules:
 - **Never the lib's name in the file or the class.** `ExpenseRepository`, never `SqlAlchemyExpenseRepository`. The tool stays hidden *inside* the file.
 - **No abbreviations.** `value_objects` (not `vos`); `MoneyValueObject` (not `MoneyVO`).
 - **A dedicated mapper at every boundary** — always its own class, never inline conversion.
+- **A value object must earn its existence — no primitive-wrapping.** Create a value object only when it
+  enforces an **invariant** or carries **behavior**: validation, normalization, or a domain operation
+  (`EmailValueObject` validates + normalizes; `MoneyValueObject` is exact decimal; `PasswordValueObject`
+  checks the policy and hides its plaintext). A class that merely stores a bare primitive with no rule
+  (e.g. a password **hash**, an opaque token string) is **over-engineering — use the primitive (`str`) directly.**
+  Symmetry is not a reason: it is fine for one concept to be a value object and a sibling to be a plain `str`.
+- **One concept per file — simple and separated.** Every value object, enum, error, port, use case, and
+  mapper lives in its own dedicated file (the `PersonStatus` enum → `domain/value_objects/person_status.py`;
+  one error class per file under `domain/errors/`). Never bundle several related types into one module for
+  convenience. **Tests obey the same rule** — see [Testing conventions](#testing-conventions).
 
 > **Tooling that enforces this:** run `/trocado:guard` (the `architecture-guard` skill) on any diff to
 > audit these rules — async boundaries, dependency direction, naming, the "never" rules, derive-don't-store,
@@ -257,6 +279,53 @@ DB → Model → [ExpenseModelMapper] → Entity → [ExpenseDataMapper] → Dat
 - `find_in_range(person, start, end)` on the `ExpenseRepository` is the method that **derives** the
   expense→budget belonging — with no FK at all.
 
+### Determinism, time, and identity (ports, never inside the domain)
+
+The pure `domain/` must do no I/O **and** be deterministic under test, yet `id` and `created_at` are
+non-deterministic. Resolve this with **two tiny application ports**, injected into the use case — never call
+`uuid`/`datetime` inside an entity:
+- `IdentifierProviderInterface` → `async def generate() -> str`. The adapter uses **`uuid.uuid7()`** (stdlib
+  in Python 3.14): time-ordered, so the `id` primary key keeps good index locality when the ORM lands — at
+  zero dependency cost. The id is an opaque `str`; the domain never inspects it.
+- `ClockInterface` → `async def now() -> datetime` (timezone-aware).
+
+The use case obtains `id` + `created_at` from these ports and passes them into the entity's factory. The
+**entity factory** (e.g. `PersonEntity.create(...)`) is the only sanctioned constructor: it fixes the initial
+state (e.g. `status = active`) so a caller can never build an entity in an illegal state. **Entities are equal
+by identity** (`id`), not by field values — implement `__eq__`/`__hash__` on `id`.
+
+### Domain error messages
+
+Domain errors carry **short, user-facing messages in pt-BR**, and **must not leak sensitive domain data**.
+Never echo the offending value into the message — revealing whether an email exists is account enumeration
+(`EmailAlreadyInUseError` → `"E-mail já está em uso."`, never the address; `InvalidEmailError` →
+`"E-mail inválido."`, never the input). Non-sensitive facts are fine (`WeakPasswordError` may state the
+minimum length). The web layer decides HTTP framing later; the domain only states the rule, generically.
+
+### Testing conventions
+
+Tests are first-class and follow the same separation as production code:
+- **One test file per unit, mirroring the source tree** — `tests/<context>/domain/value_objects/test_email_value_object.py`,
+  `.../errors/test_invalid_email_error.py`, `.../infrastructure/repositories/test_person_repository.py`.
+  Never a grouped `test_value_objects.py` covering several units at once.
+- **Integration tests live at the test-module root** in `tests/<context>/integrations/` — they cross layers
+  (real adapters wired through a use case), so they belong to no single layer.
+- **Fakes/doubles in their own files** under `tests/<context>/fakes/`, one per file
+  (`fake_person_repository.py` → `FakePersonRepository`). **Prefer hand-written fakes over mocks** for ABC
+  ports: mypy verifies they satisfy the contract, and they carry real behavior. Reach for `unittest.mock`
+  (`AsyncMock`) / `pytest-mock` only for simple stubs or interaction checks.
+- `tests/` is a package (`__init__.py` throughout) with `pythonpath = ["."]`, so fakes are importable across
+  test modules. Async is driven with `asyncio.run(...)` (no extra plugin).
+
+### Current build stage (transitional)
+
+Web framework and ORM are still deferred, so a feature is built as a **runnable, fully-tested vertical slice**:
+pure `domain/` + `application/` ports + an **in-memory** `repositories/` adapter + real `gateways/` (e.g. an
+Argon2 password hasher whose sync call is wrapped with `asyncio.to_thread` at the adapter edge). **No
+`Model`/`ModelMapper` until the ORM is chosen** — they bridge a table that does not exist yet (deferred, not
+skipped). When the ORM/web changes land, they slot in behind the existing ports without touching `domain/` or
+`application/`.
+
 ### Guardrails — commands & skills
 
 The rules above are not just documentation; they are enforced by tooling under `.claude/`. Reach for these
@@ -266,14 +335,28 @@ instead of re-checking the rules by hand:
 |---|---|---|
 | `/trocado:feature` | command | Drives a feature **spec-first**: OpenSpec change → scaffold → implement → guard → archive. The entry point for any new work. |
 | `/trocado:guard` | command | Audits the current diff against every non-negotiable rule and returns **PASS** / **CHANGES REQUIRED**. |
-| `feature-scaffold` | skill | Generates a feature's `domain`/`application`/`infrastructure` skeleton in the canonical layering, naming, async ABC ports, and dedicated mappers. **Refuses to scaffold without an OpenSpec change** — this is how spec-first is enforced at code-gen time. |
-| `architecture-guard` | skill | Reads code/diff and reports violations (spec-first, async everywhere, dependency direction, naming, no lib names, dedicated mappers, derive-don't-store, exact-decimal money, soft-delete, per-person authorization), grouped by severity. |
+| `feature-scaffold` | skill | Generates a feature's `domain`/`application`/`infrastructure` skeleton in the canonical layering, naming, async ABC ports, dedicated mappers, `gateways/` bucket, determinism ports, and one-concept-per-file. **Refuses to scaffold without an OpenSpec change** — this is how spec-first is enforced at code-gen time. |
+| `feature-tests` | skill | Scaffolds a feature's test suite to the project's testing conventions: one file per unit mirroring the source, fakes in their own files, integration tests at the module root, fakes-over-mocks for ABC ports. |
+| `architecture-guard` | skill | Reads code/diff and reports violations (spec-first, async everywhere, dependency direction, naming, no lib names, dedicated mappers, derive-don't-store, exact-decimal money, soft-delete, per-person authorization, one-concept-per-file, value-object-earns-existence, `gateways/` bucket, determinism ports, pt-BR non-leaking error messages, test layout), grouped by severity. |
 
 Plus the OpenSpec workflow skills the process rule depends on: `openspec-explore`, `openspec-propose`,
 `openspec-apply-change`, `openspec-archive-change`.
 
 ## Stack and commands
 
-TODO — to be defined. Domain in **pure Python** (no framework). Web (FastAPI vs BlackSheep) and
-persistence (ORM) enter only at the edge, via adapters in `composition/` + `infrastructure/`.
-Auth (JWT vs server-side session) is deferred. Fill in build / test / run / migrations once the stack is chosen.
+Domain in **pure Python** (no framework). Toolchain (capability `dev-environment`):
+
+- **UV** is the sole project/dependency manager; `uv.lock` is committed; `requires-python = ">=3.14"`.
+- **Ruff** (lint + format), **pytest**, **mypy `--strict`**, orchestrated by **poethepoet**.
+- Quality gate — run before every commit and in CI:
+
+| Command | Does |
+|---|---|
+| `uv sync` | recreate the env from the lockfile |
+| `uv run poe check` | **all gates in sequence** (format-check → lint → mypy → pytest) |
+| `uv run poe lint` / `format` / `type` / `test` | a single gate |
+| `uv add <pkg>` / `uv add --dev <pkg>` | add a runtime / dev dependency |
+
+Runtime deps so far: `argon2-cffi` (password hashing). **Still deferred:** web framework (FastAPI vs
+BlackSheep), the ORM, and auth (JWT vs server-side session) — they enter only at the edge behind existing
+ports. See [Current build stage](#current-build-stage-transitional).

@@ -1,9 +1,9 @@
 ---
 name: architecture-guard
-description: Audit Trocado/Cordato code or a diff against the project's non-negotiable rules — spec-first (every feature has an OpenSpec change), async everywhere at I/O boundaries, Clean Architecture layering and dependency direction, naming conventions, ABC ports, no library names in files/classes, a dedicated mapper at every boundary, derive-don't-store, soft-delete in the repository, exact-decimal money, and per-person authorization. Use before committing, when reviewing changes, or whenever the user asks to check architecture/convention compliance.
+description: Audit Trocado/Cordato code or a diff against the project's non-negotiable rules — spec-first (every feature has an OpenSpec change), async everywhere at I/O boundaries, Clean Architecture layering and dependency direction, naming conventions, ABC ports, no library names in files/classes, a dedicated mapper at every boundary, derive-don't-store, soft-delete in the repository, exact-decimal money, per-person authorization, one-concept-per-file, value-object-earns-existence, the gateways/ bucket, determinism ports (clock/id), pt-BR non-leaking error messages, and test layout. Use before committing, when reviewing changes, or whenever the user asks to check architecture/convention compliance.
 metadata:
   author: trocado
-  version: "1.0"
+  version: "2.0"
 ---
 
 # Architecture Guard
@@ -63,6 +63,7 @@ Flag any mismatch with the canonical table:
 | Mapper entity↔model | `infrastructure/mappers` | `_model_mapper.py` | `ModelMapper` |
 | Mapper entity→data | `application/mappers` | `_data_mapper.py` | `DataMapper` |
 | Model (table) | `infrastructure/models` | `_model.py` | `Model` |
+| Gateway (other adapter) | `infrastructure/gateways` | role-named (`password_hasher.py`, `clock.py`) | role-named (`PasswordHasher`, `Clock`) — no lib name |
 
 ### 5. The hard "never" rules
 - **No library name in a file or class.** `ExpenseRepository`, never `SqlAlchemyExpenseRepository`. The tool
@@ -91,12 +92,47 @@ Flag any mismatch with the canonical table:
 - Per-person authorization: a person reads/mutates only their own data; shared (couple) views are
   **read-only**. Flag a write path reaching a partner's data.
 
+### 9. One concept per file
+- Each value object, enum, error, port, use case, mapper, and gateway is its **own file**. Flag any module
+  bundling several (e.g. multiple error classes in one file, or several value objects together).
+- The same applies to tests — see §12.
+
+### 10. Value object earns its existence
+- A value object must enforce an **invariant** or carry **behavior** (validation, normalization, a domain
+  operation). Flag a value object that only wraps a bare primitive with no rule (a password **hash**, an
+  opaque token) — it should be the primitive (`str`). Reverse is also a flag: a raw primitive that clearly
+  needs validation (an unvalidated email `str`) should be a value object.
+
+### 11. Infrastructure buckets, determinism & messages
+- **Two buckets only.** Persistence in `repositories/` (+ `models/`, `mappers/`); every other outbound adapter
+  in `gateways/`. Flag a folder-per-tool (`hashers/`, `providers/`, `senders/`…) — it must be a file in
+  `gateways/`. Flag a `Model`/`ModelMapper` invented before the ORM exists (no table to bridge yet).
+- **Determinism via ports.** Flag `uuid.*`/`datetime.now()` called **inside** `domain/` (entities/VOs) — `id`
+  and `created_at` come from `IdentifierProviderInterface` (uuid7) + `ClockInterface`, passed into the entity
+  factory. Flag an entity constructed bypassing its `create(...)` factory into an illegal state, or an entity
+  compared by value instead of identity (`id`).
+- **Sync adapter off-loop.** A sync library call in a gateway (e.g. Argon2) must be wrapped (`asyncio.to_thread`)
+  at the adapter edge — flag a blocking call on the event loop.
+- **Error messages.** Domain error messages must be short **pt-BR** and **must not echo sensitive values**
+  (no account enumeration: `EmailAlreadyInUseError`/`InvalidEmailError` never include the email). Flag a
+  message that interpolates the offending value, or an English user-facing message.
+
+### 12. Test layout
+- **One test file per unit, mirroring the source path** (`tests/<ctx>/domain/value_objects/test_email_value_object.py`).
+  Flag a grouped file covering several units.
+- **Integration tests** at the module root in `tests/<ctx>/integrations/`; **fakes** in `tests/<ctx>/fakes/`,
+  one per file. Flag fakes defined inline in a test module, or integration tests buried under a layer folder.
+- Prefer hand-written fakes over mocks for ABC ports. Flag an `AsyncMock` used where a typed fake belongs.
+
 ## Output format
 
 Group findings by **severity**:
-- **🔴 Blocker** — breaks a non-negotiable rule (missing spec, sync I/O, stored expense→budget link, lib name
-  in class, float money, hard-delete outside account deletion).
-- **🟡 Convention** — naming/structure drift, missing dedicated mapper, abbreviation.
+- **🔴 Blocker** — breaks a non-negotiable rule (missing spec, sync I/O on the loop, stored expense→budget
+  link, lib name in class, float money, hard-delete outside account deletion, `uuid`/`datetime` inside the
+  domain, an error message leaking an email/sensitive value, a premature `Model`/`ModelMapper`).
+- **🟡 Convention** — naming/structure drift, missing dedicated mapper, abbreviation, folder-per-tool instead
+  of `gateways/`, bundling concepts in one file, a primitive-wrapping value object, grouped/misplaced tests,
+  inline fakes.
 - **🟢 Note** — stylistic or "in doubt, confirm".
 
 End with a one-line verdict: **PASS** (no blockers) or **CHANGES REQUIRED** (≥1 blocker), and the blocker count.
