@@ -1,209 +1,279 @@
 # Trocado / Cordato
 
-Ferramenta de finanças pessoais para **casais** que se recusa a dissolver o indivíduo na relação.
-Cada pessoa é dona do próprio dinheiro, orçamentos e gastos. Quando duas pessoas se pareiam,
-surge uma **view compartilhada** por cima dos dados individuais — uma lente, não uma fusão.
-Se o par se desfaz, a lente some e cada um leva tudo o que tinha, intacto.
+A personal-finance tool for **couples** that refuses to dissolve the individual into the relationship.
+Each person owns their own money, budgets, and expenses. When two people pair up, a **shared view**
+emerges on top of the individual data — a lens, not a merge. If the pair breaks up, the lens disappears
+and each one keeps everything they had, intact.
 
-> Se você lembrar de só uma coisa: **o casal é um ponto de vista, não um dono.**
+> If you remember only one thing: **a couple is a point of view, not an owner.**
 
-As três tensões mantidas de propósito:
-- **Individual por padrão.** Todo dado pertence a exatamente uma pessoa.
-- **Compartilhado por consentimento.** Parear adiciona uma perspectiva de *leitura* sobre dois indivíduos.
-- **Reversível sem perda.** Desparear nunca destrói nem move dado de ninguém.
-
----
-
-## Princípio central de modelagem: derive, não armazene
-
-O grafo de referências é **deliberadamente plano**. Adicione um link só quando a relação é um
-**fato intrínseco de posse** (pessoa possui budget), nunca por conveniência de uma query.
-
-> Prefira **associação derivada por atributo** (ex.: containment de data) a **referência armazenada**,
-> sempre que a associação pode ser recomputada barato e exigiria manutenção a cada mudança.
-> **Armazene eventos; compute agrupamentos.**
-
-Esse princípio já aparece **três vezes** no domínio (expense→budget, budget-default, couple budget).
-Essa repetição é o sinal de que o modelo é coerente consigo mesmo — mantenha-a.
-
-### A associação que NÃO existe de propósito: `Expense ──╳── Budget`
-
-Um expense **não** aponta para um budget. Ele pertence a um budget **dinamicamente**, por cair
-dentro do range de datas do budget. A associação é **computada em read-time, nunca armazenada**.
-
-Por quê (preserve esse raciocínio):
-1. **Sem rewiring.** Editar datas de um budget, apagá-lo ou criar outro nunca toca um expense.
-2. **Expense é um fato, não um arquivamento.** O gasto aconteceu numa data, por um valor, por alguém —
-   verdade independente de como os budgets são fatiados depois.
-3. **Sem órfãos, sem links pendurados, sem dupla contagem.** Link derivado nunca fica stale.
-4. **A mesma leveza escala pra view compartilhada.**
+The three tensions kept on purpose:
+- **Individual by default.** Every datum belongs to exactly one person.
+- **Shared by consent.** Pairing adds a *read* perspective over two individuals.
+- **Reversible without loss.** Unpairing never destroys nor moves anyone's data.
 
 ---
 
-## Entidades armazenadas
+## Non-negotiable process rule: spec first, always
 
-Todas têm `id` (identidade opaca — âncora do ledger) e `created_at`.
+> If you remember only one thing here: **no line of a feature is born without an OpenSpec spec tied to it.**
+
+**Every single feature — no exceptions — requires an approved OpenSpec change before any code.**
+There is no "feature too small", no "obvious fix that skips the spec", no "I'll document it later".
+The spec is the contract that precedes the implementation; the code is its consequence, never the other way around.
+
+The flow is always, in this order:
+1. **Propose** the change in OpenSpec (spec deltas + design + tasks) — use the `openspec-propose` skill
+   (explore first with `openspec-explore` when the requirement is still fuzzy).
+2. **Review and approve** the proposal — the spec describes *what* and *why* before *how*.
+3. **Implement** following the change's tasks — `openspec-apply-change`.
+4. **Archive** the change once complete — `openspec-archive-change`.
+
+Rules that follow from this:
+- **No spec, no PR.** Feature code without a corresponding change is work to be rejected, not reviewed.
+- **The spec is the source of truth for behavior.** A divergence between code and spec is a bug in the spec
+  *or* in the code — never "the spec is outdated, ignore it". Update the spec in the same change.
+- **Behavior change = new change.** Altering a domain rule, a lifecycle, or an API contract starts with an
+  OpenSpec change, not with a diff.
+- Low-risk exceptions (pure refactor with no behavior change, build/infra tweaks, typo fixes) are not
+  features and do not require a change — but when in doubt, **propose the change**.
+
+> **Tooling that enforces this:** the `/trocado:feature` command drives the flow spec-first, and the
+> `feature-scaffold` skill **refuses to generate code** unless an OpenSpec change covers it. See
+> [Guardrails — commands & skills](#guardrails--commands--skills).
+
+---
+
+## Central modeling principle: derive, don't store
+
+The reference graph is **deliberately flat**. Add a link only when the relationship is an
+**intrinsic fact of ownership** (a person owns a budget), never for the convenience of a query.
+
+> Prefer an **association derived from an attribute** (e.g., date containment) over a **stored reference**,
+> whenever the association can be recomputed cheaply and would otherwise require maintenance on every change.
+> **Store events; compute groupings.**
+
+This principle already appears **three times** in the domain (expense→budget, budget-default, couple budget).
+That repetition is the sign that the model is consistent with itself — keep it.
+
+### The association that deliberately does NOT exist: `Expense ──╳── Budget`
+
+An expense does **not** point to a budget. It belongs to a budget **dynamically**, by falling within
+the budget's date range. The association is **computed at read-time, never stored**.
+
+Why (preserve this reasoning):
+1. **No rewiring.** Editing a budget's dates, deleting it, or creating another never touches an expense.
+2. **An expense is a fact, not a filing.** The spend happened on a date, for an amount, by someone —
+   a truth independent of how budgets are sliced afterward.
+3. **No orphans, no dangling links, no double counting.** A derived link never goes stale.
+4. **The same lightness scales to the shared view.**
+
+---
+
+## Stored entities
+
+All have `id` (opaque identity — the ledger's anchor) and `created_at`.
 
 ### Person
-`id`, `created_at`, `email` (único), `name`, `password` (**armazena o HASH — Argon2/bcrypt —, nunca texto puro**),
+`id`, `created_at`, `email` (unique), `name`, `password` (**stores the HASH — Argon2/bcrypt — never plaintext**),
 `status` (`active` / `deleted`).
-- Possui N Budget, N Expense, N InviteCode, N Notification; está em ≤1 Pair ativo.
-- **Hard-delete** (a única deleção física do domínio) — ver Lifecycles.
+- Owns N Budget, N Expense, N InviteCode, N Notification; is in ≤1 active Pair.
+- **Hard-delete** (the domain's only physical deletion) — see Lifecycles.
 
 ### Budget
-`id`, `created_at`, `person_id`, `amount` (decimal exato, centavos, **BRL**), `start_date`, `end_date`
-(datas inclusivas nas duas pontas, **sem hora**), `note` (opcional), `deleted_at` (**soft-delete**).
-- Individual, sempre aponta pra uma Person. **Não tem lista de expenses** — gasto é computado.
-- **Invariante de não-overlap:** dois budgets *vivos* da mesma pessoa não compartilham nenhuma data,
-  nem o dia de fronteira (A termina dia 15, B começa dia 16 ✅; B começa dia 15 ❌).
-  É essa regra que torna "o budget ativo" e o pertencimento por data **não-ambíguos**.
+`id`, `created_at`, `person_id`, `amount` (exact decimal, cents, **BRL**), `start_date`, `end_date`
+(inclusive on both ends, **date only — no time**), `note` (optional), `deleted_at` (**soft-delete**).
+- Individual, always points to one Person. **Has no list of expenses** — spend is computed.
+- **Non-overlap invariant:** two *live* budgets of the same person share no date, not even the
+  boundary day (A ends on the 15th, B starts on the 16th ✅; B starts on the 15th ❌).
+  This rule is what makes "the active budget" and date-based belonging **unambiguous**.
 
 ### Expense
-`id`, `created_at`, `person_id` (quem gastou — só isso), `amount` (decimal exato), `date` (sem hora),
-`description` (opcional), `deleted_at` (**soft-delete**).
-- **Zero link para Budget.** Pertencimento é puramente date-range.
+`id`, `created_at`, `person_id` (who spent — that's all), `amount` (exact decimal), `date` (no time),
+`description` (optional), `deleted_at` (**soft-delete**).
+- **Zero link to Budget.** Belonging is purely date-range.
 
 ### Pair
-`id`, `created_at`, `person_a_id`, `person_b_id`, `deleted_at` (**soft-delete** = dissolvido).
-- **Não possui dinheiro, budget nem expense.** Link fino entre dois indivíduos, só pra habilitar a view.
-- **Invariante:** uma pessoa em ≤1 par com `deleted_at = null`. N dissolvidos no histórico, ok.
+`id`, `created_at`, `person_a_id`, `person_b_id`, `deleted_at` (**soft-delete** = dissolved).
+- **Owns no money, no budget, no expense.** A thin link between two individuals, only to enable the view.
+- **Invariant:** a person is in ≤1 pair with `deleted_at = null`. N dissolved ones in history is fine.
 
 ### InviteCode
-`id`, `created_at`, `creator_id`, `code` (token curto, **gerado por CSPRNG — fonte criptográfica, nunca previsível**),
-`expires_at` (~1 dia), `consumed_at` (null = não usado).
-- Aceitar code válido (não expirado, não consumido) → cria o Pair e marca `consumed_at`. Single-use.
+`id`, `created_at`, `creator_id`, `code` (short token, **generated by a CSPRNG — a cryptographic source, never predictable**),
+`expires_at` (~1 day), `consumed_at` (null = unused).
+- Accepting a valid code (not expired, not consumed) → creates the Pair and sets `consumed_at`. Single-use.
 
 ### Notification
-`id`, `created_at`, `person_id`, `type` (ex.: `budget_near_limit`, `budget_exceeded`, `budget_ending`),
+`id`, `created_at`, `person_id`, `type` (e.g., `budget_near_limit`, `budget_exceeded`, `budget_ending`),
 `payload`, `read_at`, `cleared_at`.
-- Produzida **só internamente** (reação a evento + passagem de tempo). **Sem "create" externo.**
-  Pessoa só lê e limpa o próprio feed. (Lógica de disparo: ver Parking lot.)
+- Produced **internally only** (reaction to an event + passage of time). **No external "create".**
+  A person only reads and clears their own feed. (Triggering logic: see Parking lot.)
 
 ---
 
-## Objetos virtuais — computados em read-time, NUNCA armazenados
+## Virtual objects — computed at read-time, NEVER stored
 
-- **Active budget (enriquecido):** o budget vivo cujo range contém hoje + `total_spent`
-  (soma dos expenses do dono no range) + `remaining`.
-- **Default budget ("Sem orçamento"):** bucket fabricado na hora pra agrupar os expenses do dono que
-  não caem em nenhum budget real. Resolve a nulabilidade na aplicação, sem linha no banco.
-- **Couple budget (combined view):** período `[min(inícios), max(fins)]` dos budgets ativos dos dois,
-  valor = soma, gasto = soma. **Lente de panorama, deliberadamente aproximada** — a verdade exata vive
-  nas views individuais. NÃO é entidade; o par não possui nada.
-- **Expenses do casal:** união dos expenses dos dois, cada um marcado `mine` / `theirs` pro leitor atual.
-
----
-
-## Lifecycles e a garantia de "sem perda de dado"
-
-### Dissolver um par
-Remove só a *view compartilhada* (soft-delete do Pair). Ambos mantêm todo budget e expense intactos.
-O produto volta a se comportar como dois indivíduos não-pareados que têm histórico.
-
-### Deletar a conta (hard-delete — a opção nuclear)
-Ação única, atômica, guardada (exige re-confirmar identidade: sessão viva **e** senha). **Sem restore.**
-O grafo plano é o que torna isso **seguro**: ninguém referencia os dados de uma pessoa além dela mesma
-(o par não possui nada; o parceiro só tinha uma *view*). Então, numa operação indivisível:
-- invalida a sessão, verifica a senha contra o hash;
-- **apaga fisicamente (cascade) budgets e expenses da pessoa**;
-- **neutraliza o email** da conta antiga (ex.: `deleted+<id>@…`), liberando o email pra reuso;
-- marca `status = deleted` (não autentica mais);
-- **dissolve** qualquer par ativo como consequência.
-- Reusar o email cria uma Person **nova** (id novo, ledger vazio) — não ressuscita a antiga.
-
-### Soft-delete no dia a dia
-`delete` em Budget/Expense/Pair = **soft-remove** (`deleted_at`, some das views normais; visível em
-auditoria). Recuperação de engano + trilha de auditoria. **Exceção:** deleção de *conta* é física (acima).
+- **Active budget (enriched):** the live budget whose range contains today + `total_spent`
+  (sum of the owner's expenses in the range) + `remaining`.
+- **Default budget ("No budget"):** a bucket fabricated on the fly to group the owner's expenses that
+  fall into no real budget. Resolves the nullability in the application, with no row in the database.
+- **Couple budget (combined view):** the period `[min(starts), max(ends)]` of both partners' active budgets,
+  amount = sum, spend = sum. **A panorama lens, deliberately approximate** — the exact truth lives
+  in the individual views. NOT an entity; the pair owns nothing.
+- **Couple expenses:** the union of both partners' expenses, each marked `mine` / `theirs` for the current reader.
 
 ---
 
-## Expectativas transversais
+## Lifecycles and the "no data loss" guarantee
 
-- **Autorização por pessoa.** Cada um vê/muta só os próprios dados, exceto pelas views compartilhadas
-  explícitas do par — que são **só leitura** (parear não dá write nos dados do parceiro).
-- **Dinheiro e datas são first-class.** Valores em **decimal exato** (nunca float). Pertencimento de
-  budget é pura lógica de date-range. Mantenha os dois precisos.
-- **Números derivados são cacheáveis mas nunca autoritativos.** `total_spent`, `remaining` e os agregados
-  do casal vêm dos eventos. **Decisão atual: SEM cache** (casal = pouco dado, soma é instantânea).
-- **Reações a estado pertencem ao sistema, não ao caller.** Notificações são emitidas pelo sistema
-  observando os próprios dados e a passagem do tempo.
+### Dissolve a pair
+Removes only the *shared view* (soft-delete of the Pair). Both keep every budget and expense intact.
+The product goes back to behaving like two unpaired individuals who have history.
+
+### Delete the account (hard-delete — the nuclear option)
+A single, atomic, guarded action (requires re-confirming identity: a live session **and** the password). **No restore.**
+The flat graph is what makes this **safe**: no one references a person's data besides themselves
+(the pair owns nothing; the partner only had a *view*). So, in one indivisible operation:
+- invalidate the session, verify the password against the hash;
+- **physically delete (cascade) the person's budgets and expenses**;
+- **neutralize the old account's email** (e.g., `deleted+<id>@…`), freeing the email for reuse;
+- set `status = deleted` (no longer authenticates);
+- **dissolve** any active pair as a consequence.
+- Reusing the email creates a **new** Person (new id, empty ledger) — it does not resurrect the old one.
+
+### Day-to-day soft-delete
+`delete` on Budget/Expense/Pair = **soft-remove** (`deleted_at`, disappears from normal views; visible in
+audit). Mistake recovery + audit trail. **Exception:** *account* deletion is physical (above).
 
 ---
 
-## Parking lot (decidir depois)
+## Cross-cutting expectations
 
-- **Disparo de notificações:** depende de **passagem de tempo** ("budget acabando", "excedido por tempo"),
-  não só de eventos de request → exige algo varrendo o estado periodicamente (scheduler/job). A discutir.
-- **Meta conjunta do casal:** se um dia o casal quiser definir um orçamento conjunto *genuíno* (intenção
-  nova, não derivável dos individuais), aí sim seria uma entidade armazenada própria, com ciclo de vida
-  próprio. **Fora de escopo por ora.**
-- **Fuso/hora em datas:** hoje usamos `date` pura (sem hora). Se precisar de timezone, tratar depois.
+- **Per-person authorization.** Each person reads/mutates only their own data, except for the pair's
+  explicit shared views — which are **read-only** (pairing grants no write over the partner's data).
+- **Money and dates are first-class.** Amounts in **exact decimal** (never float). Budget belonging is
+  pure date-range logic. Keep both precise.
+- **Derived numbers are cacheable but never authoritative.** `total_spent`, `remaining`, and the couple
+  aggregates come from the events. **Current decision: NO cache** (a couple = little data, the sum is instant).
+- **Reactions to state belong to the system, not the caller.** Notifications are emitted by the system
+  observing its own data and the passage of time.
 
 ---
 
-## Arquitetura & convenções
+## Parking lot (decide later)
 
-Clean Architecture + DDD tático + Ports & Adapters, num **monólito modular**. O domínio é
-independente de framework e se testa sem subir nada. Regra de dependência sempre **para
-dentro**: `infrastructure → application → domain`. O `domain/` não importa nada de fora.
+- **Notification triggering:** depends on the **passage of time** ("budget ending", "exceeded over time"),
+  not only on request events → requires something sweeping the state periodically (scheduler/job). To be discussed.
+- **Joint couple goal:** if one day the couple wants to define a *genuine* joint budget (a new intent,
+  not derivable from the individual ones), then it would be its own stored entity, with its own lifecycle.
+  **Out of scope for now.**
+- **Timezone/time in dates:** today we use pure `date` (no time). If timezone is ever needed, handle it later.
 
-### Organização de pacotes (`src/trocado/`)
-- `core/` — shared kernel: tudo que os demais módulos precisam. **Segue a mesma estrutura
-  de um feature** (`domain/` · `application/` · `infrastructure/`).
-- `features/<contexto>/` — um pacote por contexto (`expenses`, `budgeting`, `identity`,
-  `pairing`, `notifications`). Todos seguem o mesmo formato. **NÃO existe `shared/`.**
+---
 
-### Camadas dentro de cada módulo
-- `domain/` → `entities/`, `value_objects/`, `errors/` (+ `policies/`, `services/` quando houver). Python puro.
-- `application/` → `interfaces/` (ports, ABC), `data/` (comandos e read-models), `use_cases/`, `mappers/`, `services/`.
-- `infrastructure/` → `models/`, `mappers/`, `repositories/` (adapters). **Único lugar que conhece lib/ORM.**
+## Architecture & conventions
 
-### Convenções de nome (valem para TODOS os módulos)
-| Conceito | Pasta | Arquivo | Classe |
+Clean Architecture + tactical DDD + Ports & Adapters, in a **modular monolith**. The domain is
+framework-independent and is tested without spinning anything up. The dependency rule always points
+**inward**: `infrastructure → application → domain`. `domain/` imports nothing from outside.
+
+### Async everywhere (non-negotiable)
+
+**Every I/O boundary is `async`. No exceptions.** Anything that touches I/O — or orchestrates something
+that does — is `async def` and is `await`ed end to end. There is no sync sibling, no "blocking version",
+no `.run()` bridge buried in an adapter.
+
+Concretely:
+- **Ports (interfaces) are async by contract.** Repository ABCs declare `async def` methods returning
+  awaitables. The contract is async, so every adapter is too.
+- **Adapters (repositories, infra) are async.** They use the async driver/ORM API. No blocking call on
+  the event loop; if a dependency is sync-only, it is wrapped off-loop (e.g., a thread executor) at the
+  adapter edge — never leaked inward.
+- **Use cases are async.** A use case that calls an async port is itself `async def`, all the way up.
+- **Web handlers are async.** The whole request path is awaited.
+
+The one place that stays **synchronous**: the **pure `domain/`** — entities, value objects, policies, and
+domain services that do **no I/O**. They only compute over data already in memory, so there is nothing to
+await; forcing `async` there would be empty ceremony and would break "the domain is pure Python, tested
+without spinning anything up". **Async is about I/O, and pure domain has none.** The moment a domain
+operation would need I/O, that I/O belongs to a port — and the port is async.
+
+### Package organization (`src/trocado/`)
+- `core/` — shared kernel: everything the other modules need. **Follows the same structure
+  as a feature** (`domain/` · `application/` · `infrastructure/`).
+- `features/<context>/` — one package per context (`expenses`, `budgeting`, `identity`,
+  `pairing`, `notifications`). All follow the same format. **There is NO `shared/`.**
+
+### Layers inside each module
+- `domain/` → `entities/`, `value_objects/`, `errors/` (+ `policies/`, `services/` when present). Pure Python.
+- `application/` → `interfaces/` (ports, ABC), `data/` (commands and read-models), `use_cases/`, `mappers/`, `services/`.
+- `infrastructure/` → `models/`, `mappers/`, `repositories/` (adapters). **The only place that knows the lib/ORM.**
+
+### Naming conventions (apply to ALL modules)
+| Concept | Folder | File | Class |
 |---|---|---|---|
-| Entidade | `domain/entities` | `expense_entity.py` | `ExpenseEntity` |
+| Entity | `domain/entities` | `expense_entity.py` | `ExpenseEntity` |
 | Value Object | `domain/value_objects` | `money_value_object.py` | `MoneyValueObject` |
-| Erro | `domain/errors` | `expense_not_found_error.py` | `ExpenseNotFoundError` |
+| Error | `domain/errors` | `expense_not_found_error.py` | `ExpenseNotFoundError` |
 | Interface (port) | `application/interfaces` | `expense_repository_interface.py` | `ExpenseRepositoryInterface` |
-| Implementação | `infrastructure/repositories` | `expense_repository.py` | `ExpenseRepository` |
+| Implementation | `infrastructure/repositories` | `expense_repository.py` | `ExpenseRepository` |
 | Use case | `application/use_cases` | `record_expense_use_case.py` | `RecordExpenseUseCase` |
-| Data (comando/saída) | `application/data` | `record_expense_data.py` / `expense_data.py` | `RecordExpenseData` / `ExpenseData` |
+| Data (command/output) | `application/data` | `record_expense_data.py` / `expense_data.py` | `RecordExpenseData` / `ExpenseData` |
 | Mapper entity↔model | `infrastructure/mappers` | `expense_model_mapper.py` | `ExpenseModelMapper` |
 | Mapper entity→data | `application/mappers` | `expense_data_mapper.py` | `ExpenseDataMapper` |
-| Model (tabela) | `infrastructure/models` | `expense_model.py` | `ExpenseModel` |
+| Model (table) | `infrastructure/models` | `expense_model.py` | `ExpenseModel` |
 
-Regras inegociáveis:
-- **Interfaces sempre via `abc.ABC` + `@abstractmethod`.** Nada de duck typing — contrato assinado e explícito.
-- **Nunca o nome da lib no arquivo nem na classe.** `ExpenseRepository`, jamais `SqlAlchemyExpenseRepository`. A ferramenta fica escondida *dentro* do arquivo.
-- **Nada de abreviar.** `value_objects` (não `vos`); `MoneyValueObject` (não `MoneyVO`).
-- **Mapper dedicado em cada fronteira** — sempre uma classe própria, nunca conversão inline.
+Non-negotiable rules:
+- **Interfaces always via `abc.ABC` + `@abstractmethod`.** No duck typing — a signed, explicit contract.
+- **Never the lib's name in the file or the class.** `ExpenseRepository`, never `SqlAlchemyExpenseRepository`. The tool stays hidden *inside* the file.
+- **No abbreviations.** `value_objects` (not `vos`); `MoneyValueObject` (not `MoneyVO`).
+- **A dedicated mapper at every boundary** — always its own class, never inline conversion.
 
-### As três camadas de dados (cada uma nomeada pela SUA natureza)
-| Camada | Natureza | Nomes |
+> **Tooling that enforces this:** run `/trocado:guard` (the `architecture-guard` skill) on any diff to
+> audit these rules — async boundaries, dependency direction, naming, the "never" rules, derive-don't-store,
+> exact-decimal money, soft-delete, and authorization. See [Guardrails — commands & skills](#guardrails--commands--skills).
+
+### The three data layers (each named after ITS own nature)
+| Layer | Nature | Names |
 |---|---|---|
-| Web (controller) | request/response (validação, HTTP) | `RecordExpenseRequest`, `ExpenseResponse` |
-| Application (`data`) | comando / read-model | `RecordExpenseData`, `ExpenseData` |
-| Domain | fato + regra | `ExpenseEntity`, `MoneyValueObject` |
+| Web (controller) | request/response (validation, HTTP) | `RecordExpenseRequest`, `ExpenseResponse` |
+| Application (`data`) | command / read-model | `RecordExpenseData`, `ExpenseData` |
+| Domain | fact + rule | `ExpenseEntity`, `MoneyValueObject` |
 
-- Entrada nomeada pelo **comando** (plural, específica do use case); saída pelo que **representa**.
-- **Não se usa `in`/`out`** na `data`: implica simetria 1:1 que não existe. Direção request/response mora só no web.
+- Input named after the **command** (plural, specific to the use case); output after what it **represents**.
+- **Do not use `in`/`out`** in `data`: it implies a 1:1 symmetry that does not exist. The request/response direction lives only in the web layer.
 
-### Fluxo de um dado (mappers dedicados em cada salto)
+### The flow of a datum (a dedicated mapper at each hop)
 ```
 Request → [ExpenseRequestMapper] → Data → UseCase → Entity → [ExpenseModelMapper] → Model → DB
 DB → Model → [ExpenseModelMapper] → Entity → [ExpenseDataMapper] → Data → [ExpenseResponseMapper] → Response
 ```
 
-### Repositórios
-- **Interface (port)** na `application`; **implementação (adapter)** na `infrastructure`.
-- Recebem/devolvem **sempre entidades de domínio**; usam o `ModelMapper` por dentro.
-- **Soft-delete é responsabilidade do repositório**: leituras normais excluem `deleted_at != null`;
-  só um método de auditoria explícito (`list_including_removed`) enxerga tudo.
-- `find_in_range(person, start, end)` no `ExpenseRepository` é o método que **deriva** o
-  pertencimento expense→budget — sem nenhum FK.
+### Repositories
+- **Interface (port)** in `application`; **implementation (adapter)** in `infrastructure`.
+- Always receive/return **domain entities**; use the `ModelMapper` internally.
+- **Soft-delete is the repository's responsibility**: normal reads exclude `deleted_at != null`;
+  only an explicit audit method (`list_including_removed`) sees everything.
+- `find_in_range(person, start, end)` on the `ExpenseRepository` is the method that **derives** the
+  expense→budget belonging — with no FK at all.
 
-## Stack e comandos
+### Guardrails — commands & skills
 
-TODO — a definir. Domínio em **Python puro** (sem framework). Web (FastAPI vs BlackSheep) e
-persistência (ORM) entram só na borda, via adapters em `composition/` + `infrastructure/`.
-Auth (JWT vs sessão server-side) adiada. Preencher build / test / run / migrations quando a stack for escolhida.
+The rules above are not just documentation; they are enforced by tooling under `.claude/`. Reach for these
+instead of re-checking the rules by hand:
+
+| Tool | Kind | Guarantees |
+|---|---|---|
+| `/trocado:feature` | command | Drives a feature **spec-first**: OpenSpec change → scaffold → implement → guard → archive. The entry point for any new work. |
+| `/trocado:guard` | command | Audits the current diff against every non-negotiable rule and returns **PASS** / **CHANGES REQUIRED**. |
+| `feature-scaffold` | skill | Generates a feature's `domain`/`application`/`infrastructure` skeleton in the canonical layering, naming, async ABC ports, and dedicated mappers. **Refuses to scaffold without an OpenSpec change** — this is how spec-first is enforced at code-gen time. |
+| `architecture-guard` | skill | Reads code/diff and reports violations (spec-first, async everywhere, dependency direction, naming, no lib names, dedicated mappers, derive-don't-store, exact-decimal money, soft-delete, per-person authorization), grouped by severity. |
+
+Plus the OpenSpec workflow skills the process rule depends on: `openspec-explore`, `openspec-propose`,
+`openspec-apply-change`, `openspec-archive-change`.
+
+## Stack and commands
+
+TODO — to be defined. Domain in **pure Python** (no framework). Web (FastAPI vs BlackSheep) and
+persistence (ORM) enter only at the edge, via adapters in `composition/` + `infrastructure/`.
+Auth (JWT vs server-side session) is deferred. Fill in build / test / run / migrations once the stack is chosen.
