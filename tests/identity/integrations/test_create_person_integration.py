@@ -19,7 +19,7 @@ def _build() -> tuple[CreatePersonUseCase, PersonRepository]:
     use_case = CreatePersonUseCase(
         repository=repository,
         hasher=PasswordHasher(),
-        identifier_provider=IdentifierProvider(),
+        identifier=IdentifierProvider(),
         clock=Clock(),
     )
     return use_case, repository

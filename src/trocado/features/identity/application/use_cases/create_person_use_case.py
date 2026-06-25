@@ -25,15 +25,15 @@ class CreatePersonUseCase:
 
     def __init__(
         self,
-        repository: PersonRepositoryInterface,
-        hasher: PasswordHasherInterface,
-        identifier_provider: IdentifierProviderInterface,
         clock: ClockInterface,
+        hasher: PasswordHasherInterface,
+        repository: PersonRepositoryInterface,
+        identifier: IdentifierProviderInterface,
     ) -> None:
-        self._repository = repository
-        self._hasher = hasher
-        self._identifier_provider = identifier_provider
         self._clock = clock
+        self._hasher = hasher
+        self._repository = repository
+        self._identifier = identifier
 
     async def execute(self, data: CreatePersonData) -> PersonData:
         name = NameValueObject(data.name)
@@ -44,14 +44,14 @@ class CreatePersonUseCase:
             raise EmailAlreadyInUseError()
 
         password_hash = await self._hasher.hash(password)
-        identifier = await self._identifier_provider.generate()
+        identifier = await self._identifier.generate()
         created_at = await self._clock.now()
 
         person = PersonEntity.create(
             id=identifier,
-            created_at=created_at,
             name=name,
             email=email,
+            created_at=created_at,
             password=password_hash,
         )
         await self._repository.create(person)

@@ -31,7 +31,7 @@ def _build_use_case(
     use_case = CreatePersonUseCase(
         repository=repository,
         hasher=FakePasswordHasher(),
-        identifier_provider=FakeIdentifierProvider(identifier),
+        identifier=FakeIdentifierProvider(identifier),
         clock=FakeClock(_FIXED_NOW),
     )
     return use_case, repository
