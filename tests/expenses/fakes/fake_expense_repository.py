@@ -1,3 +1,5 @@
+from datetime import date
+
 from trocado.features.expenses.application.interfaces.expense_repository_interface import (
     ExpenseRepositoryInterface,
 )
@@ -12,3 +14,10 @@ class FakeExpenseRepository(ExpenseRepositoryInterface):
 
     async def create(self, expense: ExpenseEntity) -> None:
         self.expenses.append(expense)
+
+    async def find_in_range(self, person_id: str, start: date, end: date) -> list[ExpenseEntity]:
+        return [
+            expense
+            for expense in self.expenses
+            if expense.person_id == person_id and expense.deleted_at is None and start <= expense.occurred_on <= end
+        ]

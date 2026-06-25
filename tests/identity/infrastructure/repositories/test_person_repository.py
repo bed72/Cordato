@@ -13,11 +13,11 @@ _NOW = datetime(2026, 6, 24, tzinfo=UTC)
 def _person(person_id: str, email: str, status: PersonStatus = PersonStatus.ACTIVE) -> PersonEntity:
     return PersonEntity(
         id=person_id,
+        status=status,
+        password="hash",
         created_at=_NOW,
         name=NameValueObject("Ana"),
         email=EmailValueObject(email),
-        password="hash",
-        status=status,
     )
 
 

@@ -11,8 +11,8 @@ def test_preserves_centavo_amount_exactly() -> None:
 
 
 def test_normalizes_scale_to_two_places() -> None:
-    assert MoneyValueObject(Decimal("19.9")).value == Decimal("19.90")
     assert MoneyValueObject(Decimal("20")).value == Decimal("20.00")
+    assert MoneyValueObject(Decimal("19.9")).value == Decimal("19.90")
 
 
 @pytest.mark.parametrize("raw", [Decimal("10.005"), Decimal("0.001"), Decimal("1.999")])

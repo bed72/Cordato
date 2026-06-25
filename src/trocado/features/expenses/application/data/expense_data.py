@@ -12,6 +12,6 @@ class ExpenseData:
     id: str
     person_id: str
     amount: Decimal
-    date: date
-    description: str | None
+    occurred_on: date
     created_at: datetime
+    description: str | None

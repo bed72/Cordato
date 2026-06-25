@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from argon2 import PasswordHasher as Argon2PasswordHasher
+import argon2
 
 from trocado.features.identity.application.interfaces.password_hasher_interface import (
     PasswordHasherInterface,
@@ -14,7 +14,7 @@ class PasswordHasher(PasswordHasherInterface):
     """Argon2-backed hasher. The hashing call is CPU-bound and synchronous, so it runs off the event loop."""
 
     def __init__(self) -> None:
-        self._hasher = Argon2PasswordHasher()
+        self._hasher = argon2.PasswordHasher()
 
     async def hash(self, password: PasswordValueObject) -> str:
         return await asyncio.to_thread(self._hasher.hash, password.value)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from trocado.core.application.interfaces.clock_interface import ClockInterface
 from trocado.core.application.interfaces.identifier_provider_interface import (
     IdentifierProviderInterface,
@@ -43,9 +45,11 @@ class CreatePersonUseCase:
         if await self._repository.find_active_by_email(email) is not None:
             raise EmailAlreadyInUseError()
 
-        password_hash = await self._hasher.hash(password)
-        identifier = await self._identifier.generate()
-        created_at = await self._clock.now()
+        created_at, identifier, password_hash = await asyncio.gather(
+            self._clock.now(),
+            self._identifier.generate(),
+            self._hasher.hash(password),
+        )
 
         person = PersonEntity.create(
             id=identifier,

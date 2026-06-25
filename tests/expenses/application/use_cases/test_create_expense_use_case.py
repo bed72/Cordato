@@ -33,7 +33,7 @@ def _build_use_case(
 
 
 def _command(amount: str = "19.90", description: str | None = "almoço") -> CreateExpenseData:
-    return CreateExpenseData(person_id="person-1", amount=Decimal(amount), date=_A_DAY, description=description)
+    return CreateExpenseData(person_id="person-1", amount=Decimal(amount), occurred_on=_A_DAY, description=description)
 
 
 def test_successful_recording_returns_public_data() -> None:
@@ -42,7 +42,7 @@ def test_successful_recording_returns_public_data() -> None:
     data = asyncio.run(use_case.execute(_command()))
 
     assert data.id == "new-id"
-    assert data.date == _A_DAY
+    assert data.occurred_on == _A_DAY
     assert data.description == "almoço"
     assert data.person_id == "person-1"
     assert data.created_at == _FIXED_NOW

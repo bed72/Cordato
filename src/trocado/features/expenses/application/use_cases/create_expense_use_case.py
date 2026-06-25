@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from trocado.core.application.interfaces.clock_interface import ClockInterface
 from trocado.core.application.interfaces.identifier_provider_interface import (
     IdentifierProviderInterface,
@@ -30,15 +32,17 @@ class CreateExpenseUseCase:
     async def execute(self, data: CreateExpenseData) -> ExpenseData:
         amount = MoneyValueObject(data.amount)
 
-        id = await self._identifier.generate()
-        created_at = await self._clock.now()
+        created_at, id = await asyncio.gather(
+            self._clock.now(),
+            self._identifier.generate(),
+        )
 
         expense = ExpenseEntity.create(
             id=id,
             amount=amount,
-            date=data.date,
             created_at=created_at,
             person_id=data.person_id,
+            occurred_on=data.occurred_on,
             description=data.description,
         )
         await self._repository.create(expense)

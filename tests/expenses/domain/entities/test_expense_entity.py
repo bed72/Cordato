@@ -14,7 +14,7 @@ _FIXED_NOW = datetime(2026, 6, 24, tzinfo=UTC)
 def _create(amount: str = "10.00", description: str | None = "almoço") -> ExpenseEntity:
     return ExpenseEntity.create(
         id="exp-1",
-        date=_A_DAY,
+        occurred_on=_A_DAY,
         person_id="person-1",
         created_at=_FIXED_NOW,
         description=description,
@@ -26,8 +26,8 @@ def test_create_builds_a_live_expense() -> None:
     expense = _create()
 
     assert expense.id == "exp-1"
-    assert expense.date == _A_DAY
     assert expense.deleted_at is None
+    assert expense.occurred_on == _A_DAY
     assert expense.person_id == "person-1"
     assert expense.description == "almoço"
     assert expense.amount.value == Decimal("10.00")
@@ -58,7 +58,7 @@ def test_identity_equality_is_by_id() -> None:
     a = _create()
     b = ExpenseEntity.create(
         id="exp-1",
-        date=_A_DAY,
+        occurred_on=_A_DAY,
         created_at=_FIXED_NOW,
         description="different",
         person_id="someone-else",

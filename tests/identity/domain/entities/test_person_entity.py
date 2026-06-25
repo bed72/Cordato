@@ -11,10 +11,10 @@ from trocado.features.identity.domain.value_objects.person_status import PersonS
 def _build(id: str = "id-1") -> PersonEntity:
     return PersonEntity.create(
         id=id,
-        created_at=datetime(2026, 6, 24, tzinfo=UTC),
+        password="hash",
         name=NameValueObject("Ana"),
         email=EmailValueObject("ana@example.com"),
-        password="hash",
+        created_at=datetime(2026, 6, 24, tzinfo=UTC),
     )
 
 
@@ -28,10 +28,10 @@ def test_bare_constructor_requires_explicit_status() -> None:
     with pytest.raises(TypeError):
         PersonEntity(  # type: ignore[call-arg]
             id="id-1",
-            created_at=datetime(2026, 6, 24, tzinfo=UTC),
+            password="hash",
             name=NameValueObject("Ana"),
             email=EmailValueObject("ana@example.com"),
-            password="hash",
+            created_at=datetime(2026, 6, 24, tzinfo=UTC),
         )
 
 

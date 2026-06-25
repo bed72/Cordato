@@ -13,7 +13,7 @@ class ExpenseDataMapper:
             id=expense.id,
             person_id=expense.person_id,
             amount=expense.amount.value,
-            date=expense.date,
-            description=expense.description,
             created_at=expense.created_at,
+            occurred_on=expense.occurred_on,
+            description=expense.description,
         )

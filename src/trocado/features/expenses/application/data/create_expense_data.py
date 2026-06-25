@@ -11,5 +11,5 @@ class CreateExpenseData:
 
     person_id: str
     amount: Decimal
-    date: date
+    occurred_on: date
     description: str | None

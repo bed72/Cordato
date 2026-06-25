@@ -8,7 +8,7 @@ TBD - created by archiving change record-expense. Update Purpose after archive.
 The system SHALL record a new expense from an owner reference (`person_id`), an amount, a date, and an
 optional description, creating an Expense with an opaque `id`, a `created_at` timestamp, and a live state
 (`deleted_at = null`). On success the system SHALL return the expense's public data — `id`, `person_id`,
-`amount`, `date`, `description`, `created_at`.
+`amount`, `occurred_on`, `description`, `created_at`.
 
 #### Scenario: Successful recording
 
@@ -59,13 +59,14 @@ expense represents a spend that happened, so a non-positive amount is meaningles
 
 ### Requirement: Date is a pure date
 
-The system SHALL record the expense's date as a calendar date with no time-of-day component. The date is
-the day the spend happened and is the sole basis for any later budget-belonging derivation.
+The system SHALL record the expense's day — the `occurred_on` field — as a calendar date with no
+time-of-day component. It is the day the spend happened and is the sole basis for any later
+budget-belonging derivation.
 
 #### Scenario: The date is stored without a time component
 
 - **WHEN** an expense is recorded for a given day
-- **THEN** the stored and returned date is exactly that calendar day, carrying no time-of-day or timezone
+- **THEN** the stored and returned `occurred_on` is exactly that calendar day, carrying no time-of-day or timezone
 
 ### Requirement: Description is optional and normalized
 

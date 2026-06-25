@@ -89,9 +89,11 @@ All have `id` (opaque identity — the ledger's anchor) and `created_at`.
   This rule is what makes "the active budget" and date-based belonging **unambiguous**.
 
 ### Expense
-`id`, `created_at`, `person_id` (who spent — that's all), `amount` (exact decimal), `date` (no time),
-`description` (optional), `deleted_at` (**soft-delete**).
+`id`, `created_at`, `person_id` (who spent — that's all), `amount` (exact decimal), `occurred_on`
+(the day the spend happened — **date only, no time**), `description` (optional), `deleted_at` (**soft-delete**).
 - **Zero link to Budget.** Belonging is purely date-range.
+- The day-field is named `occurred_on` (not `date`) — intention-revealing, and it avoids shadowing the
+  `date` type so the entity imports `from datetime import date, datetime` plainly (per "No import aliases").
 
 ### Pair
 `id`, `created_at`, `person_a_id`, `person_b_id`, `deleted_at` (**soft-delete** = dissolved).
@@ -121,6 +123,25 @@ All have `id` (opaque identity — the ledger's anchor) and `created_at`.
   amount = sum, spend = sum. **A panorama lens, deliberately approximate** — the exact truth lives
   in the individual views. NOT an entity; the pair owns nothing.
 - **Couple expenses:** the union of both partners' expenses, each marked `mine` / `theirs` for the current reader.
+
+### Where they live: `domain/virtual_objects/` — a category of its own (not an entity, not a value object)
+
+When one of these read-time views is modeled as a class, it is a **Virtual Object** and lives in
+`domain/virtual_objects/` (`active_budget_virtual_object.py` → `ActiveBudgetVirtualObject`). It is pure
+domain — the derivation (e.g. `remaining = amount − total_spent`) is a domain rule — but it is **neither
+an entity nor a value object**, and forcing it into either is wrong:
+
+| | Own identity (`id`) | References an entity? | Validates a value | Persisted |
+|---|---|---|---|---|
+| **Entity** | yes — the ledger anchor | — | — | yes |
+| **Value Object** | no (equal by value) | **never** (breaks value semantics) | yes (invariant/normalization) | no |
+| **Virtual Object** | no | **yes — that is its job** | no — it **composes + derives** | no — computed at read-time |
+
+A Virtual Object is a **read-time projection over stored state**: it may hold an entity and carry derived
+behavior, has no identity or lifecycle of its own, and is **never stored** (no row, no `Model`). It feeds a
+dedicated `application/data` read-model through its own mapper, exactly like an entity does — keeping money
+math in the domain instead of leaking into the mapper. This is the third domain shape; it earns the same
+"one concept per file" and naming rigor as the other two.
 
 ---
 
@@ -191,6 +212,14 @@ Concretely:
   adapter edge — never leaked inward.
 - **Use cases are async.** A use case that calls an async port is itself `async def`, all the way up.
 - **Web handlers are async.** The whole request path is awaited.
+- **Gather independent awaits.** Within a unit of work, when two or more awaited port calls are
+  **independent** (no call consumes another's result), issue them together with `asyncio.gather(...)`
+  instead of awaiting in sequence — e.g. `id, created_at = await asyncio.gather(identifier.generate(),
+  clock.now())`. The use case thereby states the calls *may* overlap, honoring the async-maybe-I/O
+  contract of the ports; the day an adapter becomes genuinely I/O-bound, the latency overlaps for free.
+  Await **sequentially** only when there is a real **data dependency** (a later call uses an earlier
+  result). And keep any short-circuiting **guard before** the gather — never pay for an expensive call
+  (e.g. password hashing) that a prior check (e.g. email uniqueness) would have rejected.
 
 The one place that stays **synchronous**: the **pure `domain/`** — entities, value objects, policies, and
 domain services that do **no I/O**. They only compute over data already in memory, so there is nothing to
@@ -205,7 +234,7 @@ operation would need I/O, that I/O belongs to a port — and the port is async.
   `pairing`, `notifications`). All follow the same format. **There is NO `shared/`.**
 
 ### Layers inside each module
-- `domain/` → `entities/`, `value_objects/`, `errors/` (+ `policies/`, `services/` when present). Pure Python.
+- `domain/` → `entities/`, `value_objects/`, `virtual_objects/`, `errors/` (+ `policies/`, `services/` when present). Pure Python.
 - `application/` → `interfaces/` (ports, ABC), `data/` (commands and read-models), `use_cases/`, `mappers/`, `services/`.
 - `infrastructure/` → `models/`, `mappers/`, `repositories/`, `gateways/` (adapters). **The only place that knows the lib/ORM.**
 
@@ -226,6 +255,7 @@ operation would need I/O, that I/O belongs to a port — and the port is async.
 |---|---|---|---|
 | Entity | `domain/entities` | `expense_entity.py` | `ExpenseEntity` |
 | Value Object | `domain/value_objects` | `money_value_object.py` | `MoneyValueObject` |
+| Virtual Object (read-time view) | `domain/virtual_objects` | `active_budget_virtual_object.py` | `ActiveBudgetVirtualObject` |
 | Error | `domain/errors` | `expense_not_found_error.py` | `ExpenseNotFoundError` |
 | Interface (port) | `application/interfaces` | `expense_repository_interface.py` | `ExpenseRepositoryInterface` |
 | Implementation | `infrastructure/repositories` | `expense_repository.py` | `ExpenseRepository` |
@@ -239,6 +269,13 @@ Non-negotiable rules:
 - **Interfaces always via `abc.ABC` + `@abstractmethod`.** No duck typing — a signed, explicit contract.
 - **Never the lib's name in the file or the class.** `ExpenseRepository`, never `SqlAlchemyExpenseRepository`. The tool stays hidden *inside* the file.
 - **No abbreviations.** `value_objects` (not `vos`); `MoneyValueObject` (not `MoneyVO`).
+- **No import aliases.** Never rename a symbol on import — no `import datetime as dt`, no
+  `from argon2 import PasswordHasher as Argon2PasswordHasher`. Import the names plainly
+  (`from datetime import date, datetime`) and call them by their real name; an alias is just an
+  abbreviation in disguise and hides what is actually in scope. When the bare name would **collide**
+  with a local one (e.g. the lib's `PasswordHasher` vs. our adapter `PasswordHasher`), import the
+  **module** and qualify at the call site (`import argon2` → `argon2.PasswordHasher()`) — never reach
+  for an `as` alias to dodge the clash.
 - **A dedicated mapper at every boundary** — always its own class, never inline conversion.
 - **A value object must earn its existence — no primitive-wrapping.** Create a value object only when it
   enforces an **invariant** or carries **behavior**: validation, normalization, or a domain operation

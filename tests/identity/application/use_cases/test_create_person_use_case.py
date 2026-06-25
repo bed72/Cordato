@@ -30,9 +30,9 @@ def _build_use_case(
     repository = repository or FakePersonRepository()
     use_case = CreatePersonUseCase(
         repository=repository,
+        clock=FakeClock(_FIXED_NOW),
         hasher=FakePasswordHasher(),
         identifier=FakeIdentifierProvider(identifier),
-        clock=FakeClock(_FIXED_NOW),
     )
     return use_case, repository
 
@@ -41,11 +41,11 @@ def _seed(repository: FakePersonRepository, email: str, status: PersonStatus, pe
     repository.people.append(
         PersonEntity(
             id=person_id,
+            status=status,
+            password="seed-hash",
             created_at=_FIXED_NOW,
             name=NameValueObject("Seed"),
             email=EmailValueObject(email),
-            password="seed-hash",
-            status=status,
         )
     )
 
@@ -57,13 +57,13 @@ def test_successful_creation_returns_public_active_data() -> None:
 
     assert data.id == "new-id"
     assert data.name == "Ana"
-    assert data.email == "ana@example.com"
     assert data.status == "active"
-    assert data.created_at == _FIXED_NOW
+    assert len(repository.people) == 1
     # PersonData carries no password field at all.
     assert not hasattr(data, "password")
+    assert data.created_at == _FIXED_NOW
+    assert data.email == "ana@example.com"
     assert not hasattr(data, "password_hash")
-    assert len(repository.people) == 1
 
 
 def test_stored_password_is_a_hash_not_plaintext() -> None:
@@ -72,6 +72,7 @@ def test_stored_password_is_a_hash_not_plaintext() -> None:
     asyncio.run(use_case.execute(CreatePersonData(name="Ana", email="ana@example.com", password="plaintext1")))
 
     stored = repository.people[0].password
+
     assert stored != "plaintext1"
     assert stored.startswith("hashed::")  # the fake hasher's marker
 

@@ -29,9 +29,9 @@ def test_real_adapters_record_an_expense() -> None:
         use_case.execute(
             CreateExpenseData(
                 person_id="person-1",
-                date=date(2026, 6, 20),
                 amount=Decimal("19.90"),
                 description="  almoço  ",
+                occurred_on=date(2026, 6, 20),
             )
         )
     )
