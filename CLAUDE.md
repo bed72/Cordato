@@ -271,6 +271,37 @@ Request → [ExpenseRequestMapper] → Data → UseCase → Entity → [ExpenseM
 DB → Model → [ExpenseModelMapper] → Entity → [ExpenseDataMapper] → Data → [ExpenseResponseMapper] → Response
 ```
 
+### Mapper conventions (concrete classes, NOT a generic `Mapper` interface)
+
+A mapper is a **pure transformation between two layers' shapes** — `Entity → Data`, `Entity ↔ Model`,
+`Request → Data`, `Data → Response`. It is the dedicated home for a hop in the flow above, and it follows
+a fixed shape:
+
+- **One dedicated class per boundary**, named after its *destination* shape:
+  `PersonDataMapper`, `PersonModelMapper`, `PersonResponseMapper`, `PersonRequestMapper`. One per file,
+  per the one-concept-per-file rule.
+- **Methods named after the direction**, `to_<target>`: `to_data`, `to_entity`, `to_model`, `to_response`.
+  A bidirectional mapper (typically the `ModelMapper`) carries both directions as two methods
+  (`to_entity` / `to_model`) on the **same** class — never split into two classes.
+- **`@staticmethod` by default.** A mapper holds no state and does no I/O, so it is a pure function and
+  needs no `self`. Call it on the class: `PersonDataMapper.to_data(person)`. It only becomes an instance
+  method (`__init__` + injected dependency) the day a transformation genuinely needs a collaborator —
+  which for pure shape-mapping it does not.
+- **No abstract base, no generic `Mapper[IN, OUT]` interface.** This is deliberate, and is the same
+  "earn its existence / symmetry is not a reason" rule applied to mappers:
+  - `abc.ABC` is **reserved for ports** — the I/O boundaries where an adapter actually swaps
+    (in-memory ↔ ORM, fake ↔ Argon2). A mapper is not a port: there is no second adapter to plug in, so a
+    contract would be ceremony over a boundary that does not move.
+  - A generic `map(input: IN) -> OUT` buys **no** type-safety that mypy `--strict` does not already get
+    from the concrete signature `to_data(person: PersonEntity) -> PersonData`.
+  - A single `map()` cannot express the **multi-direction** mappers (`Entity ↔ Model`) and would force
+    them to fragment into `EntityToModel` + `ModelToEntity`, losing the cohesive, directionally-named API.
+
+  > Coming from a Kotlin/Java `interface Mapper<in IN, out Out>`: that abstraction pays for itself there
+  > because it enables DI and polymorphic composition of mappers. Here mappers are static, concrete, and
+  > called by name — the polymorphism it would abstract does not exist, so the concrete class is the
+  > idiomatic choice.
+
 ### Repositories
 - **Interface (port)** in `application`; **implementation (adapter)** in `infrastructure`.
 - Always receive/return **domain entities**; use the `ModelMapper` internally.
