@@ -21,8 +21,9 @@ ele não repete regras nem comportamento — esses vivem em outros lugares (ver 
 | `features/identity` | A pessoa — âncora do ledger: cadastro, e-mail, nome, senha (hash). | [features/identity/README.md](features/identity/README.md) |
 | `features/expenses` | O gasto — fato atômico: quem gastou, quanto, em que dia. Zero link a budget. | [features/expenses/README.md](features/expenses/README.md) |
 | `features/budgeting` | O orçamento — teto por intervalo de datas; gasto e saldo **derivados**. | [features/budgeting/README.md](features/budgeting/README.md) |
+| `features/pairing` | O ponto de vista — liga dois indivíduos; começa pelo convite (`create-invite-code`). | [features/pairing/README.md](features/pairing/README.md) |
 
-Contextos planejados mas **ainda sem código**: `pairing`, `notifications` (vivem no `CLAUDE.md`).
+Contexto planejado mas **ainda sem código**: `notifications` (vive no `CLAUDE.md`).
 
 ## A regra de modelagem que atravessa tudo: derive, don't store
 
