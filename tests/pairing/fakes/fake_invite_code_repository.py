@@ -12,3 +12,16 @@ class FakeInviteCodeRepository(InviteCodeRepositoryInterface):
 
     async def create(self, invite_code: InviteCodeEntity) -> None:
         self.invite_codes.append(invite_code)
+
+    async def find_by_token(self, code: str) -> InviteCodeEntity | None:
+        for invite_code in self.invite_codes:
+            if invite_code.code == code:
+                return invite_code
+        return None
+
+    async def consume(self, invite_code: InviteCodeEntity) -> None:
+        for index, stored in enumerate(self.invite_codes):
+            if stored.id == invite_code.id:
+                self.invite_codes[index] = invite_code
+                return
+        self.invite_codes.append(invite_code)

@@ -41,3 +41,35 @@ def test_equality_is_by_id() -> None:
 
 def test_hash_is_by_id() -> None:
     assert hash(_build(id="code-1")) == hash(_build(id="code-1", code="different"))
+
+
+def test_is_consumed_reflects_consumed_at() -> None:
+    invite_code = _build()
+
+    assert invite_code.is_consumed is False
+
+    invite_code.consume(_FIXED_NOW + timedelta(hours=1))
+
+    assert invite_code.is_consumed is True
+
+
+def test_consume_stamps_the_given_instant() -> None:
+    invite_code = _build()
+    redeemed_at = _FIXED_NOW + timedelta(hours=2)
+
+    invite_code.consume(redeemed_at)
+
+    assert invite_code.consumed_at == redeemed_at
+
+
+def test_is_expired_is_false_before_expiry() -> None:
+    invite_code = _build()
+
+    assert invite_code.is_expired(invite_code.expires_at - timedelta(seconds=1)) is False
+
+
+def test_is_expired_is_true_at_and_after_expiry() -> None:
+    invite_code = _build()
+
+    assert invite_code.is_expired(invite_code.expires_at) is True
+    assert invite_code.is_expired(invite_code.expires_at + timedelta(seconds=1)) is True

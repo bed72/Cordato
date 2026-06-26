@@ -14,3 +14,12 @@ class InviteCodeRepository(InviteCodeRepositoryInterface):
 
     async def create(self, invite_code: InviteCodeEntity) -> None:
         self._invite_codes[invite_code.id] = invite_code
+
+    async def find_by_token(self, code: str) -> InviteCodeEntity | None:
+        for invite_code in self._invite_codes.values():
+            if invite_code.code == code:
+                return invite_code
+        return None
+
+    async def consume(self, invite_code: InviteCodeEntity) -> None:
+        self._invite_codes[invite_code.id] = invite_code

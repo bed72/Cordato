@@ -48,6 +48,19 @@ class InviteCodeEntity:
             expires_at=created_at + _TIME_TO_LIVE,
         )
 
+    @property
+    def is_consumed(self) -> bool:
+        """Whether the code has already been redeemed — single-use is final."""
+        return self.consumed_at is not None
+
+    def is_expired(self, reference: datetime) -> bool:
+        """Whether the code is past its window at ``reference`` (``expires_at`` itself counts as expired)."""
+        return reference >= self.expires_at
+
+    def consume(self, at: datetime) -> None:
+        """Stamp the redemption instant, marking the code spent. The only path out of the live state."""
+        self.consumed_at = at
+
     # Identity equality: an invite code IS its id, not the sum of its fields.
     def __eq__(self, other: object) -> bool:
         return isinstance(other, InviteCodeEntity) and other.id == self.id
