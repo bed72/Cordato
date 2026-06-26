@@ -73,7 +73,7 @@ Clean Architecture + DDD tático + Ports & Adapters, num **monólito modular** e
 
 - O **domínio** é Python puro, independente de framework, e se testa sem subir nada.
 - A dependência aponta sempre **para dentro**: `infrastructure → application → domain`.
-- Um pacote por contexto: `expenses`, `budgeting`, `identity`, `pairing`, `notifications` — todos com
+- Um pacote por contexto: `expenses`, `budgeting`, `identity`, `pairing` — todos com
   a mesma forma de três camadas (`domain` / `application` / `infrastructure`).
 
 Duas decisões são **inegociáveis** e valem para todo o código:

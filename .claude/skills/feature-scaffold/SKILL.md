@@ -29,7 +29,7 @@ openspec list --json
 
 Code lives under `src/trocado/`. Pick the package:
 - `core/` — shared kernel (same three-layer shape as a feature).
-- `features/<context>/` — one of `expenses`, `budgeting`, `identity`, `pairing`, `notifications`
+- `features/<context>/` — one of `expenses`, `budgeting`, `identity`, `pairing`
   (or a new context the change introduces). **There is NO `shared/`.**
 
 Each module is three layers. **One concept per file** everywhere — one value object, enum, error, port, use

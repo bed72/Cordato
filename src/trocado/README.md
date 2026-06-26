@@ -23,8 +23,6 @@ ele não repete regras nem comportamento — esses vivem em outros lugares (ver 
 | `features/budgeting` | O orçamento — teto por intervalo de datas; gasto e saldo **derivados**. | [features/budgeting/README.md](features/budgeting/README.md) |
 | `features/pairing` | O ponto de vista — liga dois indivíduos; começa pelo convite (`create-invite-code`). | [features/pairing/README.md](features/pairing/README.md) |
 
-Contexto planejado mas **ainda sem código**: `notifications` (vive no `CLAUDE.md`).
-
 ## A regra de modelagem que atravessa tudo: derive, don't store
 
 O grafo de referências é **deliberadamente plano**. Um link só existe quando é um **fato intrínseco de
