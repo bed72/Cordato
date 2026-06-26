@@ -21,3 +21,6 @@ class FakePairRepository(PairRepositoryInterface):
 
     async def create(self, pair: PairEntity) -> None:
         self.pairs.append(pair)
+
+    async def dissolve(self, pair: PairEntity) -> None:
+        self.pairs = [pair if existing.id == pair.id else existing for existing in self.pairs]

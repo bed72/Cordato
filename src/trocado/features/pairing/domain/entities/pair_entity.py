@@ -10,8 +10,9 @@ class PairEntity:
 
     A thin link: it owns no money, no budget, no expense. ``person_a_id`` is the invite's creator,
     ``person_b_id`` the accepter. ``deleted_at`` null = live; a stamped value means the pair was
-    dissolved (soft-delete). Born live only through ``create``; the bare constructor is reserved for
-    rehydration of a stored pair with its persisted ``deleted_at``.
+    dissolved (soft-delete) — ``dissolve`` is the only transition into that state. Born live only through
+    ``create``; the bare constructor is reserved for rehydration of a stored pair with its persisted
+    ``deleted_at``.
     """
 
     id: str
@@ -37,6 +38,10 @@ class PairEntity:
             person_a_id=person_a_id,
             person_b_id=person_b_id,
         )
+
+    def dissolve(self, at: datetime) -> None:
+        """Stamp the dissolution instant, taking the shared view down. The only path out of the live state."""
+        self.deleted_at = at
 
     # Identity equality: a pair IS its id, not the sum of its fields.
     def __eq__(self, other: object) -> bool:

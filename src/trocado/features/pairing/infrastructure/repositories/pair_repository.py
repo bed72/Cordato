@@ -20,3 +20,6 @@ class PairRepository(PairRepositoryInterface):
 
     async def create(self, pair: PairEntity) -> None:
         self._pairs[pair.id] = pair
+
+    async def dissolve(self, pair: PairEntity) -> None:
+        self._pairs[pair.id] = pair

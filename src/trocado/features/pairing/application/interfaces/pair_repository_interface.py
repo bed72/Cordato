@@ -12,6 +12,8 @@ class PairRepositoryInterface(ABC):
     (``deleted_at`` null), so dissolved pairs in a person's history never block a new pairing. A person is
     in at most one live pair, so the lookup returns a single optional entity.
 
+    ``dissolve`` persists the soft-delete: a pair whose ``deleted_at`` has just been stamped.
+
     Implementors (adapters in ``infrastructure/repositories/``):
         - MUST accept and return domain ``PairEntity`` objects.
         - MUST exclude dissolved (soft-deleted) pairs from ``find_active_by_person``.
@@ -25,4 +27,9 @@ class PairRepositoryInterface(ABC):
     @abstractmethod
     async def create(self, pair: PairEntity) -> None:
         """Persist a newly formed pair."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def dissolve(self, pair: PairEntity) -> None:
+        """Persist a pair whose ``deleted_at`` has just been stamped."""
         raise NotImplementedError

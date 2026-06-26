@@ -29,6 +29,27 @@ def test_create_starts_live() -> None:
     assert pair.deleted_at is None
 
 
+def test_dissolve_stamps_deleted_at() -> None:
+    pair = _build()
+    dissolved_at = datetime(2026, 6, 26, 9, tzinfo=UTC)
+
+    pair.dissolve(dissolved_at)
+
+    assert pair.deleted_at == dissolved_at
+
+
+def test_dissolve_leaves_identity_and_other_fields_intact() -> None:
+    pair = _build(id="pair-1", person_a_id="creator", person_b_id="accepter")
+
+    pair.dissolve(datetime(2026, 6, 26, 9, tzinfo=UTC))
+
+    assert pair.id == "pair-1"
+    assert pair.person_a_id == "creator"
+    assert pair.person_b_id == "accepter"
+    assert pair.created_at == _FIXED_NOW
+    assert pair == _build(id="pair-1")  # equality is by id, unaffected by the stamp
+
+
 def test_equality_is_by_id() -> None:
     same_id_other_fields = PairEntity.create(id="pair-1", created_at=_FIXED_NOW, person_a_id="x", person_b_id="y")
 
