@@ -6,8 +6,8 @@ from trocado.core.application.interfaces.clock_interface import ClockInterface
 from trocado.core.application.interfaces.identifier_provider_interface import (
     IdentifierProviderInterface,
 )
-from trocado.features.identity.application.data.create_person_data import CreatePersonData
 from trocado.features.identity.application.data.person_data import PersonData
+from trocado.features.identity.application.data.sign_up_data import SignUpData
 from trocado.features.identity.application.interfaces.password_hasher_interface import (
     PasswordHasherInterface,
 )
@@ -22,8 +22,8 @@ from trocado.features.identity.domain.value_objects.name_value_object import Nam
 from trocado.features.identity.domain.value_objects.password_value_object import PasswordValueObject
 
 
-class CreatePersonUseCase:
-    """Create a new person: validate input, enforce email uniqueness, hash, persist, return public data."""
+class SignUpUseCase:
+    """Sign up a new person: validate input, enforce email uniqueness, hash, persist, return public data."""
 
     def __init__(
         self,
@@ -37,7 +37,7 @@ class CreatePersonUseCase:
         self._repository = repository
         self._identifier = identifier
 
-    async def execute(self, data: CreatePersonData) -> PersonData:
+    async def execute(self, data: SignUpData) -> PersonData:
         name = NameValueObject(data.name)
         email = EmailValueObject(data.email)
         password = PasswordValueObject(data.password)
@@ -52,9 +52,9 @@ class CreatePersonUseCase:
         )
 
         person = PersonEntity.create(
-            id=identifier,
             name=name,
             email=email,
+            id=identifier,
             created_at=created_at,
             password=password_hash,
         )

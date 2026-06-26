@@ -4,9 +4,9 @@ import pytest
 
 from trocado.core.infrastructure.gateways.clock import Clock
 from trocado.core.infrastructure.gateways.identifier_provider import IdentifierProvider
-from trocado.features.identity.application.data.create_person_data import CreatePersonData
-from trocado.features.identity.application.use_cases.create_person_use_case import (
-    CreatePersonUseCase,
+from trocado.features.identity.application.data.sign_up_data import SignUpData
+from trocado.features.identity.application.use_cases.sign_up_use_case import (
+    SignUpUseCase,
 )
 from trocado.features.identity.domain.errors.email_already_in_use_error import EmailAlreadyInUseError
 from trocado.features.identity.domain.value_objects.email_value_object import EmailValueObject
@@ -14,9 +14,9 @@ from trocado.features.identity.infrastructure.gateways.password_hasher import Pa
 from trocado.features.identity.infrastructure.repositories.person_repository import PersonRepository
 
 
-def _build() -> tuple[CreatePersonUseCase, PersonRepository]:
+def _build() -> tuple[SignUpUseCase, PersonRepository]:
     repository = PersonRepository()
-    use_case = CreatePersonUseCase(
+    use_case = SignUpUseCase(
         clock=Clock(),
         repository=repository,
         hasher=PasswordHasher(),
@@ -29,7 +29,7 @@ def _build() -> tuple[CreatePersonUseCase, PersonRepository]:
 def test_real_adapters_create_a_person() -> None:
     use_case, repository = _build()
 
-    data = asyncio.run(use_case.execute(CreatePersonData(name="Ana", email="ana@example.com", password="supersecret")))
+    data = asyncio.run(use_case.execute(SignUpData(name="Ana", email="ana@example.com", password="supersecret")))
 
     # A real uuid7 string id (canonical 36-char form).
     assert len(data.id) == 36
@@ -46,7 +46,7 @@ def test_real_adapters_create_a_person() -> None:
 
 def test_real_adapters_reject_duplicate_email() -> None:
     use_case, _ = _build()
-    asyncio.run(use_case.execute(CreatePersonData(name="Ana", email="ana@example.com", password="supersecret")))
+    asyncio.run(use_case.execute(SignUpData(name="Ana", email="ana@example.com", password="supersecret")))
 
     with pytest.raises(EmailAlreadyInUseError):
-        asyncio.run(use_case.execute(CreatePersonData(name="Bob", email="ANA@example.com", password="supersecret")))
+        asyncio.run(use_case.execute(SignUpData(name="Bob", email="ANA@example.com", password="supersecret")))

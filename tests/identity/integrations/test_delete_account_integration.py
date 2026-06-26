@@ -18,13 +18,13 @@ from trocado.features.expenses.application.interfaces.expense_repository_interfa
 )
 from trocado.features.expenses.domain.entities.expense_entity import ExpenseEntity
 from trocado.features.expenses.infrastructure.repositories.expense_repository import ExpenseRepository
-from trocado.features.identity.application.data.create_person_data import CreatePersonData
 from trocado.features.identity.application.data.delete_account_data import DeleteAccountData
+from trocado.features.identity.application.data.sign_up_data import SignUpData
 from trocado.features.identity.application.interfaces.budget_eraser_interface import BudgetEraserInterface
 from trocado.features.identity.application.interfaces.expense_eraser_interface import ExpenseEraserInterface
 from trocado.features.identity.application.interfaces.pair_dissolver_interface import PairDissolverInterface
-from trocado.features.identity.application.use_cases.create_person_use_case import CreatePersonUseCase
 from trocado.features.identity.application.use_cases.delete_account_use_case import DeleteAccountUseCase
+from trocado.features.identity.application.use_cases.sign_up_use_case import SignUpUseCase
 from trocado.features.identity.domain.errors.incorrect_password_error import IncorrectPasswordError
 from trocado.features.identity.domain.value_objects.password_value_object import PasswordValueObject
 from trocado.features.identity.infrastructure.gateways.password_hasher import PasswordHasher
@@ -73,15 +73,13 @@ def test_real_adapters_erase_the_ledger_free_the_email_and_dissolve_the_pair() -
     expense_repository = ExpenseRepository()
     pair_repository = PairRepository()
 
-    register = CreatePersonUseCase(
+    register = SignUpUseCase(
         clock=Clock(),
         repository=person_repository,
         hasher=PasswordHasher(),
         identifier=IdentifierProvider(),
     )
-    created = asyncio.run(
-        register.execute(CreatePersonData(name="Ana", email="ana@example.com", password="supersecret"))
-    )
+    created = asyncio.run(register.execute(SignUpData(name="Ana", email="ana@example.com", password="supersecret")))
     person_id = created.id
 
     # Seed a ledger and a live pair for the person.
@@ -135,9 +133,7 @@ def test_real_adapters_erase_the_ledger_free_the_email_and_dissolve_the_pair() -
     assert asyncio.run(pair_repository.find_active_by_person("partner")) is None
 
     # The freed email is reusable by a brand-new person, with a new id and an empty ledger.
-    reused = asyncio.run(
-        register.execute(CreatePersonData(name="Bea", email="ana@example.com", password="anothersecret"))
-    )
+    reused = asyncio.run(register.execute(SignUpData(name="Bea", email="ana@example.com", password="anothersecret")))
     assert reused.id != person_id
 
 
@@ -147,15 +143,13 @@ def test_wrong_password_leaves_everything_intact() -> None:
     expense_repository = ExpenseRepository()
     pair_repository = PairRepository()
 
-    register = CreatePersonUseCase(
+    register = SignUpUseCase(
         clock=Clock(),
         repository=person_repository,
         hasher=PasswordHasher(),
         identifier=IdentifierProvider(),
     )
-    created = asyncio.run(
-        register.execute(CreatePersonData(name="Ana", email="ana@example.com", password="supersecret"))
-    )
+    created = asyncio.run(register.execute(SignUpData(name="Ana", email="ana@example.com", password="supersecret")))
     asyncio.run(
         budget_repository.create(
             BudgetEntity.create(

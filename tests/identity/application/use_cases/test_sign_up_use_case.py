@@ -7,9 +7,9 @@ from tests.core.fakes.fake_clock import FakeClock
 from tests.core.fakes.fake_identifier_provider import FakeIdentifierProvider
 from tests.identity.fakes.fake_password_hasher import FakePasswordHasher
 from tests.identity.fakes.fake_person_repository import FakePersonRepository
-from trocado.features.identity.application.data.create_person_data import CreatePersonData
-from trocado.features.identity.application.use_cases.create_person_use_case import (
-    CreatePersonUseCase,
+from trocado.features.identity.application.data.sign_up_data import SignUpData
+from trocado.features.identity.application.use_cases.sign_up_use_case import (
+    SignUpUseCase,
 )
 from trocado.features.identity.domain.entities.person_entity import PersonEntity
 from trocado.features.identity.domain.enums.person_status import PersonStatus
@@ -26,9 +26,9 @@ _FIXED_NOW = datetime(2026, 6, 24, tzinfo=UTC)
 def _build_use_case(
     repository: FakePersonRepository | None = None,
     identifier: str = "id-1",
-) -> tuple[CreatePersonUseCase, FakePersonRepository]:
+) -> tuple[SignUpUseCase, FakePersonRepository]:
     repository = repository or FakePersonRepository()
-    use_case = CreatePersonUseCase(
+    use_case = SignUpUseCase(
         repository=repository,
         clock=FakeClock(_FIXED_NOW),
         hasher=FakePasswordHasher(),
@@ -53,7 +53,7 @@ def _seed(repository: FakePersonRepository, email: str, status: PersonStatus, pe
 def test_successful_creation_returns_public_active_data() -> None:
     use_case, repository = _build_use_case(identifier="new-id")
 
-    data = asyncio.run(use_case.execute(CreatePersonData(name="Ana", email="ana@example.com", password="12345678")))
+    data = asyncio.run(use_case.execute(SignUpData(name="Ana", email="ana@example.com", password="12345678")))
 
     assert data.id == "new-id"
     assert data.name == "Ana"
@@ -69,7 +69,7 @@ def test_successful_creation_returns_public_active_data() -> None:
 def test_stored_password_is_a_hash_not_plaintext() -> None:
     use_case, repository = _build_use_case()
 
-    asyncio.run(use_case.execute(CreatePersonData(name="Ana", email="ana@example.com", password="plaintext1")))
+    asyncio.run(use_case.execute(SignUpData(name="Ana", email="ana@example.com", password="plaintext1")))
 
     stored = repository.people[0].password
 
@@ -83,7 +83,7 @@ def test_duplicate_active_email_is_rejected() -> None:
     use_case, _ = _build_use_case(repository)
 
     with pytest.raises(EmailAlreadyInUseError):
-        asyncio.run(use_case.execute(CreatePersonData(name="Ana", email="ANA@example.com", password="12345678")))
+        asyncio.run(use_case.execute(SignUpData(name="Ana", email="ANA@example.com", password="12345678")))
     assert len(repository.people) == 1
 
 
@@ -92,7 +92,7 @@ def test_freed_email_can_be_reused_as_new_person() -> None:
     _seed(repository, "ana@example.com", PersonStatus.DELETED, "old")
     use_case, _ = _build_use_case(repository, identifier="brand-new")
 
-    data = asyncio.run(use_case.execute(CreatePersonData(name="Ana", email="ana@example.com", password="12345678")))
+    data = asyncio.run(use_case.execute(SignUpData(name="Ana", email="ana@example.com", password="12345678")))
 
     assert data.id == "brand-new"
     assert len(repository.people) == 2
@@ -102,27 +102,27 @@ def test_normalized_email_feeds_uniqueness_check() -> None:
     repository = FakePersonRepository()
     use_case, _ = _build_use_case(repository)
 
-    asyncio.run(use_case.execute(CreatePersonData(name="Ana", email="  Ana@Example.COM ", password="12345678")))
+    asyncio.run(use_case.execute(SignUpData(name="Ana", email="  Ana@Example.COM ", password="12345678")))
     with pytest.raises(EmailAlreadyInUseError):
-        asyncio.run(use_case.execute(CreatePersonData(name="Bob", email="ana@example.com", password="12345678")))
+        asyncio.run(use_case.execute(SignUpData(name="Bob", email="ana@example.com", password="12345678")))
 
 
 def test_malformed_email_is_rejected() -> None:
     use_case, repository = _build_use_case()
     with pytest.raises(InvalidEmailError):
-        asyncio.run(use_case.execute(CreatePersonData(name="Ana", email="nope", password="12345678")))
+        asyncio.run(use_case.execute(SignUpData(name="Ana", email="nope", password="12345678")))
     assert repository.people == []
 
 
 def test_weak_password_is_rejected() -> None:
     use_case, repository = _build_use_case()
     with pytest.raises(WeakPasswordError):
-        asyncio.run(use_case.execute(CreatePersonData(name="Ana", email="ana@example.com", password="short")))
+        asyncio.run(use_case.execute(SignUpData(name="Ana", email="ana@example.com", password="short")))
     assert repository.people == []
 
 
 def test_blank_name_is_rejected() -> None:
     use_case, repository = _build_use_case()
     with pytest.raises(InvalidNameError):
-        asyncio.run(use_case.execute(CreatePersonData(name="   ", email="ana@example.com", password="12345678")))
+        asyncio.run(use_case.execute(SignUpData(name="   ", email="ana@example.com", password="12345678")))
     assert repository.people == []

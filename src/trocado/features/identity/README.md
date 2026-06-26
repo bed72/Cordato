@@ -5,7 +5,7 @@ Este módulo cuida de quem essa pessoa é e de como ela entra no sistema.
 
 ## Responsabilidade
 
-- **Cadastrar** uma pessoa (hoje o único caso de uso: `create-person`).
+- **Cadastrar** uma pessoa (`sign-up`).
 - Garantir os invariantes de identidade: **e-mail único e válido**, **nome válido**, **senha forte** —
   e que a senha seja persistida **só como hash**, nunca em plaintext.
 - Expor o conceito de **status** de conta (`active` / `deleted`).
@@ -39,9 +39,9 @@ Este módulo cuida de quem essa pessoa é e de como ela entra no sistema.
 | domain / entities | `person_entity.py` | A pessoa; factory `create(...)` nasce `ACTIVE`. |
 | domain / value_objects | `email_value_object.py` · `name_value_object.py` · `password_value_object.py` · `person_status.py` | Invariantes de identidade. |
 | domain / errors | `email_already_in_use_error.py` · `invalid_email_error.py` · `invalid_name_error.py` · `weak_password_error.py` | Recusas em pt-BR, sem vazar valor. |
-| application / data | `create_person_data.py` (comando) · `person_data.py` (read-model) | Entrada/saída do use case. |
+| application / data | `sign_up_data.py` (comando) · `person_data.py` (read-model) | Entrada/saída do use case. |
 | application / interfaces | `person_repository_interface.py` · `password_hasher_interface.py` | Portas ABC. |
-| application / use_cases | `create_person_use_case.py` | Orquestra: valida, checa e-mail único, hasheia, persiste. |
+| application / use_cases | `sign_up_use_case.py` | Orquestra: valida, checa e-mail único, hasheia, persiste. |
 | application / mappers | `person_data_mapper.py` | `Entity → Data`. |
 | infrastructure / repositories | `person_repository.py` | Adapter in-memory (por enquanto). |
 | infrastructure / gateways | `password_hasher.py` | Argon2; chamada síncrona embrulhada com `asyncio.to_thread` na borda. |
@@ -60,4 +60,4 @@ conta** (hard-delete) descritos no `CLAUDE.md` ainda não implementados.
 ## Onde aprofundar
 
 - **Convenções** → [`../../../../CLAUDE.md`](../../../../CLAUDE.md) (entidade *Person*, *Domain error messages*)
-- **Comportamento** → `openspec/specs/register-person/spec.md`
+- **Comportamento** → `openspec/specs/sign-up/spec.md`

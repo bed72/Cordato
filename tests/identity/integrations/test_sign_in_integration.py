@@ -4,10 +4,10 @@ import pytest
 
 from trocado.core.infrastructure.gateways.clock import Clock
 from trocado.core.infrastructure.gateways.identifier_provider import IdentifierProvider
-from trocado.features.identity.application.data.create_person_data import CreatePersonData
 from trocado.features.identity.application.data.sign_in_data import SignInData
-from trocado.features.identity.application.use_cases.create_person_use_case import CreatePersonUseCase
+from trocado.features.identity.application.data.sign_up_data import SignUpData
 from trocado.features.identity.application.use_cases.sign_in_use_case import SignInUseCase
+from trocado.features.identity.application.use_cases.sign_up_use_case import SignUpUseCase
 from trocado.features.identity.domain.errors.invalid_credentials_error import InvalidCredentialsError
 from trocado.features.identity.infrastructure.gateways.password_hasher import PasswordHasher
 from trocado.features.identity.infrastructure.repositories.person_repository import PersonRepository
@@ -19,13 +19,13 @@ _PASSWORD = "supersecret"
 def _build() -> tuple[SignInUseCase, PersonRepository]:
     repository = PersonRepository()
     hasher = PasswordHasher()
-    register = CreatePersonUseCase(
+    register = SignUpUseCase(
         clock=Clock(),
-        repository=repository,
         hasher=hasher,
+        repository=repository,
         identifier=IdentifierProvider(),
     )
-    asyncio.run(register.execute(CreatePersonData(name="Ana", email=_EMAIL, password=_PASSWORD)))
+    asyncio.run(register.execute(SignUpData(name="Ana", email=_EMAIL, password=_PASSWORD)))
     return SignInUseCase(hasher=hasher, repository=repository), repository
 
 

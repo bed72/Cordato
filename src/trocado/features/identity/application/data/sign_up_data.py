@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class CreatePersonData:
-    """Command input for creating a person — raw values straight from the caller."""
+class SignUpData:
+    """Command input for signing up a new person — raw values straight from the caller."""
 
     name: str
     email: str
