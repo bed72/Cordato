@@ -83,6 +83,68 @@ def test_identity_equality_is_by_id() -> None:
     assert hash(a) == hash(b)
 
 
+def test_edit_overwrites_fields_and_preserves_identity() -> None:
+    budget = _create()
+    new_start = date(2026, 7, 1)
+    new_end = date(2026, 7, 31)
+
+    budget.edit(
+        note="  aluguel  ",
+        end_date=new_end,
+        start_date=new_start,
+        amount=MoneyValueObject(Decimal("900.00")),
+    )
+
+    assert budget.note == "aluguel"
+    assert budget.end_date == new_end
+    assert budget.start_date == new_start
+    assert budget.amount.value == Decimal("900.00")
+    # Identity and lifecycle are untouched by an edit.
+    assert budget.id == "budget-1"
+    assert budget.person_id == "person-1"
+    assert budget.created_at == _FIXED_NOW
+    assert budget.deleted_at is None
+
+
+@pytest.mark.parametrize("amount", ["0", "0.00", "-1.00"])
+def test_edit_rejects_non_positive_amount(amount: str) -> None:
+    budget = _create()
+
+    with pytest.raises(InvalidBudgetAmountError):
+        budget.edit(
+            note="aluguel",
+            end_date=_END,
+            start_date=_START,
+            amount=MoneyValueObject(Decimal(amount)),
+        )
+    # Rejected before any assignment: the original values stand.
+    assert budget.amount.value == Decimal("500.00")
+    assert budget.note == "mercado"
+
+
+def test_edit_rejects_start_after_end() -> None:
+    budget = _create()
+
+    with pytest.raises(InvalidBudgetRangeError):
+        budget.edit(
+            note="aluguel",
+            end_date=_START,
+            start_date=_END,
+            amount=MoneyValueObject(Decimal("900.00")),
+        )
+    assert budget.start_date == _START
+    assert budget.end_date == _END
+
+
+@pytest.mark.parametrize("note", [None, "", "   "])
+def test_edit_blank_note_becomes_none(note: str | None) -> None:
+    budget = _create()
+
+    budget.edit(note=note, end_date=_END, start_date=_START, amount=MoneyValueObject(Decimal("500.00")))
+
+    assert budget.note is None
+
+
 def test_delete_stamps_the_removal_instant() -> None:
     budget = _create()
 

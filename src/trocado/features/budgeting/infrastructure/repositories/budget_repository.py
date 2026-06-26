@@ -38,6 +38,9 @@ class BudgetRepository(BudgetRepositoryInterface):
             return None
         return budget
 
+    async def update(self, budget: BudgetEntity) -> None:
+        self._budgets[budget.id] = budget
+
     async def delete(self, budget: BudgetEntity) -> None:
         self._budgets[budget.id] = budget
 

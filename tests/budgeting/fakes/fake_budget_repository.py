@@ -34,6 +34,14 @@ class FakeBudgetRepository(BudgetRepositoryInterface):
                 return budget
         return None
 
+    async def update(self, budget: BudgetEntity) -> None:
+        # Replace the stored budget of the same id with its edited form; append if it is not held yet.
+        for index, existing in enumerate(self.budgets):
+            if existing.id == budget.id:
+                self.budgets[index] = budget
+                return
+        self.budgets.append(budget)
+
     async def delete(self, budget: BudgetEntity) -> None:
         # The entity is the same object already held in the list; its stamped state is visible in place.
         if budget not in self.budgets:

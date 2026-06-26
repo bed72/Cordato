@@ -60,6 +60,32 @@ class BudgetEntity:
             start_date=start_date,
         )
 
+    def edit(
+        self,
+        *,
+        note: str | None,
+        end_date: date,
+        start_date: date,
+        amount: MoneyValueObject,
+    ) -> None:
+        """Overwrite the editable fields in place, re-running the same invariants ``create`` enforces.
+
+        A full replacement of the four editable fields — amount, range, and note — keeping ``id``,
+        ``person_id``, ``created_at`` and ``deleted_at`` untouched: an edit corrects a budget, it never
+        changes its identity nor its lifecycle position. The non-overlap invariant is *not* checked here
+        (it needs the person's other live budgets, which only the repository can supply) — it stays in the
+        use case, exactly as at creation.
+        """
+        if amount.value <= _ZERO:
+            raise InvalidBudgetAmountError()
+        if start_date > end_date:
+            raise InvalidBudgetRangeError()
+        trimmed = note.strip() if note else None
+        self.amount = amount
+        self.end_date = end_date
+        self.start_date = start_date
+        self.note = trimmed or None
+
     def delete(self, at: datetime) -> None:
         """Stamp the removal instant, retiring the budget from every normal read. The only path out of the
         live state — soft-delete, the row stays for audit. Frees the date range: the non-overlap check sees

@@ -46,6 +46,16 @@ class BudgetRepositoryInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def update(self, budget: BudgetEntity) -> None:
+        """Persist a budget in its mutated *live* state (its editable fields already overwritten).
+
+        Distinct from ``create`` (introduce a new budget) and ``delete`` (persist a soft-deleted state):
+        ``update`` saves an existing live budget after an edit. The eventual ORM adapter issues an UPDATE
+        here, not an INSERT.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     async def delete(self, budget: BudgetEntity) -> None:
         """Persist a budget in its soft-deleted state (its ``deleted_at`` already stamped)."""
         raise NotImplementedError
