@@ -27,3 +27,6 @@ class FakeBudgetRepository(BudgetRepositoryInterface):
             ):
                 return budget
         return None
+
+    async def erase_for_person(self, person_id: str) -> None:
+        self.budgets = [budget for budget in self.budgets if budget.person_id != person_id]

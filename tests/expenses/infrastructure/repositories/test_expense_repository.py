@@ -76,3 +76,16 @@ def test_find_in_range_excludes_soft_deleted() -> None:
     found = asyncio.run(repository.find_in_range("person-1", date(2026, 6, 1), date(2026, 6, 30)))
 
     assert [expense.id for expense in found] == ["live"]
+
+
+def test_erase_for_person_physically_removes_live_and_soft_deleted_only_for_that_person() -> None:
+    repository = _seed(
+        _an_expense(id="live"),
+        _an_expense(id="removed", deleted_at=_FIXED_NOW),
+        _an_expense(id="other", person_id="person-2"),
+    )
+
+    asyncio.run(repository.erase_for_person("person-1"))
+
+    # Both the live and the soft-deleted expense are gone (physical cascade); the other person's stays.
+    assert set(repository._expenses) == {"other"}

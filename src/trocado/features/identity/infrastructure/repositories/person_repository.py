@@ -14,6 +14,10 @@ class PersonRepository(PersonRepositoryInterface):
     def __init__(self) -> None:
         self._people: dict[str, PersonEntity] = {}
 
+    async def find_active_by_id(self, person_id: str) -> PersonEntity | None:
+        person = self._people.get(person_id)
+        return person if person is not None and person.status is PersonStatus.ACTIVE else None
+
     async def find_active_by_email(self, email: EmailValueObject) -> PersonEntity | None:
         return next(
             (
@@ -25,4 +29,9 @@ class PersonRepository(PersonRepositoryInterface):
         )
 
     async def create(self, person: PersonEntity) -> None:
+        self._people[person.id] = person
+
+    async def delete(self, person: PersonEntity) -> None:
+        # Re-store the retired person by id: status is now DELETED and the email neutralized, so reads
+        # (which surface only active accounts) no longer return it and the freed email reads as available.
         self._people[person.id] = person

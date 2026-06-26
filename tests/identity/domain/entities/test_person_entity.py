@@ -42,3 +42,31 @@ def test_identity_equality_by_id() -> None:
 
 def test_hashable_by_id() -> None:
     assert len({_build("a"), _build("a"), _build("b")}) == 2
+
+
+def test_delete_retires_the_account() -> None:
+    person = _build("id-1")
+
+    person.delete()
+
+    assert person.status is PersonStatus.DELETED
+
+
+def test_delete_neutralizes_the_email_to_an_id_derived_sentinel() -> None:
+    person = _build("id-1")
+
+    person.delete()
+
+    # The original address is gone; the sentinel is collision-free (derived from the id) and still a valid
+    # email, so the freed address can later be reused by a brand-new person.
+    assert person.email != EmailValueObject("ana@example.com")
+    assert person.email.value == "deleted+id-1@trocado.invalid"
+
+
+def test_delete_keeps_identity_by_id() -> None:
+    person = _build("same")
+    person.delete()
+
+    # A person IS its id: retiring it neither changes identity nor its hash.
+    assert person == _build("same")
+    assert hash(person) == hash(_build("same"))

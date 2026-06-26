@@ -23,3 +23,6 @@ class ExpenseRepository(ExpenseRepositoryInterface):
             for expense in self._expenses.values()
             if expense.person_id == person_id and expense.deleted_at is None and start <= expense.occurred_on <= end
         ]
+
+    async def erase_for_person(self, person_id: str) -> None:
+        self._expenses = {id: expense for id, expense in self._expenses.items() if expense.person_id != person_id}

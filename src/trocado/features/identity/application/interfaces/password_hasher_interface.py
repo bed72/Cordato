@@ -38,3 +38,21 @@ class PasswordHasherInterface(ABC):
             and salt embedded), never the plaintext.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    async def verify(self, password: PasswordValueObject, hash: str) -> bool:
+        """Check a raw password against a stored hash.
+
+        Used to re-confirm identity before a guarded action (e.g. account deletion). Implementors MUST
+        compare in constant time (the algorithm's own verify), run the CPU-bound call off the event loop,
+        and never log or echo the plaintext.
+
+        Args:
+            password: The validated, transient plaintext password supplied for re-confirmation.
+            hash: The stored, self-describing digest to verify against.
+
+        Returns:
+            ``True`` if the password matches the hash, ``False`` otherwise. A mismatch is a ``False``
+            return, never an exception — the caller decides how to frame it.
+        """
+        raise NotImplementedError

@@ -18,3 +18,11 @@ class PasswordHasher(PasswordHasherInterface):
 
     async def hash(self, password: PasswordValueObject) -> str:
         return await asyncio.to_thread(self._hasher.hash, password.value)
+
+    async def verify(self, password: PasswordValueObject, hash: str) -> bool:
+        # Argon2's verify is constant-time and raises on mismatch; translate that into a plain bool.
+        # CPU-bound, so it runs off the event loop, like hashing.
+        try:
+            return await asyncio.to_thread(self._hasher.verify, hash, password.value)
+        except argon2.exceptions.VerifyMismatchError:
+            return False

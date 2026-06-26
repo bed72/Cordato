@@ -59,3 +59,15 @@ def test_find_active_returns_budget_containing_the_day() -> None:
 
     assert asyncio.run(repository.find_active_for_person("person-1", date(2026, 7, 1))) is None
     assert asyncio.run(repository.find_active_for_person("person-1", date(2026, 6, 15))) == budget
+
+
+def test_erase_for_person_physically_removes_live_and_soft_deleted_only_for_that_person() -> None:
+    repository = BudgetRepository()
+    asyncio.run(repository.create(_budget(id="live")))
+    asyncio.run(repository.create(_budget(id="dead", deleted_at=_FIXED_NOW)))
+    asyncio.run(repository.create(_budget(id="other", person_id="person-2")))
+
+    asyncio.run(repository.erase_for_person("person-1"))
+
+    # Both the live and the soft-deleted budget are gone (physical cascade); the other person's stays.
+    assert set(repository._budgets) == {"other"}

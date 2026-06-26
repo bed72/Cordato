@@ -22,7 +22,21 @@ class PersonRepositoryInterface(ABC):
     Callers (use cases):
         - Depend on this abstraction, never on a concrete store.
         - Use ``find_active_by_email`` for the uniqueness check before creating a person.
+        - Use ``find_active_by_id`` to resolve the acting person (e.g. to re-confirm their password).
     """
+
+    @abstractmethod
+    async def find_active_by_id(self, person_id: str) -> PersonEntity | None:
+        """Look up the **active** person with a given id.
+
+        Args:
+            person_id: The opaque id of the person to resolve.
+
+        Returns:
+            The active ``PersonEntity`` with this id, or ``None`` if none is active (unknown id or a
+            non-active account read the same — no oracle distinguishes them).
+        """
+        raise NotImplementedError
 
     @abstractmethod
     async def find_active_by_email(self, email: EmailValueObject) -> PersonEntity | None:
@@ -46,5 +60,18 @@ class PersonRepositoryInterface(ABC):
         Args:
             person: The fully-formed ``PersonEntity`` to store (already assigned its ``id``,
                 ``created_at``, and ``active`` status by the creation factory).
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete(self, person: PersonEntity) -> None:
+        """Persist a retired person — one whose ``delete()`` has just neutralized its email and set
+        ``status = deleted``.
+
+        This is the account's soft-state transition (the person row stays, now non-active); the physical
+        cascade of the person's budgets and expenses is performed elsewhere, through their own ports.
+
+        Args:
+            person: The ``PersonEntity`` carrying the neutralized email and ``DELETED`` status to persist.
         """
         raise NotImplementedError

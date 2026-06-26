@@ -51,3 +51,32 @@ def test_find_matches_by_normalized_email() -> None:
     found = asyncio.run(repository.find_active_by_email(EmailValueObject("ana@example.com")))
     assert found is not None
     assert found.id == "id-1"
+
+
+def test_find_active_by_id_returns_the_active_person() -> None:
+    repository = PersonRepository()
+    person = _person("id-1", "ana@example.com")
+    asyncio.run(repository.create(person))
+
+    assert asyncio.run(repository.find_active_by_id("id-1")) is person
+
+
+def test_find_active_by_id_ignores_non_active_and_unknown() -> None:
+    repository = PersonRepository()
+    asyncio.run(repository.create(_person("dead", "ana@example.com", PersonStatus.DELETED)))
+
+    assert asyncio.run(repository.find_active_by_id("dead")) is None
+    assert asyncio.run(repository.find_active_by_id("ghost")) is None
+
+
+def test_delete_persists_the_retired_person_and_frees_the_email() -> None:
+    repository = PersonRepository()
+    person = _person("id-1", "ana@example.com")
+    asyncio.run(repository.create(person))
+
+    person.delete()
+    asyncio.run(repository.delete(person))
+
+    # The retired person is no longer found by id, and its original email reads as available again.
+    assert asyncio.run(repository.find_active_by_id("id-1")) is None
+    assert asyncio.run(repository.find_active_by_email(EmailValueObject("ana@example.com"))) is None

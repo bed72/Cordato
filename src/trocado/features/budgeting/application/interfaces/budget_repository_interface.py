@@ -31,3 +31,13 @@ class BudgetRepositoryInterface(ABC):
         At most one can match, since a person's live budgets never overlap.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    async def erase_for_person(self, person_id: str) -> None:
+        """**Physically** delete every budget the person owns — live and soft-deleted alike.
+
+        The cascade primitive for account deletion (the domain's only hard delete), distinct from the
+        day-to-day soft-delete: it leaves no row behind. Touches only the given person's budgets; a no-op
+        when they own none.
+        """
+        raise NotImplementedError

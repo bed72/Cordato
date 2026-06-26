@@ -21,3 +21,18 @@ def test_hash_is_salted_so_same_password_yields_distinct_digests() -> None:
     second = asyncio.run(hasher.hash(password))
 
     assert first != second
+
+
+def test_verify_accepts_the_matching_password() -> None:
+    hasher = PasswordHasher()
+    digest = asyncio.run(hasher.hash(PasswordValueObject("supersecret")))
+
+    assert asyncio.run(hasher.verify(PasswordValueObject("supersecret"), digest)) is True
+
+
+def test_verify_rejects_a_wrong_password_without_raising() -> None:
+    hasher = PasswordHasher()
+    digest = asyncio.run(hasher.hash(PasswordValueObject("supersecret")))
+
+    # A mismatch is a False return, never an exception — the caller frames it.
+    assert asyncio.run(hasher.verify(PasswordValueObject("wrongpassword"), digest)) is False

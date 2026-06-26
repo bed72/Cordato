@@ -7,6 +7,10 @@ from trocado.features.identity.domain.enums.person_status import PersonStatus
 from trocado.features.identity.domain.value_objects.email_value_object import EmailValueObject
 from trocado.features.identity.domain.value_objects.name_value_object import NameValueObject
 
+# Reserved (RFC 2606) domain for neutralized emails: a deleted account's address can never collide with
+# a real one nor route anywhere, yet still parses as a valid email.
+DELETED_EMAIL_DOMAIN = "trocado.invalid"
+
 
 @dataclass(eq=False, slots=True)
 class PersonEntity:
@@ -38,6 +42,17 @@ class PersonEntity:
             password=password,
             status=PersonStatus.ACTIVE,
         )
+
+    def delete(self) -> None:
+        """Retire the account: the only transition into `DELETED`.
+
+        Flips `status` to `DELETED` (the account no longer authenticates) and neutralizes the email to a
+        collision-free sentinel derived from the id — freeing the original address for reuse, since reads
+        surface only active accounts. The id is opaque and `@`/whitespace-free, so the sentinel always
+        parses as a valid email. No data is moved here; the ledger cascade lives in the use case.
+        """
+        self.status = PersonStatus.DELETED
+        self.email = EmailValueObject(f"deleted+{self.id}@{DELETED_EMAIL_DOMAIN}")
 
     # Identity equality: a person IS its id, not the sum of its fields.
     def __eq__(self, other: object) -> bool:

@@ -9,3 +9,6 @@ class FakePasswordHasher(PasswordHasherInterface):
 
     async def hash(self, password: PasswordValueObject) -> str:
         return f"hashed::{password.value}"
+
+    async def verify(self, password: PasswordValueObject, hash: str) -> bool:
+        return hash == f"hashed::{password.value}"
