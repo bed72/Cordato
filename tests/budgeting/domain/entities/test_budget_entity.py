@@ -113,3 +113,23 @@ def test_contained_range_overlaps() -> None:
 
     assert outer.overlaps(inner)
     assert inner.overlaps(outer)
+
+
+def test_covers_a_day_inside_the_range() -> None:
+    budget = _create(start_date=date(2026, 6, 1), end_date=date(2026, 6, 30))
+
+    assert budget.covers(date(2026, 6, 15))
+
+
+@pytest.mark.parametrize("day", [date(2026, 6, 1), date(2026, 6, 30)])
+def test_covers_both_inclusive_boundaries(day: date) -> None:
+    budget = _create(start_date=date(2026, 6, 1), end_date=date(2026, 6, 30))
+
+    assert budget.covers(day)
+
+
+@pytest.mark.parametrize("day", [date(2026, 5, 31), date(2026, 7, 1)])
+def test_does_not_cover_a_day_outside_the_range(day: date) -> None:
+    budget = _create(start_date=date(2026, 6, 1), end_date=date(2026, 6, 30))
+
+    assert not budget.covers(day)

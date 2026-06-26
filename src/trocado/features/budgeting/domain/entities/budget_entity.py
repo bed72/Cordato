@@ -69,6 +69,14 @@ class BudgetEntity:
         """
         return self.start_date <= other.end_date and other.start_date <= self.end_date
 
+    def covers(self, day: date) -> bool:
+        """Whether ``day`` falls within this budget's inclusive range — the single-day sibling of
+        ``overlaps``. Both ends count: a day equal to ``start_date`` or ``end_date`` is covered. This is
+        the date-containment rule behind budget belonging — an expense belongs to a budget when its day
+        is covered, with no stored link.
+        """
+        return self.start_date <= day <= self.end_date
+
     # Identity equality: a budget IS its id, not the sum of its fields.
     def __eq__(self, other: object) -> bool:
         return isinstance(other, BudgetEntity) and other.id == self.id
