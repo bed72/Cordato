@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from trocado.features.identity.application.data.person_data import PersonData
+import asyncio
+
+from trocado.core.application.interfaces.clock_interface import ClockInterface
+from trocado.core.application.interfaces.identifier_provider_interface import (
+    IdentifierProviderInterface,
+)
+from trocado.features.identity.application.data.session_data import SessionData
 from trocado.features.identity.application.data.sign_in_data import SignInData
 from trocado.features.identity.application.interfaces.password_hasher_interface import (
     PasswordHasherInterface,
@@ -8,12 +14,22 @@ from trocado.features.identity.application.interfaces.password_hasher_interface 
 from trocado.features.identity.application.interfaces.person_repository_interface import (
     PersonRepositoryInterface,
 )
-from trocado.features.identity.application.mappers.person_data_mapper import PersonDataMapper
+from trocado.features.identity.application.interfaces.session_repository_interface import (
+    SessionRepositoryInterface,
+)
+from trocado.features.identity.application.interfaces.token_generator_interface import (
+    TokenGeneratorInterface,
+)
+from trocado.features.identity.application.mappers.session_data_mapper import SessionDataMapper
+from trocado.features.identity.domain.entities.session_entity import SessionEntity
 from trocado.features.identity.domain.errors.invalid_credentials_error import InvalidCredentialsError
 from trocado.features.identity.domain.errors.invalid_email_error import InvalidEmailError
 from trocado.features.identity.domain.errors.weak_password_error import WeakPasswordError
 from trocado.features.identity.domain.value_objects.email_value_object import EmailValueObject
 from trocado.features.identity.domain.value_objects.password_value_object import PasswordValueObject
+from trocado.features.identity.domain.virtual_objects.authenticated_session_virtual_object import (
+    AuthenticatedSessionVirtualObject,
+)
 
 # A real Argon2 digest of a throwaway secret, used ONLY on the not-found path so that *every* sign-in pays
 # exactly one verify. Without it, an unknown email would return faster than a wrong password and that timing
@@ -23,28 +39,38 @@ _DECOY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$k1hgbldg8ljpxdmJuLmHWg$gHdBhBY09Ae
 
 
 class SignInUseCase:
-    """Verify a credential and return the authenticated person — the `sign_in` half of identity.
+    """Verify a credential and, on success, issue a session — the `sign_in` half of identity.
 
-    Two security rules shape the flow, both serving the same end (no account enumeration):
+    Two security rules shape the verification, both serving the same end (no account enumeration):
       - **One generic failure.** A malformed email, an unknown/inactive email, and a wrong password all
         raise `InvalidCredentialsError` — the caller can never tell which half was wrong.
       - **Uniform timing.** A verify runs on *every* attempt; when no person is found, it runs against a
         constant decoy hash. This deliberately inverts the usual "cheap guard before the expensive call":
         here the hash cost is paid on purpose, so response time never betrays the email's existence.
 
-    Returns `PersonData` and stops there: minting a session/token is the deferred web edge, behind this same
-    use case. The raw password lives only as a transient value object and is never persisted, logged, or echoed.
+    Only **past a successful verify** is a session issued: a fresh `SessionEntity` with an opaque CSPRNG
+    token and a fixed expiry, persisted, then returned as `SessionData` (the token + expiry + the person).
+    A failed sign-in issues nothing. The raw password lives only as a transient value object and is never
+    persisted, logged, or echoed.
     """
 
     def __init__(
         self,
+        clock: ClockInterface,
         hasher: PasswordHasherInterface,
         repository: PersonRepositoryInterface,
+        identifier: IdentifierProviderInterface,
+        token_generator: TokenGeneratorInterface,
+        session_repository: SessionRepositoryInterface,
     ) -> None:
+        self._clock = clock
         self._hasher = hasher
         self._repository = repository
+        self._identifier = identifier
+        self._token_generator = token_generator
+        self._session_repository = session_repository
 
-    async def execute(self, data: SignInData) -> PersonData:
+    async def execute(self, data: SignInData) -> SessionData:
         # Building the value objects validates the input. In sign-in a malformed email or a too-short
         # password must look exactly like a wrong credential — so collapse those into the generic error
         # instead of letting InvalidEmailError/WeakPasswordError leak which factor was malformed.
@@ -63,4 +89,13 @@ class SignInUseCase:
         if person is None or not verified:
             raise InvalidCredentialsError()
 
-        return PersonDataMapper.to_data(person)
+        # Past the guard: issue the session. The three reads are mutually independent — gather them.
+        created_at, id, token = await asyncio.gather(
+            self._clock.now(),
+            self._identifier.generate(),
+            self._token_generator.generate(),
+        )
+        session = SessionEntity.create(id=id, token=token, person_id=person.id, created_at=created_at)
+        await self._session_repository.create(session)
+
+        return SessionDataMapper.to_data(AuthenticatedSessionVirtualObject(session=session, person=person))
