@@ -64,6 +64,19 @@ class PersonRepositoryInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def update(self, person: PersonEntity) -> None:
+        """Persist a mutated **active** person — one whose editable account fields have just changed.
+
+        Distinct from ``create`` (introduce a brand-new person) and ``delete`` (persist a retired person):
+        this re-stores an existing, still-active person after an in-place edit such as an account update,
+        leaving its ``id``, ``created_at``, ``status``, and password hash as the entity carries them.
+
+        Args:
+            person: The ``PersonEntity`` carrying the updated fields to persist.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     async def delete(self, person: PersonEntity) -> None:
         """Persist a retired person — one whose ``delete()`` has just neutralized its email and set
         ``status = deleted``.

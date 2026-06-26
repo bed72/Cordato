@@ -31,6 +31,10 @@ class PersonRepository(PersonRepositoryInterface):
     async def create(self, person: PersonEntity) -> None:
         self._people[person.id] = person
 
+    async def update(self, person: PersonEntity) -> None:
+        # Re-store the mutated active person by id — an in-place account edit; reads continue to surface it.
+        self._people[person.id] = person
+
     async def delete(self, person: PersonEntity) -> None:
         # Re-store the retired person by id: status is now DELETED and the email neutralized, so reads
         # (which surface only active accounts) no longer return it and the freed email reads as available.

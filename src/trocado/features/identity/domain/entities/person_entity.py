@@ -17,11 +17,11 @@ class PersonEntity:
     """A person — the ledger's anchor. Identity is the `id`; everything else hangs off it."""
 
     id: str
-    created_at: datetime
-    email: EmailValueObject
-    name: NameValueObject
     password: str  # the hash; a plain string needs no value object — it carries no invariant
     status: PersonStatus  # no default: only `create(...)` may birth an ACTIVE person; rehydration states it
+    created_at: datetime
+    name: NameValueObject
+    email: EmailValueObject
 
     @classmethod
     def create(
@@ -29,8 +29,8 @@ class PersonEntity:
         *,
         id: str,
         created_at: datetime,
-        email: EmailValueObject,
         name: NameValueObject,
+        email: EmailValueObject,
         password: str,
     ) -> PersonEntity:
         """Create a brand-new, active person — the only sanctioned way to be born."""
@@ -38,10 +38,20 @@ class PersonEntity:
             id=id,
             name=name,
             email=email,
-            created_at=created_at,
             password=password,
+            created_at=created_at,
             status=PersonStatus.ACTIVE,
         )
+
+    def update_account(self, *, name: NameValueObject, email: EmailValueObject) -> None:
+        """Update the editable account fields — `name` and `email` — in place.
+
+        A full replacement of the two editable fields with already-validated value objects. Identity and
+        credentials are untouched: `id`, `created_at`, `status`, and the password `hash` are preserved.
+        This is the only sanctioned account mutation, alongside `create` (birth) and `delete` (retire).
+        """
+        self.name = name
+        self.email = email
 
     def delete(self) -> None:
         """Retire the account: the only transition into `DELETED`.

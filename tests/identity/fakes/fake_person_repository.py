@@ -27,5 +27,8 @@ class FakePersonRepository(PersonRepositoryInterface):
     async def create(self, person: PersonEntity) -> None:
         self.people.append(person)
 
+    async def update(self, person: PersonEntity) -> None:
+        self.people = [person if existing.id == person.id else existing for existing in self.people]
+
     async def delete(self, person: PersonEntity) -> None:
         self.people = [person if existing.id == person.id else existing for existing in self.people]
