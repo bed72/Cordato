@@ -60,6 +60,12 @@ class BudgetEntity:
             start_date=start_date,
         )
 
+    def delete(self, at: datetime) -> None:
+        """Stamp the removal instant, retiring the budget from every normal read. The only path out of the
+        live state — soft-delete, the row stays for audit. Frees the date range: the non-overlap check sees
+        only live budgets, so a new budget may then occupy these dates with no rewiring."""
+        self.deleted_at = at
+
     def overlaps(self, other: BudgetEntity) -> bool:
         """Whether this budget shares any date with another, treating both ends as inclusive.
 

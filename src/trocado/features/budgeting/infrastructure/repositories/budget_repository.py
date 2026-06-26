@@ -32,5 +32,17 @@ class BudgetRepository(BudgetRepositoryInterface):
                 return budget
         return None
 
+    async def find_active_by_id(self, person_id: str, budget_id: str) -> BudgetEntity | None:
+        budget = self._budgets.get(budget_id)
+        if budget is None or budget.person_id != person_id or budget.deleted_at is not None:
+            return None
+        return budget
+
+    async def delete(self, budget: BudgetEntity) -> None:
+        self._budgets[budget.id] = budget
+
+    async def list_including_removed(self, person_id: str) -> list[BudgetEntity]:
+        return [budget for budget in self._budgets.values() if budget.person_id == person_id]
+
     async def erase_for_person(self, person_id: str) -> None:
         self._budgets = {id: budget for id, budget in self._budgets.items() if budget.person_id != person_id}

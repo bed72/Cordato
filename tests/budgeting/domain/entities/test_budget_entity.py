@@ -83,6 +83,24 @@ def test_identity_equality_is_by_id() -> None:
     assert hash(a) == hash(b)
 
 
+def test_delete_stamps_the_removal_instant() -> None:
+    budget = _create()
+
+    budget.delete(_FIXED_NOW)
+
+    assert budget.deleted_at == _FIXED_NOW
+
+
+def test_delete_keeps_identity_equality() -> None:
+    a = _create()
+    b = _create()
+    a.delete(_FIXED_NOW)
+
+    # Soft-delete changes state, not identity: a removed budget IS still its id.
+    assert a == b
+    assert hash(a) == hash(b)
+
+
 def test_disjoint_ranges_do_not_overlap() -> None:
     a = _create(start_date=date(2026, 6, 1), end_date=date(2026, 6, 10))
     b = _create(start_date=date(2026, 7, 1), end_date=date(2026, 7, 10))
