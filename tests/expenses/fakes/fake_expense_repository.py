@@ -22,5 +22,19 @@ class FakeExpenseRepository(ExpenseRepositoryInterface):
             if expense.person_id == person_id and expense.deleted_at is None and start <= expense.occurred_on <= end
         ]
 
+    async def find_active_by_id(self, person_id: str, expense_id: str) -> ExpenseEntity | None:
+        for expense in self.expenses:
+            if expense.id == expense_id and expense.person_id == person_id and expense.deleted_at is None:
+                return expense
+        return None
+
+    async def delete(self, expense: ExpenseEntity) -> None:
+        # The entity is the same object already held in the list; its stamped state is visible in place.
+        if expense not in self.expenses:
+            self.expenses.append(expense)
+
+    async def list_including_removed(self, person_id: str) -> list[ExpenseEntity]:
+        return [expense for expense in self.expenses if expense.person_id == person_id]
+
     async def erase_for_person(self, person_id: str) -> None:
         self.expenses = [expense for expense in self.expenses if expense.person_id != person_id]

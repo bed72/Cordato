@@ -78,6 +78,59 @@ def test_find_in_range_excludes_soft_deleted() -> None:
     assert [expense.id for expense in found] == ["live"]
 
 
+def test_find_active_by_id_returns_the_owners_live_expense() -> None:
+    repository = _seed(_an_expense(id="mine"))
+
+    found = asyncio.run(repository.find_active_by_id("person-1", "mine"))
+
+    assert found is not None
+    assert found.id == "mine"
+
+
+def test_find_active_by_id_misses_unknown_id() -> None:
+    repository = _seed(_an_expense(id="mine"))
+
+    assert asyncio.run(repository.find_active_by_id("person-1", "ghost")) is None
+
+
+def test_find_active_by_id_misses_another_persons_expense() -> None:
+    repository = _seed(_an_expense(id="theirs", person_id="person-2"))
+
+    # Foreign owner is indistinguishable from "does not exist" — no leak.
+    assert asyncio.run(repository.find_active_by_id("person-1", "theirs")) is None
+
+
+def test_find_active_by_id_misses_already_deleted_expense() -> None:
+    repository = _seed(_an_expense(id="removed", deleted_at=_FIXED_NOW))
+
+    assert asyncio.run(repository.find_active_by_id("person-1", "removed")) is None
+
+
+def test_delete_persists_the_soft_deleted_state_and_drops_it_from_normal_reads() -> None:
+    expense = _an_expense(id="exp-1")
+    repository = _seed(expense)
+
+    expense.delete(_FIXED_NOW)
+    asyncio.run(repository.delete(expense))
+
+    # The row stays (audit), but normal date-range reads no longer see it.
+    assert repository._expenses["exp-1"].deleted_at == _FIXED_NOW
+    found = asyncio.run(repository.find_in_range("person-1", date(2026, 6, 1), date(2026, 6, 30)))
+    assert found == []
+
+
+def test_list_including_removed_sees_live_and_soft_deleted_for_that_person() -> None:
+    repository = _seed(
+        _an_expense(id="live"),
+        _an_expense(id="removed", deleted_at=_FIXED_NOW),
+        _an_expense(id="other", person_id="person-2"),
+    )
+
+    listed = asyncio.run(repository.list_including_removed("person-1"))
+
+    assert {expense.id for expense in listed} == {"live", "removed"}
+
+
 def test_erase_for_person_physically_removes_live_and_soft_deleted_only_for_that_person() -> None:
     repository = _seed(
         _an_expense(id="live"),

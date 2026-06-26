@@ -25,6 +25,30 @@ class ExpenseRepositoryInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def find_active_by_id(self, person_id: str, expense_id: str) -> ExpenseEntity | None:
+        """Resolve the requester's own *live* expense — matched by owner and id, excluding soft-deleted rows.
+
+        The authorization lookup for deletion: a person can only ever reach an expense they own. An unknown
+        id, an expense owned by another person, and an already soft-deleted expense are indistinguishable —
+        all return ``None`` — so the caller can never probe whether someone else's expense exists.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete(self, expense: ExpenseEntity) -> None:
+        """Persist an expense in its soft-deleted state (its ``deleted_at`` already stamped)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def list_including_removed(self, person_id: str) -> list[ExpenseEntity]:
+        """Audit read: return all of the person's expenses, live and soft-deleted alike.
+
+        The two-read contract: normal reads (``find_in_range``, ``find_active_by_id``) exclude
+        ``deleted_at != null``; only this explicit audit method sees everything.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     async def erase_for_person(self, person_id: str) -> None:
         """**Physically** delete every expense the person owns — live and soft-deleted alike.
 

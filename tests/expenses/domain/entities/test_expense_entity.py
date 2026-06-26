@@ -54,6 +54,24 @@ def test_holds_no_budget_reference() -> None:
     assert not hasattr(expense, "budget_id")
 
 
+def test_delete_stamps_the_removal_instant() -> None:
+    expense = _create()
+
+    expense.delete(_FIXED_NOW)
+
+    assert expense.deleted_at == _FIXED_NOW
+
+
+def test_delete_keeps_identity_equality() -> None:
+    a = _create()
+    b = _create()
+    a.delete(_FIXED_NOW)
+
+    # Soft-delete changes state, not identity: a removed expense IS still its id.
+    assert a == b
+    assert hash(a) == hash(b)
+
+
 def test_identity_equality_is_by_id() -> None:
     a = _create()
     b = ExpenseEntity.create(

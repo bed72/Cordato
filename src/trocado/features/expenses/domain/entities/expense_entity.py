@@ -47,6 +47,11 @@ class ExpenseEntity:
             description=trimmed or None,
         )
 
+    def delete(self, at: datetime) -> None:
+        """Stamp the removal instant, retiring the expense from every normal read. The only path out of the
+        live state — soft-delete, the row stays for audit."""
+        self.deleted_at = at
+
     # Identity equality: an expense IS its id, not the sum of its fields.
     def __eq__(self, other: object) -> bool:
         return isinstance(other, ExpenseEntity) and other.id == self.id
