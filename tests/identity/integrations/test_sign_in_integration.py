@@ -29,7 +29,7 @@ def _build() -> tuple[SignInUseCase, SessionRepository]:
     use_case = SignInUseCase(
         clock=clock,
         hasher=hasher,
-        repository=repository,
+        person_repository=repository,
         identifier=identifier,
         token_generator=TokenGenerator(),
         session_repository=session_repository,

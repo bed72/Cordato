@@ -42,7 +42,7 @@ def _build(*people: PersonEntity, token: str = "session-token") -> tuple[SignInU
     use_case = SignInUseCase(
         clock=FakeClock(_NOW),
         hasher=FakePasswordHasher(),
-        repository=FakePersonRepository(*people),
+        person_repository=FakePersonRepository(*people),
         identifier=FakeIdentifierProvider("session-id"),
         token_generator=FakeTokenGenerator(token),
         session_repository=session_repository,
@@ -135,7 +135,7 @@ def test_not_found_path_still_verifies_once_against_the_decoy() -> None:
     use_case = SignInUseCase(
         clock=FakeClock(_NOW),
         hasher=hasher,
-        repository=FakePersonRepository(),
+        person_repository=FakePersonRepository(),
         identifier=FakeIdentifierProvider("session-id"),
         token_generator=FakeTokenGenerator(),
         session_repository=FakeSessionRepository(),

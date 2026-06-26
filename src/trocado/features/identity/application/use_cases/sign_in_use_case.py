@@ -58,16 +58,16 @@ class SignInUseCase:
         self,
         clock: ClockInterface,
         hasher: PasswordHasherInterface,
-        repository: PersonRepositoryInterface,
         identifier: IdentifierProviderInterface,
         token_generator: TokenGeneratorInterface,
+        person_repository: PersonRepositoryInterface,
         session_repository: SessionRepositoryInterface,
     ) -> None:
         self._clock = clock
         self._hasher = hasher
-        self._repository = repository
         self._identifier = identifier
         self._token_generator = token_generator
+        self._person_repository = person_repository
         self._session_repository = session_repository
 
     async def execute(self, data: SignInData) -> SessionData:
@@ -81,7 +81,7 @@ class SignInUseCase:
             raise InvalidCredentialsError() from error
 
         # Sequential: the verify depends on which person (if any) the email resolves to — no gather.
-        person = await self._repository.find_active_by_email(email)
+        person = await self._person_repository.find_active_by_email(email)
 
         # Always verify, even with no person, against the decoy — equalizing timing. Authenticate only when
         # a real person was found AND their hash verifies; the decoy branch can only ever fail.

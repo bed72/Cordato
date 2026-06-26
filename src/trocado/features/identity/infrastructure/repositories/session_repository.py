@@ -29,3 +29,6 @@ class SessionRepository(SessionRepositoryInterface):
 
     async def revoke(self, session: SessionEntity) -> None:
         self._sessions[session.id] = session
+
+    async def purge_for_person(self, person_id: str) -> None:
+        self._sessions = {id: session for id, session in self._sessions.items() if session.person_id != person_id}

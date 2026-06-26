@@ -36,3 +36,13 @@ class SessionRepositoryInterface(ABC):
     async def revoke(self, session: SessionEntity) -> None:
         """Persist the revoked state of a session (its ``revoked_at`` was just stamped)."""
         raise NotImplementedError
+
+    @abstractmethod
+    async def purge_for_person(self, person_id: str) -> None:
+        """Physically remove **all** of the person's sessions, irrespective of validity.
+
+        Used by account deletion to ensure no token issued before the deletion keeps resolving. Unlike
+        ``find_valid_by_token``, it ignores revoked/expired state and clears live and dead rows alike, so it
+        needs no ``now``. It is **idempotent**: a person with no sessions is a no-op, never an error.
+        """
+        raise NotImplementedError

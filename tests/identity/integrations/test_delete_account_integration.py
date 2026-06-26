@@ -19,16 +19,21 @@ from trocado.features.expenses.application.interfaces.expense_repository_interfa
 from trocado.features.expenses.domain.entities.expense_entity import ExpenseEntity
 from trocado.features.expenses.infrastructure.repositories.expense_repository import ExpenseRepository
 from trocado.features.identity.application.data.delete_account_data import DeleteAccountData
+from trocado.features.identity.application.data.sign_in_data import SignInData
 from trocado.features.identity.application.data.sign_up_data import SignUpData
 from trocado.features.identity.application.interfaces.budget_eraser_interface import BudgetEraserInterface
 from trocado.features.identity.application.interfaces.expense_eraser_interface import ExpenseEraserInterface
 from trocado.features.identity.application.interfaces.pair_dissolver_interface import PairDissolverInterface
 from trocado.features.identity.application.use_cases.delete_account_use_case import DeleteAccountUseCase
+from trocado.features.identity.application.use_cases.sign_in_use_case import SignInUseCase
 from trocado.features.identity.application.use_cases.sign_up_use_case import SignUpUseCase
+from trocado.features.identity.domain.entities.session_entity import SessionEntity
 from trocado.features.identity.domain.errors.incorrect_password_error import IncorrectPasswordError
 from trocado.features.identity.domain.value_objects.password_value_object import PasswordValueObject
 from trocado.features.identity.infrastructure.gateways.password_hasher import PasswordHasher
+from trocado.features.identity.infrastructure.gateways.token_generator import TokenGenerator
 from trocado.features.identity.infrastructure.repositories.person_repository import PersonRepository
+from trocado.features.identity.infrastructure.repositories.session_repository import SessionRepository
 from trocado.features.pairing.domain.entities.pair_entity import PairEntity
 from trocado.features.pairing.infrastructure.repositories.pair_repository import PairRepository
 
@@ -72,6 +77,7 @@ def test_real_adapters_erase_the_ledger_free_the_email_and_dissolve_the_pair() -
     budget_repository = BudgetRepository()
     expense_repository = ExpenseRepository()
     pair_repository = PairRepository()
+    session_repository = SessionRepository()
 
     register = SignUpUseCase(
         clock=Clock(),
@@ -81,6 +87,22 @@ def test_real_adapters_erase_the_ledger_free_the_email_and_dissolve_the_pair() -
     )
     created = asyncio.run(register.execute(SignUpData(name="Ana", email="ana@example.com", password="supersecret")))
     person_id = created.id
+
+    # Sign in to mint a real, live session, and seed a session for the partner to prove isolation.
+    sign_in = SignInUseCase(
+        clock=Clock(),
+        hasher=PasswordHasher(),
+        person_repository=person_repository,
+        identifier=IdentifierProvider(),
+        token_generator=TokenGenerator(),
+        session_repository=session_repository,
+    )
+    session = asyncio.run(sign_in.execute(SignInData(email="ana@example.com", password="supersecret")))
+    asyncio.run(
+        session_repository.create(
+            SessionEntity.create(id="sess-partner", token="partner-token", person_id="partner", created_at=_FIXED)
+        )
+    )
 
     # Seed a ledger and a live pair for the person.
     asyncio.run(
@@ -116,10 +138,11 @@ def test_real_adapters_erase_the_ledger_free_the_email_and_dissolve_the_pair() -
 
     delete = DeleteAccountUseCase(
         hasher=PasswordHasher(),
-        repository=person_repository,
+        person_repository=person_repository,
         budget_eraser=_BudgetEraserBridge(budget_repository),
         expense_eraser=_ExpenseEraserBridge(expense_repository),
         pair_dissolver=_PairDissolverBridge(pair_repository, Clock()),
+        session_repository=session_repository,
     )
 
     asyncio.run(delete.execute(DeleteAccountData(requester_id=person_id, password=PasswordValueObject("supersecret"))))
@@ -131,6 +154,10 @@ def test_real_adapters_erase_the_ledger_free_the_email_and_dissolve_the_pair() -
     assert asyncio.run(person_repository.find_active_by_id(person_id)) is None
     assert asyncio.run(pair_repository.find_active_by_person(person_id)) is None
     assert asyncio.run(pair_repository.find_active_by_person("partner")) is None
+    # The person's session row is physically purged — its token resolves to nothing afterward.
+    assert asyncio.run(session_repository.find_valid_by_token(session.token, _FIXED)) is None
+    # Only the requester's sessions are purged: the partner's session still resolves.
+    assert asyncio.run(session_repository.find_valid_by_token("partner-token", _FIXED)) is not None
 
     # The freed email is reusable by a brand-new person, with a new id and an empty ledger.
     reused = asyncio.run(register.execute(SignUpData(name="Bea", email="ana@example.com", password="anothersecret")))
@@ -142,6 +169,7 @@ def test_wrong_password_leaves_everything_intact() -> None:
     budget_repository = BudgetRepository()
     expense_repository = ExpenseRepository()
     pair_repository = PairRepository()
+    session_repository = SessionRepository()
 
     register = SignUpUseCase(
         clock=Clock(),
@@ -163,13 +191,23 @@ def test_wrong_password_leaves_everything_intact() -> None:
             )
         )
     )
+    sign_in = SignInUseCase(
+        clock=Clock(),
+        hasher=PasswordHasher(),
+        identifier=IdentifierProvider(),
+        person_repository=person_repository,
+        token_generator=TokenGenerator(),
+        session_repository=session_repository,
+    )
+    session = asyncio.run(sign_in.execute(SignInData(email="ana@example.com", password="supersecret")))
 
     delete = DeleteAccountUseCase(
         hasher=PasswordHasher(),
-        repository=person_repository,
+        person_repository=person_repository,
         budget_eraser=_BudgetEraserBridge(budget_repository),
         expense_eraser=_ExpenseEraserBridge(expense_repository),
         pair_dissolver=_PairDissolverBridge(pair_repository, Clock()),
+        session_repository=session_repository,
     )
 
     with pytest.raises(IncorrectPasswordError):
@@ -177,6 +215,37 @@ def test_wrong_password_leaves_everything_intact() -> None:
             delete.execute(DeleteAccountData(requester_id=created.id, password=PasswordValueObject("wrongpassword")))
         )
 
-    # Guard ran first: the budget survives and the account is still active.
+    # Guard ran first: the budget survives, the account is still active, and the session still resolves.
     assert set(budget_repository._budgets) == {"budget-1"}
     assert asyncio.run(person_repository.find_active_by_id(created.id)) is not None
+    assert asyncio.run(session_repository.find_valid_by_token(session.token, _FIXED)) is not None
+
+
+def test_deletion_succeeds_when_the_requester_has_no_sessions() -> None:
+    person_repository = PersonRepository()
+    budget_repository = BudgetRepository()
+    expense_repository = ExpenseRepository()
+    pair_repository = PairRepository()
+    session_repository = SessionRepository()
+
+    register = SignUpUseCase(
+        clock=Clock(),
+        repository=person_repository,
+        hasher=PasswordHasher(),
+        identifier=IdentifierProvider(),
+    )
+    created = asyncio.run(register.execute(SignUpData(name="Ana", email="ana@example.com", password="supersecret")))
+
+    delete = DeleteAccountUseCase(
+        hasher=PasswordHasher(),
+        person_repository=person_repository,
+        budget_eraser=_BudgetEraserBridge(budget_repository),
+        expense_eraser=_ExpenseEraserBridge(expense_repository),
+        pair_dissolver=_PairDissolverBridge(pair_repository, Clock()),
+        session_repository=session_repository,
+    )
+
+    # No session was ever issued: the purge is a no-op and the deletion still completes.
+    asyncio.run(delete.execute(DeleteAccountData(requester_id=created.id, password=PasswordValueObject("supersecret"))))
+
+    assert asyncio.run(person_repository.find_active_by_id(created.id)) is None

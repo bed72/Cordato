@@ -37,7 +37,7 @@ def _wiring() -> tuple[SignInUseCase, ValidateSessionUseCase, SignOutUseCase]:
         clock=clock,
         hasher=hasher,
         identifier=identifier,
-        repository=person_repository,
+        person_repository=person_repository,
         token_generator=TokenGenerator(),
         session_repository=session_repository,
     )
