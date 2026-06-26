@@ -3,9 +3,9 @@ from datetime import UTC, datetime
 import pytest
 
 from trocado.features.identity.domain.entities.person_entity import PersonEntity
+from trocado.features.identity.domain.enums.person_status import PersonStatus
 from trocado.features.identity.domain.value_objects.email_value_object import EmailValueObject
 from trocado.features.identity.domain.value_objects.name_value_object import NameValueObject
-from trocado.features.identity.domain.value_objects.person_status import PersonStatus
 
 
 def _build(id: str = "id-1") -> PersonEntity:

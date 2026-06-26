@@ -55,6 +55,8 @@ Flag any mismatch with the canonical table:
 |---|---|---|---|
 | Entity | `domain/entities` | `_entity.py` | `Entity` |
 | Value Object | `domain/value_objects` | `_value_object.py` | `ValueObject` |
+| Enum (closed domain set) | `domain/enums` | role-named, no suffix (`person_status.py`) | role-named, no suffix (`PersonStatus`) |
+| Virtual Object (read-time view) | `domain/virtual_objects` | `_virtual_object.py` | `VirtualObject` |
 | Error | `domain/errors` | `_error.py` | `Error` |
 | Interface (port) | `application/interfaces` | `_repository_interface.py` (etc.) | `Interface` |
 | Implementation | `infrastructure/repositories` | `_repository.py` | `Repository` |
@@ -97,11 +99,16 @@ Flag any mismatch with the canonical table:
   bundling several (e.g. multiple error classes in one file, or several value objects together).
 - The same applies to tests — see §12.
 
-### 10. Value object earns its existence
+### 10. Value object earns its existence (and enums are their own shape)
 - A value object must enforce an **invariant** or carry **behavior** (validation, normalization, a domain
   operation). Flag a value object that only wraps a bare primitive with no rule (a password **hash**, an
   opaque token) — it should be the primitive (`str`). Reverse is also a flag: a raw primitive that clearly
   needs validation (an unvalidated email `str`) should be a value object.
+- **An enum lives in `domain/enums/`, never `domain/value_objects/`.** A closed domain set
+  (`PersonStatus`, `Perspective`) validates nothing and carries no behavior, so it is *not* a value
+  object. Flag an `Enum` placed under `value_objects/` (move to `enums/`), and flag a `_value_object`/`_enum`
+  suffix on the file/class — enums are role-named with no suffix. If an enum grows an invariant or
+  behavior, it becomes a value object and moves to `value_objects/`.
 
 ### 11. Infrastructure buckets, determinism & messages
 - **Two buckets only.** Persistence in `repositories/` (+ `models/`, `mappers/`); every other outbound adapter

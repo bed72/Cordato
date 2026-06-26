@@ -2,8 +2,8 @@ from trocado.features.identity.application.interfaces.person_repository_interfac
     PersonRepositoryInterface,
 )
 from trocado.features.identity.domain.entities.person_entity import PersonEntity
+from trocado.features.identity.domain.enums.person_status import PersonStatus
 from trocado.features.identity.domain.value_objects.email_value_object import EmailValueObject
-from trocado.features.identity.domain.value_objects.person_status import PersonStatus
 
 
 class FakePersonRepository(PersonRepositoryInterface):

@@ -234,7 +234,7 @@ operation would need I/O, that I/O belongs to a port — and the port is async.
   `pairing`, `notifications`). All follow the same format. **There is NO `shared/`.**
 
 ### Layers inside each module
-- `domain/` → `entities/`, `value_objects/`, `virtual_objects/`, `errors/` (+ `policies/`, `services/` when present). Pure Python.
+- `domain/` → `entities/`, `value_objects/`, `enums/`, `virtual_objects/`, `errors/` (+ `policies/`, `services/` when present). Pure Python.
 - `application/` → `interfaces/` (ports, ABC), `data/` (commands and read-models), `use_cases/`, `mappers/`, `services/`.
 - `infrastructure/` → `models/`, `mappers/`, `repositories/`, `gateways/` (adapters). **The only place that knows the lib/ORM.**
 
@@ -255,6 +255,7 @@ operation would need I/O, that I/O belongs to a port — and the port is async.
 |---|---|---|---|
 | Entity | `domain/entities` | `expense_entity.py` | `ExpenseEntity` |
 | Value Object | `domain/value_objects` | `money_value_object.py` | `MoneyValueObject` |
+| Enum (closed domain set) | `domain/enums` | `person_status.py` | `PersonStatus` |
 | Virtual Object (read-time view) | `domain/virtual_objects` | `active_budget_virtual_object.py` | `ActiveBudgetVirtualObject` |
 | Error | `domain/errors` | `expense_not_found_error.py` | `ExpenseNotFoundError` |
 | Interface (port) | `application/interfaces` | `expense_repository_interface.py` | `ExpenseRepositoryInterface` |
@@ -284,9 +285,15 @@ Non-negotiable rules:
   (e.g. a password **hash**, an opaque token string) is **over-engineering — use the primitive (`str`) directly.**
   Symmetry is not a reason: it is fine for one concept to be a value object and a sibling to be a plain `str`.
 - **One concept per file — simple and separated.** Every value object, enum, error, port, use case, and
-  mapper lives in its own dedicated file (the `PersonStatus` enum → `domain/value_objects/person_status.py`;
+  mapper lives in its own dedicated file (the `PersonStatus` enum → `domain/enums/person_status.py`;
   one error class per file under `domain/errors/`). Never bundle several related types into one module for
   convenience. **Tests obey the same rule** — see [Testing conventions](#testing-conventions).
+- **An enum is its own domain shape — `domain/enums/`, never `value_objects/`.** A closed domain set
+  (`PersonStatus`, `Perspective`) has no identity and is equal by value like a value object, but it
+  **validates nothing and carries no behavior** — so by the "earn its existence" rule above it is *not* a
+  value object. It is a category of its own: it lives in `domain/enums/`, the file and class carry **no
+  suffix** (`person_status.py` → `PersonStatus`), and it stays pure (no I/O). The day an enum grows real
+  behavior or an invariant, it graduates into a value object and moves to `value_objects/`.
 
 > **Tooling that enforces this:** run `/trocado:guard` (the `architecture-guard` skill) on any diff to
 > audit these rules — async boundaries, dependency direction, naming, the "never" rules, derive-don't-store,

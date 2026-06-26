@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from trocado.features.identity.domain.enums.person_status import PersonStatus
 from trocado.features.identity.domain.value_objects.email_value_object import EmailValueObject
 from trocado.features.identity.domain.value_objects.name_value_object import NameValueObject
-from trocado.features.identity.domain.value_objects.person_status import PersonStatus
 
 
 @dataclass(eq=False, slots=True)

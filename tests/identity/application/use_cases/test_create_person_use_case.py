@@ -12,13 +12,13 @@ from trocado.features.identity.application.use_cases.create_person_use_case impo
     CreatePersonUseCase,
 )
 from trocado.features.identity.domain.entities.person_entity import PersonEntity
+from trocado.features.identity.domain.enums.person_status import PersonStatus
 from trocado.features.identity.domain.errors.email_already_in_use_error import EmailAlreadyInUseError
 from trocado.features.identity.domain.errors.invalid_email_error import InvalidEmailError
 from trocado.features.identity.domain.errors.invalid_name_error import InvalidNameError
 from trocado.features.identity.domain.errors.weak_password_error import WeakPasswordError
 from trocado.features.identity.domain.value_objects.email_value_object import EmailValueObject
 from trocado.features.identity.domain.value_objects.name_value_object import NameValueObject
-from trocado.features.identity.domain.value_objects.person_status import PersonStatus
 
 _FIXED_NOW = datetime(2026, 6, 24, tzinfo=UTC)
 
