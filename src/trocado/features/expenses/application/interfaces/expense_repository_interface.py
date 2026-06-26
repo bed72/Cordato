@@ -45,6 +45,13 @@ class ExpenseRepositoryInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def update(self, expense: ExpenseEntity) -> None:
+        """Persist a mutated *live* expense — distinct from ``create`` (introduce a new row) and
+        ``delete`` (persist a soft-deleted state). For the eventual ORM adapter this is an UPDATE, not an
+        INSERT."""
+        raise NotImplementedError
+
+    @abstractmethod
     async def delete(self, expense: ExpenseEntity) -> None:
         """Persist an expense in its soft-deleted state (its ``deleted_at`` already stamped)."""
         raise NotImplementedError

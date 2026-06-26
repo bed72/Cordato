@@ -47,6 +47,18 @@ class ExpenseEntity:
             description=trimmed or None,
         )
 
+    def edit(self, *, amount: MoneyValueObject, occurred_on: date, description: str | None) -> None:
+        """Overwrite the editable fields in place — amount, day, description — keeping identity and
+        lifecycle untouched. Re-runs the same guard as ``create``: the amount must be positive, and the
+        description is normalized (blank/whitespace → absent). ``id``, ``person_id``, ``created_at`` and
+        ``deleted_at`` are left exactly as they were."""
+        if amount.value <= _ZERO:
+            raise InvalidAmountError()
+        trimmed = description.strip() if description else None
+        self.amount = amount
+        self.occurred_on = occurred_on
+        self.description = trimmed or None
+
     def delete(self, at: datetime) -> None:
         """Stamp the removal instant, retiring the expense from every normal read. The only path out of the
         live state — soft-delete, the row stays for audit."""

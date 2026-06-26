@@ -37,6 +37,9 @@ class ExpenseRepository(ExpenseRepositoryInterface):
             return None
         return expense
 
+    async def update(self, expense: ExpenseEntity) -> None:
+        self._expenses[expense.id] = expense
+
     async def delete(self, expense: ExpenseEntity) -> None:
         self._expenses[expense.id] = expense
 

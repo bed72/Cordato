@@ -72,6 +72,57 @@ def test_delete_keeps_identity_equality() -> None:
     assert hash(a) == hash(b)
 
 
+def test_edit_overwrites_the_editable_fields() -> None:
+    expense = _create()
+
+    expense.edit(
+        amount=MoneyValueObject(Decimal("42.50")),
+        occurred_on=date(2026, 6, 25),
+        description="jantar",
+    )
+
+    assert expense.description == "jantar"
+    assert expense.amount.value == Decimal("42.50")
+    assert expense.occurred_on == date(2026, 6, 25)
+
+
+def test_edit_preserves_identity_and_lifecycle() -> None:
+    expense = _create()
+
+    expense.edit(amount=MoneyValueObject(Decimal("1.00")), occurred_on=date(2026, 6, 25), description="x")
+
+    # Identity and lifecycle are untouched: id, owner, birth instant, and live state all hold.
+    assert expense.id == "exp-1"
+    assert expense.deleted_at is None
+    assert expense.person_id == "person-1"
+    assert expense.created_at == _FIXED_NOW
+
+
+@pytest.mark.parametrize("amount", ["0", "0.00", "-1.00"])
+def test_edit_rejects_non_positive_amount(amount: str) -> None:
+    expense = _create()
+
+    with pytest.raises(InvalidAmountError):
+        expense.edit(amount=MoneyValueObject(Decimal(amount)), occurred_on=_A_DAY, description="x")
+
+
+@pytest.mark.parametrize("description", [None, "", "   "])
+def test_edit_normalizes_blank_description_to_none(description: str | None) -> None:
+    expense = _create()
+
+    expense.edit(amount=MoneyValueObject(Decimal("10.00")), occurred_on=_A_DAY, description=description)
+
+    assert expense.description is None
+
+
+def test_edit_trims_description() -> None:
+    expense = _create()
+
+    expense.edit(amount=MoneyValueObject(Decimal("10.00")), occurred_on=_A_DAY, description="  jantar  ")
+
+    assert expense.description == "jantar"
+
+
 def test_identity_equality_is_by_id() -> None:
     a = _create()
     b = ExpenseEntity.create(

@@ -31,6 +31,11 @@ class FakeExpenseRepository(ExpenseRepositoryInterface):
                 return expense
         return None
 
+    async def update(self, expense: ExpenseEntity) -> None:
+        # The entity is the same object already held in the list; its mutated state is visible in place.
+        if expense not in self.expenses:
+            self.expenses.append(expense)
+
     async def delete(self, expense: ExpenseEntity) -> None:
         # The entity is the same object already held in the list; its stamped state is visible in place.
         if expense not in self.expenses:
