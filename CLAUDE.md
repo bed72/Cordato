@@ -179,6 +179,20 @@ audit). Mistake recovery + audit trail. **Exception:** *account* deletion is phy
   not derivable from the individual ones), then it would be its own stored entity, with its own lifecycle.
   **Out of scope for now.**
 - **Timezone/time in dates:** today we use pure `date` (no time). If timezone is ever needed, handle it later.
+- **Postgres RLS as a defense-in-depth backstop (NOT a replacement for app authorization):** when Postgres
+  lands, Row Level Security may be added as a *second wall* behind the repository — belt-and-suspenders, not
+  the source of truth. Authorization stays a **domain rule**, expressed in `domain/`/repositories and tested
+  in pure Python; RLS lives entirely at the infra edge, **behind the existing ports**, touching neither
+  `domain/` nor `application/`. Two reasons it must not become the primary auth layer: (1) the **couple lens**
+  is the core domain concept (*a couple is a point of view, not an owner*) — it is **not** `person_id =
+  auth.uid()` but a `SELECT`-only policy joining **live** pairs (`deleted_at IS NULL`), never write over a
+  partner's data; pushing it into SQL would invert the dependency rule (the innermost rule leaking to the
+  outermost layer) and put it out of reach of the no-I/O domain tests. (2) `set local "auth.uid"` under an
+  **async connection pool** is a real footgun (identity can leak across pooled connections unless scoped to
+  the transaction and reset; PgBouncer transaction-mode complicates it). Decision: **adopt later, as
+  defense-in-depth, via its own OpenSpec change** (it alters an infra contract + a cross-cutting behavior) —
+  per-person policy on owned tables (`person_id = auth.uid()`, all ops) **plus** a separate `SELECT`-only
+  couple-lens policy joining live pairs. Out of scope until the ORM/Postgres edge exists (deferred, not skipped).
 
 ---
 
