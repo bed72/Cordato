@@ -46,3 +46,15 @@ class SessionRepositoryInterface(ABC):
         needs no ``now``. It is **idempotent**: a person with no sessions is a no-op, never an error.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    async def purge_for_person_except(self, person_id: str, keep_token: str) -> None:
+        """Physically remove **all** of the person's sessions **except** the one bearing ``keep_token``.
+
+        The all-except-one sibling of ``purge_for_person``: used by a password change to drop every other
+        token (any pre-rotation or stolen credential stops resolving) while the acting session — the one the
+        request was made on — stays live. Like ``purge_for_person``, it ignores validity (live, revoked, or
+        expired alike) and needs no ``now``, touches only this person's sessions, and is **idempotent**: a
+        person whose only session is the kept one is a valid no-op.
+        """
+        raise NotImplementedError

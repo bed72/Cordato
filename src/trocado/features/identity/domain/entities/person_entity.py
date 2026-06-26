@@ -28,10 +28,10 @@ class PersonEntity:
         cls,
         *,
         id: str,
+        password: str,
         created_at: datetime,
         name: NameValueObject,
         email: EmailValueObject,
-        password: str,
     ) -> PersonEntity:
         """Create a brand-new, active person — the only sanctioned way to be born."""
         return cls(
@@ -52,6 +52,16 @@ class PersonEntity:
         """
         self.name = name
         self.email = email
+
+    def update_password(self, new_hash: str) -> None:
+        """Rotate the credential: overwrite the stored password hash in place.
+
+        Takes an already-computed hash (a plain `str` — a hash carries no invariant, so no value object;
+        hashing is the gateway's job, done in the use case). Identity and account state are untouched:
+        `id`, `created_at`, `status`, `name`, and `email` are preserved. A sanctioned transition alongside
+        `create` (birth), `update_account` (edit), and `delete` (retire).
+        """
+        self.password = new_hash
 
     def delete(self) -> None:
         """Retire the account: the only transition into `DELETED`.

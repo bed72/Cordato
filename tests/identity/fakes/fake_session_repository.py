@@ -26,3 +26,10 @@ class FakeSessionRepository(SessionRepositoryInterface):
 
     async def purge_for_person(self, person_id: str) -> None:
         self.sessions = {id: session for id, session in self.sessions.items() if session.person_id != person_id}
+
+    async def purge_for_person_except(self, person_id: str, keep_token: str) -> None:
+        self.sessions = {
+            id: session
+            for id, session in self.sessions.items()
+            if session.person_id != person_id or session.token == keep_token
+        }

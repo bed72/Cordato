@@ -66,6 +66,28 @@ def test_update_account_preserves_identity_status_and_hash() -> None:
     assert person.created_at == created_at
 
 
+def test_update_password_overwrites_the_hash() -> None:
+    person = _build("id-1")
+
+    person.update_password("hash::new")
+
+    assert person.password == "hash::new"
+
+
+def test_update_password_preserves_identity_status_name_and_email() -> None:
+    person = _build("id-1")
+    created_at, status, name, email = person.created_at, person.status, person.name, person.email
+
+    person.update_password("hash::new")
+
+    # Only the hash changes: id, created_at, status, name and email are untouched.
+    assert person.id == "id-1"
+    assert person.status is status
+    assert person.created_at == created_at
+    assert person.name == name
+    assert person.email == email
+
+
 def test_delete_retires_the_account() -> None:
     person = _build("id-1")
 
