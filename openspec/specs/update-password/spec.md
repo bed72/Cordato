@@ -1,7 +1,9 @@
-# change-password Specification
+# update-password Specification
 
 ## Purpose
-TBD - created by archiving change change-password. Update Purpose after archive.
+Lets an authenticated person rotate their own password in place: the current password re-confirms
+identity (no oracle), the new password is policy-validated then hashed only past the guard, and every
+other session is purged while the acting one survives — identity and ledger untouched.
 ## Requirements
 ### Requirement: An authenticated person changes their own password in place
 
