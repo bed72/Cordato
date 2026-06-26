@@ -72,10 +72,10 @@ def test_delete_keeps_identity_equality() -> None:
     assert hash(a) == hash(b)
 
 
-def test_edit_overwrites_the_editable_fields() -> None:
+def test_update_overwrites_the_editable_fields() -> None:
     expense = _create()
 
-    expense.edit(
+    expense.update(
         amount=MoneyValueObject(Decimal("42.50")),
         occurred_on=date(2026, 6, 25),
         description="jantar",
@@ -86,10 +86,10 @@ def test_edit_overwrites_the_editable_fields() -> None:
     assert expense.occurred_on == date(2026, 6, 25)
 
 
-def test_edit_preserves_identity_and_lifecycle() -> None:
+def test_update_preserves_identity_and_lifecycle() -> None:
     expense = _create()
 
-    expense.edit(amount=MoneyValueObject(Decimal("1.00")), occurred_on=date(2026, 6, 25), description="x")
+    expense.update(amount=MoneyValueObject(Decimal("1.00")), occurred_on=date(2026, 6, 25), description="x")
 
     # Identity and lifecycle are untouched: id, owner, birth instant, and live state all hold.
     assert expense.id == "exp-1"
@@ -99,26 +99,26 @@ def test_edit_preserves_identity_and_lifecycle() -> None:
 
 
 @pytest.mark.parametrize("amount", ["0", "0.00", "-1.00"])
-def test_edit_rejects_non_positive_amount(amount: str) -> None:
+def test_update_rejects_non_positive_amount(amount: str) -> None:
     expense = _create()
 
     with pytest.raises(InvalidAmountError):
-        expense.edit(amount=MoneyValueObject(Decimal(amount)), occurred_on=_A_DAY, description="x")
+        expense.update(amount=MoneyValueObject(Decimal(amount)), occurred_on=_A_DAY, description="x")
 
 
 @pytest.mark.parametrize("description", [None, "", "   "])
-def test_edit_normalizes_blank_description_to_none(description: str | None) -> None:
+def test_update_normalizes_blank_description_to_none(description: str | None) -> None:
     expense = _create()
 
-    expense.edit(amount=MoneyValueObject(Decimal("10.00")), occurred_on=_A_DAY, description=description)
+    expense.update(amount=MoneyValueObject(Decimal("10.00")), occurred_on=_A_DAY, description=description)
 
     assert expense.description is None
 
 
-def test_edit_trims_description() -> None:
+def test_update_trims_description() -> None:
     expense = _create()
 
-    expense.edit(amount=MoneyValueObject(Decimal("10.00")), occurred_on=_A_DAY, description="  jantar  ")
+    expense.update(amount=MoneyValueObject(Decimal("10.00")), occurred_on=_A_DAY, description="  jantar  ")
 
     assert expense.description == "jantar"
 

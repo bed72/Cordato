@@ -6,15 +6,15 @@ from tests.budgeting.fakes.fake_expense_reader import FakeExpenseReader
 from trocado.core.infrastructure.gateways.clock import Clock
 from trocado.core.infrastructure.gateways.identifier_provider import IdentifierProvider
 from trocado.features.budgeting.application.data.create_budget_data import CreateBudgetData
-from trocado.features.budgeting.application.data.edit_budget_data import EditBudgetData
 from trocado.features.budgeting.application.data.ledger_expense_data import LedgerExpenseData
+from trocado.features.budgeting.application.data.update_budget_data import UpdateBudgetData
 from trocado.features.budgeting.application.use_cases.create_budget_use_case import (
     CreateBudgetUseCase,
 )
-from trocado.features.budgeting.application.use_cases.edit_budget_use_case import EditBudgetUseCase
 from trocado.features.budgeting.application.use_cases.get_default_budget_use_case import (
     GetDefaultBudgetUseCase,
 )
+from trocado.features.budgeting.application.use_cases.update_budget_use_case import UpdateBudgetUseCase
 from trocado.features.budgeting.infrastructure.repositories.budget_repository import BudgetRepository
 
 _FIXED_NOW = datetime(2026, 6, 24, 12, tzinfo=UTC)
@@ -36,10 +36,10 @@ def _snapshot(reader: FakeExpenseReader) -> list[tuple[str, date, Decimal]]:
     return [(item.id, item.occurred_on, item.amount) for item in expenses]
 
 
-def test_editing_the_range_regroups_expenses_without_touching_them() -> None:
+def test_updating_the_range_regroups_expenses_without_touching_them() -> None:
     repository = BudgetRepository()
     create = CreateBudgetUseCase(clock=Clock(), repository=repository, identifier=IdentifierProvider())
-    edit = EditBudgetUseCase(repository=repository)
+    update = UpdateBudgetUseCase(repository=repository)
 
     reader = FakeExpenseReader(
         {
@@ -51,7 +51,7 @@ def test_editing_the_range_regroups_expenses_without_touching_them() -> None:
     )
     default = GetDefaultBudgetUseCase(repository=repository, expense_reader=reader)
 
-    before_edit = _snapshot(reader)
+    before_update = _snapshot(reader)
 
     budget = asyncio.run(
         create.execute(
@@ -70,10 +70,10 @@ def test_editing_the_range_regroups_expenses_without_touching_them() -> None:
     assert covering.total_spent == Decimal("12.00")
     assert [item.id for item in covering.expenses] == ["july"]
 
-    # Narrow the budget so it no longer covers June 20 — a pure date edit, no expense referenced.
+    # Narrow the budget so it no longer covers June 20 — a pure date update, no expense referenced.
     asyncio.run(
-        edit.execute(
-            EditBudgetData(
+        update.execute(
+            UpdateBudgetData(
                 note=None,
                 budget_id=budget.id,
                 requester_id="person-1",
@@ -91,8 +91,8 @@ def test_editing_the_range_regroups_expenses_without_touching_them() -> None:
 
     # Widen it back to cover June 20 again — the grouping flips back, still with no stored rewiring.
     asyncio.run(
-        edit.execute(
-            EditBudgetData(
+        update.execute(
+            UpdateBudgetData(
                 note=None,
                 budget_id=budget.id,
                 requester_id="person-1",
@@ -106,5 +106,5 @@ def test_editing_the_range_regroups_expenses_without_touching_them() -> None:
     assert widened.total_spent == Decimal("12.00")
     assert [item.id for item in widened.expenses] == ["july"]
 
-    # Through every range edit, not a single expense was modified, relinked, or deleted.
-    assert _snapshot(reader) == before_edit
+    # Through every range update, not a single expense was modified, relinked, or deleted.
+    assert _snapshot(reader) == before_update

@@ -47,7 +47,7 @@ class ExpenseEntity:
             description=trimmed or None,
         )
 
-    def edit(self, *, amount: MoneyValueObject, occurred_on: date, description: str | None) -> None:
+    def update(self, *, amount: MoneyValueObject, occurred_on: date, description: str | None) -> None:
         """Overwrite the editable fields in place — amount, day, description — keeping identity and
         lifecycle untouched. Re-runs the same guard as ``create``: the amount must be positive, and the
         description is normalized (blank/whitespace → absent). ``id``, ``person_id``, ``created_at`` and

@@ -30,7 +30,7 @@ class UpdateExpenseUseCase:
         if expense is None:
             raise ExpenseNotFoundError()
 
-        expense.edit(
+        expense.update(
             occurred_on=data.occurred_on,
             description=data.description,
             amount=MoneyValueObject(data.amount),

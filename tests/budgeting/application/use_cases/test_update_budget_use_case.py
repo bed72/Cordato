@@ -6,8 +6,8 @@ import pytest
 
 from tests.budgeting.fakes.fake_budget_repository import FakeBudgetRepository
 from trocado.core.domain.value_objects.money_value_object import MoneyValueObject
-from trocado.features.budgeting.application.data.edit_budget_data import EditBudgetData
-from trocado.features.budgeting.application.use_cases.edit_budget_use_case import EditBudgetUseCase
+from trocado.features.budgeting.application.data.update_budget_data import UpdateBudgetData
+from trocado.features.budgeting.application.use_cases.update_budget_use_case import UpdateBudgetUseCase
 from trocado.features.budgeting.domain.entities.budget_entity import BudgetEntity
 from trocado.features.budgeting.domain.errors.budget_not_found_error import BudgetNotFoundError
 from trocado.features.budgeting.domain.errors.invalid_budget_amount_error import (
@@ -47,10 +47,10 @@ def _a_budget(
     return budget
 
 
-def _build_use_case(*budgets: BudgetEntity) -> tuple[EditBudgetUseCase, FakeBudgetRepository]:
+def _build_use_case(*budgets: BudgetEntity) -> tuple[UpdateBudgetUseCase, FakeBudgetRepository]:
     repository = FakeBudgetRepository()
     repository.budgets.extend(budgets)
-    use_case = EditBudgetUseCase(repository=repository)
+    use_case = UpdateBudgetUseCase(repository=repository)
 
     return use_case, repository
 
@@ -63,8 +63,8 @@ def _command(
     requester_id: str = "person-1",
     end_date: date = date(2026, 7, 31),
     start_date: date = date(2026, 7, 1),
-) -> EditBudgetData:
-    return EditBudgetData(
+) -> UpdateBudgetData:
+    return UpdateBudgetData(
         note=note,
         end_date=end_date,
         budget_id=budget_id,
@@ -74,7 +74,7 @@ def _command(
     )
 
 
-def test_owner_edits_own_live_budget_and_keeps_identity() -> None:
+def test_owner_updates_own_live_budget_and_keeps_identity() -> None:
     use_case, repository = _build_use_case(_a_budget())
 
     data = asyncio.run(use_case.execute(_command()))
@@ -130,7 +130,7 @@ def test_soft_deleted_budget_is_rejected() -> None:
     assert removed.start_date == _START
 
 
-def test_edited_range_overlapping_another_live_budget_is_rejected() -> None:
+def test_updated_range_overlapping_another_live_budget_is_rejected() -> None:
     target = _a_budget(id="budget-1", start_date=_START, end_date=_END)
     other = _a_budget(id="other", start_date=date(2026, 7, 1), end_date=date(2026, 7, 31))
     use_case, _ = _build_use_case(target, other)

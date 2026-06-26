@@ -83,12 +83,12 @@ def test_identity_equality_is_by_id() -> None:
     assert hash(a) == hash(b)
 
 
-def test_edit_overwrites_fields_and_preserves_identity() -> None:
+def test_update_overwrites_fields_and_preserves_identity() -> None:
     budget = _create()
     new_start = date(2026, 7, 1)
     new_end = date(2026, 7, 31)
 
-    budget.edit(
+    budget.update(
         note="  aluguel  ",
         end_date=new_end,
         start_date=new_start,
@@ -99,7 +99,7 @@ def test_edit_overwrites_fields_and_preserves_identity() -> None:
     assert budget.end_date == new_end
     assert budget.start_date == new_start
     assert budget.amount.value == Decimal("900.00")
-    # Identity and lifecycle are untouched by an edit.
+    # Identity and lifecycle are untouched by an update.
     assert budget.id == "budget-1"
     assert budget.person_id == "person-1"
     assert budget.created_at == _FIXED_NOW
@@ -107,11 +107,11 @@ def test_edit_overwrites_fields_and_preserves_identity() -> None:
 
 
 @pytest.mark.parametrize("amount", ["0", "0.00", "-1.00"])
-def test_edit_rejects_non_positive_amount(amount: str) -> None:
+def test_update_rejects_non_positive_amount(amount: str) -> None:
     budget = _create()
 
     with pytest.raises(InvalidBudgetAmountError):
-        budget.edit(
+        budget.update(
             note="aluguel",
             end_date=_END,
             start_date=_START,
@@ -122,11 +122,11 @@ def test_edit_rejects_non_positive_amount(amount: str) -> None:
     assert budget.note == "mercado"
 
 
-def test_edit_rejects_start_after_end() -> None:
+def test_update_rejects_start_after_end() -> None:
     budget = _create()
 
     with pytest.raises(InvalidBudgetRangeError):
-        budget.edit(
+        budget.update(
             note="aluguel",
             end_date=_START,
             start_date=_END,
@@ -137,10 +137,10 @@ def test_edit_rejects_start_after_end() -> None:
 
 
 @pytest.mark.parametrize("note", [None, "", "   "])
-def test_edit_blank_note_becomes_none(note: str | None) -> None:
+def test_update_blank_note_becomes_none(note: str | None) -> None:
     budget = _create()
 
-    budget.edit(note=note, end_date=_END, start_date=_START, amount=MoneyValueObject(Decimal("500.00")))
+    budget.update(note=note, end_date=_END, start_date=_START, amount=MoneyValueObject(Decimal("500.00")))
 
     assert budget.note is None
 
