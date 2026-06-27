@@ -5,7 +5,7 @@ requires-python = ">=3.14"
 dependencies = [
     "argon2-cffi>=25.1.0",
     "blacksheep>=2.6.3",
-    "pydantic>=2.2.0",
+    "pydantic>=2.13.4",
     "uvicorn>=0.49.0",
 ]
 
@@ -53,3 +53,5 @@ type = "mypy ."
 test = "pytest"
 # `check` runs every gate in sequence with the non-mutating checks — the one command CI uses.
 check = ["format-check", "lint", "type", "test"]
+# Serve the app locally (transitional dev server — uvicorn on 127.0.0.1:8000).
+serve = "python -m trocado.main"

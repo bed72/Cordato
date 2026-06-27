@@ -1,0 +1,30 @@
+# Trocado / Cordato — manual HTTP requests (REST Client / JetBrains HTTP Client)
+#
+# Start the app first:  uv run poe serve   (uvicorn on 127.0.0.1:8000)
+# Then click "Send Request" above each block.
+#
+# Transitional state: only POST /budgets is wired, the store is in-memory (data is lost on restart),
+# and `person_id` still comes back as the "person_id" stub until the X-Person-Id identity lands.
+
+@host = http://127.0.0.1:8000
+
+### Create a budget (happy path) -> 201 Created
+POST {{host}}/budgets
+Content-Type: application/json
+
+{
+  "amount": "500.00",
+  "start_date": "2026-06-01",
+  "end_date": "2026-06-30",
+  "note": "mercado"
+}
+
+### Create a budget without a note (note is optional) -> 201 Created
+POST {{host}}/budgets
+Content-Type: application/json
+
+{
+  "amount": "1200.00",
+  "start_date": "2026-07-01",
+  "end_date": "2026-07-31"
+}
