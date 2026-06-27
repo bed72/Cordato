@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from http import HTTPStatus
+
 from blacksheep import Content, Request, Response
 from blacksheep.server.controllers import Controller, post
 
+from trocado.core.infrastructure.http.media_types import JSON
 from trocado.features.budgeting.application.use_cases.create_budget_use_case import CreateBudgetUseCase
 from trocado.features.budgeting.infrastructure.http.mappers.budget_response_mapper import (
     BudgetResponseMapper,
@@ -13,8 +16,6 @@ from trocado.features.budgeting.infrastructure.http.mappers.create_budget_reques
 from trocado.features.budgeting.infrastructure.http.requests.create_budget_request import (
     CreateBudgetRequest,
 )
-
-_JSON = b"application/json"
 
 
 class BudgetController(Controller):
@@ -46,4 +47,4 @@ class BudgetController(Controller):
         data = CreateBudgetRequestMapper.to_data(model)
         budget = await self._use_case.execute(data)
         response = BudgetResponseMapper.to_response(budget)
-        return Response(201, content=Content(_JSON, response.model_dump_json().encode()))
+        return Response(HTTPStatus.CREATED, content=Content(JSON, response.model_dump_json().encode()))
