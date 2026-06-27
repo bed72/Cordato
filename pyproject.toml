@@ -4,6 +4,9 @@ version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
     "argon2-cffi>=25.1.0",
+    "blacksheep>=2.6.3",
+    "pydantic>=2.2.0",
+    "uvicorn>=0.49.0",
 ]
 
 [build-system]
