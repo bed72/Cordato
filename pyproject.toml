@@ -54,4 +54,4 @@ test = "pytest"
 # `check` runs every gate in sequence with the non-mutating checks — the one command CI uses.
 check = ["format-check", "lint", "type", "test"]
 # Serve the app locally (transitional dev server — uvicorn on 127.0.0.1:8000).
-serve = "python -m trocado.main"
+serve = "python -m trocado.core"

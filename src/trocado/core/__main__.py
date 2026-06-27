@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uvicorn
 
-from trocado.main.http.app import app
+from trocado.core.infrastructure.http.app import app
 
 
 def main() -> None:
