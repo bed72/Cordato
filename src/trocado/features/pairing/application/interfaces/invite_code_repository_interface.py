@@ -9,7 +9,7 @@ class InviteCodeRepositoryInterface(ABC):
     """Port for persisting and looking up invite codes.
 
     ``create`` mints; ``find_by_token`` resolves a redeemed token to its code; ``consume`` persists a
-    code that has just been stamped as redeemed.
+    code that has just been stamped as redeemed; ``revoke`` persists a code the creator has just killed.
     """
 
     @abstractmethod
@@ -25,4 +25,9 @@ class InviteCodeRepositoryInterface(ABC):
     @abstractmethod
     async def consume(self, invite_code: InviteCodeEntity) -> None:
         """Persist a code whose ``consumed_at`` has just been stamped."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def revoke(self, invite_code: InviteCodeEntity) -> None:
+        """Persist a code whose ``revoked_at`` has just been stamped."""
         raise NotImplementedError

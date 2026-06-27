@@ -20,6 +20,12 @@ class FakeInviteCodeRepository(InviteCodeRepositoryInterface):
         return None
 
     async def consume(self, invite_code: InviteCodeEntity) -> None:
+        self._upsert(invite_code)
+
+    async def revoke(self, invite_code: InviteCodeEntity) -> None:
+        self._upsert(invite_code)
+
+    def _upsert(self, invite_code: InviteCodeEntity) -> None:
         for index, stored in enumerate(self.invite_codes):
             if stored.id == invite_code.id:
                 self.invite_codes[index] = invite_code

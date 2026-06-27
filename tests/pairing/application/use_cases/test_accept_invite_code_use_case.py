@@ -22,6 +22,7 @@ from trocado.features.pairing.domain.errors.invite_code_expired_error import Inv
 from trocado.features.pairing.domain.errors.invite_code_not_found_error import (
     InviteCodeNotFoundError,
 )
+from trocado.features.pairing.domain.errors.invite_code_revoked_error import InviteCodeRevokedError
 from trocado.features.pairing.domain.errors.person_not_active_error import PersonNotActiveError
 from trocado.features.pairing.domain.errors.self_pairing_error import SelfPairingError
 
@@ -36,11 +37,14 @@ def _code(
     code: str = _TOKEN,
     creator_id: str = _CREATOR,
     created_at: datetime = _FIXED_NOW,
+    revoked_at: datetime | None = None,
     consumed_at: datetime | None = None,
 ) -> InviteCodeEntity:
     invite_code = InviteCodeEntity.create(id="code-1", creator_id=creator_id, code=code, created_at=created_at)
     if consumed_at is not None:
         invite_code.consume(consumed_at)
+    if revoked_at is not None:
+        invite_code.revoke(revoked_at)
     return invite_code
 
 
@@ -129,6 +133,17 @@ def test_already_consumed_code_is_rejected() -> None:
         _accept(use_case)
 
     assert pair_repository.pairs == []
+
+
+def test_revoked_code_is_rejected() -> None:
+    revoked = _code(revoked_at=_FIXED_NOW - timedelta(hours=1))
+    use_case, invite_code_repository, pair_repository = _build(codes=(revoked,))
+
+    with pytest.raises(InviteCodeRevokedError):
+        _accept(use_case)
+
+    assert pair_repository.pairs == []
+    assert invite_code_repository.invite_codes[0].consumed_at is None
 
 
 def test_self_pairing_is_rejected() -> None:

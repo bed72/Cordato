@@ -23,3 +23,6 @@ class InviteCodeRepository(InviteCodeRepositoryInterface):
 
     async def consume(self, invite_code: InviteCodeEntity) -> None:
         self._invite_codes[invite_code.id] = invite_code
+
+    async def revoke(self, invite_code: InviteCodeEntity) -> None:
+        self._invite_codes[invite_code.id] = invite_code

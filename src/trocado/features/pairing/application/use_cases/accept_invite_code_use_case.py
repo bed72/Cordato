@@ -27,6 +27,7 @@ from trocado.features.pairing.domain.errors.invite_code_expired_error import Inv
 from trocado.features.pairing.domain.errors.invite_code_not_found_error import (
     InviteCodeNotFoundError,
 )
+from trocado.features.pairing.domain.errors.invite_code_revoked_error import InviteCodeRevokedError
 from trocado.features.pairing.domain.errors.person_not_active_error import PersonNotActiveError
 from trocado.features.pairing.domain.errors.self_pairing_error import SelfPairingError
 
@@ -59,6 +60,8 @@ class AcceptInviteCodeUseCase:
             raise InviteCodeExpiredError()
         if invite_code.is_consumed:
             raise InviteCodeAlreadyConsumedError()
+        if invite_code.is_revoked:
+            raise InviteCodeRevokedError()
 
         creator_id = invite_code.creator_id
         if data.accepter_id == creator_id:

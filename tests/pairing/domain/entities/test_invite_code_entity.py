@@ -24,6 +24,13 @@ def test_create_starts_unconsumed() -> None:
     assert invite_code.consumed_at is None
 
 
+def test_create_starts_unrevoked() -> None:
+    invite_code = _build()
+
+    assert invite_code.revoked_at is None
+    assert invite_code.is_revoked is False
+
+
 def test_expiry_is_one_day_past_creation() -> None:
     invite_code = _build()
 
@@ -60,6 +67,35 @@ def test_consume_stamps_the_given_instant() -> None:
     invite_code.consume(redeemed_at)
 
     assert invite_code.consumed_at == redeemed_at
+
+
+def test_is_revoked_reflects_revoked_at() -> None:
+    invite_code = _build()
+
+    assert invite_code.is_revoked is False
+
+    invite_code.revoke(_FIXED_NOW + timedelta(hours=1))
+
+    assert invite_code.is_revoked is True
+
+
+def test_revoke_stamps_the_given_instant() -> None:
+    invite_code = _build()
+    revoked_at = _FIXED_NOW + timedelta(hours=3)
+
+    invite_code.revoke(revoked_at)
+
+    assert invite_code.revoked_at == revoked_at
+
+
+def test_revoke_and_consume_are_independent() -> None:
+    revoked_only = _build()
+    revoked_only.revoke(_FIXED_NOW + timedelta(hours=1))
+    assert revoked_only.consumed_at is None
+
+    consumed_only = _build()
+    consumed_only.consume(_FIXED_NOW + timedelta(hours=1))
+    assert consumed_only.revoked_at is None
 
 
 def test_is_expired_is_false_before_expiry() -> None:
