@@ -6,7 +6,7 @@ The system SHALL expose the existing create-budget behavior as `POST /budgets`. 
 JSON body carrying the budget's `amount`, `start_date`, `end_date`, and optional `note`, validated as a Pydantic
 request model; resolve the acting person via the transitional identity mechanism; invoke the existing
 create-budget use case unchanged; and, on success, respond `201 Created` with the created budget's read-model
-(id, `person_id`, amount, `start_date`, `end_date`, `note`, `created_at`). Domain errors raised by the use case
+(id, amount, `start_date`, `end_date`, `note`, `created_at`). Domain errors raised by the use case
 SHALL be framed by the standard domain-error→HTTP-status mapping. The HTTP endpoint SHALL add no business rule
 beyond the existing domain behavior — it is a transport over the use case, not a second home for the rules.
 

@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from trocado.features.budgeting.infrastructure.http.mappers.create_budget_request_mapper import (
+from trocado.features.budgeting.infrastructure.http.mappers.requests.create_budget_request_mapper import (
     CreateBudgetRequestMapper,
 )
 from trocado.features.budgeting.infrastructure.http.requests.create_budget_request import (

@@ -14,7 +14,6 @@ class BudgetResponseMapper:
             note=data.note,
             amount=data.amount,
             end_date=data.end_date,
-            person_id=data.person_id,
             start_date=data.start_date,
             created_at=data.created_at,
         )

@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from trocado.features.budgeting.application.data.budget_data import BudgetData
-from trocado.features.budgeting.infrastructure.http.mappers.budget_response_mapper import (
+from trocado.features.budgeting.infrastructure.http.mappers.responses.budget_response_mapper import (
     BudgetResponseMapper,
 )
 
@@ -29,7 +29,6 @@ def test_maps_read_model_into_response_field_for_field() -> None:
     assert response.note == "mercado"
     assert response.created_at == _NOW
     assert response.start_date == _START
-    assert response.person_id == "person-1"
     assert response.amount == Decimal("500.00")
 
 

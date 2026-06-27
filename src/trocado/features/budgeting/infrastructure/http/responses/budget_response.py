@@ -14,7 +14,6 @@ class BudgetResponse(BaseModel):
     """
 
     id: str
-    person_id: str
     end_date: date
     amount: Decimal
     start_date: date

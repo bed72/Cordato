@@ -12,7 +12,7 @@
 ## 3. HTTP edge — budgeting (driving adapter, `infrastructure/http/`)
 
 - [x] 3.1 `infrastructure/http/requests/create_budget_request.py` → `CreateBudgetRequest` (Pydantic v2: amount, start_date, end_date, optional note) with structural validation only
-- [x] 3.2 `infrastructure/http/responses/budget_response.py` → `BudgetResponse` (Pydantic v2: id, person_id, amount, start_date, end_date, note, created_at)
+- [x] 3.2 `infrastructure/http/responses/budget_response.py` → `BudgetResponse` (Pydantic v2: id, amount, start_date, end_date, note, created_at — no `person_id`: the response carries the budget only, the caller already knows who they are)
 - [x] 3.3 `infrastructure/http/mappers/create_budget_request_mapper.py` → `CreateBudgetRequestMapper.to_data` (Request + acting person → `CreateBudgetData`), `@staticmethod`
 - [x] 3.4 `infrastructure/http/mappers/budget_response_mapper.py` → `BudgetResponseMapper.to_response` (`BudgetData` → `BudgetResponse`), `@staticmethod`
 - [x] 3.5 `infrastructure/http/controllers/budget_controller.py` → BlackSheep-native `BudgetController(Controller)` with `@post("/budgets")`, the `CreateBudgetUseCase` injected via the constructor (Rodi); reads the body and validates it explicitly with `model_validate` (not `FromJSON`) so a malformed body raises `pydantic.ValidationError` → 422, resolves the acting person, maps, executes, and answers `201 Created`
