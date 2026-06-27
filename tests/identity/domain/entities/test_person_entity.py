@@ -44,23 +44,31 @@ def test_hashable_by_id() -> None:
     assert len({_build("a"), _build("a"), _build("b")}) == 2
 
 
-def test_update_account_overwrites_name_and_email() -> None:
+def test_update_name_overwrites_only_the_name() -> None:
     person = _build("id-1")
+    email, created_at, status, password = person.email, person.created_at, person.status, person.password
 
-    person.update_account(name=NameValueObject("Bea"), email=EmailValueObject("bea@example.com"))
+    person.update_name(NameValueObject("Bea"))
 
     assert person.name == NameValueObject("Bea")
-    assert person.email == EmailValueObject("bea@example.com")
-
-
-def test_update_account_preserves_identity_status_and_hash() -> None:
-    person = _build("id-1")
-    created_at, status, password = person.created_at, person.status, person.password
-
-    person.update_account(name=NameValueObject("Bea"), email=EmailValueObject("bea@example.com"))
-
-    # Only name/email change: id, created_at, status and the hash are untouched.
+    # Everything else — including the email — is untouched.
     assert person.id == "id-1"
+    assert person.email == email
+    assert person.status is status
+    assert person.password == password
+    assert person.created_at == created_at
+
+
+def test_update_email_overwrites_only_the_email() -> None:
+    person = _build("id-1")
+    name, created_at, status, password = person.name, person.created_at, person.status, person.password
+
+    person.update_email(EmailValueObject("bea@example.com"))
+
+    assert person.email == EmailValueObject("bea@example.com")
+    # Everything else — including the name and the hash — is untouched.
+    assert person.id == "id-1"
+    assert person.name == name
     assert person.status is status
     assert person.password == password
     assert person.created_at == created_at
@@ -82,10 +90,10 @@ def test_update_password_preserves_identity_status_name_and_email() -> None:
 
     # Only the hash changes: id, created_at, status, name and email are untouched.
     assert person.id == "id-1"
-    assert person.status is status
-    assert person.created_at == created_at
     assert person.name == name
     assert person.email == email
+    assert person.status is status
+    assert person.created_at == created_at
 
 
 def test_delete_retires_the_account() -> None:
