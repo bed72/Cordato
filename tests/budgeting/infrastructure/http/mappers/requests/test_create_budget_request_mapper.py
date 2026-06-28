@@ -12,7 +12,7 @@ _END = date(2026, 6, 30)
 _START = date(2026, 6, 1)
 
 
-def test_maps_request_and_acting_person_into_command() -> None:
+def test_maps_request_into_command_with_the_placeholder_person() -> None:
     request = CreateBudgetRequest(amount=Decimal("500.00"), start_date=_START, end_date=_END, note="mercado")
 
     data = CreateBudgetRequestMapper.to_data(request)
@@ -20,8 +20,9 @@ def test_maps_request_and_acting_person_into_command() -> None:
     assert data.end_date == _END
     assert data.note == "mercado"
     assert data.start_date == _START
-    assert data.person_id == "person-1"
     assert data.amount == Decimal("500.00")
+    # Identity is deferred to its own change; the mapper carries a fixed placeholder for now.
+    assert data.person_id == "person_id"
 
 
 def test_absent_note_is_carried_through_as_none() -> None:
@@ -30,4 +31,4 @@ def test_absent_note_is_carried_through_as_none() -> None:
     data = CreateBudgetRequestMapper.to_data(request)
 
     assert data.note is None
-    assert data.person_id == "person-2"
+    assert data.person_id == "person_id"

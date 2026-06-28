@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from http import HTTPStatus
+from litestar import Controller, post
+from litestar.di import NamedDependency
 
-from blacksheep import Content, Request, Response
-from blacksheep.server.controllers import Controller, post
-
-from trocado.core.infrastructure.http.media_types import JSON
 from trocado.features.budgeting.application.use_cases.create_budget_use_case import CreateBudgetUseCase
 from trocado.features.budgeting.infrastructure.http.mappers.requests.create_budget_request_mapper import (
     CreateBudgetRequestMapper,
@@ -16,35 +13,44 @@ from trocado.features.budgeting.infrastructure.http.mappers.responses.budget_res
 from trocado.features.budgeting.infrastructure.http.requests.create_budget_request import (
     CreateBudgetRequest,
 )
+from trocado.features.budgeting.infrastructure.http.responses.budget_response import BudgetResponse
 
 
 class BudgetController(Controller):
-    """The driving adapter for budgeting over HTTP — a BlackSheep-native class controller.
+    """The driving adapter for budgeting over HTTP — a Litestar-native class controller.
 
     The web edge is an inbound adapter (the mirror of a repository), so it lives in ``infrastructure/http/``
     and may know the framework; the lib stays *inside* the file and never reaches ``application``/``domain``.
-    The use case is injected by the Rodi container through the constructor; the controller adds no business
-    rule — it parses, delegates, and frames — while the framework-free, server-free testable unit stays the
-    use case itself, exercised in ``application`` with fakes.
+    The use case is injected **by name** from the composition root's dependencies; the controller adds no
+    business rule — it binds, maps, delegates, and frames — while the framework-free, server-free testable
+    unit stays the use case itself, exercised in ``application`` with fakes.
     """
 
-    def __init__(self, use_case: CreateBudgetUseCase) -> None:
-        self._use_case = use_case
+    path = "/budgets"
+    tags = ["Budgets"]
 
-    @post("/budgets")
-    async def create(self, request: Request) -> Response:
+    @post(
+        summary="Criar orçamento",
+        description=(
+            "Cria um orçamento individual para a pessoa atuante: um valor em BRL e um período de datas "
+            "inclusivas (início e fim). Responde **201 Created** com o orçamento criado. As regras de "
+            "domínio (valor positivo, início não posterior ao fim, sem sobreposição com outro orçamento "
+            "vivo) são aplicadas pelo domínio."
+        ),
+    )
+    async def create(
+        self, data: CreateBudgetRequest, create_budget_use_case: NamedDependency[CreateBudgetUseCase]
+    ) -> BudgetResponse:
         """``POST /budgets`` — create a budget for the acting person, answering ``201 Created``.
 
-        The body is validated **explicitly** with ``CreateBudgetRequest.model_validate`` rather than via
-        BlackSheep's ``FromJSON`` binding: ``FromJSON`` would swallow a malformed body into the framework's own
-        ``400``, whereas the explicit call raises ``pydantic.ValidationError``, which the registered handler
-        frames as ``422`` with field detail. A ``ValidationError`` and any domain error from the use case both
-        propagate untouched to the exception handlers.
+        The body parameter **must** be named ``data``: Litestar binds and validates the JSON body into it
+        natively (a malformed body is rejected at the boundary before this runs). ``data``/``request`` are both
+        reserved kwargs — ``request`` would inject the ASGI ``Request`` object, not the body. ``@post`` answers
+        ``201`` by default. The acting person is still a fixed placeholder inside ``CreateBudgetRequestMapper``
+        until the request-identity change lands.
         """
 
-        payload = await request.json()
-        model = CreateBudgetRequest.model_validate(payload)
-        data = CreateBudgetRequestMapper.to_data(model)
-        budget = await self._use_case.execute(data)
-        response = BudgetResponseMapper.to_response(budget)
-        return Response(HTTPStatus.CREATED, content=Content(JSON, response.model_dump_json().encode()))
+        command = CreateBudgetRequestMapper.to_data(data)
+        budget = await create_budget_use_case.execute(command)
+
+        return BudgetResponseMapper.to_response(budget)
