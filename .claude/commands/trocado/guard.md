@@ -13,7 +13,10 @@ Run the architecture audit on the current work.
 
 1. Invoke the `architecture-guard` skill with the given scope (or the current diff if none given). It now also
    checks one-concept-per-file, value-object-earns-existence, the `gateways/` bucket (no folder-per-tool),
-   determinism ports (no `uuid`/`datetime` in the domain), pt-BR non-leaking error messages, and test layout.
+   determinism ports (no `uuid`/`datetime` in the domain), pt-BR non-leaking error messages, test layout, and
+   the **Litestar web edge** (framework confined to `infrastructure/http/` + composition root, body bound to
+   `data`, layered/router-scoped DI & error handlers, `/v1` prefix, the unified pt-BR error envelope, the
+   `errors/` layout, and pure error tables/lookups).
 2. Report findings grouped by severity (🔴 Blocker · 🟡 Convention · 🟢 Note), each with `path:line`, the
    rule broken, and the fix.
 3. End with the verdict: **PASS** or **CHANGES REQUIRED** (with blocker count).

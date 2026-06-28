@@ -379,7 +379,104 @@ Domain errors carry **short, user-facing messages in pt-BR**, and **must not lea
 Never echo the offending value into the message — revealing whether an email exists is account enumeration
 (`EmailAlreadyInUseError` → `"E-mail já está em uso."`, never the address; `InvalidEmailError` →
 `"E-mail inválido."`, never the input). Non-sensitive facts are fine (`WeakPasswordError` may state the
-minimum length). The web layer decides HTTP framing later; the domain only states the rule, generically.
+minimum length). The web layer frames it into the unified HTTP error envelope (see
+[The web edge](#the-web-edge-litestar)); the domain only states the rule, generically.
+
+### The web edge (Litestar)
+
+The web framework is **Litestar** (chosen over FastAPI / BlackSheep for its **layered, native dependency
+injection** and **class-based controllers** — and it dropped the extra Rodi container BlackSheep needed). It is
+an **inbound (driving) adapter**: it lives only under `infrastructure/http/` and the composition root, may know
+the lib, and **drives a use case** — the mirror of a repository. The inner `domain/`/`application/` never import
+it; the framework-free, server-free testable unit stays the **use case**. There is **no `presentation/` layer**.
+
+**HTTP-adapter shape** — per feature, under `features/<ctx>/infrastructure/http/`:
+```
+infrastructure/http/
+  controllers/   budget_controller.py      class BudgetController(Controller): path="/budgets"; @post()
+  requests/      create_budget_request.py  CreateBudgetRequest    (Pydantic v2 DTO)
+  responses/     budget_response.py         BudgetResponse         (Pydantic v2 DTO)
+  mappers/
+    requests/    create_budget_request_mapper.py  CreateBudgetRequestMapper.to_data
+    responses/   budget_response_mapper.py        BudgetResponseMapper.to_response
+  errors/        <feature>_status_error.py  <FEATURE>_STATUS_ERROR  (pure error→status table)
+```
+
+Controller rules:
+- Litestar-native class controller: `path` on the class, one decorated method per operation. `@post()` answers
+  **201** by default. The class carries **no lib name** (`BudgetController`, never `LitestarBudgetController`).
+- **The body parameter MUST be named `data`.** Litestar binds the validated body to the reserved `data` kwarg;
+  `request` is also reserved (the ASGI `Request`). Naming the body anything else **silently breaks binding** and
+  yields a 500.
+- The controller only **binds, maps, delegates, frames** — no business rule: map the request DTO → the use
+  case's `data`, `await` the use case, map the read-model → the response DTO.
+- Request/response are **Pydantic v2** DTOs with `Field(description=, examples=)` + a model-level example, so the
+  OpenAPI/Swagger schema is self-documenting.
+
+**Dependency injection — native and layered (no separate container):**
+- Litestar's own DI, resolved across layers (handler → controller → router → app), injected **by name**; mark an
+  injected parameter with `NamedDependency[...]`.
+- **App layer = cross-cutting only:** the shared-kernel gateways (`clock`, `identifier`) via `register_core()`.
+- **Each feature contributes a `Router`** (its `main/<feature>_factory.py`) carrying its own controllers **and**
+  its **scoped** providers — so a feature's dependency keys can never collide in a global namespace. App-scoped
+  singletons (the in-memory repository) are a `Provide` over one instance built in the factory (a closure);
+  use cases are **per-request**. A fresh `build()` ⇒ fresh singletons ⇒ isolated test apps.
+- **No Rodi, no global container.** The composition root never even imports a feature's controller — the
+  feature's router encapsulates it.
+
+**Versioning & docs:**
+- Every route is mounted under a single **`/v1`** prefix owned by the composition root (a controller declares
+  only its bare resource path → `/v1/budgets`). A new API version is a new parent `Router`, not an edit across
+  controllers — versioning is a cross-cutting transport concern.
+- OpenAPI at `/schema`, **Swagger UI** at `/schema/swagger`, configured with title/version/description and a
+  resource `Tag` per controller.
+
+**Composition root** — `core/infrastructure/http/app.py::build()` returns a **fresh `Litestar` per call**:
+app-layer `dependencies = register_core()`, `route_handlers = [Router("/v1", [register_<feature>(), …])]`, the
+cross-cutting `exception_handlers`, and the OpenAPI config. `__main__.py` serves it via uvicorn — pass the app as
+an **import string** so `--reload` works; `uv run poe serve` runs it with hot reload.
+
+### HTTP errors — one unified envelope, pt-BR, layered like the DI
+
+Every error answers in **one consistent JSON envelope** — the shape never varies by error kind:
+```json
+{ "status": 409, "code": "overlapping-budget", "message": "Já existe um orçamento neste período." }
+{ "status": 422, "code": "validation", "message": "Dados inválidos.",
+  "errors": [{ "key": "amount", "message": "Deve ser um número decimal." }] }
+```
+- `status` (HTTP), `code` (a stable, programmatic id of the error kind), `message` (**pt-BR**), and an
+  **optional** `errors` (`[{key, message}]`) present **only** for field-level errors, omitted otherwise
+  (handlers serialize with `model_dump(exclude_none=True)`).
+- Wired via Litestar's **native `exception_handlers`** — *not* the Problem Details plugin (it produced an
+  inconsistent shape and a low-value `type` URI). These lookups are **pure functions, not mappers** (a mapper is
+  a transform between two *layers'* shapes; these are intra-layer key→value translations).
+
+Layered, mirroring the DI:
+- **Domain errors → scoped to the feature's `Router`.** Each feature owns a **pure, framework-free**
+  `dict[type[Exception], int]` table (`<FEATURE>_STATUS_ERROR`), unit-tested in plain Python. Its factory builds
+  the handlers from `{**CORE_STATUS_ERROR, **<FEATURE>_STATUS_ERROR}` (so shared-kernel errors it raises, like
+  `InvalidMoneyError`, are framed where they occur) and registers them on its own router. The table must be
+  **total** over the errors reachable at the boundary — none falls through to a 500. `code` ← the error class
+  (kebab, `Error`/`Exception` suffix dropped); `message` ← the domain's own pt-BR `str(exc)`.
+- **Cross-cutting → at the app layer.** `ValidationException` → **422** with pt-BR **per-field** messages
+  (translated from the Pydantic error `type`, never its English text); an `HTTPException` fallback frames every
+  framework-raised HTTP error (malformed JSON 400, unknown route 404, wrong method 405) in the **same** envelope
+  with a pt-BR message derived from the **status** — never echoing the framework's English `detail` (which can
+  leak parser internals like a byte offset).
+
+`errors/` is organized **by role** (each its own subfolder, mirroring the http edge):
+```
+core/infrastructure/http/errors/
+  responses/    error_response.py · error_detail_response.py   envelope DTOs (ErrorResponse, ErrorDetailResponse)
+  handlers/     exception_handlers.py    build_domain_/build_core_exception_handlers  (the only framework-aware piece)
+  validations/  messages_validation.py   validation_message(pydantic_type) -> pt-BR
+  http/         messages_http.py         http_message(status) -> pt-BR
+  lookups/      error_code.py · core_status_error.py   error_code(error) -> code · CORE_STATUS_ERROR
+```
+
+**Transitional identity:** until real auth lands, the acting `person_id` is a **fixed placeholder** in the
+request→command mapper (no real authorization). Replacing it (a request-scoped `X-Person-Id`, then a validated
+session token) is its **own** OpenSpec change and touches neither controller nor use case.
 
 ### Testing conventions
 
@@ -395,15 +492,22 @@ Tests are first-class and follow the same separation as production code:
   (`AsyncMock`) / `pytest-mock` only for simple stubs or interaction checks.
 - `tests/` is a package (`__init__.py` throughout) with `pythonpath = ["."]`, so fakes are importable across
   test modules. Async is driven with `asyncio.run(...)` (no extra plugin).
+- **Web edge:** the controller is a framework adapter, so it has **no standalone unit test** — its behavior is
+  covered by an **HTTP integration test** through Litestar's `TestClient` against `build()` (the real app), in
+  `tests/<ctx>/integrations/` (status, the unified error envelope, the in-memory store persisting across requests
+  in one run). The **pure** web pieces — the error→status table, `error_code`, the pt-BR message lookups — get
+  their own plain-Python unit tests mirroring the source (`tests/<ctx>/infrastructure/http/errors/...`), no server.
 
 ### Current build stage (transitional)
 
-Web framework and ORM are still deferred, so a feature is built as a **runnable, fully-tested vertical slice**:
-pure `domain/` + `application/` ports + an **in-memory** `repositories/` adapter + real `gateways/` (e.g. an
-Argon2 password hasher whose sync call is wrapped with `asyncio.to_thread` at the adapter edge). **No
-`Model`/`ModelMapper` until the ORM is chosen** — they bridge a table that does not exist yet (deferred, not
-skipped). When the ORM/web changes land, they slot in behind the existing ports without touching `domain/` or
-`application/`.
+The **web edge is live on Litestar** (see [The web edge](#the-web-edge-litestar)); the **ORM is still deferred**.
+So a feature ships as a **runnable, fully-tested vertical slice**: pure `domain/` + `application/` ports + an
+**in-memory** `repositories/` adapter + real `gateways/` (e.g. an Argon2 password hasher whose sync call is
+wrapped with `asyncio.to_thread` at the adapter edge) + a **Litestar HTTP edge** wired through the composition
+root. **No `Model`/`ModelMapper` until the ORM is chosen** — they bridge a table that does not exist yet
+(deferred, not skipped). When the ORM lands it slots in behind the existing ports without touching `domain/` or
+`application/`. **Still deferred:** the **ORM/persistence**, real **authentication** (the acting `person_id` is a
+fixed placeholder — no real authorization yet), and the remaining features' endpoints.
 
 ### Guardrails — commands & skills
 
@@ -413,10 +517,12 @@ instead of re-checking the rules by hand:
 | Tool | Kind | Guarantees |
 |---|---|---|
 | `/trocado:feature` | command | Drives a feature **spec-first**: OpenSpec change → scaffold → implement → guard → archive. The entry point for any new work. |
-| `/trocado:guard` | command | Audits the current diff against every non-negotiable rule and returns **PASS** / **CHANGES REQUIRED**. |
+| `/trocado:endpoint` | command | Exposes an existing use case over HTTP the **spec-first** way: OpenSpec change → `web-endpoint` scaffold (Litestar controller + DTOs + mappers + router wiring + error map) → guard. |
+| `/trocado:guard` | command | Audits the current diff against every non-negotiable rule — domain **and the web edge** — and returns **PASS** / **CHANGES REQUIRED**. |
 | `feature-scaffold` | skill | Generates a feature's `domain`/`application`/`infrastructure` skeleton in the canonical layering, naming, async ABC ports, dedicated mappers, `gateways/` bucket, determinism ports, and one-concept-per-file. **Refuses to scaffold without an OpenSpec change** — this is how spec-first is enforced at code-gen time. |
-| `feature-tests` | skill | Scaffolds a feature's test suite to the project's testing conventions: one file per unit mirroring the source, fakes in their own files, integration tests at the module root, fakes-over-mocks for ABC ports. |
-| `architecture-guard` | skill | Reads code/diff and reports violations (spec-first, async everywhere, dependency direction, naming, no lib names, dedicated mappers, derive-don't-store, exact-decimal money, soft-delete, per-person authorization, one-concept-per-file, value-object-earns-existence, `gateways/` bucket, determinism ports, pt-BR non-leaking error messages, test layout), grouped by severity. |
+| `web-endpoint` | skill | Scaffolds the **Litestar** HTTP edge for a use case: native class controller (body bound to `data`, 201 by default), Pydantic request/response DTOs with OpenAPI docs, dedicated request/response mappers, the feature `Router` with **scoped** native DI + `/v1` mount, and the feature's pure error→status table with **router-scoped** handlers in the unified pt-BR envelope. **Refuses without an OpenSpec change.** |
+| `feature-tests` | skill | Scaffolds a feature's test suite to the project's testing conventions: one file per unit mirroring the source, fakes in their own files, integration tests at the module root (incl. the HTTP edge via `TestClient`), fakes-over-mocks for ABC ports. |
+| `architecture-guard` | skill | Reads code/diff and reports violations (spec-first, async everywhere, dependency direction, naming, no lib names, dedicated mappers, derive-don't-store, exact-decimal money, soft-delete, per-person authorization, one-concept-per-file, value-object-earns-existence, `gateways/` bucket, determinism ports, pt-BR non-leaking error messages, the **web edge** — Litestar confinement, `data`-bound body, layered/router-scoped DI & error handlers, `/v1` prefix, unified error envelope, `errors/` layout — and test layout), grouped by severity. |
 
 Plus the OpenSpec workflow skills the process rule depends on: `openspec-explore`, `openspec-propose`,
 `openspec-apply-change`, `openspec-archive-change`.
@@ -434,8 +540,10 @@ Domain in **pure Python** (no framework). Toolchain (capability `dev-environment
 | `uv sync` | recreate the env from the lockfile |
 | `uv run poe check` | **all gates in sequence** (format-check → lint → mypy → pytest) |
 | `uv run poe lint` / `format` / `type` / `test` | a single gate |
+| `uv run poe serve` | run the app locally (uvicorn on `127.0.0.1:8000`, hot reload; Swagger at `/schema/swagger`) |
 | `uv add <pkg>` / `uv add --dev <pkg>` | add a runtime / dev dependency |
 
-Runtime deps so far: `argon2-cffi` (password hashing). **Still deferred:** web framework (FastAPI vs
-BlackSheep), the ORM, and auth (JWT vs server-side session) — they enter only at the edge behind existing
-ports. See [Current build stage](#current-build-stage-transitional).
+Runtime deps so far: `argon2-cffi` (password hashing); **`litestar` + `pydantic` + `uvicorn`** (the web edge).
+The web framework is **decided: Litestar** (see [The web edge](#the-web-edge-litestar)). **Still deferred:** the
+ORM, and real **auth** (JWT vs server-side session) — they enter only at the edge behind existing ports. See
+[Current build stage](#current-build-stage-transitional).

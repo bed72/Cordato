@@ -1,9 +1,9 @@
 ---
 name: architecture-guard
-description: Audit Trocado/Cordato code or a diff against the project's non-negotiable rules — spec-first (every feature has an OpenSpec change), async everywhere at I/O boundaries, Clean Architecture layering and dependency direction, naming conventions, ABC ports, no library names in files/classes, a dedicated mapper at every boundary, derive-don't-store, soft-delete in the repository, exact-decimal money, per-person authorization, one-concept-per-file, value-object-earns-existence, the gateways/ bucket, determinism ports (clock/id), pt-BR non-leaking error messages, and test layout. Use before committing, when reviewing changes, or whenever the user asks to check architecture/convention compliance.
+description: Audit Trocado/Cordato code or a diff against the project's non-negotiable rules — spec-first (every feature has an OpenSpec change), async everywhere at I/O boundaries, Clean Architecture layering and dependency direction, naming conventions, ABC ports, no library names in files/classes, a dedicated mapper at every boundary, derive-don't-store, soft-delete in the repository, exact-decimal money, per-person authorization, one-concept-per-file, value-object-earns-existence, the gateways/ bucket, determinism ports (clock/id), pt-BR non-leaking error messages, the Litestar web edge (framework confinement, body bound to `data`, layered/router-scoped DI & error handlers, /v1 prefix, the unified error envelope, errors/ layout), and test layout. Use before committing, when reviewing changes, or whenever the user asks to check architecture/convention compliance.
 metadata:
   author: trocado
-  version: "2.0"
+  version: "2.1"
 ---
 
 # Architecture Guard
@@ -130,13 +130,53 @@ Flag any mismatch with the canonical table:
 - **Integration tests** at the module root in `tests/<ctx>/integrations/`; **fakes** in `tests/<ctx>/fakes/`,
   one per file. Flag fakes defined inline in a test module, or integration tests buried under a layer folder.
 - Prefer hand-written fakes over mocks for ABC ports. Flag an `AsyncMock` used where a typed fake belongs.
+- **Web edge:** no standalone controller unit test (it's a framework adapter — covered by the `TestClient`
+  integration test); the **pure** web pieces (error→status table, `error_code`, the pt-BR message lookups) DO
+  get plain-Python unit tests mirroring the source. Flag a missing HTTP integration test for a wired route, or a
+  pure lookup left untested.
+
+### 13. The web edge (Litestar)
+Applies to anything under `infrastructure/http/` and the composition root (`core/infrastructure/http/app.py`,
+`main/*_factory.py`). See `CLAUDE.md` → "The web edge (Litestar)" and "HTTP errors — one unified envelope".
+- **Framework confined.** Litestar/Pydantic-web imports appear **only** under `infrastructure/http/` and the
+  composition root / `main/` factories. Flag any `litestar` import in `domain/` or `application/`. No
+  `presentation/` layer.
+- **No lib name** in controller/file/class (`BudgetController`, never `LitestarBudgetController`).
+- **Body bound to `data`.** A request-body handler parameter MUST be named `data` (Litestar reserves `data` for
+  the body and `request` for the ASGI `Request`). Flag a body param named anything else — it silently breaks
+  binding. The controller only binds → maps → `await`s the use case → maps out; flag any business rule in it.
+- **Dedicated request/response mappers** (`*RequestMapper.to_data`, `*ResponseMapper.to_response`,
+  `@staticmethod`, named after destination). Flag inline conversion or a request mapper named `*DataMapper`.
+- **DTOs** are Pydantic v2 with `Field` docs/examples; structural validation only (no domain rules duplicated).
+- **Layered, scoped DI.** Cross-cutting ports (`clock`/`identifier`) live at the **app** layer (`register_core`);
+  each feature contributes a `Router` (its factory) with its **own scoped** providers and **specific** key names.
+  Flag feature deps registered at the app layer, a global container/Rodi, the composition root importing a
+  feature controller, or non-unique dependency keys. Repositories are app-scoped singletons (closure over one
+  instance built per `build()`); use cases per-request.
+- **`/v1` prefix** owned by the composition root; controllers declare the **bare** resource path. Flag a version
+  hardcoded in a controller path.
+- **Unified error envelope.** Errors answer as `{status, code, message, errors?}` via native
+  `exception_handlers` — never the framework default shape, never the Problem Details plugin. `errors` present
+  only for field-level errors. Flag a handler echoing the framework's English `detail`, a non-pt-BR `message`, a
+  varying shape, or a domain error left unmapped (→ unhandled 500).
+- **Error handlers layered like the DI.** Domain handlers are **router-scoped** (built from
+  `{**CORE_STATUS_ERROR, **<FEATURE>_STATUS_ERROR}` in the feature factory); only the cross-cutting handlers
+  (`ValidationException` → 422, the `HTTPException` fallback) live at the app. Validation field messages are
+  pt-BR (translated from the Pydantic `type`), never raw English.
+- **Pure error tables.** `<FEATURE>_STATUS_ERROR` / `CORE_STATUS_ERROR` are `dict[type[Exception], int]` with
+  **no framework types** (plain `int`/`HTTPStatus`), unit-testable in pure Python. Flag a framework import there.
+- **`errors/` organized by role:** `responses/` (envelope DTOs) · `handlers/` (the only framework-aware piece) ·
+  `validations/` + `http/` (pt-BR message lookups) · `lookups/` (`error_code`, status tables). The message/code
+  lookups are **pure functions, not `*Mapper` classes** — flag a lookup modeled as a mapper (over-engineering).
 
 ## Output format
 
 Group findings by **severity**:
 - **🔴 Blocker** — breaks a non-negotiable rule (missing spec, sync I/O on the loop, stored expense→budget
   link, lib name in class, float money, hard-delete outside account deletion, `uuid`/`datetime` inside the
-  domain, an error message leaking an email/sensitive value, a premature `Model`/`ModelMapper`).
+  domain, an error message leaking an email/sensitive value, a premature `Model`/`ModelMapper`; on the web edge:
+  a framework import in `domain/`/`application/`, a request body param not named `data`, a domain error left
+  unmapped (unhandled 500), or an error not in the unified pt-BR envelope).
 - **🟡 Convention** — naming/structure drift, missing dedicated mapper, abbreviation, folder-per-tool instead
   of `gateways/`, bundling concepts in one file, a primitive-wrapping value object, grouped/misplaced tests,
   inline fakes.
