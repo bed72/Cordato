@@ -7,11 +7,14 @@ from trocado.core.application.interfaces.clock_interface import ClockInterface
 from trocado.core.application.interfaces.identifier_provider_interface import (
     IdentifierProviderInterface,
 )
+from trocado.core.infrastructure.http.errors.handlers.exception_handlers import build_domain_exception_handlers
+from trocado.core.infrastructure.http.errors.lookups.core_status_error import CORE_STATUS_ERROR
 from trocado.features.budgeting.application.interfaces.budget_repository_interface import (
     BudgetRepositoryInterface,
 )
 from trocado.features.budgeting.application.use_cases.create_budget_use_case import CreateBudgetUseCase
 from trocado.features.budgeting.infrastructure.http.controllers.budget_controller import BudgetController
+from trocado.features.budgeting.infrastructure.http.errors.lookups.budgeting_status_error import BUDGETING_STATUS_ERROR
 from trocado.features.budgeting.infrastructure.repositories.budget_repository import BudgetRepository
 
 
@@ -25,6 +28,12 @@ def register_budgeting() -> Router:
     isolated app). The cross-cutting ports (``clock``, ``identifier``) are **not** contributed here: they sit
     at the app layer (``register_core``) and Litestar resolves them through the layered scope when this
     router's use-case provider asks for them by name.
+
+    Error framing is **also scoped to this router**: budgeting's own domain errors (merged with the shared core
+    errors it can raise, like ``InvalidMoneyError``) are framed by handlers registered here, mirroring the scoped
+    DI. The cross-cutting handlers (``ValidationException`` → 422, the ``HTTPException`` fallback) stay at the app
+    layer; Litestar resolves the most specific across layers, so a budgeting domain error is framed here while a
+    validation error is framed at the app.
 
     Lifetimes: the in-memory ``BudgetRepository`` is an **app-scoped singleton** — built once here and closed
     over by its provider, so every request shares the same in-memory "database" (a per-request instance would
@@ -50,4 +59,5 @@ def register_budgeting() -> Router:
             "budget_repository": Provide(provide_budget_repository),
             "create_budget_use_case": Provide(provide_create_budget_use_case),
         },
+        exception_handlers=build_domain_exception_handlers({**CORE_STATUS_ERROR, **BUDGETING_STATUS_ERROR}),
     )

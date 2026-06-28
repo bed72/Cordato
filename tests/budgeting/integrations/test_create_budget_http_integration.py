@@ -26,23 +26,51 @@ def test_post_budgets_creates_a_budget() -> None:
     assert body["end_date"] == "2026-06-30"
 
 
-def test_a_malformed_body_is_rejected_before_the_use_case() -> None:
-    """A body missing a required field is rejected at the boundary (client error), never reaching the use case."""
+def test_a_malformed_body_returns_422_in_the_error_envelope() -> None:
+    """A wrong-typed field is rejected at the boundary with 422 in the unified envelope, with field detail."""
     with TestClient(app=build()) as client:
-        response = client.post("/v1/budgets", json={"start_date": "2026-06-01", "end_date": "2026-06-30"})
+        response = client.post("/v1/budgets", json={**_BODY, "amount": True})
 
-    assert 400 <= response.status_code < 500
+    assert response.status_code == 422
+    body = response.json()
+    assert body["status"] == 422
+    assert body["code"] == "validation"
+    assert body["message"] == "Dados inválidos."
+    amount_error = next(error for error in body["errors"] if error["key"] == "amount")
+    assert amount_error["message"] == "Deve ser um número decimal."  # pt-BR, not Pydantic's English
 
 
-def test_the_shared_singleton_persists_across_requests_within_a_run() -> None:
-    """A second overlapping create, on the same app, is rejected — proving the repository is a shared singleton.
+def test_a_malformed_json_body_returns_400_in_pt_br() -> None:
+    """Syntactically invalid JSON → 400 in the envelope, with a pt-BR message (not the parser's English)."""
+    with TestClient(app=build()) as client:
+        response = client.post(
+            "/v1/budgets",
+            content=b'{"amount": ,"start_date":"2026-06-01","end_date":"2026-06-30"}',
+            headers={"content-type": "application/json"},
+        )
 
-    The clean 409 framing belongs to the deferred error-mapping change; here it suffices that the second request
-    does not succeed, because the use case observed the first budget persisted in the app-scoped repository.
+    assert response.status_code == 400
+    body = response.json()
+    assert body["status"] == 400
+    assert body["code"] == "bad-request"
+    assert body["message"] == "Requisição inválida."
+    assert "errors" not in body
+
+
+def test_an_overlapping_budget_returns_409_in_the_error_envelope() -> None:
+    """A second overlapping create returns 409 in the unified envelope — and proves the shared singleton.
+
+    The first budget persists in the app-scoped repository, so the second (same period) overlaps it. The 409
+    framing comes from the merged error→status table; the envelope shape matches every other error.
     """
-    with TestClient(app=build(), raise_server_exceptions=False) as client:
+    with TestClient(app=build()) as client:
         first = client.post("/v1/budgets", json=_BODY)
         second = client.post("/v1/budgets", json=_BODY)
 
     assert first.status_code == 201
-    assert second.status_code >= 400
+    assert second.status_code == 409
+    body = second.json()
+    assert body["status"] == 409
+    assert body["code"] == "overlapping-budget"
+    assert body["message"] == "Já existe um orçamento neste período."
+    assert "errors" not in body  # omitted when there are no field-level errors
