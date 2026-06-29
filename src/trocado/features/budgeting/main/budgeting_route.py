@@ -18,7 +18,7 @@ from trocado.features.budgeting.infrastructure.http.errors.lookups.budgeting_sta
 from trocado.features.budgeting.infrastructure.repositories.budget_repository import BudgetRepository
 
 
-def register_budgeting() -> Router:
+def register_budgeting_router() -> Router:
     """Build budgeting's web slice: its controllers plus the dependencies **scoped to this feature**.
 
     Returns a ``Router`` carrying budgeting's own providers, not entries merged into the app's global
@@ -26,8 +26,8 @@ def register_budgeting() -> Router:
     cannot collide with another feature's — they live in this router's scope, not a shared dict — and the
     object graph is rebuilt on every call, so each ``build()`` gets fresh singletons (a test builds an
     isolated app). The cross-cutting ports (``clock``, ``identifier``) are **not** contributed here: they sit
-    at the app layer (``register_core``) and Litestar resolves them through the layered scope when this
-    router's use-case provider asks for them by name.
+    at the app layer (``register_core_providers``) and Litestar resolves them through the layered scope when
+    this router's use-case provider asks for them by name.
 
     Error framing is **also scoped to this router**: budgeting's own domain errors (merged with the shared core
     errors it can raise, like ``InvalidMoneyError``) are framed by handlers registered here, mirroring the scoped

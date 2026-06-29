@@ -15,10 +15,10 @@ class CreateBudgetRequestMapper:
     """
 
     @staticmethod
-    def to_data(request: CreateBudgetRequest) -> CreateBudgetData:
+    def to_data(request: CreateBudgetRequest, person_id: str) -> CreateBudgetData:
         return CreateBudgetData(
             note=request.note,
-            person_id="person_id",
+            person_id=person_id,
             amount=request.amount,
             end_date=request.end_date,
             start_date=request.start_date,

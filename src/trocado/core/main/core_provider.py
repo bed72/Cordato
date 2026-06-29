@@ -10,7 +10,7 @@ from trocado.core.infrastructure.gateways.clock import Clock
 from trocado.core.infrastructure.gateways.identifier_provider import IdentifierProvider
 
 
-def register_core() -> dict[str, Provide]:
+def register_core_providers() -> dict[str, Provide]:
     """Contribute the shared-kernel gateway providers — once, for the whole application.
 
     The clock and identifier provider are **cross-cutting**: every feature (budgeting, identity, pairing,

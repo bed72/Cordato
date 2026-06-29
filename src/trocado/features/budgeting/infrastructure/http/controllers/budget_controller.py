@@ -14,6 +14,7 @@ from trocado.features.budgeting.infrastructure.http.requests.create_budget_reque
     CreateBudgetRequest,
 )
 from trocado.features.budgeting.infrastructure.http.responses.budget_response import BudgetResponse
+from trocado.features.identity.infrastructure.http.providers.current_person_provider import CurrentPersonProvider
 
 
 class BudgetController(Controller):
@@ -35,22 +36,18 @@ class BudgetController(Controller):
             "Cria um orçamento individual para a pessoa atuante: um valor em BRL e um período de datas "
             "inclusivas (início e fim). Responde **201 Created** com o orçamento criado. As regras de "
             "domínio (valor positivo, início não posterior ao fim, sem sobreposição com outro orçamento "
-            "vivo) são aplicadas pelo domínio."
+            "vivo) são aplicadas pelo domínio. Requer autenticação via ``Authorization: Bearer <token>``."
         ),
     )
     async def create(
-        self, data: CreateBudgetRequest, create_budget_use_case: NamedDependency[CreateBudgetUseCase]
+        self,
+        data: CreateBudgetRequest,
+        create_budget_use_case: NamedDependency[CreateBudgetUseCase],
+        current_person_provider: NamedDependency[CurrentPersonProvider],
     ) -> BudgetResponse:
-        """``POST /budgets`` — create a budget for the acting person, answering ``201 Created``.
-
-        The body parameter **must** be named ``data``: Litestar binds and validates the JSON body into it
-        natively (a malformed body is rejected at the boundary before this runs). ``data``/``request`` are both
-        reserved kwargs — ``request`` would inject the ASGI ``Request`` object, not the body. ``@post`` answers
-        ``201`` by default. The acting person is still a fixed placeholder inside ``CreateBudgetRequestMapper``
-        until the request-identity change lands.
-        """
-
-        command = CreateBudgetRequestMapper.to_data(data)
+        """``POST /budgets`` — create a budget for the acting person, answering ``201 Created``."""
+        person = await current_person_provider.data()
+        command = CreateBudgetRequestMapper.to_data(request=data, person_id=person.id)
         budget = await create_budget_use_case.execute(command)
 
         return BudgetResponseMapper.to_response(budget)

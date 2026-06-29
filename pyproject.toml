@@ -56,3 +56,5 @@ check = ["format-check", "lint", "type", "test"]
 # Serve the app locally with hot-reload (transitional dev server — uvicorn on 127.0.0.1:8000).
 # `--reload-dir src` watches only our code, not the virtualenv; `python -m trocado` still serves without reload.
 serve = "uvicorn trocado.core.infrastructure.http.app:app --host 127.0.0.1 --port 8000 --reload --reload-dir src"
+# Archive the active OpenSpec change (moves it to openspec/changes/archive/).
+archive = "openspec archive --yes"
