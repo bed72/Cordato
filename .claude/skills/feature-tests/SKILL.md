@@ -1,9 +1,9 @@
 ---
 name: feature-tests
-description: Scaffold or extend a Trocado/Cordato feature's test suite to the project's testing conventions — one test file per unit mirroring the source tree, fakes in their own files under tests/<ctx>/fakes/, integration tests at the module root under tests/<ctx>/integrations/, hand-written fakes preferred over mocks for ABC ports, and async driven with asyncio.run. Use when adding tests for a new or existing feature, or when test files have grown into grouped catch-alls.
+description: Scaffold or extend a Trocado/Cordato feature's test suite to the project's testing conventions — one test file per unit mirroring the source tree, fakes in their own files under tests/<ctx>/fakes/, use-case integration tests at tests/<ctx>/integrations/, HTTP integration tests in tests/<ctx>/integrations/http/ via TestClient(build()), hand-written fakes preferred over mocks for ABC ports, and async driven with asyncio.run. Use when adding tests for a new or existing feature, or when test files have grown into grouped catch-alls.
 metadata:
   author: trocado
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Feature Tests
@@ -20,10 +20,18 @@ tests/<context>/
     entities/        test_person_entity.py             # one file per entity
     errors/          test_invalid_email_error.py       # one file per error (message: short pt-BR, no leak)
   application/
-    test_<verb>_<name>_use_case.py                      # one file per use case (scenarios as functions)
+    use_cases/       test_<verb>_<name>_use_case.py    # one file per use case (scenarios as functions)
   infrastructure/
     repositories/    test_person_repository.py          # the adapter, unit-tested directly
-  integrations/      test_create_person_integration.py  # AT THE MODULE ROOT — crosses layers
+    http/
+      errors/
+        lookups/     test_<feature>_status_error.py    # pure error→status table, plain Python
+        validations/ test_messages_validation.py
+        http/        test_messages_http.py
+  integrations/
+    test_<verb>_<name>_integration.py                  # use-case level: real adapters, no HTTP
+    http/
+      test_<resource>_http.py                          # HTTP level: TestClient against build()
   fakes/
     fake_person_repository.py    # FakePersonRepository  — one fake per file
     fake_password_hasher.py      # FakePasswordHasher
@@ -37,10 +45,14 @@ tests/<context>/
    Email + Name + Password + Entity at once. If you find one, split it.
 2. **Scenarios are plain functions** (`def test_...():`) — no wrapper `Test*` class just to group; the file is
    already the grouping.
-3. **Integration tests live at the test-module root** (`tests/<ctx>/integrations/`), because they wire real
-   adapters through a use case and so belong to no single layer. Unit tests of an adapter go under the
-   mirrored layer path (`infrastructure/repositories/`), exercising the adapter **directly** (e.g. the
-   repository's `create` and the active-only filter of `find_active_by_email`) — not only via the use case.
+3. **Integration tests live at two depths** under `tests/<ctx>/integrations/`:
+   - **Root** (`integrations/test_*_integration.py`) — use-case level: real adapters wired through a use case
+     in pure Python, no HTTP server. Verify domain behavior at the application boundary.
+   - **`http/` subdirectory** (`integrations/http/test_*_http.py`) — HTTP level: `TestClient(app=build())`
+     against the real Litestar app. Verify routing, status codes, the unified error envelope, and that the
+     in-memory store persists across requests within one `with` block. The controller has **no standalone unit
+     test** (it is a framework adapter); these are its only tests.
+   Never put an HTTP test at `integrations/` root, or a pure use-case test in `integrations/http/`.
 4. **Fakes/doubles in their own files** under `tests/<ctx>/fakes/`, one per file, named `fake_<thing>.py` →
    `Fake<Thing>`. Each implements the real ABC port (mypy verifies the contract). Never define fakes inline in
    a test module.
@@ -48,12 +60,15 @@ tests/<context>/
    `pytest-mock` only for simple stubs / interaction assertions (e.g. "the hasher was called once").
    `pytest-mock` is a dev dependency added via a spec-first `dev-environment` change, not ad hoc.
 6. **Async is driven with `asyncio.run(...)`** inside the (sync) test function — no extra plugin.
-7. **`tests/` is a package** — every test dir (including `fakes/`, `integrations/`) has `__init__.py`, and
-   `pyproject.toml` sets `pythonpath = ["."]` so `from tests.<ctx>.fakes.fake_clock import FakeClock` resolves.
+7. **`tests/` is a package** — every test dir (including `fakes/`, `integrations/`, `integrations/http/`) has
+   `__init__.py`, and `pyproject.toml` sets `pythonpath = ["."]` so `from tests.<ctx>.fakes.fake_clock import
+   FakeClock` resolves.
 8. **Cover every spec scenario.** Each `#### Scenario` in the change's spec is at least one test — including
    the negative/edge ones (duplicate, malformed, normalization, freed-email reuse, blank/weak input).
 9. **Error-message tests assert no leak** — the message equals the expected short pt-BR string and does not
    contain the offending value (e.g. `assert "@" not in str(EmailAlreadyInUseError())`).
+10. **Load tests are project-level** — `tests/stress/test_<flow>.py` with a Locust `HttpUser` class. Scaffold
+    via the `load-test` skill. They are not part of a feature's own test suite and never run under `poe check`.
 
 ## Fake template
 

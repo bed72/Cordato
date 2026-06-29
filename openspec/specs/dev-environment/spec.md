@@ -123,3 +123,13 @@ require any globally-installed tooling beyond `uv sync`.
 
 - **WHEN** a developer runs `uv run poe lint` (or `format`, `format-check`, `type`, `test`)
 - **THEN** poethepoet runs exactly that gate's underlying command from the project environment
+
+A `stress` task SHALL be available as `uv run poe stress`, executando o Locust em modo headless contra
+`http://127.0.0.1:8000`. O task `stress` MUST NOT fazer parte do `check` aggregate — é opt-in, não um
+gate obrigatório de CI.
+
+#### Scenario: poe stress executa o Locust headless
+
+- **WHEN** o servidor está rodando em `http://127.0.0.1:8000` e o desenvolvedor executa `uv run poe stress`
+- **THEN** poethepoet executa o Locust headless a partir do `locustfile.py` da raiz, sem exigir instalação
+  global do Locust além de `uv sync`

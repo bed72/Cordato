@@ -127,13 +127,19 @@ Flag any mismatch with the canonical table:
 ### 12. Test layout
 - **One test file per unit, mirroring the source path** (`tests/<ctx>/domain/value_objects/test_email_value_object.py`).
   Flag a grouped file covering several units.
-- **Integration tests** at the module root in `tests/<ctx>/integrations/`; **fakes** in `tests/<ctx>/fakes/`,
-  one per file. Flag fakes defined inline in a test module, or integration tests buried under a layer folder.
+- **Two integration depths** under `tests/<ctx>/integrations/`:
+  - **Root** (`integrations/test_*_integration.py`) — use-case level, real adapters, no HTTP server.
+  - **`http/` subdirectory** (`integrations/http/test_*_http.py`) — HTTP level, `TestClient(app=build())`.
+  Flag an HTTP integration test placed at the `integrations/` root (wrong depth). Flag a pure use-case
+  integration test placed in `integrations/http/` (also wrong depth).
+- **Fakes** in `tests/<ctx>/fakes/`, one per file. Flag fakes defined inline in a test module.
 - Prefer hand-written fakes over mocks for ABC ports. Flag an `AsyncMock` used where a typed fake belongs.
-- **Web edge:** no standalone controller unit test (it's a framework adapter — covered by the `TestClient`
-  integration test); the **pure** web pieces (error→status table, `error_code`, the pt-BR message lookups) DO
-  get plain-Python unit tests mirroring the source. Flag a missing HTTP integration test for a wired route, or a
-  pure lookup left untested.
+- **Web edge:** no standalone controller unit test (framework adapter — covered by `TestClient` in
+  `integrations/http/`); the **pure** web pieces (error→status table, `error_code`, pt-BR message lookups) DO
+  get plain-Python unit tests mirroring the source (`tests/<ctx>/infrastructure/http/errors/...`). Flag a
+  missing HTTP integration test for a wired route, or a pure lookup left untested.
+- **Load tests** live in `tests/stress/`, not inside any feature's `integrations/`. Flag a Locust `HttpUser`
+  file placed under a feature's test tree.
 
 ### 13. The web edge (Litestar)
 Applies to anything under `infrastructure/http/` and the composition root (`core/infrastructure/http/app.py`,

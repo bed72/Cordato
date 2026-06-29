@@ -42,10 +42,10 @@ def _build(*people: PersonEntity, token: str = "session-token") -> tuple[SignInU
     use_case = SignInUseCase(
         clock=FakeClock(_NOW),
         hasher=FakePasswordHasher(),
-        person_repository=FakePersonRepository(*people),
-        identifier=FakeIdentifierProvider("session-id"),
-        token_generator=FakeTokenGenerator(token),
         session_repository=session_repository,
+        token_generator=FakeTokenGenerator(token),
+        identifier=FakeIdentifierProvider("session-id"),
+        person_repository=FakePersonRepository(*people),
     )
     return use_case, session_repository
 
@@ -61,16 +61,16 @@ def test_correct_credential_issues_a_session_and_returns_it() -> None:
 
     # The read-model carries the token, its expiry, and the nested person.
     assert data.token == "opaque-abc"
-    assert data.expires_at == _NOW + SESSION_TIME_TO_LIVE
     assert data.person.id == "person-1"
     assert data.person.email == _EMAIL
     assert data.person.status == "active"
     # A session was persisted for that person, holding the issued token.
     assert len(session_repository.sessions) == 1
+    assert data.expires_at == _NOW + SESSION_TIME_TO_LIVE
     stored = session_repository.sessions["session-id"]
+    assert stored.revoked_at is None
     assert stored.token == "opaque-abc"
     assert stored.person_id == "person-1"
-    assert stored.revoked_at is None
 
 
 def test_wrong_password_is_rejected_and_issues_no_session() -> None:
@@ -133,12 +133,12 @@ def test_not_found_path_still_verifies_once_against_the_decoy() -> None:
     # Timing equalization: even with no person, exactly one verify runs — against the decoy hash.
     hasher = FakeRecordingPasswordHasher()
     use_case = SignInUseCase(
-        clock=FakeClock(_NOW),
         hasher=hasher,
-        person_repository=FakePersonRepository(),
-        identifier=FakeIdentifierProvider("session-id"),
+        clock=FakeClock(_NOW),
         token_generator=FakeTokenGenerator(),
+        person_repository=FakePersonRepository(),
         session_repository=FakeSessionRepository(),
+        identifier=FakeIdentifierProvider("session-id"),
     )
 
     with pytest.raises(InvalidCredentialsError):

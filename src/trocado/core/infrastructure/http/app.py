@@ -56,7 +56,7 @@ def build() -> Litestar:
             title="Trocado",
             version="1.0.0",
             security=[{"BearerToken": []}],
-            render_plugins=[ScalarRenderPlugin()],
+            render_plugins=[ScalarRenderPlugin(version="1.62.0", options={"hiddenClients": True})],
             description=(
                 "API da Trocado — finanças pessoais para casais que não dissolvem o indivíduo no "
                 "relacionamento. Cada pessoa é dona do próprio dinheiro; o casal é um ponto de vista, "
