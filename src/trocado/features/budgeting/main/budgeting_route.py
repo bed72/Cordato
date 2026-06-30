@@ -22,22 +22,21 @@ from trocado.features.budgeting.infrastructure.http.errors.lookups.budgeting_sta
 from trocado.features.budgeting.infrastructure.repositories.budget_repository import BudgetRepository
 
 
-def register_budgeting_router() -> Router:
+def register_budgeting_router(budget_repository: BudgetRepositoryInterface | None = None) -> Router:
     """Build budgeting's web slice: its controllers plus the dependencies **scoped to this feature**.
 
-    Takes no arguments — ``spend_reader`` is registered at the ``/v1`` router level by the composition
-    root (as ``SpendReaderInterface``) and inherited here through Litestar's layered DI, so budgeting
-    never imports or mentions the expenses feature. The object graph is rebuilt on every ``build()``
-    call (fresh singletons ⇒ isolated test apps). The cross-cutting ports (``clock``, ``identifier``)
-    sit at the app layer and are likewise inherited.
+    Accepts an optional ``budget_repository`` so the composition root can inject a shared instance
+    (required when cross-module adapters like ``PartnerBudgetReader`` must read from the same
+    in-memory store). When omitted, creates its own ``BudgetRepository`` — the default for
+    standalone test setups. ``spend_reader`` is registered at the ``/v1`` router level by the
+    composition root and inherited here through Litestar's layered DI, so budgeting never imports or
+    mentions the expenses feature. The cross-cutting ports (``clock``, ``identifier``) sit at the app
+    layer and are likewise inherited.
 
     Error framing is scoped to this router: budgeting's domain errors are framed here; cross-cutting
     handlers (422, HTTP fallback) stay at the app layer.
-
-    Lifetimes: ``BudgetRepository`` is an **app-scoped singleton** — built once and closed over by its
-    provider so every request shares the same in-memory store. Use cases are **per-request**.
     """
-    repository = BudgetRepository()
+    repository: BudgetRepositoryInterface = budget_repository or BudgetRepository()
 
     async def provide_budget_repository() -> BudgetRepositoryInterface:
         return repository
