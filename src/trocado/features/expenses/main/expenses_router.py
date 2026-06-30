@@ -21,17 +21,12 @@ from trocado.features.expenses.infrastructure.repositories.expense_repository im
 def register_expenses_router() -> Router:
     """Build expenses' web slice: its controllers plus the dependencies **scoped to this feature**.
 
-    Returns a ``Router`` carrying expenses' own providers, not entries merged into the app's global
-    dependency namespace. The object graph is rebuilt on every call, so each ``build()`` gets fresh
-    singletons (a test builds an isolated app). The cross-cutting ports (``clock``, ``identifier``) are
-    **not** contributed here: they sit at the app layer (``register_core_providers``) and Litestar
-    resolves them through the layered scope.
+    Self-contained — creates its own ``ExpenseRepository`` singleton. The cross-cutting ports
+    (``clock``, ``identifier``) sit at the app layer and are inherited through Litestar's layered DI.
+    Each ``build()`` call produces a fresh router with fresh singletons (isolated test apps).
 
-    Error framing is also scoped to this router: expenses' domain errors (merged with the shared core
-    errors it can raise, like ``InvalidMoneyError``) are framed by handlers registered here.
-
-    Lifetimes: the in-memory ``ExpenseRepository`` is an **app-scoped singleton** — built once here and
-    closed over by its provider. The use cases are **per-request**.
+    Error framing is scoped to this router: expenses' domain errors are framed here; cross-cutting
+    handlers (422, HTTP fallback) stay at the app layer.
     """
     repository = ExpenseRepository()
 
@@ -68,8 +63,8 @@ def register_expenses_router() -> Router:
             "expense_repository": Provide(provide_expense_repository),
             "list_expenses_use_case": Provide(provide_list_expenses_use_case),
             "create_expense_use_case": Provide(provide_create_expense_use_case),
-            "update_expense_use_case": Provide(provide_update_expense_use_case),
             "delete_expense_use_case": Provide(provide_delete_expense_use_case),
+            "update_expense_use_case": Provide(provide_update_expense_use_case),
         },
         exception_handlers=build_domain_exception_handlers(EXPENSES_STATUS_ERROR),
     )

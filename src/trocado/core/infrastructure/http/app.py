@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from litestar import Litestar, Router
+from litestar.di import Provide
 from litestar.openapi import OpenAPIConfig
 from litestar.openapi.plugins import ScalarRenderPlugin
 from litestar.openapi.spec import Components, SecurityScheme, Tag
 
+from trocado.core.infrastructure.gateways.spend_reader import SpendReader
 from trocado.core.infrastructure.http.errors.handlers.exception_handlers import build_core_exception_handlers
 from trocado.core.infrastructure.http.errors.lookups.core_status_error import CORE_STATUS_ERROR
 from trocado.core.main.core_provider import register_core_providers
+from trocado.features.budgeting.application.interfaces.spend_reader_interface import SpendReaderInterface
 from trocado.features.budgeting.main.budgeting_route import register_budgeting_router
+from trocado.features.expenses.infrastructure.repositories.expense_repository import ExpenseRepository
 from trocado.features.expenses.main.expenses_router import register_expenses_router
 from trocado.features.identity.main.identity_provider import register_identity_providers
 from trocado.features.identity.main.identity_route import register_identity_router
@@ -42,11 +46,30 @@ def build() -> Litestar:
     ``CurrentPersonProvider`` is a cross-cutting provider that any protected handler may trigger. The same
     singleton repositories are passed to ``register_identity`` so both sides share the same in-memory store
     within a run. Each ``build()`` call produces fresh singletons, keeping test runs isolated.
+
+    ``spend_reader`` is registered at the ``/v1`` router level — the only cross-feature concern:
+    budgeting needs to derive total spend from the expenses ledger. ``SpendReader`` lives in
+    ``core/infrastructure/gateways/`` because it is the one object allowed to import from two
+    feature packages simultaneously; wired here and exposed only as ``SpendReaderInterface`` so
+    budgeting never mentions expenses. Pre-ORM: ``SpendReader`` holds its own ``ExpenseRepository``
+    instance, separate from the one expenses uses internally — the DB will be the shared state.
     """
+    spend_reader = SpendReader(ExpenseRepository())
+
+    async def provide_spend_reader() -> SpendReaderInterface:
+        return spend_reader
+
     api = Router(
         path="/v1",
-        dependencies=register_identity_providers(),
-        route_handlers=[register_identity_router(), register_budgeting_router(), register_expenses_router()],
+        dependencies={
+            **register_identity_providers(),
+            "spend_reader": Provide(provide_spend_reader),
+        },
+        route_handlers=[
+            register_identity_router(),
+            register_expenses_router(),
+            register_budgeting_router(),
+        ],
     )
 
     return Litestar(

@@ -6,11 +6,12 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class BudgetResponse(BaseModel):
-    """Response body for a created budget — the budget read-model serialized for the client.
+class ActiveBudgetResponse(BaseModel):
+    """Response body for the active-budget endpoint — the budget enriched with derived spend totals.
 
-    Carries no spend (``total_spent``/``remaining`` belong to the enriched active-budget read), mirroring
-    ``BudgetData``: this is the plain create response. The field descriptions/examples feed the OpenAPI schema.
+    Extends the plain budget read with ``total_spent`` (sum of the person's expenses within the budget
+    period) and ``remaining`` (budget amount minus total_spent). Both are derived at read-time, never
+    stored. Uses a separate DTO from ``BudgetResponse`` because the extra fields change the shape contract.
     """
 
     model_config = ConfigDict(
@@ -23,6 +24,8 @@ class BudgetResponse(BaseModel):
                     "start_date": "2026-06-01",
                     "end_date": "2026-06-30",
                     "note": "Orçamento de Julho",
+                    "total_spent": "120.00",
+                    "remaining": "380.00",
                     "created_at": "2026-06-28T18:43:18.207963Z",
                 }
             ]
@@ -41,6 +44,14 @@ class BudgetResponse(BaseModel):
     start_date: date = Field(description="Primeiro dia do período (inclusivo).", examples=["2026-06-01"])
     end_date: date = Field(description="Último dia do período (inclusivo).", examples=["2026-06-30"])
     note: str | None = Field(description="Observação livre, se houver.", examples=["mercado"])
+    total_spent: Decimal = Field(
+        description="Total gasto dentro do período do orçamento, em BRL.",
+        examples=["120.00"],
+    )
+    remaining: Decimal = Field(
+        description="Saldo restante (orçamento − total gasto); pode ser negativo.",
+        examples=["380.00"],
+    )
     created_at: datetime = Field(
         description="Momento de criação, em UTC.",
         examples=["2026-06-28T18:43:18.207963Z"],
