@@ -240,8 +240,9 @@ Every error response is one shape:
 `errors` is **optional**, present only for field-level errors; serialize with `model_dump(exclude_none=True)`.
 
 **Layered, mirroring the DI:**
-- **Domain errors → scoped to the feature's `Router`.** Each feature owns `dict[type[Exception], int]` (`<FEATURE>_STATUS_ERROR`), unit-tested in plain Python. Factory builds `{**CORE_STATUS_ERROR, **<FEATURE>_STATUS_ERROR}`. Table must be **total** — no error falls through to a 500. `code` ← class name in kebab (drop `Error`/`Exception`); `message` ← `str(exc)`.
-- **Cross-cutting → app layer.** `ValidationException` → 422 with pt-BR per-field messages (translated from Pydantic `type`, never its English text). `HTTPException` fallback frames all framework HTTP errors in the same envelope with pt-BR message from status — never echo the framework's English `detail`.
+- **Feature domain errors → scoped to the feature's `Router`.** Each feature owns `dict[type[Exception], int]` (`<FEATURE>_STATUS_ERROR`) containing **only its own errors**, unit-tested in plain Python. `code` ← class name in kebab (drop `Error`/`Exception`); `message` ← `str(exc)`. Table must cover every error the feature's handlers can raise — none falls through to a 500.
+- **Core domain errors → app layer**, via `build_core_exception_handlers(CORE_STATUS_ERROR)`. Errors that can fire from any feature's handler (e.g. `InvalidMoneyError`, `InvalidSessionError`) live in `CORE_STATUS_ERROR` and are registered once at the app. Feature tables must **not** duplicate them.
+- **Cross-cutting framework errors → app layer.** `ValidationException` → 422 with pt-BR per-field messages (translated from Pydantic `type`, never its English text). `HTTPException` fallback frames all framework HTTP errors in the same envelope with pt-BR message from status — never echo the framework's English `detail`.
 
 **`errors/` layout:**
 ```
@@ -273,8 +274,8 @@ core/infrastructure/http/errors/
 
 **Web edge live on Litestar; ORM deferred.** A feature ships as a vertical slice: `domain/` + `application/` ports + in-memory repositories + real gateways + Litestar HTTP edge. No `Model`/`ModelMapper` until the ORM is chosen.
 
-**Live:** identity HTTP edge (sign-up / sign-in / sign-out; Bearer token; 401 on missing/invalid token) + `POST /v1/budgets`.  
-**Deferred:** ORM/persistence and remaining HTTP endpoints (budgeting, expenses, pairing).
+**Live:** identity HTTP edge (sign-up / sign-in / sign-out; Bearer token; 401 on missing/invalid token) + `POST /v1/budgets` + expenses HTTP edge (`POST`, `GET`, `PATCH`, `DELETE /v1/expenses`).  
+**Deferred:** ORM/persistence and remaining HTTP endpoints (budgeting read/edit, pairing).
 
 ---
 

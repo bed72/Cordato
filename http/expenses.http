@@ -1,0 +1,63 @@
+# Trocado / Cordato — Expenses
+# uv run poe serve   →   uvicorn em 127.0.0.1:8000, hot-reload
+# Swagger UI: http://127.0.0.1:8000/schema/swagger
+#
+# Obtenha um token via http/authentication.http e cole em @token abaixo.
+# Após registrar uma despesa, copie o `id` da resposta e cole em @expense_id.
+
+@host = http://127.0.0.1:8000
+@token = <paste-token-here>
+@expense_id = <paste-expense-id-here>
+
+### Registrar despesa → 201 Created
+POST {{host}}/v1/expenses
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": "49.90",
+  "occurred_on": "2026-06-28",
+  "description": "almoço"
+}
+
+### Registrar despesa sem descrição (campo opcional) → 201 Created
+POST {{host}}/v1/expenses
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": "15.00",
+  "occurred_on": "2026-06-29"
+}
+
+### Registrar despesa com valor inválido → 422 Unprocessable Entity
+POST {{host}}/v1/expenses
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": "0",
+  "occurred_on": "2026-06-28"
+}
+
+### Listar despesas vivas (mais recente primeiro) → 200 OK
+GET {{host}}/v1/expenses
+Authorization: Bearer {{token}}
+
+### Editar despesa (substitui todos os campos) → 200 OK
+PATCH {{host}}/v1/expenses/{{expense_id}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": "55.00",
+  "occurred_on": "2026-06-29",
+  "description": "jantar"
+}
+
+### Remover despesa (soft-delete) → 204 No Content
+DELETE {{host}}/v1/expenses/{{expense_id}}
+Authorization: Bearer {{token}}
+
+### Qualquer rota sem autenticação → 401 Unauthorized
+GET {{host}}/v1/expenses

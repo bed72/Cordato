@@ -13,9 +13,9 @@ BUDGETING_STATUS_ERROR: dict[type[Exception], int] = {
     InvalidBudgetRangeError: HTTPStatus.UNPROCESSABLE_ENTITY,
     InvalidBudgetAmountError: HTTPStatus.UNPROCESSABLE_ENTITY,
 }
-"""Budgeting's domain-error → HTTP-status entries — a pure table (no framework types).
+"""Budgeting-specific domain-error → HTTP-status entries — a pure table (no framework types).
 
-The budgeting factory merges this with the core map and builds the unified-envelope handlers **scoped to
-budgeting's own Router** (per route-module, mirroring its scoped DI). Total over the budgeting errors reachable
-at the wired boundary, so none surfaces as an unhandled 500.
+Registered scoped to budgeting's own Router (mirroring its scoped DI). Cross-cutting core errors
+(``InvalidMoneyError``, ``InvalidSessionError``) are handled at the app layer via ``CORE_STATUS_ERROR`` —
+they must not be duplicated here.
 """

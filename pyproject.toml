@@ -37,6 +37,9 @@ select = ["E", "F", "I", "UP", "B", "N", "ASYNC", "SIM"]
 testpaths = ["tests"]
 # Put the repo root on sys.path so the `tests` package (shared fakes) is importable across test modules.
 pythonpath = ["."]
+# Stress tests (Locust HttpUser) are not pytest — gevent's monkey.patch_all() corrupts asyncio/anyio when
+# collected alongside regular tests. Run them with `poe stress` against a live server, not via `poe test`.
+norecursedirs = ["tests/stress"]
 
 [tool.mypy]
 # `ty` (Astral's type checker) is the intended future swap once it reaches maturity; mypy strict for now.

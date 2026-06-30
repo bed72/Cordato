@@ -1,0 +1,52 @@
+# Trocado / Cordato — Budgets
+# uv run poe serve   →   uvicorn em 127.0.0.1:8000, hot-reload
+# Swagger UI: http://127.0.0.1:8000/schema/swagger
+#
+# Obtenha um token via http/authentication.http e cole em @token abaixo.
+
+@host = http://127.0.0.1:8000
+@token = <paste-token-here>
+
+### Criar orçamento (com nota) → 201 Created
+POST {{host}}/v1/budgets
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": "500.00",
+  "start_date": "2026-06-01",
+  "end_date": "2026-06-30",
+  "note": "mercado"
+}
+
+### Criar orçamento (sem nota — campo opcional) → 201 Created
+POST {{host}}/v1/budgets
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": "1200.00",
+  "start_date": "2026-07-01",
+  "end_date": "2026-07-31"
+}
+
+### Criar orçamento com período sobreposto → 409 Conflict
+POST {{host}}/v1/budgets
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": "300.00",
+  "start_date": "2026-06-15",
+  "end_date": "2026-07-15"
+}
+
+### Criar orçamento sem autenticação → 401 Unauthorized
+POST {{host}}/v1/budgets
+Content-Type: application/json
+
+{
+  "amount": "500.00",
+  "start_date": "2026-08-01",
+  "end_date": "2026-08-31"
+}

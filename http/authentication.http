@@ -1,0 +1,31 @@
+# Trocado / Cordato — Authentication
+# uv run poe serve   →   uvicorn em 127.0.0.1:8000, hot-reload
+# Swagger UI: http://127.0.0.1:8000/schema/swagger
+#
+# Após sign-up ou sign-in, copie o campo `token` da resposta e cole em @token abaixo.
+
+@host = http://127.0.0.1:8000
+@token = <paste-token-here>
+
+### Sign up — cria conta e devolve sessão → 201 Created
+POST {{host}}/v1/authentication/sign-up
+Content-Type: application/json
+
+{
+  "name": "Ana Silva",
+  "email": "ana@example.com",
+  "password": "senha-segura-123"
+}
+
+### Sign in — valida credenciais e devolve sessão → 200 OK
+POST {{host}}/v1/authentication/sign-in
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "senha-segura-123"
+}
+
+### Sign out — revoga a sessão atual → 204 No Content
+POST {{host}}/v1/authentication/sign-out
+Authorization: Bearer {{token}}

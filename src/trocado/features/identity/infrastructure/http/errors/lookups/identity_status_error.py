@@ -17,9 +17,11 @@ IDENTITY_STATUS_ERROR: dict[type[Exception], int] = {
     InvalidEmailError: HTTPStatus.UNPROCESSABLE_ENTITY,
     WeakPasswordError: HTTPStatus.UNPROCESSABLE_ENTITY,
 }
-"""Identity's domain-error → HTTP-status entries — a pure table (no framework types).
+"""Identity-specific domain-error → HTTP-status entries — a pure table (no framework types).
 
-The identity factory merges this with the core map and builds the unified-envelope handlers **scoped to
-identity's own Router** (per route-module, mirroring its scoped DI). Total over the identity errors reachable
-at the wired boundary, so none surfaces as an unhandled 500.
+Registered scoped to identity's own Router (mirroring its scoped DI). Cross-cutting core errors
+(``InvalidMoneyError``, ``InvalidSessionError``) are handled at the app layer via ``CORE_STATUS_ERROR`` —
+they must not be duplicated here. ``InvalidSessionError`` appears here because identity is where the error
+is *defined* and explicitly tested; the app-layer entry ensures it is also caught from any other feature's
+protected handler.
 """

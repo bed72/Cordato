@@ -6,7 +6,6 @@ from litestar.di import NamedDependency, Provide
 from trocado.core.application.interfaces.clock_interface import ClockInterface
 from trocado.core.application.interfaces.identifier_provider_interface import IdentifierProviderInterface
 from trocado.core.infrastructure.http.errors.handlers.exception_handlers import build_domain_exception_handlers
-from trocado.core.infrastructure.http.errors.lookups.core_status_error import CORE_STATUS_ERROR
 from trocado.features.identity.application.interfaces.password_hasher_interface import PasswordHasherInterface
 from trocado.features.identity.application.interfaces.person_repository_interface import PersonRepositoryInterface
 from trocado.features.identity.application.interfaces.session_repository_interface import SessionRepositoryInterface
@@ -88,5 +87,5 @@ def register_identity_router() -> Router:
             "sign_in_use_case": Provide(provide_sign_in_use_case),
             "sign_out_use_case": Provide(provide_sign_out_use_case),
         },
-        exception_handlers=build_domain_exception_handlers({**CORE_STATUS_ERROR, **IDENTITY_STATUS_ERROR}),
+        exception_handlers=build_domain_exception_handlers(IDENTITY_STATUS_ERROR),
     )

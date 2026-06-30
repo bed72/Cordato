@@ -99,12 +99,23 @@ def build_domain_exception_handlers(
     return {error_type: _domain_handler(status) for error_type, status in status_error.items()}
 
 
-def build_core_exception_handlers() -> dict[int | type[Exception], ExceptionHandler]:
+def build_core_exception_handlers(
+    core_status_error: dict[type[Exception], int],
+) -> dict[int | type[Exception], ExceptionHandler]:
     """Build the cross-cutting handlers registered once at the **app** layer.
 
-    These belong to no feature: ``ValidationException`` → 422 with pt-BR field details, and the ``HTTPException``
-    base framing framework-raised HTTP errors (unknown route 404, 405, …). Litestar resolves the most specific
-    registered type across layers, so a feature router's domain handlers and this validation handler each win for
-    their own exception, and nothing escapes in the framework's default shape.
+    Covers three concerns:
+    - ``ValidationException`` → 422 with pt-BR field details.
+    - ``HTTPException`` base → framework-raised HTTP errors (unknown route 404, 405, …) framed in the envelope.
+    - Core domain errors (``core_status_error``) — e.g. ``InvalidMoneyError``, ``InvalidSessionError`` — that
+      can be raised from any feature's handler. Registering them here means feature routers only declare their
+      own errors, keeping DI and error handling at the same layer of concern.
+
+    Litestar resolves the most specific registered type across layers (feature router → /v1 router → app), so
+    a feature's own domain error wins at the feature level and core errors are caught here.
     """
-    return {HTTPException: _http_handler, ValidationException: _validation_handler}
+    return {
+        HTTPException: _http_handler,
+        ValidationException: _validation_handler,
+        **build_domain_exception_handlers(core_status_error),
+    }

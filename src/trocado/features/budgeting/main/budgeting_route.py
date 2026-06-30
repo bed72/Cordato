@@ -8,7 +8,6 @@ from trocado.core.application.interfaces.identifier_provider_interface import (
     IdentifierProviderInterface,
 )
 from trocado.core.infrastructure.http.errors.handlers.exception_handlers import build_domain_exception_handlers
-from trocado.core.infrastructure.http.errors.lookups.core_status_error import CORE_STATUS_ERROR
 from trocado.features.budgeting.application.interfaces.budget_repository_interface import (
     BudgetRepositoryInterface,
 )
@@ -59,5 +58,5 @@ def register_budgeting_router() -> Router:
             "budget_repository": Provide(provide_budget_repository),
             "create_budget_use_case": Provide(provide_create_budget_use_case),
         },
-        exception_handlers=build_domain_exception_handlers({**CORE_STATUS_ERROR, **BUDGETING_STATUS_ERROR}),
+        exception_handlers=build_domain_exception_handlers(BUDGETING_STATUS_ERROR),
     )

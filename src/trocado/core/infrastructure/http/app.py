@@ -6,8 +6,10 @@ from litestar.openapi.plugins import ScalarRenderPlugin
 from litestar.openapi.spec import Components, SecurityScheme, Tag
 
 from trocado.core.infrastructure.http.errors.handlers.exception_handlers import build_core_exception_handlers
+from trocado.core.infrastructure.http.errors.lookups.core_status_error import CORE_STATUS_ERROR
 from trocado.core.main.core_provider import register_core_providers
 from trocado.features.budgeting.main.budgeting_route import register_budgeting_router
+from trocado.features.expenses.main.expenses_router import register_expenses_router
 from trocado.features.identity.main.identity_provider import register_identity_providers
 from trocado.features.identity.main.identity_route import register_identity_router
 
@@ -44,13 +46,13 @@ def build() -> Litestar:
     api = Router(
         path="/v1",
         dependencies=register_identity_providers(),
-        route_handlers=[register_identity_router(), register_budgeting_router()],
+        route_handlers=[register_identity_router(), register_budgeting_router(), register_expenses_router()],
     )
 
     return Litestar(
         route_handlers=[api],
         dependencies=register_core_providers(),
-        exception_handlers=build_core_exception_handlers(),
+        exception_handlers=build_core_exception_handlers(CORE_STATUS_ERROR),
         openapi_config=OpenAPIConfig(
             path="/docs",
             title="Trocado",
@@ -78,6 +80,7 @@ def build() -> Litestar:
             tags=[
                 Tag(name="Authentication", description="Autenticação — sign-up, sign-in e sign-out."),
                 Tag(name="Budgets", description="Orçamentos individuais — criação e, em breve, consulta e edição."),
+                Tag(name="Expenses", description="Despesas individuais — registro, listagem, edição e remoção."),
             ],
         ),
     )
