@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from datetime import date
 
+from trocado.core.application.interfaces.spend_reader_interface import SpendReaderInterface
 from trocado.features.budgeting.application.data.active_budget_data import ActiveBudgetData
 from trocado.features.budgeting.application.interfaces.budget_repository_interface import (
     BudgetRepositoryInterface,
-)
-from trocado.features.budgeting.application.interfaces.spend_reader_interface import (
-    SpendReaderInterface,
 )
 from trocado.features.budgeting.application.mappers.active_budget_data_mapper import (
     ActiveBudgetDataMapper,

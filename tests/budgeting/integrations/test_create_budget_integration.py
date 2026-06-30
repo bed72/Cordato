@@ -2,13 +2,11 @@ import asyncio
 from datetime import date
 from decimal import Decimal
 
+from trocado.core.application.interfaces.spend_reader_interface import SpendReaderInterface
 from trocado.core.domain.value_objects.money_value_object import MoneyValueObject
 from trocado.core.infrastructure.gateways.clock import Clock
 from trocado.core.infrastructure.gateways.identifier_provider import IdentifierProvider
 from trocado.features.budgeting.application.data.create_budget_data import CreateBudgetData
-from trocado.features.budgeting.application.interfaces.spend_reader_interface import (
-    SpendReaderInterface,
-)
 from trocado.features.budgeting.application.use_cases.create_budget_use_case import (
     CreateBudgetUseCase,
 )

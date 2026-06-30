@@ -18,19 +18,16 @@ from trocado.features.expenses.infrastructure.http.errors.lookups.expenses_statu
 from trocado.features.expenses.infrastructure.repositories.expense_repository import ExpenseRepository
 
 
-def register_expenses_router(expense_repository: ExpenseRepositoryInterface | None = None) -> Router:
+def register_expenses_router() -> Router:
     """Build expenses' web slice: its controllers plus the dependencies **scoped to this feature**.
 
-    Accepts an optional ``expense_repository`` so the composition root can inject a shared instance
-    (required when cross-module adapters like ``PartnerExpenseReader`` must read from the same
-    in-memory store). When omitted, creates its own ``ExpenseRepository`` — the default for
-    standalone test setups. The cross-cutting ports (``clock``, ``identifier``) sit at the app layer
-    and are inherited through Litestar's layered DI.
+    Creates and owns its own ``ExpenseRepository``. The cross-cutting ports (``clock``,
+    ``identifier``) sit at the app layer and are inherited through Litestar's layered DI.
 
     Error framing is scoped to this router: expenses' domain errors are framed here; cross-cutting
     handlers (422, HTTP fallback) stay at the app layer.
     """
-    repository: ExpenseRepositoryInterface = expense_repository or ExpenseRepository()
+    repository: ExpenseRepositoryInterface = ExpenseRepository()
 
     async def provide_expense_repository() -> ExpenseRepositoryInterface:
         return repository
@@ -58,7 +55,7 @@ def register_expenses_router(expense_repository: ExpenseRepositoryInterface | No
     ) -> DeleteExpenseUseCase:
         return DeleteExpenseUseCase(clock=clock, repository=expense_repository)
 
-    return Router(
+    router = Router(
         path="/",
         route_handlers=[ExpenseController],
         dependencies={
@@ -70,3 +67,4 @@ def register_expenses_router(expense_repository: ExpenseRepositoryInterface | No
         },
         exception_handlers=build_domain_exception_handlers(EXPENSES_STATUS_ERROR),
     )
+    return router

@@ -12,10 +12,7 @@ from trocado.features.identity.infrastructure.repositories.person_repository imp
 from trocado.features.identity.infrastructure.repositories.session_repository import SessionRepository
 
 
-def register_identity_providers(
-    person_repository: PersonRepositoryInterface | None = None,
-    session_repository: SessionRepositoryInterface | None = None,
-) -> dict[str, Provide]:
+def register_identity_providers() -> dict[str, Provide]:
     """Build the cross-cutting auth DI providers to register at the /v1 router level.
 
     ``CurrentPersonProvider`` (also registered at /v1) calls ``ValidateSessionUseCase``, which needs
@@ -26,14 +23,9 @@ def register_identity_providers(
     The identity router's use cases inherit the repositories from this /v1-level scope via DI — no direct
     hand-off needed. A fresh call to this function (e.g. inside ``build()``) produces fresh singletons,
     keeping each ``build()`` call fully isolated (test-friendly).
-
-    Accepts optional pre-built repositories so the composition root can share the same in-memory store
-    with cross-module gateways (e.g. ``PersonDirectory``) without creating a split-brain.
     """
-    if person_repository is None:
-        person_repository = PersonRepository()
-    if session_repository is None:
-        session_repository = SessionRepository()
+    person_repository: PersonRepositoryInterface = PersonRepository()
+    session_repository: SessionRepositoryInterface = SessionRepository()
 
     async def provide_person_repository() -> PersonRepositoryInterface:
         return person_repository
@@ -58,9 +50,10 @@ def register_identity_providers(
     ) -> CurrentPersonProvider:
         return CurrentPersonProvider(request, validate_session)
 
-    return {
+    providers = {
         "validate_session": Provide(provide_validate_session),
         "person_repository": Provide(provide_person_repository),
         "session_repository": Provide(provide_session_repository),
         "current_person_provider": Provide(provide_current_person),
     }
+    return providers

@@ -1,9 +1,7 @@
 from datetime import date
 
+from trocado.core.application.interfaces.spend_reader_interface import SpendReaderInterface
 from trocado.core.domain.value_objects.money_value_object import MoneyValueObject
-from trocado.features.budgeting.application.interfaces.spend_reader_interface import (
-    SpendReaderInterface,
-)
 
 
 class FakeSpendReader(SpendReaderInterface):
