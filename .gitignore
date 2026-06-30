@@ -17,3 +17,6 @@ env/
 .env.*
 
 .coverage
+
+# SQLite dev database
+*.db
