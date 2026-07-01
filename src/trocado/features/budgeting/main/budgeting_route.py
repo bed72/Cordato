@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from datetime import date
-from decimal import Decimal
-
 from litestar import Router
 from litestar.di import NamedDependency, Provide
 
@@ -16,36 +13,35 @@ from trocado.core.infrastructure.http.errors.handlers.exception_handlers import 
 from trocado.features.budgeting.application.interfaces.budget_repository_interface import (
     BudgetRepositoryInterface,
 )
+from trocado.features.budgeting.application.interfaces.expense_amount_reader_interface import (
+    ExpenseAmountReaderInterface,
+)
 from trocado.features.budgeting.application.use_cases.create_budget_use_case import CreateBudgetUseCase
 from trocado.features.budgeting.application.use_cases.delete_budget_use_case import DeleteBudgetUseCase
 from trocado.features.budgeting.application.use_cases.get_active_budget_use_case import GetActiveBudgetUseCase
 from trocado.features.budgeting.application.use_cases.list_budgets_use_case import ListBudgetsUseCase
 from trocado.features.budgeting.application.use_cases.update_budget_use_case import UpdateBudgetUseCase
+from trocado.features.budgeting.infrastructure.gateways.expense_amount_reader import ExpenseAmountReader
 from trocado.features.budgeting.infrastructure.http.controllers.budget_controller import BudgetController
 from trocado.features.budgeting.infrastructure.http.errors.lookups.budgeting_status_error import BUDGETING_STATUS_ERROR
 from trocado.features.budgeting.infrastructure.repositories.budget_repository import BudgetRepository
-from trocado.features.expenses.infrastructure.repositories.expense_repository import ExpenseRepository
 
 
 def register_budgeting_router() -> Router:
     """Build budgeting's web slice: its controllers plus the dependencies **scoped to this feature**.
 
-    Creates and owns its own ``BudgetRepository`` and ``ExpenseRepository``. Wraps
-    ``expense_repository.find_in_range`` in a callable and passes it to ``SpendReader`` from core so
-    no feature imports another feature. The cross-cutting ports (``clock``, ``identifier``) sit at
+    Creates and owns its own ``BudgetRepository`` and ``ExpenseAmountReader`` — no feature imports
+    another feature, not even in ``main/``. Wraps ``reader.find_amounts_in_range`` in a callable and
+    passes it to ``SpendReader`` from core. The cross-cutting ports (``clock``, ``identifier``) sit at
     the app layer and are inherited through Litestar's layered DI.
 
     Error framing is scoped to this router: budgeting's domain errors are framed here; cross-cutting
     handlers (422, HTTP fallback) stay at the app layer.
     """
     repository: BudgetRepositoryInterface = BudgetRepository()
-    expense_repository = ExpenseRepository()
+    expense_amount_reader: ExpenseAmountReaderInterface = ExpenseAmountReader()
 
-    async def _fetch_amounts(person_id: str, start: date, end: date) -> list[Decimal]:
-        expenses = await expense_repository.find_in_range(person_id, start, end)
-        return [e.amount.value for e in expenses]
-
-    spend_reader: SpendReaderInterface = SpendReader(_fetch_amounts)
+    spend_reader: SpendReaderInterface = SpendReader(expense_amount_reader.find_amounts_in_range)
 
     async def provide_budget_repository() -> BudgetRepositoryInterface:
         return repository

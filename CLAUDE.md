@@ -121,6 +121,18 @@ Clean Architecture + tactical DDD + Ports & Adapters, modular monolith. Dependen
 - `core/` — shared kernel (same layer structure as a feature)
 - `features/<context>/` — one package per context (`expenses`, `budgeting`, `identity`, `pairing`). **No `shared/`.**
 
+### Feature independence (cross-module isolation, non-negotiable)
+
+**No file of any feature imports from another feature module — no exception, not even `main/`.** The only crossable import surface is `core/`, the shared kernel. This applies to every layer: `domain/`, `application/`, `infrastructure/` (`repositories/`, `gateways/`, `http/`), and the composition root (`main/`).
+
+When a feature needs to **read** data owned by another feature (e.g. `budgeting` needs a person's spend, which lives in `expenses`), it never imports the producer's repository or entity. The consuming module gets its own **local read gateway** instead — a gateway like any other, no special case:
+- **Port:** `application/interfaces/<name>_reader_interface.py` → `<Name>ReaderInterface(ABC)`, same as every other gateway port.
+- **Adapter:** `infrastructure/gateways/<name>_reader.py` → `<Name>Reader(<Name>ReaderInterface)`, duplicating the producer's query/filter logic against its own local storage and returning only types the consumer already owns — never the producer's entity.
+- **Storage rows** for these local gateways (plain field carriers with no invariant or behavior) live one-class-per-file under `infrastructure/gateways/rows/` — the one sanctioned subfolder inside `gateways/` (see below).
+- The **composition root** (`main/`) instantiates the local reader and wires it into the existing cross-feature adapter (e.g. `SpendReader`, `PartnerExpenseReader`) — it never imports the producer feature.
+
+Pre-ORM, this local storage is never populated with the producer's real data — the same isolation gap that already existed when `main/` built its own separate repository instance. Accepted until the ORM lands: the reader then swaps its local dict for a real query against the shared table, without ever reintroducing the cross-feature import.
+
 ### Layers inside each module
 - `domain/` → `entities/`, `value_objects/`, `enums/`, `virtual_objects/`, `errors/` (+ `policies/`, `services/`)
 - `application/` → `interfaces/` (ports, ABC), `data/`, `use_cases/`, `mappers/`, `services/`
@@ -128,7 +140,7 @@ Clean Architecture + tactical DDD + Ports & Adapters, modular monolith. Dependen
 
 **Infrastructure has exactly two buckets:**
 - **`repositories/`** (+ `models/`, `mappers/`) — persistence
-- **`gateways/`** — every other outbound adapter (hasher, clock, identifier, future: email/SMS/events). One file per adapter, flat. **Do not create subfolders per kind.**
+- **`gateways/`** — every other outbound adapter (hasher, clock, identifier, future: email/SMS/events; local cross-feature read gateways). One file per adapter, flat, with a single sanctioned exception: **`gateways/rows/`** holds the plain storage-row dataclasses that back local read gateways (one class per file). **Do not create any other subfolder per kind.**
 
 ### Naming conventions
 

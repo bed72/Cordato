@@ -1,7 +1,10 @@
-## Requirements
+# feature-composition Specification
 
+## Purpose
+Cada feature module do projeto é isolado — nenhum arquivo (domain/, application/, infrastructure/, main/) importa de outro feature module; o único cruzamento sancionado é o shared kernel em core/. Quando um módulo precisa ler dado de outro, ele ganha seu próprio gateway de leitura local (interface ABC + adaptador), nunca um import direto do repositório/entidade produtora.
+## Requirements
 ### Requirement: Zero imports cross-feature fora de main/
-Nenhum arquivo em `gateways/`, `repositories/`, `domain/` ou `application/` de qualquer feature SHALL importar de outro feature module. O único cruzamento de modules permitido é em arquivos dentro de `main/`.
+Nenhum arquivo de qualquer feature module SHALL importar de outro feature module — sem exceção de camada, **incluindo `main/`**. Isso inclui `domain/`, `application/`, `infrastructure/` (`gateways/`, `repositories/`, `http/`) e o composition root de cada feature (`main/`). O único cruzamento tolerado é a importação de `core/`, o shared kernel.
 
 #### Scenario: gateways de pairing não importam de outros features
 - **WHEN** qualquer arquivo em `pairing/infrastructure/gateways/` é lido
@@ -11,8 +14,16 @@ Nenhum arquivo em `gateways/`, `repositories/`, `domain/` ou `application/` de q
 - **WHEN** qualquer arquivo em `budgeting/infrastructure/gateways/` é lido
 - **THEN** nenhum import referencia `trocado.features.expenses`, `trocado.features.pairing` ou `trocado.features.identity`
 
+#### Scenario: main/ de budgeting não importa de outros features
+- **WHEN** `budgeting/main/budgeting_route.py` é lido
+- **THEN** nenhum import referencia `trocado.features.expenses`, `trocado.features.pairing` ou `trocado.features.identity`
+
+#### Scenario: main/ de pairing não importa de outros features
+- **WHEN** `pairing/main/pairing_route.py` é lido
+- **THEN** nenhum import referencia `trocado.features.expenses`, `trocado.features.budgeting` ou `trocado.features.identity`
+
 ### Requirement: SpendReaderInterface e SpendReader residem em core/
-`SpendReaderInterface` é usada por budgeting e pairing — pertence ao kernel compartilhado. `SpendReader` implementa essa interface sem importar de nenhum feature module; recebe um callable cujo conteúdo é fornecido pelo composition root.
+`SpendReaderInterface` SHALL residir em `core/`, por ser usada tanto por budgeting quanto por pairing — pertence ao kernel compartilhado. `SpendReader` SHALL implementar essa interface sem importar de nenhum feature module; recebe um callable cujo conteúdo é fornecido pelo composition root.
 
 #### Scenario: SpendReaderInterface em core
 - **WHEN** o código é lido
@@ -62,3 +73,4 @@ O diretório `core/infrastructure/gateways/` SHALL conter apenas `clock.py`, `id
 - **WHEN** o diretório `core/infrastructure/gateways/` é listado
 - **THEN** contém `clock.py`, `identifier_provider.py`, `spend_reader.py` e `__init__.py`
 - **AND** nenhum outro arquivo está presente
+
