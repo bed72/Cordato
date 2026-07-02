@@ -1,0 +1,77 @@
+# Identidade — domínio
+
+A pessoa é a **âncora** de tudo no sistema: todo orçamento, todo gasto, todo par pendura da identidade
+de alguém. Este documento descreve as regras de domínio de quem essa pessoa é e como ela entra e sai do
+sistema.
+
+---
+
+## A pessoa
+
+Uma pessoa tem um e-mail (único em todo o sistema — não podem existir duas pessoas com o mesmo e-mail
+simultaneamente), um nome e uma senha. Nasce sempre com status **ativa**; o único jeito de se tornar
+**apagada** é passar pelo ciclo de exclusão de conta — não existe um caminho intermediário.
+
+A senha nunca é guardada da forma como foi digitada. É armazenada apenas como um resultado que resiste
+a tentativas automatizadas de adivinhação e que não pode ser revertido de volta ao valor original. Uma
+senha é considerada aceitável apenas se cumprir uma política mínima de robustez — o suficiente para
+dificultar adivinhação, sem exigir requisitos que a pessoa não consiga cumprir de forma razoável.
+
+---
+
+## Entrar no sistema
+
+Cadastrar-se exige um e-mail que ainda não esteja em uso, um nome válido e uma senha que cumpra a
+política mínima. Essas três checagens são independentes entre si — nenhuma depende do resultado da
+outra — mas a unicidade do e-mail é verificada **antes** de qualquer processamento mais custoso sobre a
+senha, já que não faz sentido pagar esse custo para um cadastro que vai ser recusado de qualquer forma.
+
+Autenticar-se prova que uma pessoa é quem diz ser, e abre uma sessão em nome dela — ver o conceito de
+sessão no domínio compartilhado. Encerrar a sessão é uma ação simples e sempre disponível, sem
+pré-condição.
+
+---
+
+## Não vazar a existência de uma conta
+
+Um dos cuidados mais específicos deste contexto: nunca dar a quem está de fora uma forma de descobrir
+se um e-mail está ou não cadastrado. Um erro de "e-mail já em uso" nunca ecoa qual e-mail foi tentado, e
+uma falha de autenticação nunca revela se o problema foi o e-mail (inexistente) ou a senha (errada) —
+ambos os casos parecem idênticos de fora. Isso não é um detalhe cosmético: é o que impede alguém de usar
+o próprio formulário de cadastro ou de login como uma ferramenta de descoberta de contas alheias.
+
+Em contraste, uma regra pública (como o tamanho mínimo de senha) pode ser dita abertamente — não revela
+nada sobre nenhuma pessoa específica.
+
+---
+
+## Apagar a conta
+
+A única operação genuinamente destrutiva e irreversível de todo o sistema começa aqui, ainda que seus
+efeitos se estendam a tudo o que a pessoa possui. Ela só pode acontecer com uma sessão viva **e** a
+confirmação da senha naquele momento — nunca uma das duas provas sozinha.
+
+O que acontece, como uma única operação atômica (tudo ou nada — não existe estado intermediário visível
+entre o início e o fim):
+
+1. a sessão daquela pessoa é invalidada;
+2. a senha informada é conferida contra o que está guardado;
+3. todos os orçamentos e gastos que pertencem à pessoa são removidos de forma definitiva;
+4. o e-mail original é neutralizado — deixa de poder ser usado para entrar no sistema, mas o registro
+   histórico continua identificável para fins de auditoria — e fica livre para ser usado num cadastro
+   novo;
+5. o status da pessoa passa a **apagada**;
+6. se a pessoa estivesse pareada, esse par é desfeito como consequência direta.
+
+Reaproveitar aquele e-mail depois **cria uma pessoa nova e independente** — em nenhuma hipótese isso
+"reabre" ou ressuscita a conta apagada. A conta apagada e a conta nova não têm relação nenhuma entre si
+além de, em algum momento, terem usado o mesmo endereço de e-mail.
+
+---
+
+## O que este contexto deliberadamente não decide
+
+- **Não é dono de dinheiro.** Nenhum orçamento ou gasto mora aqui — eles apenas referenciam a pessoa
+  pelo identificador dela.
+- **Não decide o que acontece com um par.** A dissolução de um par por consequência da exclusão de conta
+  é um efeito, não uma regra que este contexto possui — quem possui essa regra é o pareamento.
