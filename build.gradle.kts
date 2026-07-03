@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.3.21"
 
+    id("com.google.devtools.ksp") version "2.3.9"
     id("org.jooq.jooq-codegen-gradle") version "3.20.5"
 }
 
@@ -13,12 +14,22 @@ repositories {
 
 val jooqVersion = "3.20.5"
 val flywayVersion = "11.1.0"
+val micronautVersion = "4.10.16"
 val testcontainersVersion = "1.20.4"
+val micronautInjectVersion = "4.10.25" // micronaut-core version the platform BOM above resolves to; pins the KSP processor
 
 dependencies {
     implementation("at.favre.lib:bcrypt:0.10.2")
-    implementation("io.insert-koin:koin-core:4.0.0")
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
+
+    // Micronaut compile-time DI only (no HTTP server yet — that is a later change). The platform
+    // BOM pins the inject artifacts; micronaut-inject-kotlin is the KSP annotation processor that
+    // generates the bean definitions from the @Factory wiring in each package's `main/`. The BOM
+    // only governs the `implementation` classpath — the `ksp` configuration doesn't inherit it, so
+    // the processor is pinned to the version the BOM resolves (core != platform version number).
+    implementation(platform("io.micronaut.platform:micronaut-platform:$micronautVersion"))
+    implementation("io.micronaut:micronaut-inject")
+    ksp("io.micronaut:micronaut-inject-kotlin:$micronautInjectVersion")
 
     // Persistence foundation
     implementation("com.zaxxer:HikariCP:6.2.1")
@@ -90,6 +101,14 @@ sourceSets.main {
 }
 
 tasks.named("compileKotlin") {
+    dependsOn(tasks.named("jooqCodegen"))
+}
+
+// KSP compiles the main sources (which include the generated jOOQ classes) to discover the
+// @Factory bean definitions, so it needs the jOOQ codegen to have run first — same ordering
+// compileKotlin already declares above. The KSP task is registered lazily by the plugin, so
+// match it by name rather than resolving it eagerly with tasks.named.
+tasks.matching { it.name == "kspKotlin" }.configureEach {
     dependsOn(tasks.named("jooqCodegen"))
 }
 

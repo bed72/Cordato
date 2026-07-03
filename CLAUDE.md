@@ -163,17 +163,25 @@ token (deleted server-side on revoke) satisfies trivially — a self-contained t
 or very short TTLs to fake the same guarantee. The token/session concept belongs in `core/` (identity's
 README already calls it "domínio compartilhado") once that module exists.
 
-**DI** is Koin, and each domain package owns its own wiring in a `main/` subpackage: one Koin module per
-package — `core/main/CoreModule.kt` (the shared kernel — determinism ports plus persistence) and
-`features/<context>/main/<Context>Module.kt` (e.g. `identity/main/IdentityModule.kt`). Each module wires
-only what its own package owns; a feature module inherits core's bindings rather than re-declaring them.
-The root `com.bed.cordato.main` package holds only `Main.kt`, the entry point, which aggregates every
-module (`modules(coreModule, identityModule, …)`) and starts Koin. DI is deliberately *not* a per-feature
-`infrastructure/di/` concern: a package's `main/` subpackage is the one place its wiring may reach across
-its own layers. `domain/` and `application/` never import Koin or any DI annotation — they stay
-framework-agnostic per the layer table above. (Infrastructure still owns the adapters/config the modules
-wire — e.g. `DatabaseConfiguration` stays in `core/infrastructure/persistence/`; only the Koin wiring
-lives in `main/`.)
+**DI** is Micronaut's compile-time DI (annotation processing via KSP, no reflection), and each domain
+package owns its own wiring in a `main/` subpackage: one `@Factory` class per package —
+`core/main/CoreModule.kt` (the shared kernel — determinism ports plus persistence) and
+`features/<context>/main/<Context>Module.kt` (e.g. `identity/main/IdentityModule.kt`). Each factory
+exposes `@Singleton` methods that construct and return the port types, taking their collaborators as
+method parameters (the `@Factory` method is the single explicit place a pure, unannotated class is
+constructed — Micronaut never discovers `application`/`domain` types by introspection). Each factory
+wires only what its own package owns; a feature factory inherits core's bindings (e.g. the `DSLContext`)
+rather than re-declaring them. The root `com.bed.cordato.main` package holds only `Main.kt`, the entry
+point, which starts one Micronaut `ApplicationContext` (`ApplicationContext.run()`) — the context
+discovers every package's `@Factory` into a single object graph. Micronaut singletons are lazy, so
+`Main` eagerly resolves the `DataSource` bean to force the Flyway migrations to run at boot (fail-fast).
+DI is deliberately *not* a per-feature `infrastructure/di/` concern: a package's `main/` subpackage is
+the one place its wiring may reach across its own layers. `domain/` and `application/` never import
+Micronaut or any DI annotation (`io.micronaut.context.annotation.*`, `jakarta.inject.*`) — they stay
+framework-agnostic per the layer table above, enforced by the Konsist architecture test. (Infrastructure
+still owns the adapters/config the factories wire — e.g. `DatabaseConfiguration` stays in
+`core/infrastructure/persistence/`; only the Micronaut wiring lives in `main/`.) Only
+`micronaut-inject` + the KSP processor are on the classpath — no HTTP server yet.
 
 **Cross-context communication** uses an Anti-Corruption Layer, never a direct import between contexts'
 `domain`/`application`, and never data duplication. Concrete case: `couple`'s combined views need

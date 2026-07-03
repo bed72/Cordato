@@ -66,6 +66,25 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `domain and application never import a DI-framework symbol`() {
+        // DI wiring is confined to each package's `main/` subpackage (and adapters in
+        // `infrastructure/`); the pure layers stay framework-agnostic. This bars both the previous
+        // Koin API and Micronaut's DI annotations (`io.micronaut.context.annotation.*` — e.g.
+        // @Factory/@Bean — and the `jakarta.inject.*` set — @Singleton/@Inject). Only
+        // `infrastructure/` and `main/` may reference these; the package filter below excludes them.
+        val diLibraries = listOf("org.koin", "io.micronaut.context.annotation", "jakarta.inject")
+
+        production
+            .files
+            .filter { it.hasPackage("..domain..") || it.hasPackage("..application..") }
+            .assertFalse { file ->
+                file.hasImport { import ->
+                    diLibraries.any { import.hasNameStartingWith("$it.") }
+                }
+            }
+    }
+
+    @Test
     fun `budget, expense and identity never depend on a sibling context`() {
         val siblings = mapOf(
             "budget" to listOf("expense", "identity", "couple"),
