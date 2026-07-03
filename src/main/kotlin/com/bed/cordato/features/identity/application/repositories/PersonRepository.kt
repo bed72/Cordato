@@ -4,11 +4,19 @@ import com.bed.cordato.features.identity.domain.entities.PersonEntity
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
 /**
- * Driven port for person persistence. [existsByEmail] backs the uniqueness check the
- * use case runs before the expensive password hashing. Implemented in infrastructure.
+ * Driven port for person persistence. [existsByEmail] backs the cheap uniqueness pre-check
+ * the use case runs before the expensive password hashing; it cannot close the concurrent
+ * signup race, so [signUp] is authoritative. Implemented in infrastructure.
  */
 interface PersonRepository {
-    fun save(person: PersonEntity)
+    /**
+     * Persists [person], enforcing e-mail uniqueness at the datastore.
+     *
+     * @return `true` when the row was inserted; `false` when a person with this e-mail
+     *   already exists (the losing side of a uniqueness conflict). A `false` result never
+     *   leaks a datastore exception — it is the same conflict the pre-check reports.
+     */
+    fun signUp(person: PersonEntity): Boolean
 
     fun existsByEmail(email: EmailValueObject): Boolean
 }

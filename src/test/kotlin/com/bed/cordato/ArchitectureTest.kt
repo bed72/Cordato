@@ -49,6 +49,23 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `domain and application never import a persistence library`() {
+        // The layer table keeps jOOQ/JDBC/Hikari/Flyway confined to infrastructure. The
+        // ".infrastructure." rules above don't catch a direct `org.jooq.*` import into an
+        // inner layer, so this guards that leak explicitly.
+        val persistenceLibraries = listOf("org.jooq", "org.postgresql", "com.zaxxer.hikari", "org.flywaydb")
+
+        production
+            .files
+            .filter { it.hasPackage("..domain..") || it.hasPackage("..application..") }
+            .assertFalse { file ->
+                file.hasImport { import ->
+                    persistenceLibraries.any { import.hasNameStartingWith("$it.") }
+                }
+            }
+    }
+
+    @Test
     fun `budget, expense and identity never depend on a sibling context`() {
         val siblings = mapOf(
             "budget" to listOf("expense", "identity", "couple"),

@@ -10,7 +10,7 @@ import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObjec
  * The cost factor is the work parameter that makes automated guessing expensive.
  */
 class PasswordHasherAdapter(private val cost: Int = DEFAULT_COST) : PasswordHasherPort {
-    override fun hash(password: PasswordValueObject): String =
+    override fun invoke(password: PasswordValueObject): String =
         BCrypt.withDefaults().hashToString(cost, password.value.toCharArray())
 
     companion object {

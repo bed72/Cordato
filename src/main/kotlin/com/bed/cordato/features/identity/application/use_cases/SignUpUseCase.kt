@@ -45,11 +45,13 @@ class SignUpUseCase(
         val person = PersonEntity(
             name = name,
             email = email,
-            id = generator.invoke(),
-            hash = hasher.hash(password),
+            id = generator(),
+            hash = hasher(password),
             status = PersonStatusEnum.ACTIVE,
         )
-        repository.save(person)
+        if (!repository.signUp(person)) {
+            return SignUpResult.Failure(SignUpError.EmailAlreadyInUse)
+        }
 
         return SignUpResult.Success(person)
     }

@@ -44,5 +44,10 @@ bin/
 ### Mac OS ###
 .DS_Store
 
+### Environment ###
+# Local secrets/credentials — never commit. The committed template is .env.example.
+.env
+!.env.example
+
 ### Claude Code ###
 .claude/scheduled_tasks.lock

@@ -8,5 +8,5 @@ import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObjec
  * application stay free of any crypto library.
  */
 fun interface PasswordHasherPort {
-    fun hash(password: PasswordValueObject): String
+    operator fun invoke(password: PasswordValueObject): String
 }

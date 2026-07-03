@@ -18,8 +18,8 @@ import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObject
-import com.bed.cordato.features.identity.infrastructure.repositories.InMemoryPersonRepository
 
+import com.bed.cordato.support.FakePersonRepository
 import com.bed.cordato.support.idGeneratorOf
 import com.bed.cordato.support.passwordHasherMock
 
@@ -35,13 +35,13 @@ class SignUpUseCaseTest {
     private fun useCase(
         id: String = "person-1",
         hasher: PasswordHasherPort = passwordHasherMock(),
-        repository: InMemoryPersonRepository = InMemoryPersonRepository(),
+        repository: FakePersonRepository = FakePersonRepository(),
     ) = SignUpUseCase(idGeneratorOf(id), hasher, repository) to hasher
 
     @Test
     fun `successful signup creates an active person stored only as a hash`() {
         val hasher = passwordHasherMock()
-        val repository = InMemoryPersonRepository()
+        val repository = FakePersonRepository()
         val signUp = SignUpUseCase(idGeneratorOf("person-1"), hasher, repository)
 
         val data = signUp(validCommand)
@@ -49,7 +49,7 @@ class SignUpUseCaseTest {
         val success = assertIs<SignUpResult.Success>(data)
         val person = success.person
 
-        verify { hasher.hash(any()) }
+        verify { hasher.invoke(any()) }
         assertEquals("person-1", person.id)
         assertNotEquals("s3cretpw", person.hash)
         assertEquals("bcrypt:s3cretpw", person.hash)
@@ -62,14 +62,14 @@ class SignUpUseCaseTest {
     @Test
     fun `e-mail already in use is rejected without hashing the password`() {
         val hasher = passwordHasherMock()
-        val repository = InMemoryPersonRepository()
+        val repository = FakePersonRepository()
         SignUpUseCase(idGeneratorOf("person-1"), passwordHasherMock(), repository)(validCommand)
 
         val data = SignUpUseCase(idGeneratorOf("person-2"), hasher, repository)(validCommand)
         val failure = assertIs<SignUpResult.Failure>(data)
 
         assertEquals(SignUpError.EmailAlreadyInUse, failure.error)
-        verify(exactly = 0) { hasher.hash(any()) } // uniqueness is checked before the expensive hashing
+        verify(exactly = 0) { hasher.invoke(any()) } // uniqueness is checked before the expensive hashing
     }
 
     @Test
@@ -78,7 +78,7 @@ class SignUpUseCaseTest {
 
         val data = signUp(validCommand.copy(email = "not-an-email"))
 
-        verify(exactly = 0) { hasher.hash(any()) }
+        verify(exactly = 0) { hasher.invoke(any()) }
         assertEquals(SignUpError.InvalidEmail, assertIs<SignUpResult.Failure>(data).error)
     }
 
@@ -97,7 +97,7 @@ class SignUpUseCaseTest {
 
         val data = signUp(validCommand.copy(password = "short"))
 
-        verify(exactly = 0) { hasher.hash(any()) }
+        verify(exactly = 0) { hasher.invoke(any()) }
         assertEquals(
             SignUpError.WeakPassword(PasswordValueObject.MIN_LENGTH),
             assertIs<SignUpResult.Failure>(data).error,

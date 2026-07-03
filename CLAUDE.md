@@ -163,9 +163,17 @@ token (deleted server-side on revoke) satisfies trivially — a self-contained t
 or very short TTLs to fake the same guarantee. The token/session concept belongs in `core/` (identity's
 README already calls it "domínio compartilhado") once that module exists.
 
-**DI** is Koin, wired only at the composition root (infrastructure / entry point). `domain/` and
-`application/` never import Koin or any DI annotation — they stay framework-agnostic per the layer table
-above.
+**DI** is Koin, and each domain package owns its own wiring in a `main/` subpackage: one Koin module per
+package — `core/main/CoreModule.kt` (the shared kernel — determinism ports plus persistence) and
+`features/<context>/main/<Context>Module.kt` (e.g. `identity/main/IdentityModule.kt`). Each module wires
+only what its own package owns; a feature module inherits core's bindings rather than re-declaring them.
+The root `com.bed.cordato.main` package holds only `Main.kt`, the entry point, which aggregates every
+module (`modules(coreModule, identityModule, …)`) and starts Koin. DI is deliberately *not* a per-feature
+`infrastructure/di/` concern: a package's `main/` subpackage is the one place its wiring may reach across
+its own layers. `domain/` and `application/` never import Koin or any DI annotation — they stay
+framework-agnostic per the layer table above. (Infrastructure still owns the adapters/config the modules
+wire — e.g. `DatabaseConfiguration` stays in `core/infrastructure/persistence/`; only the Koin wiring
+lives in `main/`.)
 
 **Cross-context communication** uses an Anti-Corruption Layer, never a direct import between contexts'
 `domain`/`application`, and never data duplication. Concrete case: `couple`'s combined views need

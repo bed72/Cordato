@@ -4,6 +4,9 @@ import io.mockk.every
 import io.mockk.mockk
 
 import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
+import com.bed.cordato.features.identity.application.repositories.PersonRepository
+import com.bed.cordato.features.identity.domain.entities.PersonEntity
+import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
 /**
  * MockK double for [PasswordHasherPort]: stubs a deterministic, recognizable hash
@@ -13,6 +16,23 @@ import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
  * `PasswordValueObject` is an inline `value class`, so at the JVM boundary MockK
  * hands the answer lambda the underlying `String` (which is exactly its `value`).
  */
-fun passwordHasherMock(): PasswordHasherPort = mockk {
-    every { hash(any()) } answers { "bcrypt:${firstArg<String>()}" }
+fun passwordHasherMock(): PasswordHasherPort {
+    val hasher = mockk<PasswordHasherPort>()
+    every { hasher(any()) } answers { "bcrypt:${firstArg<String>()}" }
+    return hasher
+}
+
+/**
+ * Hand-written in-memory [PersonRepository] fake for pure use-case tests — fast, Docker-free,
+ * and keyed by e-mail so uniqueness is cheap to answer. [signUp] honors the port's race-safe
+ * contract (returns `false` when the e-mail is already present); the real durable behavior is
+ * covered separately by the datastore adapter's Testcontainers tests.
+ */
+class FakePersonRepository : PersonRepository {
+    private val byEmail = mutableMapOf<String, PersonEntity>()
+
+    override fun existsByEmail(email: EmailValueObject): Boolean = byEmail.containsKey(email.value)
+
+    override fun signUp(person: PersonEntity): Boolean =
+        byEmail.putIfAbsent(person.email.value, person) == null
 }
