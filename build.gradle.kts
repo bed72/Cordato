@@ -1,8 +1,19 @@
 plugins {
+    application
+
     kotlin("jvm") version "2.3.21"
+    kotlin("plugin.allopen") version "2.3.21"
 
     id("com.google.devtools.ksp") version "2.3.9"
     id("org.jooq.jooq-codegen-gradle") version "3.20.5"
+}
+
+// Micronaut applies AOP by subclassing the target, but Kotlin classes/methods are `final` by
+// default. Opening every type that carries an `@Around`-meta annotation (e.g. `@Validated` on a
+// controller) lets the framework generate its interceptor proxy without each class having to
+// declare `open` by hand. Pure classes with no such annotation (use cases, adapters) stay final.
+allOpen {
+    annotation("io.micronaut.aop.Around")
 }
 
 group = "org.example"
@@ -17,6 +28,8 @@ val flywayVersion = "11.1.0"
 val micronautVersion = "4.10.16"
 val testcontainersVersion = "1.20.4"
 val micronautInjectVersion = "4.10.25" // micronaut-core version the platform BOM above resolves to; pins the KSP processor
+val micronautSerdeVersion = "2.16.2" // micronaut-serde version the platform BOM resolves; pins the serde KSP processor
+val micronautValidationVersion = "4.12.0" // micronaut-validation version the platform BOM resolves; pins the validation KSP processor
 
 dependencies {
     implementation("at.favre.lib:bcrypt:0.10.2")
@@ -30,6 +43,22 @@ dependencies {
     implementation(platform("io.micronaut.platform:micronaut-platform:$micronautVersion"))
     implementation("io.micronaut:micronaut-inject")
     ksp("io.micronaut:micronaut-inject-kotlin:$micronautInjectVersion")
+
+    // HTTP entry layer (driving/inbound): embedded Netty server plus compile-time JSON
+    // (Micronaut Serde, no reflection — @Serdeable bodies are bound via a generated serializer,
+    // consistent with the KSP/no-reflection stance the DI wiring already takes). The platform BOM
+    // versions the `implementation` artifacts; the `ksp` serde processor doesn't inherit the BOM,
+    // so it is pinned to the serde version the BOM resolves (see $micronautSerdeVersion).
+    implementation("io.micronaut:micronaut-http-server-netty")
+    implementation("io.micronaut.serde:micronaut-serde-jackson")
+    ksp("io.micronaut.serde:micronaut-serde-processor:$micronautSerdeVersion")
+
+    // Bean Validation at the HTTP edge (jakarta.validation). Request DTOs carry constraints that
+    // reference the domain value objects' own constants/pattern — one definition, two call sites —
+    // so the edge check can't drift from the domain rule. KSP only (no kapt); the processor doesn't
+    // inherit the BOM, so it is pinned to the version the BOM resolves.
+    implementation("io.micronaut.validation:micronaut-validation")
+    ksp("io.micronaut.validation:micronaut-validation-processor:$micronautValidationVersion")
 
     // Persistence foundation
     implementation("com.zaxxer:HikariCP:6.2.1")
@@ -45,12 +74,24 @@ dependencies {
     testImplementation("io.mockk:mockk:1.14.11")
     testImplementation("com.lemonappdev:konsist:0.17.3")
 
+    // HTTP-layer tests: boot the controller behind a real Netty server + blocking client and
+    // exercise routing/JSON/status. SignUpUseCase is replaced with a MockK @MockBean, so the
+    // lazy DataSource is never realized — these tests need no PostgreSQL.
+    testImplementation("io.micronaut:micronaut-http-client")
+    testImplementation("io.micronaut.test:micronaut-test-junit5")
+
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
     testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
 }
 
 kotlin {
     jvmToolchain(25)
+}
+
+// A runnable entry point now exists (the embedded HTTP server), so `./gradlew run` serves the API.
+// `Main.kt`'s top-level `fun main` compiles to the `MainKt` class in its package.
+application {
+    mainClass = "com.bed.cordato.main.MainKt"
 }
 
 // jOOQ generates type-safe access classes from the Flyway migrations. Using the DDLDatabase
