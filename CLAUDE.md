@@ -194,17 +194,41 @@ router registers routes by scanning for them at compile time, so there is no `@F
 route. It still depends only on the pure use case (the factory-provided bean, constructor-injected), so no
 `application`/`domain` type gets introspected; the exception is scoped to the controller alone.
 
-The rest of the HTTP slice lives in `requests/`, `responses/`, `errors/`, `mappers/`. Request/response
-DTOs are `@Serdeable` data classes. **Validation runs in two places on purpose, but from one definition:**
-the request carries Bean Validation constraints (`@NotBlank`/`@Size`/`@Pattern`) for early, per-field
-`400`s, while the domain value object stays the single, unbypassable authority for the invariant. Every
-edge constraint that mirrors a domain rule *references the value object's own `const`/pattern* (e.g.
-`@Size(max = NameValueObject.MAX_LENGTH)`, `@Pattern(regexp = EmailValueObject.PATTERN)`) — never a copied
-literal — so the two can't drift; the edge is a deliberately-equal-or-stricter guard (it sees the raw
-value, before the value object's trim/lowercase). A field with **no** value object (pure transport: paging,
-filters) is validated *only* at the edge. A failed `@Valid` throws `ConstraintViolationException`, mapped
-by an `ExceptionHandler` to a `400` in the shared `ErrorResponse` shape (the legitimate use of an
-exception handler — constraint violations are genuinely thrown, unlike the domain's sealed result).
+The rest of a feature's HTTP slice lives in `requests/`, `responses/`, `mappers/` (its `errors/` mapper,
+e.g. identity's `SignUpErrorResponseMapper`, maps that context's own domain errors to a status + body).
+Request/response DTOs are `@Serdeable` data classes. **Validation runs in two places on purpose, but from
+one definition:** the request carries Bean Validation constraints (`@NotBlank`/`@Size`/`@Pattern`) for
+early, per-field `400`s, while the domain value object stays the single, unbypassable authority for the
+invariant. Every edge constraint that mirrors a domain rule *references the value object's own
+`const`/pattern* (e.g. `@Size(max = NameValueObject.MAX_LENGTH)`, `@Pattern(regexp =
+EmailValueObject.PATTERN)`) — never a copied literal — so the two can't drift; the edge is a
+deliberately-equal-or-stricter guard (it sees the raw value, before the value object's trim/lowercase). A
+field with **no** value object (pure transport: paging, filters) is validated *only* at the edge.
+
+**The HTTP error contract is cross-cutting, so it lives in `core/infrastructure/http/`, not in any
+feature**, split by kind the same way a feature's HTTP slice is: the shared response DTOs —
+`ErrorResponse(code, message, errors)` with an optional `errors: List<FieldErrorResponse>` (each `field` +
+`message`) that stays empty for scalar failures — plus the shared response builders that shape that body
+at a status (`badRequest` for the edge/malformed `400`, `unprocessable` for the domain-rejection `422`,
+`internalError` for the unexpected `500` — new statuses slot in the same way) live in
+`core/infrastructure/http/responses/`, so nothing constructs the body inline; the generic
+`ExceptionHandler`s that produce that body live in `core/infrastructure/http/errors/handlers/`.
+Those handlers are the *same* annotation-bearing exception as
+the controllers: Micronaut discovers each `ExceptionHandler` by exception type (`@Singleton`/`@Produces`,
+`@Replaces` over a framework default), so there is no `@Factory` way to declare them and `CoreModule` never
+wires them; `ErrorResponse`/`FieldError` are plain `@Serdeable` DTOs. Every HTTP failure path exits in this
+one shape: a failed `@Valid` throws `ConstraintViolationException` → `400` with **one `FieldErrorResponse`
+per violated field** (never concatenated; `field` is the property path's final node, so the internal
+`method.arg` prefix never leaks); a body that can't be read — invalid JSON (`JsonSyntaxException`), a shape
+that fails deserialization before validation (`ConversionErrorException`), or an absent required body
+(`UnsatisfiedRouteException`) — maps to a scalar `400` (`MALFORMED_REQUEST`); and any otherwise-unhandled
+`Throwable` maps to a neutral `500` (`INTERNAL_ERROR`) whose detail is **logged only, never serialized**,
+honouring the non-leak invariant. A domain rejection stays **fail-fast**: the feature's error mapper emits
+a single scalar `422` via core's shared `unprocessable` builder — the builder owns the *shape*, the mapper
+owns the *policy* (which error → which code/message). Identity's `EmailAlreadyInUse` is never turned into a
+`FieldErrorResponse(field = "email")`, which would reintroduce the account-discovery oracle. Constraint
+violations, malformed bodies, and internal failures are genuinely *thrown*, unlike the domain's sealed
+result, which is branched over.
 
 **Cross-context communication** uses an Anti-Corruption Layer, never a direct import between contexts'
 `domain`/`application`, and never data duplication. Concrete case: `couple`'s combined views need

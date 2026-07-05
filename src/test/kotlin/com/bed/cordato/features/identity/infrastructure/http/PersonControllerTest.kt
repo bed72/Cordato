@@ -34,6 +34,8 @@ import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObject
 
+import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 /**
@@ -104,10 +106,26 @@ class PersonControllerTest {
     }
 
     @Test
-    fun `missing required field is rejected with 400 without invoking the use case`() {
+    fun `missing required field is rejected with 400 in the shared shape without invoking the use case`() {
         val exception = postSignUp(mapOf("name" to "Alice", "email" to "alice@example.com")) // no password
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        // Missing field fails deserialization before Bean Validation, so it is a scalar malformed-body 400.
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        assertEquals("MALFORMED_REQUEST", body.code)
+        assertTrue(body.errors.isEmpty())
+        verify(exactly = 0) { useCase(any()) }
+    }
+
+    @Test
+    fun `multiple invalid fields are each reported in errors without invoking the use case`() {
+        val exception = postSignUp(mapOf("name" to "", "email" to "not-an-email", "password" to "x"))
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        assertEquals("INVALID_REQUEST", body.code)
+        // One item per violated field — not a single concatenated message.
+        assertEquals(setOf("name", "email", "password"), body.errors.map { it.field }.toSet())
         verify(exactly = 0) { useCase(any()) }
     }
 
@@ -160,7 +178,7 @@ class PersonControllerTest {
     }
 
     @Test
-    fun `non-JSON body is rejected with 400 without invoking the use case`() {
+    fun `non-JSON body is rejected with 400 in the shared shape without invoking the use case`() {
         val exception = assertThrows {
             client.toBlocking().exchange(
                 HttpRequest.POST("/sign-up", "not-json").contentType(MediaType.APPLICATION_JSON),
@@ -169,6 +187,25 @@ class PersonControllerTest {
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        assertEquals("MALFORMED_REQUEST", body.code)
+        assertTrue(body.errors.isEmpty())
+        verify(exactly = 0) { useCase(any()) }
+    }
+
+    @Test
+    fun `empty body is rejected with 400 in the shared shape without invoking the use case`() {
+        val exception = assertThrows {
+            client.toBlocking().exchange(
+                HttpRequest.POST("/sign-up", "").contentType(MediaType.APPLICATION_JSON),
+                String::class.java,
+            )
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        assertEquals("MALFORMED_REQUEST", body.code)
+        assertTrue(body.errors.isEmpty())
         verify(exactly = 0) { useCase(any()) }
     }
 
