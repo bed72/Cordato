@@ -2,6 +2,8 @@ package com.bed.cordato.core.infrastructure.http.responses
 
 import io.micronaut.serde.annotation.Serdeable
 
+import io.swagger.v3.oas.annotations.media.Schema
+
 /**
  * The single, shared error body used for every HTTP failure across every bounded context — one shape
  * for all rejections so the body structure itself is never a tell. Being cross-cutting (no context
@@ -14,8 +16,15 @@ import io.micronaut.serde.annotation.Serdeable
  * keep everything in [message]. It is additive: an empty list degrades to the plain `code`/`message` body.
  */
 @Serdeable
+@Schema(description = "Corpo de erro compartilhado por toda falha HTTP. A mesma forma para toda rejeição.")
 data class ErrorResponse(
+    @field:Schema(description = "Token estável, legível por máquina, que identifica a falha.", example = "INVALID_REQUEST")
     val code: String,
+    @field:Schema(
+        description = "Mensagem legível e localizável. Genérica em casos sensíveis a vazamento.",
+        example = "A requisição contém campos inválidos.",
+    )
     val message: String,
+    @field:Schema(description = "Detalhamento por campo (validação de borda). Vazio nas falhas escalares.")
     val errors: List<FieldErrorResponse> = emptyList(),
 )

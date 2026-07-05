@@ -76,6 +76,13 @@ class PersonControllerTest {
         client.toBlocking().exchange(HttpRequest.POST("/sign-up", body), String::class.java)
     }
 
+    private fun postSignUp(body: Any, acceptLanguage: String): HttpClientResponseException = assertThrows {
+        client.toBlocking().exchange(
+            HttpRequest.POST("/sign-up", body).header("Accept-Language", acceptLanguage),
+            String::class.java,
+        )
+    }
+
     private inline fun assertThrows(block: () -> Unit): HttpClientResponseException =
         try {
             block()
@@ -256,6 +263,35 @@ class PersonControllerTest {
         assertFalse(body.contains("alice@example.com"), "leaked the attempted e-mail: $body")
         assertFalse(body.contains("cadastrado"), "confirmed the e-mail is registered: $body")
         assertFalse(body.contains("em uso"), "confirmed the e-mail is in use: $body")
+    }
+
+    // i18n: the message text is resolved by key from the bundle. Without a bundle for the requested
+    // locale (only pt-BR exists), resolution falls back to the pt-BR default — it never fails the
+    // request. The domain-error path (mapper via LocalizedMessageSource) and the edge-validation path
+    // (Bean Validation interpolator) both resolve against the same bundle, so both fall back.
+
+    @Test
+    fun `unknown Accept-Language falls back to the pt-BR message on a domain error`() {
+        every { useCase(any()) } returns SignUpResult.Failure(SignUpError.InvalidName)
+
+        val exception = postSignUp(validBody, acceptLanguage = "fr-FR")
+
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
+        val body = exception.response.getBody(String::class.java).get()
+        assertTrue(body.contains("INVALID_NAME"), body)
+        assertTrue(body.contains("O nome informado é inválido."), body)
+    }
+
+    @Test
+    fun `unknown Accept-Language falls back to the pt-BR message on edge validation`() {
+        val exception = postSignUp(validBody + ("name" to ""), acceptLanguage = "fr-FR")
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        assertEquals("INVALID_REQUEST", body.code)
+        assertEquals("A requisição contém campos inválidos.", body.message)
+        assertTrue(body.errors.any { it.field == "name" && it.message == "O nome é obrigatório." }, "$body")
+        verify(exactly = 0) { useCase(any()) }
     }
 }
 

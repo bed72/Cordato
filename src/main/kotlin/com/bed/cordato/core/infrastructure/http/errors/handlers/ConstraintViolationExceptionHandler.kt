@@ -4,6 +4,7 @@ import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.Produces
 import io.micronaut.context.annotation.Replaces
+import io.micronaut.context.LocalizedMessageSource
 import io.micronaut.http.server.exceptions.ExceptionHandler
 import io.micronaut.validation.exceptions.ConstraintExceptionHandler
 
@@ -13,6 +14,7 @@ import jakarta.validation.ConstraintViolationException
 import com.bed.cordato.core.infrastructure.http.responses.FieldErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.badRequest
+import com.bed.cordato.core.infrastructure.i18n.resolve
 
 /**
  * Renders a failed request-body validation as a `400` in the shared [ErrorResponse] shape, replacing
@@ -24,13 +26,16 @@ import com.bed.cordato.core.infrastructure.http.responses.badRequest
  * Living in the shared kernel (`core`), it knows nothing of any context: it only speaks
  * `jakarta.validation`. Each violation becomes one [FieldErrorResponse] — [FieldErrorResponse.field] is the request
  * field (the final node of the validation path, so the internal `method.arg` prefix never leaks) and
- * [FieldErrorResponse.message] is the constraint's own curated text (no raw pattern). Violations are reported
- * one-per-field instead of concatenated, so a multi-field failure tells the client exactly what failed.
+ * [FieldErrorResponse.message] is the constraint's own curated text (no raw pattern) — already localized by
+ * the validator, which resolves each constraint's `{key}` template against the same shared bundle. Only the
+ * scalar summary [message] is resolved here, by key, from the request-scoped [LocalizedMessageSource].
+ * Violations are reported one-per-field instead of concatenated, so a multi-field failure tells the client
+ * exactly what failed.
  */
 @Produces
 @Singleton
 @Replaces(ConstraintExceptionHandler::class)
-class ConstraintViolationExceptionHandler :
+class ConstraintViolationExceptionHandler(private val messages: LocalizedMessageSource) :
     ExceptionHandler<ConstraintViolationException, HttpResponse<ErrorResponse>> {
 
     override fun handle(
@@ -39,11 +44,11 @@ class ConstraintViolationExceptionHandler :
     ): HttpResponse<ErrorResponse> {
         val errors = exception.constraintViolations.map { violation ->
             FieldErrorResponse(
-                field = violation.propertyPath.lastOrNull()?.name.orEmpty(),
                 message = violation.message,
+                field = violation.propertyPath.lastOrNull()?.name.orEmpty(),
             )
         }
 
-        return badRequest("INVALID_REQUEST", "A requisição contém campos inválidos.", errors)
+        return badRequest("INVALID_REQUEST", messages.resolve("error.validation.message"), errors)
     }
 }

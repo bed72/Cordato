@@ -2,6 +2,8 @@ package com.bed.cordato.features.identity.infrastructure.http.requests
 
 import io.micronaut.serde.annotation.Serdeable
 
+import io.swagger.v3.oas.annotations.media.Schema
+
 import jakarta.validation.constraints.Size
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.NotBlank
@@ -20,17 +22,37 @@ import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObjec
  *
  * `password` has no `@NotBlank`: the domain does not trim passwords, so an all-whitespace password of
  * sufficient length is valid — only its minimum length is enforced.
+ *
+ * Each constraint's `message` is a `{key}` into the shared message bundle, not inline text: the
+ * validator's interpolator resolves the key against the same `MessageSource` `core` exposes and
+ * re-interpolates the nested constraint placeholders (`{max}`, `{min}`) — one origin for every response
+ * text, localizable per `Accept-Language`. The `regexp`/`max`/`min` bounds still reference the value
+ * objects' own definitions ([NameValueObject.MAX_LENGTH], [EmailValueObject.PATTERN],
+ * [PasswordValueObject.MIN_LENGTH]) so the edge can't drift from the domain rule; only the text moved.
  */
 @Serdeable
+@Schema(description = "Dados de cadastro de uma nova pessoa.")
 data class SignUpRequest(
-    @field:NotBlank(message = "O nome é obrigatório.")
-    @field:Size(max = NameValueObject.MAX_LENGTH, message = "O nome deve ter no máximo {max} caracteres.")
+    @field:Schema(
+        description = "Nome da pessoa. É aparado (trim) e não pode exceder o comprimento máximo.",
+        example = "Alice",
+    )
+    @field:NotBlank(message = "{signup.request.name.notBlank}")
+    @field:Size(max = NameValueObject.MAX_LENGTH, message = "{signup.request.name.maxSize}")
     val name: String,
 
-    @field:NotBlank(message = "O e-mail é obrigatório.")
-    @field:Pattern(regexp = EmailValueObject.PATTERN, message = "O e-mail informado é inválido.")
+    @field:Schema(
+        description = "E-mail da pessoa. Normalizado (trim + lowercase); deve ser um endereço válido.",
+        example = "alice@example.com",
+    )
+    @field:NotBlank(message = "{signup.request.email.notBlank}")
+    @field:Pattern(regexp = EmailValueObject.PATTERN, message = "{signup.request.email.pattern}")
     val email: String,
 
-    @field:Size(min = PasswordValueObject.MIN_LENGTH, message = "A senha deve ter ao menos {min} caracteres.")
+    @field:Schema(
+        description = "Senha em texto puro; mínimo de 8 caracteres. Não é aparada — espaços contam.",
+        example = "s3cretpw",
+    )
+    @field:Size(min = PasswordValueObject.MIN_LENGTH, message = "{signup.request.password.minSize}")
     val password: String,
 )

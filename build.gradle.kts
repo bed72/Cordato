@@ -30,6 +30,7 @@ val testcontainersVersion = "1.20.4"
 val micronautInjectVersion = "4.10.25" // micronaut-core version the platform BOM above resolves to; pins the KSP processor
 val micronautSerdeVersion = "2.16.2" // micronaut-serde version the platform BOM resolves; pins the serde KSP processor
 val micronautValidationVersion = "4.12.0" // micronaut-validation version the platform BOM resolves; pins the validation KSP processor
+val micronautOpenapiVersion = "6.20.0" // micronaut-openapi version the platform BOM resolves; pins the openapi KSP processor
 
 dependencies {
     implementation("at.favre.lib:bcrypt:0.10.2")
@@ -60,6 +61,15 @@ dependencies {
     implementation("io.micronaut.validation:micronaut-validation")
     ksp("io.micronaut.validation:micronaut-validation-processor:$micronautValidationVersion")
 
+    // OpenAPI documentation generated at compile-time (KSP, no runtime reflection — same stance as
+    // Serde/validation/DI). The processor derives an OpenAPI document from the @Controller routes and
+    // the io.swagger.v3.oas.annotations, emitting it plus the Swagger UI under META-INF/swagger at
+    // build time. The annotations are compileOnly (they carry no runtime behaviour); swagger-annotations
+    // comes transitively. Like the other processors, the `ksp` config doesn't inherit the BOM, so it is
+    // pinned to the version the BOM resolves (see $micronautOpenapiVersion).
+    compileOnly("io.micronaut.openapi:micronaut-openapi-annotations:$micronautOpenapiVersion")
+    ksp("io.micronaut.openapi:micronaut-openapi:$micronautOpenapiVersion")
+
     // Persistence foundation
     implementation("com.zaxxer:HikariCP:6.2.1")
     implementation("org.jooq:jooq:$jooqVersion")
@@ -86,6 +96,13 @@ dependencies {
 
 kotlin {
     jvmToolchain(25)
+}
+
+// Tell the micronaut-openapi processor to also render the Swagger UI (into
+// META-INF/swagger/views/swagger-ui) alongside the generated spec. Passed as a KSP processor argument
+// rather than an `openapi.properties` file so the whole OpenAPI config stays in the build script.
+ksp {
+    arg("micronaut.openapi.views.spec", "swagger-ui.enabled=true")
 }
 
 // A runnable entry point now exists (the embedded HTTP server), so `./gradlew run` serves the API.

@@ -1,6 +1,7 @@
 package com.bed.cordato.core.infrastructure.http.errors.handlers
 
 import io.mockk.mockk
+import io.mockk.every
 
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -9,14 +10,21 @@ import kotlin.test.assertEquals
 
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
+import io.micronaut.context.LocalizedMessageSource
 
 /**
  * Unit test for the catch-all [UnexpectedFailureExceptionHandler]: any throwable becomes a neutral `500`
- * whose body never carries the exception's message or any internal detail — the non-leak invariant.
+ * whose body never carries the exception's message or any internal detail — the non-leak invariant. The
+ * generic message is resolved from a stubbed [LocalizedMessageSource].
  */
 class UnexpectedFailureExceptionHandlerTest {
 
-    private val handler = UnexpectedFailureExceptionHandler()
+    private val messages = mockk<LocalizedMessageSource> {
+        every { getMessageOrDefault("error.internal.message", any(), any<Map<String, Any>>()) } returns
+            "Ocorreu um erro inesperado. Tente novamente mais tarde."
+    }
+
+    private val handler = UnexpectedFailureExceptionHandler(messages)
 
     @Test
     fun `any throwable maps to a neutral 500 that leaks no internal detail`() {

@@ -8,12 +8,14 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 
 import io.micronaut.context.annotation.Factory
+import io.micronaut.context.MessageSource
+import io.micronaut.context.i18n.ResourceBundleMessageSource
 
 import org.flywaydb.core.Flyway
 
-import org.jooq.DSLContext
-import org.jooq.SQLDialect
 import org.jooq.impl.DSL
+import org.jooq.SQLDialect
+import org.jooq.DSLContext
 
 import com.bed.cordato.core.application.ports.ClockPort
 import com.bed.cordato.core.application.ports.IdGeneratorPort
@@ -44,6 +46,20 @@ class CoreModule {
     @Singleton
     fun idGenerator(): IdGeneratorPort = IdGeneratorAdapter()
 
+    /**
+     * The shared message bundle every HTTP response text is resolved from — the i18n counterpart of
+     * core's cross-cutting error contract. `i18n.messages` maps to `i18n/messages.properties` on the
+     * classpath (pt-BR default); a `LocalizedMessageSource` (request-scoped, `Accept-Language`-aware)
+     * is layered on top of this bean by micronaut-http-server, and the Bean Validation interpolator
+     * resolves its `{key}` message templates against it too. Kept here rather than in a dedicated
+     * factory to honour the "one `@Factory` per package" wiring convention.
+     */
+    @Singleton
+    fun messageSource(): MessageSource = ResourceBundleMessageSource("i18n.messages")
+
+    @Singleton
+    fun dslContext(dataSource: DataSource): DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)
+
     @Singleton
     fun dataSource(): DataSource {
         val config = DatabaseConfiguration.fromEnv()
@@ -56,9 +72,8 @@ class CoreModule {
             },
         )
         Flyway.configure().dataSource(dataSource).load().migrate()
+
         return dataSource
     }
 
-    @Singleton
-    fun dslContext(dataSource: DataSource): DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)
 }

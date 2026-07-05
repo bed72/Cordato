@@ -9,6 +9,7 @@ import kotlin.test.assertEquals
 
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpStatus
+import io.micronaut.context.LocalizedMessageSource
 
 import jakarta.validation.Path
 import jakarta.validation.ConstraintViolation
@@ -21,11 +22,17 @@ import com.bed.cordato.core.infrastructure.http.responses.FieldErrorResponse
  * Unit test for the shared [ConstraintViolationExceptionHandler]: drives it with mocked
  * [ConstraintViolation]s (no server, no real validator) to pin the mapping — one [FieldErrorResponse] per
  * violation, [FieldErrorResponse.field] taken from the *final* node of the property path (never the internal
- * `method.arg` prefix), and no concatenation across fields.
+ * `method.arg` prefix), and no concatenation across fields. The scalar summary is resolved from a stubbed
+ * [LocalizedMessageSource], so the assertions here stay about the mapping shape, not the bundle content.
  */
 class ConstraintViolationExceptionHandlerTest {
 
-    private val handler = ConstraintViolationExceptionHandler()
+    private val messages = mockk<LocalizedMessageSource> {
+        every { getMessageOrDefault("error.validation.message", any(), any<Map<String, Any>>()) } returns
+            "A requisição contém campos inválidos."
+    }
+
+    private val handler = ConstraintViolationExceptionHandler(messages)
 
     private fun node(name: String): Path.Node = mockk { every { this@mockk.name } returns name }
 

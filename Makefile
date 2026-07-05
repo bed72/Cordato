@@ -48,6 +48,15 @@ test-class: ## Run a single test class (CLASS=<fqcn or wildcard>)
 check: ## Run the full verification suite (tests + Konsist architecture checks)
 	$(GRADLE) check
 
+## ─── Run ───────────────────────────────────────────────────────────────────
+
+# Boots the embedded HTTP server. `Main` migrates the DB before opening the port, so the local
+# PostgreSQL must be up — `db-up` is a prerequisite here so `make run` is one command. Once it prints
+# "Cordato started on http://localhost:8080", the Swagger UI is at /swagger-ui/index.html.
+.PHONY: run
+run: db-up ## Start the app (brings up Postgres, then serves on http://localhost:8080)
+	$(GRADLE) run
+
 ## ─── Local database (Docker) ─────────────────────────────────────────────
 
 # Local dev runs against PostgreSQL from compose.yml. Docker must be running.
