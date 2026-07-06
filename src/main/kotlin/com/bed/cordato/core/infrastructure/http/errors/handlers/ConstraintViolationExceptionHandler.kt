@@ -13,7 +13,7 @@ import jakarta.validation.ConstraintViolationException
 import com.bed.cordato.core.infrastructure.http.responses.FieldErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.badRequest
-import com.bed.cordato.core.application.ports.MessageResolverPort
+import com.bed.cordato.core.application.ports.MessagePort
 
 /**
  * Renders a failed request-body validation as a `400` in the shared [ErrorResponse] shape, replacing
@@ -27,14 +27,14 @@ import com.bed.cordato.core.application.ports.MessageResolverPort
  * field (the final node of the validation path, so the internal `method.arg` prefix never leaks) and
  * [FieldErrorResponse.message] is the constraint's own curated text (no raw pattern) — already localized by
  * the validator, which resolves each constraint's `{key}` template against the same shared bundle. Only the
- * scalar summary [message] is resolved here, by key, through core's [MessageResolverPort].
+ * scalar summary [message] is resolved here, by key, through core's [MessagePort].
  * Violations are reported one-per-field instead of concatenated, so a multi-field failure tells the client
  * exactly what failed.
  */
 @Produces
 @Singleton
 @Replaces(ConstraintExceptionHandler::class)
-class ConstraintViolationExceptionHandler(private val messages: MessageResolverPort) :
+class ConstraintViolationExceptionHandler(private val messages: MessagePort) :
     ExceptionHandler<ConstraintViolationException, HttpResponse<ErrorResponse>> {
 
     override fun handle(

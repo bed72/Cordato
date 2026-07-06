@@ -23,8 +23,8 @@ import com.bed.cordato.core.application.ports.IdGeneratorPort
 import com.bed.cordato.core.infrastructure.adapters.ClockAdapter
 import com.bed.cordato.core.infrastructure.adapters.IdGeneratorAdapter
 import com.bed.cordato.core.infrastructure.persistence.configurations.DatabaseConfiguration
-import com.bed.cordato.core.application.ports.MessageResolverPort
-import com.bed.cordato.core.infrastructure.adapters.MessageResolverResolver
+import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.infrastructure.adapters.Message
 
 /**
  * Core's DI factory — the shared kernel every bounded context inherits: determinism ports
@@ -61,12 +61,12 @@ class CoreFactory {
     fun messageSource(): MessageSource = ResourceBundleMessageSource("i18n.messages")
 
     /**
-     * Core's own [MessageResolverPort] over Micronaut's request-scoped [LocalizedMessageSource] — the single
+     * Core's own [MessagePort] over Micronaut's request-scoped [LocalizedMessageSource] — the single
      * place the framework i18n type is named, so every HTTP call site downstream depends on our contract.
      * The injected source is request-aware (proxied per `Accept-Language`), so a plain singleton suffices.
      */
     @Singleton
-    fun messageResolver(messages: LocalizedMessageSource): MessageResolverPort = MessageResolverResolver(messages)
+    fun messageResolver(messages: LocalizedMessageSource): MessagePort = Message(messages)
 
     @Singleton
     fun dslContext(dataSource: DataSource): DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)

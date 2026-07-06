@@ -11,16 +11,16 @@ import kotlin.test.assertEquals
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
 
-import com.bed.cordato.core.application.ports.MessageResolverPort
+import com.bed.cordato.core.application.ports.MessagePort
 
 /**
  * Unit test for the catch-all [UnexpectedFailureExceptionHandler]: any throwable becomes a neutral `500`
  * whose body never carries the exception's message or any internal detail — the non-leak invariant. The
- * generic message is resolved from a stubbed [MessageResolverPort].
+ * generic message is resolved from a stubbed [MessagePort].
  */
 class UnexpectedFailureExceptionHandlerTest {
 
-    private val messages = mockk<MessageResolverPort> {
+    private val messages = mockk<MessagePort> {
         every { this@mockk("error.internal.message", any<Map<String, Any>>()) } returns
             "Ocorreu um erro inesperado. Tente novamente mais tarde."
     }

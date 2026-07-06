@@ -11,7 +11,7 @@ import io.micronaut.http.server.exceptions.ExceptionHandler
 
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.internalError
-import com.bed.cordato.core.application.ports.MessageResolverPort
+import com.bed.cordato.core.application.ports.MessagePort
 
 /**
  * The catch-all `500`: any exception no more-specific handler (nor a controller) dealt with. Because
@@ -19,14 +19,14 @@ import com.bed.cordato.core.application.ports.MessageResolverPort
  * unexpected failures — validation, malformed body and domain rejection are all handled upstream.
  *
  * The body is fixed and neutral: a stable code and a generic message resolved by key through core's
- * [MessageResolverPort], with no [ErrorResponse.errors]. The exception itself — message,
+ * [MessagePort], with no [ErrorResponse.errors]. The exception itself — message,
  * stacktrace, any SQL/path/type detail — is written **only** to the server log, never serialized,
  * honouring the system's non-leak invariant (an error response must not become an oracle): only the
  * generic bundle text reaches the client. The operator gets the detail; the client gets nothing exploitable.
  */
 @Produces
 @Singleton
-class UnexpectedFailureExceptionHandler(private val messages: MessageResolverPort) :
+class UnexpectedFailureExceptionHandler(private val messages: MessagePort) :
     ExceptionHandler<Throwable, HttpResponse<ErrorResponse>> {
 
     private val logger = LoggerFactory.getLogger(UnexpectedFailureExceptionHandler::class.java)

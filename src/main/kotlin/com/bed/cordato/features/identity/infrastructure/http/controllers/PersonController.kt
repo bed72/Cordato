@@ -17,7 +17,7 @@ import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.Pe
 import com.bed.cordato.features.identity.infrastructure.http.mappers.toCommand
 import com.bed.cordato.features.identity.infrastructure.http.mappers.toResponse
 import com.bed.cordato.features.identity.infrastructure.http.requests.SignUpRequest
-import com.bed.cordato.core.application.ports.MessageResolverPort
+import com.bed.cordato.core.application.ports.MessagePort
 
 /**
  * Identity's driving (primary/inbound) HTTP adapter. This is the one infrastructure type that
@@ -34,7 +34,7 @@ import com.bed.cordato.core.application.ports.MessageResolverPort
  * body to a command, runs the use case, and branches over the sealed [SignUpResult]. Because the domain
  * never throws, there is nothing more to catch — success becomes `201 Created`, and each domain error is
  * mapped to its status and neutral body by [toResponse], with the message localized via the injected
- * [MessageResolverPort].
+ * [MessagePort].
  *
  * The OpenAPI documentation lives on the implemented [com.bed.cordato.features.identity.infrastructure.http.controllers.docs.PersonControllerDoc] interface, not here: Micronaut
  * inherits the interface's annotation metadata onto this method, so the controller keeps only routing
@@ -44,7 +44,7 @@ import com.bed.cordato.core.application.ports.MessageResolverPort
 @Controller
 class PersonController(
     private val signUpUseCase: SignUpUseCase,
-    private val messages: MessageResolverPort,
+    private val messages: MessagePort,
 ) : PersonControllerDoc {
 
     @Post("/sign-up")

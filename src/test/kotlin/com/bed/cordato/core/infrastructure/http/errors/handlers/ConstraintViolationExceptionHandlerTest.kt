@@ -15,7 +15,7 @@ import jakarta.validation.ConstraintViolation
 import jakarta.validation.ConstraintViolationException
 
 import com.bed.cordato.core.infrastructure.http.responses.FieldErrorResponse
-import com.bed.cordato.core.application.ports.MessageResolverPort
+import com.bed.cordato.core.application.ports.MessagePort
 
 
 /**
@@ -23,11 +23,11 @@ import com.bed.cordato.core.application.ports.MessageResolverPort
  * [ConstraintViolation]s (no server, no real validator) to pin the mapping — one [FieldErrorResponse] per
  * violation, [FieldErrorResponse.field] taken from the *final* node of the property path (never the internal
  * `method.arg` prefix), and no concatenation across fields. The scalar summary is resolved from a stubbed
- * [MessageResolverPort], so the assertions here stay about the mapping shape, not the bundle content.
+ * [MessagePort], so the assertions here stay about the mapping shape, not the bundle content.
  */
 class ConstraintViolationExceptionHandlerTest {
 
-    private val messages = mockk<MessageResolverPort> {
+    private val messages = mockk<MessagePort> {
         every { this@mockk("error.validation.message", any<Map<String, Any>>()) } returns
             "A requisição contém campos inválidos."
     }

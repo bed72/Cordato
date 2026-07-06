@@ -18,7 +18,7 @@ import io.micronaut.core.convert.exceptions.ConversionErrorException
 
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.badRequest
-import com.bed.cordato.core.application.ports.MessageResolverPort
+import com.bed.cordato.core.application.ports.MessagePort
 
 /**
  * The `400` for a request whose body can't even be read into a command: it never reaches the domain, so
@@ -28,14 +28,14 @@ import com.bed.cordato.core.application.ports.MessageResolverPort
  * shape (missing/mistyped field, so deserialization fails before Bean Validation), and a required body
  * that is absent — so each replaces its own Micronaut default (which would otherwise emit the
  * `_embedded.errors` body) with the same generic, non-leaking `400`. The message is resolved by key through
- * core's [MessageResolverPort]; the `MALFORMED_REQUEST` code stays the inline contract.
+ * core's [MessagePort]; the `MALFORMED_REQUEST` code stays the inline contract.
  */
 
 /** Body present but not valid JSON (parse failure) → `400`, replacing Micronaut's [JsonExceptionHandler]. */
 @Produces
 @Singleton
 @Replaces(JsonExceptionHandler::class)
-class JsonSyntaxExceptionHandler(private val messages: MessageResolverPort) :
+class JsonSyntaxExceptionHandler(private val messages: MessagePort) :
     ExceptionHandler<JsonSyntaxException, HttpResponse<ErrorResponse>> {
 
     override fun handle(request: HttpRequest<*>, exception: JsonSyntaxException): HttpResponse<ErrorResponse> =
@@ -51,7 +51,7 @@ class JsonSyntaxExceptionHandler(private val messages: MessageResolverPort) :
 @Produces
 @Singleton
 @Replaces(ConversionErrorHandler::class)
-class ConversionErrorExceptionHandler(private val messages: MessageResolverPort) :
+class ConversionErrorExceptionHandler(private val messages: MessagePort) :
     ExceptionHandler<ConversionErrorException, HttpResponse<ErrorResponse>> {
 
     override fun handle(request: HttpRequest<*>, exception: ConversionErrorException): HttpResponse<ErrorResponse> =
@@ -62,7 +62,7 @@ class ConversionErrorExceptionHandler(private val messages: MessageResolverPort)
 @Produces
 @Singleton
 @Replaces(UnsatisfiedRouteHandler::class)
-class UnsatisfiedRouteExceptionHandler(private val messages: MessageResolverPort) :
+class UnsatisfiedRouteExceptionHandler(private val messages: MessagePort) :
     ExceptionHandler<UnsatisfiedRouteException, HttpResponse<ErrorResponse>> {
 
     override fun handle(request: HttpRequest<*>, exception: UnsatisfiedRouteException): HttpResponse<ErrorResponse> =

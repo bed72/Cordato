@@ -267,7 +267,7 @@ class PersonControllerTest {
 
     // i18n: the message text is resolved by key from the bundle. Without a bundle for the requested
     // locale (only pt-BR exists), resolution falls back to the pt-BR default — it never fails the
-    // request. The domain-error path (mapper via MessageResolverPort) and the edge-validation path
+    // request. The domain-error path (mapper via MessagePort) and the edge-validation path
     // (Bean Validation interpolator) both resolve against the same bundle, so both fall back.
 
     @Test
