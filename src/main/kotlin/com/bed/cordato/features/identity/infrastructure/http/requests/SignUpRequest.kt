@@ -34,24 +34,24 @@ import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObjec
 @Schema(description = "Dados de cadastro de uma nova pessoa.")
 data class SignUpRequest(
     @field:Schema(
+        example = "Gabriel",
         description = "Nome da pessoa. É aparado (trim) e não pode exceder o comprimento máximo.",
-        example = "Alice",
     )
     @field:NotBlank(message = "{signup.request.name.notBlank}")
     @field:Size(max = NameValueObject.MAX_LENGTH, message = "{signup.request.name.maxSize}")
     val name: String,
 
     @field:Schema(
+        example = "gabriel@email.com",
         description = "E-mail da pessoa. Normalizado (trim + lowercase); deve ser um endereço válido.",
-        example = "alice@example.com",
     )
     @field:NotBlank(message = "{signup.request.email.notBlank}")
     @field:Pattern(regexp = EmailValueObject.PATTERN, message = "{signup.request.email.pattern}")
     val email: String,
 
     @field:Schema(
+        example = "super-s3cret",
         description = "Senha em texto puro; mínimo de 8 caracteres. Não é aparada — espaços contam.",
-        example = "s3cretpw",
     )
     @field:Size(min = PasswordValueObject.MIN_LENGTH, message = "{signup.request.password.minSize}")
     val password: String,
