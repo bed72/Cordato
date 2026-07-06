@@ -267,7 +267,7 @@ class PersonControllerTest {
 
     // i18n: the message text is resolved by key from the bundle. Without a bundle for the requested
     // locale (only pt-BR exists), resolution falls back to the pt-BR default — it never fails the
-    // request. The domain-error path (mapper via LocalizedMessageSource) and the edge-validation path
+    // request. The domain-error path (mapper via MessageResolverPort) and the edge-validation path
     // (Bean Validation interpolator) both resolve against the same bundle, so both fall back.
 
     @Test
@@ -296,7 +296,7 @@ class PersonControllerTest {
 }
 
 /**
- * Replaces the real [SignUpUseCase] binding (from `IdentityModule`) with a MockK instance for the
+ * Replaces the real [SignUpUseCase] binding (from `IdentityFactory`) with a MockK instance for the
  * HTTP tests. A plain `@Replaces` singleton — not `@MockBean` — because `@MockBean` would wrap the
  * bean in an AOP proxy, which Micronaut can't build over the `final` use-case class. The mock *is*
  * the bean, so injecting [SignUpUseCase] into the test yields the very instance the controller

@@ -4,7 +4,6 @@ import jakarta.inject.Singleton
 
 import io.micronaut.json.JsonSyntaxException
 import io.micronaut.context.annotation.Replaces
-import io.micronaut.context.LocalizedMessageSource
 
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpResponse
@@ -19,7 +18,7 @@ import io.micronaut.core.convert.exceptions.ConversionErrorException
 
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.badRequest
-import com.bed.cordato.core.infrastructure.i18n.resolve
+import com.bed.cordato.core.application.ports.MessageResolverPort
 
 /**
  * The `400` for a request whose body can't even be read into a command: it never reaches the domain, so
@@ -28,19 +27,19 @@ import com.bed.cordato.core.infrastructure.i18n.resolve
  * exceptions — a body that isn't valid JSON, a body that is valid JSON but doesn't match the request
  * shape (missing/mistyped field, so deserialization fails before Bean Validation), and a required body
  * that is absent — so each replaces its own Micronaut default (which would otherwise emit the
- * `_embedded.errors` body) with the same generic, non-leaking `400`. The message is resolved by key from
- * the request-scoped [LocalizedMessageSource]; the `MALFORMED_REQUEST` code stays the inline contract.
+ * `_embedded.errors` body) with the same generic, non-leaking `400`. The message is resolved by key through
+ * core's [MessageResolverPort]; the `MALFORMED_REQUEST` code stays the inline contract.
  */
 
 /** Body present but not valid JSON (parse failure) → `400`, replacing Micronaut's [JsonExceptionHandler]. */
 @Produces
 @Singleton
 @Replaces(JsonExceptionHandler::class)
-class JsonSyntaxExceptionHandler(private val messages: LocalizedMessageSource) :
+class JsonSyntaxExceptionHandler(private val messages: MessageResolverPort) :
     ExceptionHandler<JsonSyntaxException, HttpResponse<ErrorResponse>> {
 
     override fun handle(request: HttpRequest<*>, exception: JsonSyntaxException): HttpResponse<ErrorResponse> =
-        badRequest("MALFORMED_REQUEST", messages.resolve("error.malformed.message"))
+        badRequest("MALFORMED_REQUEST", messages("error.malformed.message"))
 }
 
 /**
@@ -52,20 +51,20 @@ class JsonSyntaxExceptionHandler(private val messages: LocalizedMessageSource) :
 @Produces
 @Singleton
 @Replaces(ConversionErrorHandler::class)
-class ConversionErrorExceptionHandler(private val messages: LocalizedMessageSource) :
+class ConversionErrorExceptionHandler(private val messages: MessageResolverPort) :
     ExceptionHandler<ConversionErrorException, HttpResponse<ErrorResponse>> {
 
     override fun handle(request: HttpRequest<*>, exception: ConversionErrorException): HttpResponse<ErrorResponse> =
-        badRequest("MALFORMED_REQUEST", messages.resolve("error.malformed.message"))
+        badRequest("MALFORMED_REQUEST", messages("error.malformed.message"))
 }
 
 /** Required body absent (or another route argument unsatisfied) → `400`, replacing [UnsatisfiedRouteHandler]. */
 @Produces
 @Singleton
 @Replaces(UnsatisfiedRouteHandler::class)
-class UnsatisfiedRouteExceptionHandler(private val messages: LocalizedMessageSource) :
+class UnsatisfiedRouteExceptionHandler(private val messages: MessageResolverPort) :
     ExceptionHandler<UnsatisfiedRouteException, HttpResponse<ErrorResponse>> {
 
     override fun handle(request: HttpRequest<*>, exception: UnsatisfiedRouteException): HttpResponse<ErrorResponse> =
-        badRequest("MALFORMED_REQUEST", messages.resolve("error.malformed.message"))
+        badRequest("MALFORMED_REQUEST", messages("error.malformed.message"))
 }

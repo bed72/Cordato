@@ -9,6 +9,7 @@ import com.zaxxer.hikari.HikariDataSource
 
 import io.micronaut.context.annotation.Factory
 import io.micronaut.context.MessageSource
+import io.micronaut.context.LocalizedMessageSource
 import io.micronaut.context.i18n.ResourceBundleMessageSource
 
 import org.flywaydb.core.Flyway
@@ -22,6 +23,8 @@ import com.bed.cordato.core.application.ports.IdGeneratorPort
 import com.bed.cordato.core.infrastructure.adapters.ClockAdapter
 import com.bed.cordato.core.infrastructure.adapters.IdGeneratorAdapter
 import com.bed.cordato.core.infrastructure.persistence.configurations.DatabaseConfiguration
+import com.bed.cordato.core.application.ports.MessageResolverPort
+import com.bed.cordato.core.infrastructure.adapters.MessageResolverResolver
 
 /**
  * Core's DI factory — the shared kernel every bounded context inherits: determinism ports
@@ -38,7 +41,7 @@ import com.bed.cordato.core.infrastructure.persistence.configurations.DatabaseCo
  * (see design.md risks).
  */
 @Factory
-class CoreModule {
+class CoreFactory {
 
     @Singleton
     fun clock(): ClockPort = ClockAdapter()
@@ -56,6 +59,14 @@ class CoreModule {
      */
     @Singleton
     fun messageSource(): MessageSource = ResourceBundleMessageSource("i18n.messages")
+
+    /**
+     * Core's own [MessageResolverPort] over Micronaut's request-scoped [LocalizedMessageSource] — the single
+     * place the framework i18n type is named, so every HTTP call site downstream depends on our contract.
+     * The injected source is request-aware (proxied per `Accept-Language`), so a plain singleton suffices.
+     */
+    @Singleton
+    fun messageResolver(messages: LocalizedMessageSource): MessageResolverPort = MessageResolverResolver(messages)
 
     @Singleton
     fun dslContext(dataSource: DataSource): DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)
