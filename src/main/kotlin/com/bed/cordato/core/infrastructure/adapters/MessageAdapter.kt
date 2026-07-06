@@ -11,7 +11,7 @@ import com.bed.cordato.core.application.ports.MessagePort
  * singleton — it just delegates, resolving each key against the current request's locale and falling back
  * to the key when the bundle lacks it. Annotation-free; wired in [com.bed.cordato.core.main.CoreFactory].
  */
-class Message(private val messages: LocalizedMessageSource) : MessagePort {
+class MessageAdapter(private val messages: LocalizedMessageSource) : MessagePort {
     override fun invoke(key: String, variables: Map<String, Any>): String =
         messages.getMessageOrDefault(key, key, variables)
 }

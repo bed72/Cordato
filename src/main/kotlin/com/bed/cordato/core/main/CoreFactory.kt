@@ -24,7 +24,7 @@ import com.bed.cordato.core.infrastructure.adapters.ClockAdapter
 import com.bed.cordato.core.infrastructure.adapters.IdGeneratorAdapter
 import com.bed.cordato.core.infrastructure.persistence.configurations.DatabaseConfiguration
 import com.bed.cordato.core.application.ports.MessagePort
-import com.bed.cordato.core.infrastructure.adapters.Message
+import com.bed.cordato.core.infrastructure.adapters.MessageAdapter
 
 /**
  * Core's DI factory — the shared kernel every bounded context inherits: determinism ports
@@ -66,7 +66,7 @@ class CoreFactory {
      * The injected source is request-aware (proxied per `Accept-Language`), so a plain singleton suffices.
      */
     @Singleton
-    fun messageResolver(messages: LocalizedMessageSource): MessagePort = Message(messages)
+    fun messageResolver(messages: LocalizedMessageSource): MessagePort = MessageAdapter(messages)
 
     @Singleton
     fun dslContext(dataSource: DataSource): DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)
