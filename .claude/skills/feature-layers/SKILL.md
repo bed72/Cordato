@@ -27,16 +27,19 @@ Reinforces the structural conventions in `CLAUDE.md`. This skill is about *where
 | `application/use_cases/` | orchestration | `…UseCase`, driving side = public `operator fun invoke` (no extra interface) |
 | `application/ports/` | a driven contract the app needs from outside | `…Port` |
 | `application/repositories/` | a persistence contract | keeps DDD suffix `…Repository` |
-| `infrastructure/adapters/` | a port implementation touching a library | `…Adapter` |
-| `infrastructure/repositories/` | a repository implementation | `InMemory…Repository` / `…Repository` |
-| `infrastructure/di/` | Koin wiring (composition root only) | `…Module` |
+| `infrastructure/adapters/` | a driven port implementation touching a library (annotation-free) | `…Adapter` |
+| `infrastructure/repositories/` | a repository implementation | `Persistence…Repository` / `InMemory…Repository` |
+| `infrastructure/http/` | the driving HTTP slice (controller, `docs/`, `requests/`, `responses/`, `mappers/`) | see the **http-slice** skill |
+| `main/` | the package's Micronaut wiring — one `@Factory` per package | `…Factory` (`CoreFactory`, `<Context>Factory`) |
 
-Cross-cutting code (money, clock, id generation, token/session) → `core/`, same three layers. There is deliberately **no** `shared/`.
+Cross-cutting code (money, clock, id generation, token/session, the shared HTTP error contract) → `core/`, same three layers. There is deliberately **no** `shared/`.
+
+DI is Micronaut compile-time (KSP, no reflection): each package's `main/` `@Factory` constructs its pure classes and returns the port types; `application`/`domain` never import a DI annotation (`io.micronaut.context.annotation.*`, `jakarta.inject.*`). A feature factory inherits core's bindings, never re-declares them. The only annotation-bearing infra types discovered directly (not via a factory) are `@Controller`s and core's `ExceptionHandler`s.
 
 ## Hard rules (the arch test enforces these at build time)
 
-- `domain/` imports nothing from `application/`, `infrastructure/`, Koin, or any library.
-- `application/` never imports `infrastructure/` or a DI annotation.
+- `domain/` imports nothing from `application/`, `infrastructure/`, Micronaut/`jakarta.inject`, or any library.
+- `application/` never imports `infrastructure/` or a DI/framework annotation.
 - Only `couple` may reference sibling contexts (`budget`, `expense`) — and only via a port it defines in `couple/application/ports/`, implemented in `couple/infrastructure/adapters/`. `budget`/`expense`/`identity` never import a sibling.
 - **Derive, don't store**: no foreign key for query convenience (e.g. `Expense` never references `Budget`; budget membership is computed by date range at read time).
 
@@ -46,3 +49,5 @@ Cross-cutting code (money, clock, id generation, token/session) → `core/`, sam
 - Errors are returned as sealed types, never thrown.
 - Run `./gradlew test` — `ArchitectureTest` (Konsist) will fail the build on a layering violation.
 - Add tests per the **writing-tests** skill.
+- If the change has an HTTP surface (controller, DTO, error mapper, message key, OpenAPI), follow the **http-slice** skill for its shape.
+- To audit a diff against every convention here (naming, non-leak, error contract, i18n), run `/arch-review`.

@@ -165,8 +165,8 @@ README already calls it "domínio compartilhado") once that module exists.
 
 **DI** is Micronaut's compile-time DI (annotation processing via KSP, no reflection), and each domain
 package owns its own wiring in a `main/` subpackage: one `@Factory` class per package —
-`core/main/CoreModule.kt` (the shared kernel — determinism ports plus persistence) and
-`features/<context>/main/<Context>Module.kt` (e.g. `identity/main/IdentityModule.kt`). Each factory
+`core/main/CoreFactory.kt` (the shared kernel — determinism ports plus persistence) and
+`features/<context>/main/<Context>Factory.kt` (e.g. `identity/main/IdentityFactory.kt`). Each factory
 exposes `@Singleton` methods that construct and return the port types, taking their collaborators as
 method parameters (the `@Factory` method is the single explicit place a pure, unannotated class is
 constructed — Micronaut never discovers `application`/`domain` types by introspection). Each factory
@@ -215,7 +215,7 @@ at a status (`badRequest` for the edge/malformed `400`, `unprocessable` for the 
 `ExceptionHandler`s that produce that body live in `core/infrastructure/http/errors/handlers/`.
 Those handlers are the *same* annotation-bearing exception as
 the controllers: Micronaut discovers each `ExceptionHandler` by exception type (`@Singleton`/`@Produces`,
-`@Replaces` over a framework default), so there is no `@Factory` way to declare them and `CoreModule` never
+`@Replaces` over a framework default), so there is no `@Factory` way to declare them and `CoreFactory` never
 wires them; `ErrorResponse`/`FieldError` are plain `@Serdeable` DTOs. Every HTTP failure path exits in this
 one shape: a failed `@Valid` throws `ConstraintViolationException` → `400` with **one `FieldErrorResponse`
 per violated field** (never concatenated; `field` is the property path's final node, so the internal
@@ -226,14 +226,23 @@ that fails deserialization before validation (`ConversionErrorException`), or an
 honouring the non-leak invariant. A domain rejection stays **fail-fast**: the feature's error mapper emits
 a single scalar `422` via core's shared `unprocessable` builder — the builder owns the *shape*, the mapper
 owns the *policy* (which error → which code/message). Identity's `EmailAlreadyInUse` is never turned into a
-`FieldErrorResponse(field = "email")`, which would reintroduce the account-discovery oracle. Constraint
+`FieldErrorResponse(field = "email")`, which would reintroduce the account-discovery oracle. **The HTTP
+*status code is itself part of the non-leak invariant*: every domain rejection of a context shares one
+status (`422` for identity), so the status can never signal *which* rejection happened. Giving one error a
+distinct status — e.g. a "textbook" `409 Conflict` for `EmailAlreadyInUse` while the sibling rejections stay
+`422` — leaks exactly what the generic code/message hide: the odd-status-out tells an attacker the e-mail is
+registered. It is the same oracle as a per-field error, just carried by the status line. So the `400`/`422`
+split is by *kind of failure* (malformed/edge vs. well-formed-but-domain-rejected), never per business rule;
+a rule-specific status is only ever acceptable if it is applied uniformly to *all* of a context's domain
+rejections at once (an all-or-nothing contract decision, not a per-error tweak) — and even then `422` is the
+better semantic fit than `400`, since the payload is syntactically valid.** Constraint
 violations, malformed bodies, and internal failures are genuinely *thrown*, unlike the domain's sealed
 result, which is branched over.
 
 **HTTP response text is resolved by key from a message bundle, never inlined — i18n-ready.** Every
 human-readable response message comes from `src/main/resources/i18n/messages.properties` (pt-BR default;
-a new language is just a `messages_<locale>.properties` sibling, no code change). `CoreModule` exposes one
-`@Singleton MessageSource = ResourceBundleMessageSource("i18n.messages")` (kept in `CoreModule`, not a
+a new language is just a `messages_<locale>.properties` sibling, no code change). `CoreFactory` exposes one
+`@Singleton MessageSource = ResourceBundleMessageSource("i18n.messages")` (kept in `CoreFactory`, not a
 second `@Factory`, per the "one `@Factory` per package" rule); micronaut-http-server layers a
 request-scoped, `Accept-Language`-aware `LocalizedMessageSource` on top of it — injectable into the
 `@Singleton` error handlers and the controller, falling back to the default bundle for an absent/unknown
