@@ -1,4 +1,4 @@
-package com.bed.cordato.features.identity.infrastructure.http.mappers
+package com.bed.cordato.features.identity.infrastructure.http.mappers.requests
 
 import com.bed.cordato.features.identity.application.commands.SignUpCommand
 
