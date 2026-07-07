@@ -7,11 +7,13 @@ import kotlin.test.assertTrue
 
 class ClockAdapterTest {
 
+    private val clock = ClockAdapter()
+
     @Test
     fun `now returns an instant at or after the call time`() {
         val before = Instant.now()
 
-        val now = ClockAdapter().now()
+        val now = clock()
 
         assertTrue(!now.isBefore(before))
     }

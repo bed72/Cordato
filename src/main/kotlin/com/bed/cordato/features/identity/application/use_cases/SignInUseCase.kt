@@ -45,7 +45,7 @@ class SignInUseCase(
             return SignInResult.Failure(SignInError.InvalidCredentials)
         }
 
-        val now = clock.now()
+        val now = clock()
         val token = tokenizer.generate()
         val session = SessionEntity(
             id = generator(),
