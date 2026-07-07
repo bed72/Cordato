@@ -21,19 +21,25 @@ import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
 import io.micronaut.http.client.exceptions.HttpClientResponseException
 
+import com.bed.cordato.core.factories.session
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 
 import com.bed.cordato.features.identity.application.results.SignUpResult
+import com.bed.cordato.features.identity.application.results.SignInResult
 import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
 
 import com.bed.cordato.features.identity.domain.errors.SignUpError
+import com.bed.cordato.features.identity.domain.errors.SignInError
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObject
 
 import com.bed.cordato.features.identity.factories.person
 import com.bed.cordato.features.identity.factories.signUpRequestBody
+import com.bed.cordato.features.identity.factories.signInRequestBody
 
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
+import com.bed.cordato.features.identity.infrastructure.http.responses.SignInResponse
 
 @MicronautTest
 class PersonControllerTest {
@@ -42,16 +48,23 @@ class PersonControllerTest {
     lateinit var useCase: SignUpUseCase
 
     @Inject
+    lateinit var signInUseCase: SignInUseCase
+
+    @Inject
     @field:Client("/")
     lateinit var client: HttpClient
 
     @BeforeTest
-    fun reset() = clearMocks(useCase)
+    fun reset() = clearMocks(useCase, signInUseCase)
 
     private val validBody = signUpRequestBody()
 
     private fun postSignUp(body: Any): HttpClientResponseException = assertThrows {
         client.toBlocking().exchange(HttpRequest.POST("/sign-up", body), String::class.java)
+    }
+
+    private fun postSignIn(body: Any): HttpClientResponseException = assertThrows {
+        client.toBlocking().exchange(HttpRequest.POST("/sign-in", body), String::class.java)
     }
 
     private fun postSignUp(body: Any, language: String): HttpClientResponseException = assertThrows {
@@ -256,5 +269,66 @@ class PersonControllerTest {
         assertEquals("INVALID_REQUEST", body.code)
         assertEquals("A requisição contém campos inválidos.", body.message)
         assertTrue(body.errors.any { it.field == "name" && it.message == "O nome é obrigatório." }, "$body")
+    }
+
+    @Test
+    fun `successful sign-in returns 200 with the opaque token and its expiry`() {
+        every { signInUseCase(any()) } returns SignInResult.Success(session(), token = "raw-token")
+
+        val response = client.toBlocking().exchange(
+            HttpRequest.POST("/sign-in", signInRequestBody()),
+            SignInResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.status)
+        val body = response.body()!!
+        assertEquals("raw-token", body.token)
+        assertEquals(session().expiresAt, body.expiresAt)
+    }
+
+    @Test
+    fun `invalid credentials map to a neutral 401 revealing neither the factor nor the e-mail`() {
+        every { signInUseCase(any()) } returns SignInResult.Failure(SignInError.InvalidCredentials)
+
+        val exception = postSignIn(signInRequestBody())
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals("UNAUTHENTICATED", body.code)
+        assertTrue(body.errors.isEmpty())
+        assertFalse(body.message.contains("alice@example.com"), "leaked the attempted e-mail: $body")
+    }
+
+    @Test
+    fun `blank e-mail fails edge presence validation with 400 without invoking the use case`() {
+        val exception = postSignIn(signInRequestBody() + ("email" to ""))
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        verify(exactly = 0) { signInUseCase(any()) }
+        assertEquals("INVALID_REQUEST", body.code)
+        assertTrue(body.errors.any { it.field == "email" }, "$body")
+    }
+
+    @Test
+    fun `blank password fails edge presence validation with 400 without invoking the use case`() {
+        val exception = postSignIn(signInRequestBody() + ("password" to ""))
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        verify(exactly = 0) { signInUseCase(any()) }
+        assertEquals("INVALID_REQUEST", body.code)
+        assertTrue(body.errors.any { it.field == "password" }, "$body")
+    }
+
+    @Test
+    fun `missing field is rejected with 400 in the shared shape without invoking the use case`() {
+        val exception = postSignIn(mapOf("email" to "alice@example.com"))
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        assertTrue(body.errors.isEmpty())
+        verify(exactly = 0) { signInUseCase(any()) }
+        assertEquals("MALFORMED_REQUEST", body.code)
     }
 }

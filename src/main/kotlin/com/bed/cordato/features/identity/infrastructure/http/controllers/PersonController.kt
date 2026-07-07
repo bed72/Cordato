@@ -61,9 +61,9 @@ class PersonController(
             is SignUpResult.Success -> HttpResponse.created(data.person.toResponse())
         }
 
-    // OpenAPI doc for this route is a follow-up (no <Controller>Doc method yet); success is a plain 200.
     @Post("/sign-in")
-    fun signIn(@Body @Valid request: SignInRequest): HttpResponse<*> =
+    @Status(HttpStatus.OK)
+    override fun signIn(@Body @Valid request: SignInRequest): HttpResponse<*> =
         when (val data = signInUseCase(request.toCommand())) {
             is SignInResult.Failure -> data.error.toResponse(messages)
             is SignInResult.Success -> HttpResponse.ok(data.toResponse())

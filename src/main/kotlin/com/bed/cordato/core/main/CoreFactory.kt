@@ -50,6 +50,9 @@ class CoreFactory {
     fun clock(): ClockPort = ClockAdapter()
 
     @Singleton
+    fun tokenizer(): TokenizerPort = TokenizerAdapter()
+
+    @Singleton
     fun idGenerator(): IdGeneratorPort = IdGeneratorAdapter()
 
     /**
@@ -74,9 +77,6 @@ class CoreFactory {
     @Singleton
     fun dslContext(dataSource: DataSource): DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)
 
-    @Singleton
-    fun tokenizer(): TokenizerPort = TokenizerAdapter()
-
     // Durable PostgreSQL adapter; the DSLContext comes from this same factory. The tokenizer hashes a
     // presented token before it ever reaches a query, so the repository never sees a plaintext column.
     @Singleton
@@ -98,5 +98,4 @@ class CoreFactory {
 
         return dataSource
     }
-
 }
