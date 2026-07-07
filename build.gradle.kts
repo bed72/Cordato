@@ -98,11 +98,18 @@ kotlin {
     jvmToolchain(25)
 }
 
-// Tell the micronaut-openapi processor to also render the Swagger UI (into
-// META-INF/swagger/views/swagger-ui) alongside the generated spec. Passed as a KSP processor argument
-// rather than an `openapi.properties` file so the whole OpenAPI config stays in the build script.
+// OpenAPI generator config, passed as KSP processor arguments rather than an `openapi.properties`
+// file so the whole OpenAPI config stays in the build script.
 ksp {
+    // Also render the Swagger UI (into META-INF/swagger/views/swagger-ui) alongside the generated spec.
     arg("micronaut.openapi.views.spec", "swagger-ui.enabled=true")
+
+    // Emit schema property names in snake_case so the generated document matches the wire contract that
+    // micronaut.serde.property-naming-strategy=SNAKE_CASE produces at runtime — the doc must never
+    // advertise `expiresAt` while the server sends `expires_at`. This is the compile-time twin of that
+    // runtime setting; the openapi processor doesn't read the runtime config, so the policy is declared
+    // in both places on purpose.
+    arg("micronaut.openapi.property.naming.strategy", "SNAKE_CASE")
 }
 
 // A runnable entry point now exists (the embedded HTTP server), so `./gradlew run` serves the API.
