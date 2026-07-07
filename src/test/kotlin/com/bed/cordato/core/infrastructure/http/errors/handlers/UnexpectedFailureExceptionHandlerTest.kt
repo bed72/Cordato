@@ -13,11 +13,6 @@ import io.micronaut.http.HttpRequest
 
 import com.bed.cordato.core.application.ports.MessagePort
 
-/**
- * Unit test for the catch-all [UnexpectedFailureExceptionHandler]: any throwable becomes a neutral `500`
- * whose body never carries the exception's message or any internal detail — the non-leak invariant. The
- * generic message is resolved from a stubbed [MessagePort].
- */
 class UnexpectedFailureExceptionHandlerTest {
 
     private val messages = mockk<MessagePort> {
@@ -37,7 +32,6 @@ class UnexpectedFailureExceptionHandlerTest {
         val body = response.body()!!
         assertTrue(body.errors.isEmpty())
         assertEquals("INTERNAL_ERROR", body.code)
-        // Neither the exception message, the SQL, nor the attempted e-mail may reach the client body.
         assertFalse(body.message.contains("SELECT"), body.message)
         assertFalse(body.message.contains("alice@example.com"), body.message)
         assertFalse(body.message.contains("IllegalStateException"), body.message)

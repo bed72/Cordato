@@ -2,7 +2,7 @@ package com.bed.cordato.core.infrastructure.repositories.mappers
 
 import java.time.ZoneOffset
 
-import com.bed.cordato.core.domain.entities.SessionEntity
+import com.bed.cordato.core.infrastructure.http.responses.entities.SessionEntity
 
 import com.bed.cordato.core.infrastructure.persistence.models.tables.records.SessionRecord
 

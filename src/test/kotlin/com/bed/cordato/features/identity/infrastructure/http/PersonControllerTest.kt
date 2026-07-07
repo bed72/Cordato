@@ -1,12 +1,10 @@
 package com.bed.cordato.features.identity.infrastructure.http
 
-import io.mockk.mockk
 import io.mockk.every
 import io.mockk.verify
 import io.mockk.clearMocks
 
 import jakarta.inject.Inject
-import jakarta.inject.Singleton
 
 import kotlin.test.Test
 import kotlin.test.BeforeTest
@@ -14,8 +12,6 @@ import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 import kotlin.test.assertEquals
 
-import io.micronaut.context.annotation.Factory
-import io.micronaut.context.annotation.Replaces
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 
 import io.micronaut.http.MediaType
@@ -29,24 +25,16 @@ import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 
 import com.bed.cordato.features.identity.application.results.SignUpResult
 import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
-import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
 
 import com.bed.cordato.features.identity.domain.errors.SignUpError
-import com.bed.cordato.features.identity.domain.entities.PersonEntity
-import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
-import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObject
+
+import com.bed.cordato.features.identity.factories.person
+import com.bed.cordato.features.identity.factories.signUpRequestBody
 
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
-/**
- * HTTP-layer test for [com.bed.cordato.features.identity.infrastructure.http.controllers.PersonController].
- * Boots the controller behind a real Netty server and drives it with a blocking client, so routing,
- * JSON binding, edge Bean Validation and status codes are exercised for real. [SignUpUseCase] is
- * replaced with a MockK bean (see [SignUpUseCaseMockFactory]), which keeps the assertions focused on
- * the controller and leaves the lazy DataSource unrealized — no PostgreSQL is needed.
- */
 @MicronautTest
 class PersonControllerTest {
 
@@ -60,27 +48,15 @@ class PersonControllerTest {
     @BeforeTest
     fun reset() = clearMocks(useCase)
 
-    private val validBody = mapOf(
-        "name" to "Alice",
-        "password" to "s3cretpw",
-        "email" to "alice@example.com",
-    )
-
-    private fun person(hash: String = "bcrypt:super-secret") = PersonEntity(
-        id = "person-1",
-        hash = hash,
-        status = PersonStatusEnum.ACTIVE,
-        name = NameValueObject.of("Alice")!!,
-        email = EmailValueObject.of("alice@example.com")!!,
-    )
+    private val validBody = signUpRequestBody()
 
     private fun postSignUp(body: Any): HttpClientResponseException = assertThrows {
         client.toBlocking().exchange(HttpRequest.POST("/sign-up", body), String::class.java)
     }
 
-    private fun postSignUp(body: Any, acceptLanguage: String): HttpClientResponseException = assertThrows {
+    private fun postSignUp(body: Any, language: String): HttpClientResponseException = assertThrows {
         client.toBlocking().exchange(
-            HttpRequest.POST("/sign-up", body).header("Accept-Language", acceptLanguage),
+            HttpRequest.POST("/sign-up", body).header("Accept-Language", language),
             String::class.java,
         )
     }
@@ -108,7 +84,6 @@ class PersonControllerTest {
         assertEquals("person-1", body.id)
         assertEquals("alice@example.com", body.email)
 
-        // The hash must not appear anywhere in the serialized JSON, under any field name.
         val raw = client.toBlocking().retrieve(HttpRequest.POST("/sign-up", validBody), String::class.java)
         assertFalse(raw.contains("hash"), "response leaked a hash field: $raw")
         assertFalse(raw.contains("bcrypt"), "response leaked the hash value: $raw")
@@ -116,14 +91,13 @@ class PersonControllerTest {
 
     @Test
     fun `missing required field is rejected with 400 in the shared shape without invoking the use case`() {
-        val exception = postSignUp(mapOf("name" to "Alice", "email" to "alice@example.com")) // no password
+        val exception = postSignUp(mapOf("name" to "Alice", "email" to "alice@example.com"))
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        // Missing field fails deserialization before Bean Validation, so it is a scalar malformed-body 400.
         val body = exception.response.getBody(ErrorResponse::class.java).get()
         assertTrue(body.errors.isEmpty())
-        assertEquals("MALFORMED_REQUEST", body.code)
         verify(exactly = 0) { useCase(any()) }
+        assertEquals("MALFORMED_REQUEST", body.code)
     }
 
     @Test
@@ -132,10 +106,9 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("INVALID_REQUEST", body.code)
-        // One item per violated field — not a single concatenated message.
-        assertEquals(setOf("name", "email", "password"), body.errors.map { it.field }.toSet())
         verify(exactly = 0) { useCase(any()) }
+        assertEquals("INVALID_REQUEST", body.code)
+        assertEquals(setOf("name", "email", "password"), body.errors.map { it.field }.toSet())
     }
 
     @Test
@@ -144,9 +117,9 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(String::class.java).get()
-        assertTrue(body.contains("INVALID_REQUEST"), body)
-        assertTrue(body.contains("nome"), body)
         verify(exactly = 0) { useCase(any()) }
+        assertTrue(body.contains("nome"), body)
+        assertTrue(body.contains("INVALID_REQUEST"), body)
     }
 
     @Test
@@ -155,9 +128,9 @@ class PersonControllerTest {
 
         val exception = postSignUp(validBody + ("name" to tooLong))
 
+        verify(exactly = 0) { useCase(any()) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertTrue(exception.response.getBody(String::class.java).get().contains("INVALID_REQUEST"))
-        verify(exactly = 0) { useCase(any()) }
     }
 
     @Test
@@ -166,11 +139,10 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(String::class.java).get()
+        verify(exactly = 0) { useCase(any()) }
         assertTrue(body.contains("e-mail"), body)
         assertTrue(body.contains("INVALID_REQUEST"), body)
-        // The raw regex must never leak into the client-facing message.
         assertFalse(body.contains("^["), "leaked the validation regex: $body")
-        verify(exactly = 0) { useCase(any()) }
     }
 
     @Test
@@ -181,9 +153,9 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(String::class.java).get()
+        verify(exactly = 0) { useCase(any()) }
         assertTrue(body.contains("INVALID_REQUEST"), body)
         assertTrue(body.contains("${PasswordValueObject.MIN_LENGTH}"), body)
-        verify(exactly = 0) { useCase(any()) }
     }
 
     @Test
@@ -197,9 +169,9 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("MALFORMED_REQUEST", body.code)
         assertTrue(body.errors.isEmpty())
         verify(exactly = 0) { useCase(any()) }
+        assertEquals("MALFORMED_REQUEST", body.code)
     }
 
     @Test
@@ -213,14 +185,10 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("MALFORMED_REQUEST", body.code)
         assertTrue(body.errors.isEmpty())
         verify(exactly = 0) { useCase(any()) }
+        assertEquals("MALFORMED_REQUEST", body.code)
     }
-
-    // The domain-error → 422 mappings below send a valid-shape body (it passes the edge), so the use
-    // case runs and its sealed error is mapped. This is the "edge passed, domain rejected" path that
-    // stays reachable even with edge validation — e.g. the normalization gap on e-mail.
 
     @Test
     fun `invalid e-mail maps to 422`() {
@@ -261,22 +229,16 @@ class PersonControllerTest {
 
         assertTrue(body.contains("SIGNUP_REJECTED"))
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
-        // Never echo the attempted e-mail, and never confirm the account exists.
         assertFalse(body.contains("em uso"), "confirmed the e-mail is in use: $body")
         assertFalse(body.contains("alice@example.com"), "leaked the attempted e-mail: $body")
         assertFalse(body.contains("cadastrado"), "confirmed the e-mail is registered: $body")
     }
 
-    // i18n: the message text is resolved by key from the bundle. Without a bundle for the requested
-    // locale (only pt-BR exists), resolution falls back to the pt-BR default — it never fails the
-    // request. The domain-error path (mapper via MessagePort) and the edge-validation path
-    // (Bean Validation interpolator) both resolve against the same bundle, so both fall back.
-
     @Test
     fun `unknown Accept-Language falls back to the pt-BR message on a domain error`() {
         every { useCase(any()) } returns SignUpResult.Failure(SignUpError.InvalidName)
 
-        val exception = postSignUp(validBody, acceptLanguage = "fr-FR")
+        val exception = postSignUp(validBody, language = "fr-FR")
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
         val body = exception.response.getBody(String::class.java).get()
@@ -286,35 +248,13 @@ class PersonControllerTest {
 
     @Test
     fun `unknown Accept-Language falls back to the pt-BR message on edge validation`() {
-        val exception = postSignUp(validBody + ("name" to ""), acceptLanguage = "fr-FR")
+        val exception = postSignUp(validBody + ("name" to ""), language = "fr-FR")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(ErrorResponse::class.java).get()
+        verify(exactly = 0) { useCase(any()) }
         assertEquals("INVALID_REQUEST", body.code)
         assertEquals("A requisição contém campos inválidos.", body.message)
         assertTrue(body.errors.any { it.field == "name" && it.message == "O nome é obrigatório." }, "$body")
-        verify(exactly = 0) { useCase(any()) }
     }
-}
-
-/**
- * Replaces the real [SignUpUseCase] binding (from `IdentityFactory`) with a MockK instance for the
- * HTTP tests. A plain `@Replaces` singleton — not `@MockBean` — because `@MockBean` would wrap the
- * bean in an AOP proxy, which Micronaut can't build over the `final` use-case class. The mock *is*
- * the bean, so injecting [SignUpUseCase] into the test yields the very instance the controller
- * calls; stubs and `verify` apply directly.
- */
-@Factory
-class SignUpUseCaseMockFactory {
-
-    @Singleton
-    @Replaces(SignUpUseCase::class)
-    fun signUpUseCase(): SignUpUseCase = mockk()
-
-    // The controller now also depends on SignInUseCase; replace it with a mock too so instantiating
-    // the controller never drags in the real PersonRepository/DataSource (these tests need no DB).
-    // Sign-in's own HTTP behavior is covered by a dedicated follow-up test.
-    @Singleton
-    @Replaces(SignInUseCase::class)
-    fun signInUseCase(): SignInUseCase = mockk()
 }

@@ -1,4 +1,4 @@
-package com.bed.cordato.core.domain.entities
+package com.bed.cordato.core.infrastructure.http.responses.entities
 
 import java.time.Instant
 import java.time.Duration

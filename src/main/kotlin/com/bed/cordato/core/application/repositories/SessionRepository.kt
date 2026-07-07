@@ -2,7 +2,7 @@ package com.bed.cordato.core.application.repositories
 
 import java.time.Instant
 
-import com.bed.cordato.core.domain.entities.SessionEntity
+import com.bed.cordato.core.infrastructure.http.responses.entities.SessionEntity
 
 /**
  * Driven port for session persistence — core's first repository. [open] creates and persists a
