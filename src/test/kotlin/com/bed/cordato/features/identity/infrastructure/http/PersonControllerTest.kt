@@ -284,6 +284,10 @@ class PersonControllerTest {
         val body = response.body()!!
         assertEquals("raw-token", body.token)
         assertEquals(session().expiresAt, body.expiresAt)
+
+        val raw = client.toBlocking().retrieve(HttpRequest.POST("/sign-in", signInRequestBody()), String::class.java)
+        assertTrue(raw.contains("expires_at"), "response is not snake_case: $raw")
+        assertFalse(raw.contains("expiresAt"), "response leaked a camelCase key: $raw")
     }
 
     @Test
