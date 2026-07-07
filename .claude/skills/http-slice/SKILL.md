@@ -44,6 +44,6 @@ Reinforces the HTTP conventions in `CLAUDE.md`. This skill is about *how the HTT
 
 ## Finish
 
-- Add tests per the **writing-tests** skill — `PersonControllerTest` is the worked HTTP example.
+- Add tests per the **writing-tests** skill — `AuthenticatedControllerTest` is the worked HTTP example.
 - Run `./gradlew test` — `ArchitectureTest` (Konsist) fails the build on a layering violation (e.g. a controller reaching past its use case, or `application`/`domain` importing Micronaut).
 - Drive the endpoint once (`make db-up` then `./gradlew run`, or the `/verify` skill) — a green build doesn't prove the route answers.

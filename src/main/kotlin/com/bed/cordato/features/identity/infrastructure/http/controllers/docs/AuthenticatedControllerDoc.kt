@@ -27,7 +27,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
  * same `<Controller>Doc` split.
  */
 @Tag(name = "Identity", description = "Cadastro e autenticação de pessoas.")
-interface PersonControllerDoc {
+interface AuthenticatedControllerDoc {
 
     @Operation(
         operationId = "signUp",

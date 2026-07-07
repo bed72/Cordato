@@ -22,10 +22,14 @@ import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequ
 import com.bed.cordato.features.identity.infrastructure.http.mappers.errors.toResponse
 import com.bed.cordato.features.identity.infrastructure.http.mappers.requests.toCommand
 import com.bed.cordato.features.identity.infrastructure.http.mappers.responses.toResponse
-import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.PersonControllerDoc
+import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.AuthenticatedControllerDoc
 
 /**
- * Identity's driving (primary/inbound) HTTP adapter. This is the one infrastructure type that
+ * Identity's authentication driving (primary/inbound) HTTP adapter — the open entry points that *mint* a
+ * session: `sign-up` and `sign-in`. Contained user operations on an already-authenticated person
+ * (`GET`/`PATCH`/`DELETE`) belong on a separate `PersonController`, kept apart from these auth flows.
+ *
+ * This is the one infrastructure type that
  * carries framework routing annotations: Micronaut discovers `@Controller` beans and reads
  * `@Post` to register routes — there is no factory-based way to declare a route — so, unlike the
  * annotation-free adapters wired in `IdentityFactory`, the controller is discovered directly. It
@@ -41,17 +45,17 @@ import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.Pe
  * mapped to its status and neutral body by [toResponse], with the message localized via the injected
  * [MessagePort].
  *
- * The OpenAPI documentation lives on the implemented [com.bed.cordato.features.identity.infrastructure.http.controllers.docs.PersonControllerDoc] interface, not here: Micronaut
+ * The OpenAPI documentation lives on the implemented [com.bed.cordato.features.identity.infrastructure.http.controllers.docs.AuthenticatedControllerDoc] interface, not here: Micronaut
  * inherits the interface's annotation metadata onto this method, so the controller keeps only routing
  * (`@Controller`/`@Post`), validation (`@Validated`/`@Body`/`@Valid`) and delegation.
  */
 @Validated
 @Controller
-class PersonController(
+class AuthenticatedController(
     private val messages: MessagePort,
     private val signUpUseCase: SignUpUseCase,
     private val signInUseCase: SignInUseCase,
-) : PersonControllerDoc {
+) : AuthenticatedControllerDoc {
 
     @Post("/sign-up")
     @Status(HttpStatus.CREATED)

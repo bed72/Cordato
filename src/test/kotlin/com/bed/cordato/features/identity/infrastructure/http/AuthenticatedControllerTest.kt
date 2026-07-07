@@ -42,7 +42,7 @@ import com.bed.cordato.features.identity.infrastructure.http.responses.PersonRes
 import com.bed.cordato.features.identity.infrastructure.http.responses.SignInResponse
 
 @MicronautTest
-class PersonControllerTest {
+class AuthenticatedControllerTest {
 
     @Inject
     lateinit var useCase: SignUpUseCase
