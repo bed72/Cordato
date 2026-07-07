@@ -4,7 +4,7 @@ import com.bed.cordato.core.application.ports.ClockPort
 import com.bed.cordato.core.application.ports.TokenizerPort
 import com.bed.cordato.core.application.ports.IdGeneratorPort
 import com.bed.cordato.core.application.repositories.SessionRepository
-import com.bed.cordato.core.infrastructure.http.responses.entities.SessionEntity
+import com.bed.cordato.core.domain.entities.SessionEntity
 
 import com.bed.cordato.features.identity.domain.errors.SignInError
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject

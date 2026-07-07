@@ -6,7 +6,7 @@ import java.time.ZoneOffset
 import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 
-import com.bed.cordato.core.infrastructure.http.responses.entities.SessionEntity
+import com.bed.cordato.core.domain.entities.SessionEntity
 
 import com.bed.cordato.core.application.ports.TokenizerPort
 import com.bed.cordato.core.application.repositories.SessionRepository

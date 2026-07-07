@@ -1,6 +1,6 @@
 package com.bed.cordato.features.identity.application.results
 
-import com.bed.cordato.core.infrastructure.http.responses.entities.SessionEntity
+import com.bed.cordato.core.domain.entities.SessionEntity
 
 import com.bed.cordato.features.identity.domain.errors.SignInError
 
