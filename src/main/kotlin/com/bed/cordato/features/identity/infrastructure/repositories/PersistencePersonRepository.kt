@@ -4,12 +4,15 @@ import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 
 import com.bed.cordato.features.identity.domain.entities.PersonEntity
+import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
 import com.bed.cordato.features.identity.application.repositories.PersonRepository
 
+import com.bed.cordato.core.infrastructure.persistence.models.Tables.PERSON
+
+import com.bed.cordato.features.identity.infrastructure.repositories.mappers.toEntity
 import com.bed.cordato.features.identity.infrastructure.repositories.mappers.toRecord
-import com.bed.cordato.features.identity.infrastructure.repositories.models.Tables.PERSON
 
 /**
  * Durable [PersonRepository] on PostgreSQL via jOOQ. Uniqueness is enforced by the
@@ -23,11 +26,19 @@ class PersistencePersonRepository(private val dsl: DSLContext) : PersonRepositor
     override fun existsByEmail(email: EmailValueObject): Boolean =
         dsl.fetchExists(PERSON, PERSON.EMAIL.eq(email.value))
 
+    override fun findByEmail(email: EmailValueObject): PersonEntity? =
+        dsl.selectFrom(PERSON)
+            .where(PERSON.EMAIL.eq(email.value))
+            .and(PERSON.STATUS.eq(PersonStatusEnum.ACTIVE.name))
+            .fetchOne()
+            ?.toEntity()
+
     override fun signUp(person: PersonEntity): Boolean =
         try {
             dsl.insertInto(PERSON)
                 .set(person.toRecord())
                 .execute()
+
             true
         } catch (exception: DataAccessException) {
             if (exception.sqlState() == UNIQUE_VIOLATION) false else throw exception

@@ -6,8 +6,8 @@ import com.bed.cordato.features.identity.domain.errors.SignUpError
 import com.bed.cordato.features.identity.domain.entities.PersonEntity
 import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 
-import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
+import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObject
 
 import com.bed.cordato.features.identity.application.results.SignUpResult
@@ -24,8 +24,8 @@ import com.bed.cordato.features.identity.application.repositories.PersonReposito
  * extra interface is added for it.
  */
 class SignUpUseCase(
-    private val generator: IdGeneratorPort,
     private val hasher: PasswordHasherPort,
+    private val generator: IdGeneratorPort,
     private val repository: PersonRepository,
 ) {
     operator fun invoke(command: SignUpCommand): SignUpResult {
@@ -46,7 +46,7 @@ class SignUpUseCase(
             name = name,
             email = email,
             id = generator(),
-            hash = hasher(password),
+            hash = hasher.create(password),
             status = PersonStatusEnum.ACTIVE,
         )
         if (!repository.signUp(person)) {

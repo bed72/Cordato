@@ -5,7 +5,7 @@ import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
-import com.bed.cordato.features.identity.infrastructure.repositories.models.tables.records.PersonRecord
+import com.bed.cordato.core.infrastructure.persistence.models.tables.records.PersonRecord
 
 /**
  * Translates between the domain [PersonEntity] and the jOOQ-generated [PersonRecord] at the

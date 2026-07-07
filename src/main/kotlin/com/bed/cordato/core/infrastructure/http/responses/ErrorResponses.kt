@@ -10,9 +10,9 @@ import io.micronaut.http.HttpResponse
  * status/code/message — stays with each caller; these own only the shape.
  *
  * The set covers the statuses the API actually emits in this body today: an edge/malformed `400` (the only
- * one that may carry a per-field [ErrorResponse.errors] breakdown — every other case is scalar), a
- * domain-rejection `422`, and an unexpected `500`. New statuses (401/404/409…) slot in the same way when a
- * real caller needs them.
+ * one that may carry a per-field [ErrorResponse.errors] breakdown — every other case is scalar), an
+ * authentication `401`, a domain-rejection `422`, and an unexpected `500`. New statuses (404/409…) slot in
+ * the same way when a real caller needs them.
  */
 
 /**
@@ -25,6 +25,15 @@ fun badRequest(
     errors: List<FieldErrorResponse> = emptyList(),
 ): HttpResponse<ErrorResponse> =
     HttpResponse.badRequest(ErrorResponse(code, message, errors))
+
+/**
+ * `401 Unauthorized` — an authentication failure. Stays **scalar** (a stable `code`/`message`, no
+ * per-field [ErrorResponse.errors]) and deliberately carries **no** `WWW-Authenticate` header. Every
+ * authentication rejection — invalid sign-in credentials or a protected route reached without a live
+ * session — resolves to this one shape, so neither body, code, nor status can tell the causes apart.
+ */
+fun unauthorized(code: String, message: String): HttpResponse<ErrorResponse> =
+    HttpResponse.status<ErrorResponse>(HttpStatus.UNAUTHORIZED).body(ErrorResponse(code, message))
 
 /**
  * `422 Unprocessable Entity` — a well-formed request the domain refused. Stays **scalar** (a

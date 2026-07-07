@@ -6,6 +6,7 @@ import io.mockk.mockk
 import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
 import com.bed.cordato.features.identity.application.repositories.PersonRepository
 import com.bed.cordato.features.identity.domain.entities.PersonEntity
+import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
 /**
@@ -18,7 +19,7 @@ import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
  */
 fun passwordHasherMock(): PasswordHasherPort {
     val hasher = mockk<PasswordHasherPort>()
-    every { hasher(any()) } answers { "bcrypt:${firstArg<String>()}" }
+    every { hasher.create(any()) } answers { "bcrypt:${firstArg<String>()}" }
     return hasher
 }
 
@@ -35,4 +36,8 @@ class FakePersonRepository : PersonRepository {
 
     override fun signUp(person: PersonEntity): Boolean =
         byEmail.putIfAbsent(person.email.value, person) == null
+
+    // Mirrors the durable query: an unknown e-mail and a non-active person both collapse to null.
+    override fun findByEmail(email: EmailValueObject): PersonEntity? =
+        byEmail[email.value]?.takeIf { it.status == PersonStatusEnum.ACTIVE }
 }

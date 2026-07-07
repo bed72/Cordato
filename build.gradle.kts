@@ -145,7 +145,7 @@ jooq {
                 isJavaTimeTypes = true
             }
             target {
-                packageName = "com.bed.cordato.features.identity.infrastructure.repositories.models"
+                packageName = "com.bed.cordato.core.infrastructure.persistence.models"
                 directory = layout.buildDirectory.dir("generated-src/jooq/main").get().asFile.path
             }
         }

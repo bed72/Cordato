@@ -25,6 +25,10 @@ import com.bed.cordato.core.infrastructure.adapters.IdGeneratorAdapter
 import com.bed.cordato.core.infrastructure.persistence.configurations.DatabaseConfiguration
 import com.bed.cordato.core.application.ports.MessagePort
 import com.bed.cordato.core.infrastructure.adapters.MessageAdapter
+import com.bed.cordato.core.application.ports.TokenizerPort
+import com.bed.cordato.core.infrastructure.adapters.TokenizerAdapter
+import com.bed.cordato.core.application.repositories.SessionRepository
+import com.bed.cordato.core.infrastructure.repositories.PersistenceSessionRepository
 
 /**
  * Core's DI factory — the shared kernel every bounded context inherits: determinism ports
@@ -70,6 +74,15 @@ class CoreFactory {
 
     @Singleton
     fun dslContext(dataSource: DataSource): DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)
+
+    @Singleton
+    fun tokenizer(): TokenizerPort = TokenizerAdapter()
+
+    // Durable PostgreSQL adapter; the DSLContext comes from this same factory. The tokenizer hashes a
+    // presented token before it ever reaches a query, so the repository never sees a plaintext column.
+    @Singleton
+    fun sessionRepository(dslContext: DSLContext, tokenizer: TokenizerPort): SessionRepository =
+        PersistenceSessionRepository(dslContext, tokenizer)
 
     @Singleton
     fun dataSource(): DataSource {

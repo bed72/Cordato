@@ -13,9 +13,12 @@ import io.micronaut.http.annotation.Controller
 import com.bed.cordato.core.application.ports.MessagePort
 
 import com.bed.cordato.features.identity.application.results.SignUpResult
+import com.bed.cordato.features.identity.application.results.SignInResult
 import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
 
 import com.bed.cordato.features.identity.infrastructure.http.requests.SignUpRequest
+import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequest
 import com.bed.cordato.features.identity.infrastructure.http.mappers.errors.toResponse
 import com.bed.cordato.features.identity.infrastructure.http.mappers.requests.toCommand
 import com.bed.cordato.features.identity.infrastructure.http.mappers.responses.toResponse
@@ -47,6 +50,7 @@ import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.Pe
 class PersonController(
     private val messages: MessagePort,
     private val signUpUseCase: SignUpUseCase,
+    private val signInUseCase: SignInUseCase,
 ) : PersonControllerDoc {
 
     @Post("/sign-up")
@@ -55,5 +59,13 @@ class PersonController(
         when (val data = signUpUseCase(request.toCommand())) {
             is SignUpResult.Failure -> data.error.toResponse(messages)
             is SignUpResult.Success -> HttpResponse.created(data.person.toResponse())
+        }
+
+    // OpenAPI doc for this route is a follow-up (no <Controller>Doc method yet); success is a plain 200.
+    @Post("/sign-in")
+    fun signIn(@Body @Valid request: SignInRequest): HttpResponse<*> =
+        when (val data = signInUseCase(request.toCommand())) {
+            is SignInResult.Failure -> data.error.toResponse(messages)
+            is SignInResult.Success -> HttpResponse.ok(data.toResponse())
         }
 }

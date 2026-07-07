@@ -1,27 +1,27 @@
 package com.bed.cordato.features.identity.infrastructure.repositories
 
-import java.util.concurrent.Callable
-import java.util.concurrent.CyclicBarrier
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-
 import kotlin.test.Test
 import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.BeforeTest
+import kotlin.test.assertFalse
+import kotlin.test.assertEquals
+
+import java.util.concurrent.Callable
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.Executors
+import java.util.concurrent.CyclicBarrier
 
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 
+import com.bed.cordato.core.infrastructure.persistence.models.Tables.PERSON
+
 import com.bed.cordato.features.identity.domain.entities.PersonEntity
 import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
-import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
-
-import com.bed.cordato.features.identity.infrastructure.repositories.models.Tables.PERSON
+import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
 import com.bed.cordato.support.PostgresHarness
 
@@ -68,8 +68,8 @@ class PersistencePersonRepositoryTest {
         // Read the raw row back to prove it was actually persisted (not just cached in-process).
         val row = harness.dsl.selectFrom(PERSON).where(PERSON.EMAIL.eq("carol@example.com")).fetchOne()
 
-        assertEquals("person-carol", row?.id)
         assertEquals("Carol", row?.name)
+        assertEquals("person-carol", row?.id)
         assertEquals(PersonStatusEnum.ACTIVE.name, row?.status)
     }
 
@@ -109,14 +109,14 @@ class PersistencePersonRepositoryTest {
 
     private fun personWith(
         rawEmail: String,
-        id: String = "person-$rawEmail",
         name: String = "Person",
+        id: String = "person-$rawEmail",
     ) = PersonEntity(
         id = id,
         hash = "bcrypt:secret",
-        name = NameValueObject.of(name)!!,
         email = email(rawEmail),
         status = PersonStatusEnum.ACTIVE,
+        name = NameValueObject.of(name)!!,
     )
 
     private fun email(raw: String) = EmailValueObject.of(raw)!!

@@ -1,31 +1,35 @@
 package com.bed.cordato.features.identity.infrastructure.http
 
-import io.micronaut.http.HttpStatus
-import io.micronaut.http.HttpRequest
-import io.micronaut.http.MediaType
-import io.micronaut.http.client.HttpClient
-import io.micronaut.http.client.annotation.Client
-import io.micronaut.http.client.exceptions.HttpClientResponseException
-import io.micronaut.context.annotation.Factory
-import io.micronaut.context.annotation.Replaces
-import io.micronaut.test.extensions.junit5.annotation.MicronautTest
-
 import io.mockk.mockk
-import io.mockk.verify
 import io.mockk.every
+import io.mockk.verify
 import io.mockk.clearMocks
 
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 
 import kotlin.test.Test
-import kotlin.test.assertTrue
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.BeforeTest
+import kotlin.test.assertTrue
+import kotlin.test.assertFalse
+import kotlin.test.assertEquals
+
+import io.micronaut.context.annotation.Factory
+import io.micronaut.context.annotation.Replaces
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest
+
+import io.micronaut.http.MediaType
+import io.micronaut.http.HttpStatus
+import io.micronaut.http.HttpRequest
+import io.micronaut.http.client.HttpClient
+import io.micronaut.http.client.annotation.Client
+import io.micronaut.http.client.exceptions.HttpClientResponseException
+
+import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 
 import com.bed.cordato.features.identity.application.results.SignUpResult
 import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
 
 import com.bed.cordato.features.identity.domain.errors.SignUpError
 import com.bed.cordato.features.identity.domain.entities.PersonEntity
@@ -33,8 +37,6 @@ import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObject
-
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
@@ -60,8 +62,8 @@ class PersonControllerTest {
 
     private val validBody = mapOf(
         "name" to "Alice",
-        "email" to "alice@example.com",
         "password" to "s3cretpw",
+        "email" to "alice@example.com",
     )
 
     private fun person(hash: String = "bcrypt:super-secret") = PersonEntity(
@@ -102,8 +104,8 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.CREATED, response.status)
         val body = response.body()!!
-        assertEquals("person-1", body.id)
         assertEquals("Alice", body.name)
+        assertEquals("person-1", body.id)
         assertEquals("alice@example.com", body.email)
 
         // The hash must not appear anywhere in the serialized JSON, under any field name.
@@ -119,8 +121,8 @@ class PersonControllerTest {
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         // Missing field fails deserialization before Bean Validation, so it is a scalar malformed-body 400.
         val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("MALFORMED_REQUEST", body.code)
         assertTrue(body.errors.isEmpty())
+        assertEquals("MALFORMED_REQUEST", body.code)
         verify(exactly = 0) { useCase(any()) }
     }
 
@@ -164,8 +166,8 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(String::class.java).get()
-        assertTrue(body.contains("INVALID_REQUEST"), body)
         assertTrue(body.contains("e-mail"), body)
+        assertTrue(body.contains("INVALID_REQUEST"), body)
         // The raw regex must never leak into the client-facing message.
         assertFalse(body.contains("^["), "leaked the validation regex: $body")
         verify(exactly = 0) { useCase(any()) }
@@ -257,12 +259,12 @@ class PersonControllerTest {
         val exception = postSignUp(validBody)
         val body = exception.response.getBody(String::class.java).get()
 
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
         assertTrue(body.contains("SIGNUP_REJECTED"))
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
         // Never echo the attempted e-mail, and never confirm the account exists.
+        assertFalse(body.contains("em uso"), "confirmed the e-mail is in use: $body")
         assertFalse(body.contains("alice@example.com"), "leaked the attempted e-mail: $body")
         assertFalse(body.contains("cadastrado"), "confirmed the e-mail is registered: $body")
-        assertFalse(body.contains("em uso"), "confirmed the e-mail is in use: $body")
     }
 
     // i18n: the message text is resolved by key from the bundle. Without a bundle for the requested
@@ -308,4 +310,11 @@ class SignUpUseCaseMockFactory {
     @Singleton
     @Replaces(SignUpUseCase::class)
     fun signUpUseCase(): SignUpUseCase = mockk()
+
+    // The controller now also depends on SignInUseCase; replace it with a mock too so instantiating
+    // the controller never drags in the real PersonRepository/DataSource (these tests need no DB).
+    // Sign-in's own HTTP behavior is covered by a dedicated follow-up test.
+    @Singleton
+    @Replaces(SignInUseCase::class)
+    fun signInUseCase(): SignInUseCase = mockk()
 }
