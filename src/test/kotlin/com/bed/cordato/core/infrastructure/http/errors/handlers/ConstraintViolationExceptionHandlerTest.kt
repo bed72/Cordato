@@ -7,24 +7,16 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 
-import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpStatus
+import io.micronaut.http.HttpRequest
 
 import jakarta.validation.Path
 import jakarta.validation.ConstraintViolation
 import jakarta.validation.ConstraintViolationException
 
-import com.bed.cordato.core.infrastructure.http.responses.FieldErrorResponse
 import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.infrastructure.http.responses.FieldErrorResponse
 
-
-/**
- * Unit test for the shared [ConstraintViolationExceptionHandler]: drives it with mocked
- * [ConstraintViolation]s (no server, no real validator) to pin the mapping — one [FieldErrorResponse] per
- * violation, [FieldErrorResponse.field] taken from the *final* node of the property path (never the internal
- * `method.arg` prefix), and no concatenation across fields. The scalar summary is resolved from a stubbed
- * [MessagePort], so the assertions here stay about the mapping shape, not the bundle content.
- */
 class ConstraintViolationExceptionHandlerTest {
 
     private val messages = mockk<MessagePort> {
@@ -74,9 +66,8 @@ class ConstraintViolationExceptionHandlerTest {
         )
 
         val body = response.body()!!
-        assertEquals(setOf("name", "email", "password"), body.errors.map { it.field }.toSet())
-        // The per-field messages must live in `errors`, never glued into the summary `message`.
         assertTrue(!body.message.contains("nome"), body.message)
         assertTrue(body.errors.any { it.message == "O nome é obrigatório." })
+        assertEquals(setOf("name", "email", "password"), body.errors.map { it.field }.toSet())
     }
 }

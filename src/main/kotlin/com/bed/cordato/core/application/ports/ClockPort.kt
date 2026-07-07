@@ -7,5 +7,5 @@ import java.time.Instant
  * so behavior stays testable with a frozen clock. Implemented in core/infrastructure.
  */
 fun interface ClockPort {
-    fun now(): Instant
+    operator fun invoke(): Instant
 }

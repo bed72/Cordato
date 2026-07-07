@@ -1,36 +1,30 @@
 package com.bed.cordato.features.identity.infrastructure.repositories
 
-import java.util.concurrent.Callable
-import java.util.concurrent.CyclicBarrier
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-
 import kotlin.test.Test
 import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.BeforeTest
+import kotlin.test.assertFalse
+import kotlin.test.assertEquals
+
+import java.util.concurrent.Callable
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.Executors
+import java.util.concurrent.CyclicBarrier
 
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 
-import com.bed.cordato.features.identity.domain.entities.PersonEntity
-import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
-import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
-import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
+import com.bed.cordato.features.identity.factories.email
+import com.bed.cordato.features.identity.factories.person
 
-import com.bed.cordato.features.identity.infrastructure.repositories.models.Tables.PERSON
+import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
+
+import com.bed.cordato.core.infrastructure.persistence.models.Tables.PERSON
 
 import com.bed.cordato.support.PostgresHarness
 
-/**
- * Adapter tests for [PersistencePersonRepository] against a real PostgreSQL (Testcontainers). One
- * container per class, Flyway-migrated once; each test starts from an empty `person` table.
- * These prove durability, the query path, and — crucially — that the datastore-enforced
- * UNIQUE constraint resolves to the losing `false` outcome rather than leaking an exception.
- */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PersistencePersonRepositoryTest {
 
@@ -54,7 +48,7 @@ class PersistencePersonRepositoryTest {
 
     @Test
     fun `saved person is found by existsByEmail - an unknown email is not`() {
-        val inserted = repository.signUp(personWith("alice@example.com"))
+        val inserted = repository.signUp(person(rawEmail = "alice@example.com"))
 
         assertTrue(inserted)
         assertTrue(repository.existsByEmail(email("alice@example.com")))
@@ -63,24 +57,23 @@ class PersistencePersonRepositoryTest {
 
     @Test
     fun `a person survives being re-read from the datastore`() {
-        repository.signUp(personWith("carol@example.com", id = "person-carol", name = "Carol"))
+        repository.signUp(person(id = "person-carol", name = "Carol", rawEmail = "carol@example.com"))
 
-        // Read the raw row back to prove it was actually persisted (not just cached in-process).
         val row = harness.dsl.selectFrom(PERSON).where(PERSON.EMAIL.eq("carol@example.com")).fetchOne()
 
-        assertEquals("person-carol", row?.id)
         assertEquals("Carol", row?.name)
+        assertEquals("person-carol", row?.id)
         assertEquals(PersonStatusEnum.ACTIVE.name, row?.status)
     }
 
     @Test
     fun `a duplicate email is rejected as false and creates no second row`() {
-        assertTrue(repository.signUp(personWith("bob@example.com", id = "person-1")))
+        assertTrue(repository.signUp(person(id = "person-1", rawEmail = "bob@example.com")))
 
-        val second = repository.signUp(personWith("bob@example.com", id = "person-2"))
+        val second = repository.signUp(person(id = "person-2", rawEmail = "bob@example.com"))
 
-        assertFalse(second, "second signUp for the same e-mail must lose, not throw")
         assertEquals(1, personCount("bob@example.com"))
+        assertFalse(second, "second signUp for the same e-mail must lose, not throw")
     }
 
     @Test
@@ -89,16 +82,16 @@ class PersistencePersonRepositoryTest {
         val pool = Executors.newFixedThreadPool(2)
 
         fun race(id: String) = Callable {
-            barrier.await() // release both threads into signUp at the same instant
-            repository.signUp(personWith("dave@example.com", id = id))
+            barrier.await()
+            repository.signUp(person(id = id, rawEmail = "dave@example.com"))
         }
 
         try {
             val results = pool.invokeAll(listOf(race("person-a"), race("person-b")))
                 .map { it.get(10, TimeUnit.SECONDS) }
 
-            assertEquals(listOf(false, true), results.sorted(), "exactly one insert wins, one loses")
             assertEquals(1, personCount("dave@example.com"))
+            assertEquals(listOf(false, true), results.sorted(), "exactly one insert wins, one loses")
         } finally {
             pool.shutdownNow()
         }
@@ -106,18 +99,4 @@ class PersistencePersonRepositoryTest {
 
     private fun personCount(email: String): Int =
         harness.dsl.fetchCount(PERSON, PERSON.EMAIL.eq(email))
-
-    private fun personWith(
-        rawEmail: String,
-        id: String = "person-$rawEmail",
-        name: String = "Person",
-    ) = PersonEntity(
-        id = id,
-        hash = "bcrypt:secret",
-        name = NameValueObject.of(name)!!,
-        email = email(rawEmail),
-        status = PersonStatusEnum.ACTIVE,
-    )
-
-    private fun email(raw: String) = EmailValueObject.of(raw)!!
 }

@@ -19,4 +19,11 @@ interface PersonRepository {
     fun signUp(person: PersonEntity): Boolean
 
     fun existsByEmail(email: EmailValueObject): Boolean
+
+    /**
+     * Resolves the **active** person for [email], or `null`. A non-existent e-mail and an e-mail
+     * whose person is not active (deleted/inactive) collapse to the same absent result, never a
+     * non-active person — keeping login's account-discovery non-leak invariant at the query layer.
+     */
+    fun findByEmail(email: EmailValueObject): PersonEntity?
 }

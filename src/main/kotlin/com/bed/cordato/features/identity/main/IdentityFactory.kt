@@ -1,14 +1,19 @@
 package com.bed.cordato.features.identity.main
 
+import org.jooq.DSLContext
+
 import jakarta.inject.Singleton
 
 import io.micronaut.context.annotation.Factory
 
-import org.jooq.DSLContext
 
+import com.bed.cordato.core.application.ports.ClockPort
+import com.bed.cordato.core.application.ports.TokenizerPort
 import com.bed.cordato.core.application.ports.IdGeneratorPort
+import com.bed.cordato.core.application.repositories.SessionRepository
 
 import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
 import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
 import com.bed.cordato.features.identity.application.repositories.PersonRepository
 
@@ -39,5 +44,24 @@ class IdentityFactory {
         generator: IdGeneratorPort,
         hasher: PasswordHasherPort,
         repository: PersonRepository,
-    ): SignUpUseCase = SignUpUseCase(generator, hasher, repository)
+    ): SignUpUseCase = SignUpUseCase(hasher, generator, repository)
+
+    // Clock, tokenizer, id generator and session repository come from CoreFactory; the password
+    // hasher and person repository are identity's own bindings above.
+    @Singleton
+    fun signInUseCase(
+        clock: ClockPort,
+        tokenizer: TokenizerPort,
+        generator: IdGeneratorPort,
+        hasher: PasswordHasherPort,
+        personRepository: PersonRepository,
+        sessionRepository: SessionRepository,
+    ): SignInUseCase = SignInUseCase(
+        clock = clock,
+        hasher = hasher,
+        generator = generator,
+        tokenizer = tokenizer,
+        personRepository = personRepository,
+        sessionRepository = sessionRepository
+    )
 }

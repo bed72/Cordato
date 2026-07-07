@@ -1,23 +1,28 @@
 package com.bed.cordato.features.identity.infrastructure.http.controllers
 
+import jakarta.validation.Valid
+import io.micronaut.validation.Validated
+
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.Body
 import io.micronaut.http.annotation.Post
 import io.micronaut.http.annotation.Status
 import io.micronaut.http.annotation.Controller
-import io.micronaut.validation.Validated
 
-import jakarta.validation.Valid
+import com.bed.cordato.core.application.ports.MessagePort
 
 import com.bed.cordato.features.identity.application.results.SignUpResult
+import com.bed.cordato.features.identity.application.results.SignInResult
 import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
-import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.PersonControllerDoc
+import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
 
-import com.bed.cordato.features.identity.infrastructure.http.mappers.toCommand
-import com.bed.cordato.features.identity.infrastructure.http.mappers.toResponse
 import com.bed.cordato.features.identity.infrastructure.http.requests.SignUpRequest
-import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequest
+import com.bed.cordato.features.identity.infrastructure.http.mappers.errors.toResponse
+import com.bed.cordato.features.identity.infrastructure.http.mappers.requests.toCommand
+import com.bed.cordato.features.identity.infrastructure.http.mappers.responses.toResponse
+import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.PersonControllerDoc
 
 /**
  * Identity's driving (primary/inbound) HTTP adapter. This is the one infrastructure type that
@@ -43,8 +48,9 @@ import com.bed.cordato.core.application.ports.MessagePort
 @Validated
 @Controller
 class PersonController(
-    private val signUpUseCase: SignUpUseCase,
     private val messages: MessagePort,
+    private val signUpUseCase: SignUpUseCase,
+    private val signInUseCase: SignInUseCase,
 ) : PersonControllerDoc {
 
     @Post("/sign-up")
@@ -53,5 +59,13 @@ class PersonController(
         when (val data = signUpUseCase(request.toCommand())) {
             is SignUpResult.Failure -> data.error.toResponse(messages)
             is SignUpResult.Success -> HttpResponse.created(data.person.toResponse())
+        }
+
+    @Post("/sign-in")
+    @Status(HttpStatus.OK)
+    override fun signIn(@Body @Valid request: SignInRequest): HttpResponse<*> =
+        when (val data = signInUseCase(request.toCommand())) {
+            is SignInResult.Failure -> data.error.toResponse(messages)
+            is SignInResult.Success -> HttpResponse.ok(data.toResponse())
         }
 }

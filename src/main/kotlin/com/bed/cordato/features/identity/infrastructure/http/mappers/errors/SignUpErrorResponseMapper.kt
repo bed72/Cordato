@@ -1,4 +1,4 @@
-package com.bed.cordato.features.identity.infrastructure.http.mappers
+package com.bed.cordato.features.identity.infrastructure.http.mappers.errors
 
 import io.micronaut.http.HttpResponse
 
@@ -18,9 +18,9 @@ import com.bed.cordato.core.infrastructure.http.responses.unprocessable
  * (passed in by the controller), never inlined here — the code stays the machine-readable contract, the
  * bundle owns the words. Every rejection is a `422 Unprocessable Entity`: sharing a single status keeps
  * the code itself from signalling *which* rejection happened. Each error stays **scalar** — a
- * `code`/`message` with no per-field [ErrorResponse.errors]. [SignUpError.WeakPassword] MAY state the
+ * `code`/`message` with no per-field [ErrorResponse.errors]. [WeakPassword] MAY state the
  * public minimum length (it reveals nothing about any person) by interpolating `minLength` into its
- * message, while [SignUpError.EmailAlreadyInUse] gets a generic code and message that never confirm the
+ * message, while [EmailAlreadyInUse] gets a generic code and message that never confirm the
  * e-mail is registered — and, crucially, is never turned into a `FieldError(field = "email", ...)`, which
  * would reintroduce the account-discovery oracle (identity's non-leak invariant).
  */

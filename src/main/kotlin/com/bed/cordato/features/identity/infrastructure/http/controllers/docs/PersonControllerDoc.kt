@@ -1,7 +1,9 @@
 package com.bed.cordato.features.identity.infrastructure.http.controllers.docs
 
 import com.bed.cordato.features.identity.infrastructure.http.requests.SignUpRequest
+import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequest
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
+import com.bed.cordato.features.identity.infrastructure.http.responses.SignInResponse
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.MediaType
@@ -57,4 +59,35 @@ interface PersonControllerDoc {
         ),
     )
     fun signUp(request: SignUpRequest): HttpResponse<*>
+
+    @Operation(
+        operationId = "signIn",
+        summary = "Autentica uma pessoa",
+        description = "Autentica por e-mail e senha e, em caso de sucesso, abre uma sessão retornando o token " +
+            "opaco e sua expiração. A recusa é deliberadamente genérica: senha errada, e-mail desconhecido e " +
+            "pessoa não ativa colapsam no mesmo `401`, sem revelar qual fator falhou nem se o e-mail existe.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Autenticada; retorna o token opaco (uma única vez) e a expiração da sessão.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = SignInResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Requisição malformada ou sem os campos obrigatórios (validação de presença na borda).",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "Credenciais inválidas; resposta neutra que não distingue qual fator falhou.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "500",
+            description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    fun signIn(request: SignInRequest): HttpResponse<*>
 }
