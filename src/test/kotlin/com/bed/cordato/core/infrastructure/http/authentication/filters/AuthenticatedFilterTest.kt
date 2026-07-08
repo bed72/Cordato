@@ -45,18 +45,18 @@ class AuthenticatedFilterTest {
 
     @Test
     fun `an unannotated route flows through untouched, with or without a token`() {
-        assertEquals("open", retrieve("/probe/open"))
-        assertEquals("open", retrieve("/probe/open", "Bearer $DEAD_TOKEN"))
+        assertEquals("open", retrieve("/v1/probe/open"))
+        assertEquals("open", retrieve("/v1/probe/open", "Bearer $DEAD_TOKEN"))
     }
 
     @Test
     fun `a live session reaches the handler as the typed actor`() {
-        assertEquals(SESSION_PERSON_ID, retrieve("/probe/whoami", "Bearer $LIVE_TOKEN"))
+        assertEquals(SESSION_PERSON_ID, retrieve("/v1/probe/whoami", "Bearer $LIVE_TOKEN"))
     }
 
     @Test
     fun `a protected route without a token is refused with a neutral scalar 401`() {
-        val exception = reject("/probe/whoami")
+        val exception = reject("/v1/probe/whoami")
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         val body = exception.response.getBody(ErrorResponse::class.java).get()
@@ -66,7 +66,7 @@ class AuthenticatedFilterTest {
 
     @Test
     fun `a token resolving to no live session is refused with the same 401`() {
-        val exception = reject("/probe/whoami", "Bearer $DEAD_TOKEN")
+        val exception = reject("/v1/probe/whoami", "Bearer $DEAD_TOKEN")
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorResponse::class.java).get().code)
@@ -75,10 +75,10 @@ class AuthenticatedFilterTest {
     @Test
     fun `absent, malformed and unresolvable tokens collapse to one indistinguishable 401`() {
         val rejections = listOf(
-            reject("/probe/whoami"),                         // absent
-            reject("/probe/whoami", DEAD_TOKEN),             // malformed: no Bearer scheme
-            reject("/probe/whoami", "Bearer "),              // malformed: blank token
-            reject("/probe/whoami", "Bearer $DEAD_TOKEN"),   // well-formed but unresolvable
+            reject("/v1/probe/whoami"),                         // absent
+            reject("/v1/probe/whoami", DEAD_TOKEN),             // malformed: no Bearer scheme
+            reject("/v1/probe/whoami", "Bearer "),              // malformed: blank token
+            reject("/v1/probe/whoami", "Bearer $DEAD_TOKEN"),   // well-formed but unresolvable
         )
 
         val statuses = rejections.map { it.status }.toSet()

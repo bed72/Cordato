@@ -50,7 +50,7 @@ class PersonControllerTest {
     fun reset() = clearMocks(repository)
 
     private fun request(authorization: String? = null): HttpRequest<Any> {
-        val request = HttpRequest.GET<Any>("/persons/me")
+        val request = HttpRequest.GET<Any>("/v1/persons/me")
         return if (authorization == null) request else request.header("Authorization", authorization)
     }
 

@@ -60,16 +60,16 @@ class AuthenticationControllerTest {
     private val validBody = signUpRequestBody()
 
     private fun postSignUp(body: Any): HttpClientResponseException = assertThrows {
-        client.toBlocking().exchange(HttpRequest.POST("/authentication/sign-up", body), String::class.java)
+        client.toBlocking().exchange(HttpRequest.POST("/v1/authentication/sign-up", body), String::class.java)
     }
 
     private fun postSignIn(body: Any): HttpClientResponseException = assertThrows {
-        client.toBlocking().exchange(HttpRequest.POST("/authentication/sign-in", body), String::class.java)
+        client.toBlocking().exchange(HttpRequest.POST("/v1/authentication/sign-in", body), String::class.java)
     }
 
     private fun postSignUp(body: Any, language: String): HttpClientResponseException = assertThrows {
         client.toBlocking().exchange(
-            HttpRequest.POST("/authentication/sign-up", body).header("Accept-Language", language),
+            HttpRequest.POST("/v1/authentication/sign-up", body).header("Accept-Language", language),
             String::class.java,
         )
     }
@@ -87,7 +87,7 @@ class AuthenticationControllerTest {
         every { useCase(any()) } returns SignUpResult.Success(person(hash = "bcrypt:leaky"))
 
         val response = client.toBlocking().exchange(
-            HttpRequest.POST("/authentication/sign-up", validBody),
+            HttpRequest.POST("/v1/authentication/sign-up", validBody),
             PersonResponse::class.java,
         )
 
@@ -97,7 +97,7 @@ class AuthenticationControllerTest {
         assertEquals("person-1", body.id)
         assertEquals("alice@example.com", body.email)
 
-        val raw = client.toBlocking().retrieve(HttpRequest.POST("/authentication/sign-up", validBody), String::class.java)
+        val raw = client.toBlocking().retrieve(HttpRequest.POST("/v1/authentication/sign-up", validBody), String::class.java)
         assertFalse(raw.contains("hash"), "response leaked a hash field: $raw")
         assertFalse(raw.contains("bcrypt"), "response leaked the hash value: $raw")
     }
@@ -175,7 +175,7 @@ class AuthenticationControllerTest {
     fun `non-JSON body is rejected with 400 in the shared shape without invoking the use case`() {
         val exception = assertThrows {
             client.toBlocking().exchange(
-                HttpRequest.POST("/authentication/sign-up", "not-json").contentType(MediaType.APPLICATION_JSON),
+                HttpRequest.POST("/v1/authentication/sign-up", "not-json").contentType(MediaType.APPLICATION_JSON),
                 String::class.java,
             )
         }
@@ -191,7 +191,7 @@ class AuthenticationControllerTest {
     fun `empty body is rejected with 400 in the shared shape without invoking the use case`() {
         val exception = assertThrows {
             client.toBlocking().exchange(
-                HttpRequest.POST("/authentication/sign-up", "").contentType(MediaType.APPLICATION_JSON),
+                HttpRequest.POST("/v1/authentication/sign-up", "").contentType(MediaType.APPLICATION_JSON),
                 String::class.java,
             )
         }
@@ -276,7 +276,7 @@ class AuthenticationControllerTest {
         every { signInUseCase(any()) } returns SignInResult.Success(session(), token = "raw-token")
 
         val response = client.toBlocking().exchange(
-            HttpRequest.POST("/authentication/sign-in", signInRequestBody()),
+            HttpRequest.POST("/v1/authentication/sign-in", signInRequestBody()),
             SignInResponse::class.java,
         )
 
@@ -285,7 +285,7 @@ class AuthenticationControllerTest {
         assertEquals("raw-token", body.token)
         assertEquals(session().expiresAt, body.expiresAt)
 
-        val raw = client.toBlocking().retrieve(HttpRequest.POST("/authentication/sign-in", signInRequestBody()), String::class.java)
+        val raw = client.toBlocking().retrieve(HttpRequest.POST("/v1/authentication/sign-in", signInRequestBody()), String::class.java)
         assertTrue(raw.contains("expires_at"), "response is not snake_case: $raw")
         assertFalse(raw.contains("expiresAt"), "response leaked a camelCase key: $raw")
     }
