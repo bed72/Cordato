@@ -104,8 +104,8 @@ class PersistencePersonRepositoryTest {
 
         val found = repository.findById("person-erin")
 
-        assertEquals("Erin", found?.name?.value)
         assertEquals("person-erin", found?.id)
+        assertEquals("Erin", found?.name?.value)
         assertEquals("erin@example.com", found?.email?.value)
     }
 

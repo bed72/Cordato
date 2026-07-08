@@ -15,6 +15,7 @@ import com.bed.cordato.core.application.repositories.SessionRepository
 import com.bed.cordato.features.identity.application.use_cases.MeUseCase
 import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
 import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
+import com.bed.cordato.features.identity.application.use_cases.UpdateNameUseCase
 import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
 import com.bed.cordato.features.identity.application.repositories.PersonRepository
 
@@ -42,6 +43,9 @@ class IdentityFactory {
 
     @Singleton
     fun meUseCase(repository: PersonRepository): MeUseCase = MeUseCase(repository)
+
+    @Singleton
+    fun updateNameUseCase(repository: PersonRepository): UpdateNameUseCase = UpdateNameUseCase(repository)
 
     @Singleton
     fun signUpUseCase(

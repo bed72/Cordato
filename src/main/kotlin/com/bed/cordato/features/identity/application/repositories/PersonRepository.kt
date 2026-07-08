@@ -1,6 +1,7 @@
 package com.bed.cordato.features.identity.application.repositories
 
 import com.bed.cordato.features.identity.domain.entities.PersonEntity
+import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
 /**
@@ -33,4 +34,16 @@ interface PersonRepository {
      * non-active person — keeping login's account-discovery non-leak invariant at the query layer.
      */
     fun findByEmail(email: EmailValueObject): PersonEntity?
+
+    /**
+     * Updates **only** the name of the **active** person for [id], leaving e-mail, password hash, status and
+     * identifier untouched. Deliberately narrow (name-only, not a generic `save(person)`) so the persistence
+     * boundary cannot rewrite any other field.
+     *
+     * @return `true` when the active person's name was updated; `false` when no active person matches [id]
+     *   (never existed, or a race with account deletion left it non-active) — zero rows affected collapses to
+     *   the same absent result [findById] reports, so the use case maps it to `PersonNotFound`.
+     */
+    fun updateName(id: String, name: NameValueObject): Boolean
+
 }

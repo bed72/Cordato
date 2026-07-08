@@ -32,6 +32,19 @@ pré-condição.
 
 ---
 
+## Editar o próprio nome
+
+Depois de cadastrada, uma pessoa pode corrigir o **próprio nome** — o único campo mutável e não-sensível
+do perfil. A operação exige uma sessão viva e altera **apenas** o nome: o e-mail, a senha e o status
+permanecem exatamente como estavam. O novo nome precisa ser válido pela mesma regra do cadastro (a
+autoridade única do que é um nome aceitável), e uma pessoa só edita o próprio nome, nunca o de outra.
+
+Se a sessão estiver viva mas a pessoa já não estiver mais ativa (uma corrida com a exclusão de conta), a
+edição é recusada com a **mesma** resposta neutra de autenticação que uma sessão ausente ou inválida
+produz — a recusa nunca revela que a sessão apontava para uma pessoa que deixou de existir.
+
+---
+
 ## Não vazar a existência de uma conta
 
 Um dos cuidados mais específicos deste contexto: nunca dar a quem está de fora uma forma de descobrir

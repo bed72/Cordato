@@ -25,7 +25,6 @@ import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 
 import com.bed.cordato.features.identity.factories.person
 import com.bed.cordato.features.identity.application.repositories.PersonRepository
-
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 private const val DEAD_TOKEN = "dead-token"
@@ -73,8 +72,8 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.OK, response.status)
         val body = response.body()!!
-        assertEquals(SESSION_PERSON_ID, body.id)
         assertEquals("Alice", body.name)
+        assertEquals(SESSION_PERSON_ID, body.id)
         assertEquals("alice@example.com", body.email)
 
         val raw = client.toBlocking().retrieve(request("Bearer $LIVE_TOKEN"), String::class.java)
@@ -88,18 +87,18 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
         assertTrue(body.errors.isEmpty())
         verify(exactly = 0) { repository.findById(any()) }
+        assertEquals("UNAUTHENTICATED", body.code)
     }
 
     @Test
     fun `an unresolvable token is refused with a neutral 401 before the use case runs`() {
         val exception = reject("Bearer $DEAD_TOKEN")
 
+        verify(exactly = 0) { repository.findById(any()) }
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorResponse::class.java).get().code)
-        verify(exactly = 0) { repository.findById(any()) }
     }
 
     @Test
@@ -110,8 +109,8 @@ class PersonControllerTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
         assertTrue(body.errors.isEmpty())
+        assertEquals("UNAUTHENTICATED", body.code)
         verify(exactly = 1) { repository.findById(SESSION_PERSON_ID) }
     }
 
