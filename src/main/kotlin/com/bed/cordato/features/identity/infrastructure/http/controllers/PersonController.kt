@@ -36,7 +36,7 @@ import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.Pe
  * (an orphaned session, indistinguishable from a missing one). The OpenAPI documentation lives on the
  * implemented [PersonControllerDoc].
  */
-@Controller("/person")
+@Controller("/persons")
 class PersonController(
     private val meUseCase: MeUseCase,
     private val messages: MessagePort,
