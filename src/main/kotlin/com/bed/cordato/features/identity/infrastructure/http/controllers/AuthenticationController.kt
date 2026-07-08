@@ -22,7 +22,7 @@ import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequ
 import com.bed.cordato.features.identity.infrastructure.http.mappers.errors.toResponse
 import com.bed.cordato.features.identity.infrastructure.http.mappers.requests.toCommand
 import com.bed.cordato.features.identity.infrastructure.http.mappers.responses.toResponse
-import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.AuthenticatedControllerDoc
+import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.AuthenticationControllerDoc
 
 /**
  * Identity's authentication driving (primary/inbound) HTTP adapter — the open entry points that *mint* a
@@ -38,24 +38,24 @@ import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.Au
  *
  * `@Validated` + `@Valid` run the request's Bean Validation constraints first: a violation is thrown
  * as a `ConstraintViolationException` (turned into a `400` by the shared
- * [com.bed.cordato.core.infrastructure.http.errors.handlers.ConstraintViolationExceptionHandler] in `core`)
+ * [ConstraintViolationExceptionHandler] in `core`)
  * before the use case is ever reached. Past that, the handler adds no behavior of its own: it maps the
  * body to a command, runs the use case, and branches over the sealed [SignUpResult]. Because the domain
  * never throws, there is nothing more to catch — success becomes `201 Created`, and each domain error is
  * mapped to its status and neutral body by [toResponse], with the message localized via the injected
  * [MessagePort].
  *
- * The OpenAPI documentation lives on the implemented [com.bed.cordato.features.identity.infrastructure.http.controllers.docs.AuthenticatedControllerDoc] interface, not here: Micronaut
+ * The OpenAPI documentation lives on the implemented [AuthenticationControllerDoc] interface, not here: Micronaut
  * inherits the interface's annotation metadata onto this method, so the controller keeps only routing
  * (`@Controller`/`@Post`), validation (`@Validated`/`@Body`/`@Valid`) and delegation.
  */
 @Validated
-@Controller
-class AuthenticatedController(
+@Controller("/authentication")
+class AuthenticationController(
     private val messages: MessagePort,
     private val signUpUseCase: SignUpUseCase,
     private val signInUseCase: SignInUseCase,
-) : AuthenticatedControllerDoc {
+) : AuthenticationControllerDoc {
 
     @Post("/sign-up")
     @Status(HttpStatus.CREATED)

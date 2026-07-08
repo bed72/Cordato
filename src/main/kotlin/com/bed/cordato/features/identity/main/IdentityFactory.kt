@@ -12,6 +12,7 @@ import com.bed.cordato.core.application.ports.TokenizerPort
 import com.bed.cordato.core.application.ports.IdGeneratorPort
 import com.bed.cordato.core.application.repositories.SessionRepository
 
+import com.bed.cordato.features.identity.application.use_cases.MeUseCase
 import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
 import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
 import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
@@ -38,6 +39,9 @@ class IdentityFactory {
     // a hand-written fake (support.FakePersonRepository), not a production binding.
     @Singleton
     fun personRepository(dslContext: DSLContext): PersonRepository = PersistencePersonRepository(dslContext)
+
+    @Singleton
+    fun meUseCase(repository: PersonRepository): MeUseCase = MeUseCase(repository)
 
     @Singleton
     fun signUpUseCase(

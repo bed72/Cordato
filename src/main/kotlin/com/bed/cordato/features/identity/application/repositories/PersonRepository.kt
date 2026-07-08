@@ -18,6 +18,13 @@ interface PersonRepository {
      */
     fun signUp(person: PersonEntity): Boolean
 
+    /**
+     * Resolves the **active** person for [id], or `null`. Mirrors [findByEmail]'s neutrality: a
+     * non-existent id and an id whose person is not active (deleted/inactive) collapse to the same
+     * absent result, never a non-active person — so an orphaned session cannot tell the cases apart.
+     */
+    fun findById(id: String): PersonEntity?
+
     fun existsByEmail(email: EmailValueObject): Boolean
 
     /**

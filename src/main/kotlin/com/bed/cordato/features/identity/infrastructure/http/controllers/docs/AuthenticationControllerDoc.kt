@@ -26,8 +26,8 @@ import io.swagger.v3.oas.annotations.tags.Tag
  * description of the operation and its responses live here. Each new context's controller follows the
  * same `<Controller>Doc` split.
  */
-@Tag(name = "Identity", description = "Cadastro e autenticação de pessoas.")
-interface AuthenticatedControllerDoc {
+@Tag(name = "Authentication", description = "Cadastro e autenticação de pessoas.")
+interface AuthenticationControllerDoc {
 
     @Operation(
         operationId = "signUp",
