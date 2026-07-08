@@ -281,6 +281,37 @@ a **documentation artefact of infrastructure**, not an application port — it i
 contract and never duplicates the use case's signature. Apply the same `<Controller>Doc` split to every new
 context's controller.
 
+**Edge authentication is a declarative guard, cross-cutting so it lives in `core`, not any feature.**
+Sign-in *mints* the session (opaque token, `hashToken` stored); the consuming side lives in
+`core/infrastructure/http/authentication/` and turns a presented Bearer into an authenticated actor. It is
+organized by kind, each in its own subpackage: `actors/AuthenticatedActor.kt` (the **authenticated actor**
+— the edge category naming the driving-side answer to "who is calling this route?"; a plain `data class`
+carrying **only** the `personId`, not a value class, to dodge the typed-binding pitfall; its `internal const
+ATTRIBUTE` request-attribute key lives in the type's `companion`, namespaced under the type it transports
+rather than as a scattered top-level constant — `personId` is a raw `String` throughout the domain, so this
+is edge-binding machinery, not a domain type), `annotations/Authenticated.kt` (the marker annotation on a
+`@Controller`/handler that declares the route protected — declaring it is what protects, decoupled from
+whether the handler reads the actor), `filters/AuthenticatedFilter.kt` (the `@ServerFilter` guard, with a
+file-private `bearerToken()` extension), and `binders/AuthenticatedActorArgumentBinder.kt` (the honest
+binder). The
+**`@ServerFilter` is the same annotation-discovered driving exception as the controllers and
+`ExceptionHandler`s** — there is no `@Factory` way to declare a filter, so it wires itself and is *not* in
+`CoreFactory`; it reads the matched route via `RouteAttributes.getRouteMatch(request)` (the non-deprecated
+MN4 accessor), skips any route without `@Authenticated` (sign-up/sign-in stay open, no session resolution),
+and on a protected route resolves the live session through `SessionRepository.findActiveByToken(token,
+clock())` (injected as `BeanProvider` so building the singleton at boot doesn't realize the `DataSource`).
+A live session → the person id is stashed in a request attribute and the request proceeds; **no live
+session → the filter *returns* (never throws) the neutral `401` directly via the shared `unauthorized(...)`
+builder** (code `UNAUTHENTICATED`, message by i18n key `error.authentication.message`, **no**
+`WWW-Authenticate`, token never echoed). Returning-not-throwing mirrors how identity's sign-in mapper
+already emits the identical `401` and sidesteps any dependence on filter-thrown exceptions reaching a
+handler — so there is deliberately **no** `UnauthenticatedException`/handler. Absent, malformed, expired and
+revoked tokens collapse to one response, so neither status nor body reveals the cause. The
+`AuthenticatedActorArgumentBinder` is annotation-free and wired in `CoreFactory` (a `@Singleton
+TypedRequestArgumentBinder<AuthenticatedActor>`); it **only reads** the attribute the filter set — no
+session lookup, no `401` — so an absent attribute (a handler asking for the actor on a route that isn't
+`@Authenticated`) is an unsatisfied binding, a programming error with no legitimate request path.
+
 **Cross-context communication** uses an Anti-Corruption Layer, never a direct import between contexts'
 `domain`/`application`, and never data duplication. Concrete case: `couple`'s combined views need
 per-person data owned by `budget` and `expense`.
@@ -299,3 +330,28 @@ per-person data owned by `budget` and `expense`.
   single-person query, called once per person in the pair. (The `expense` and `budget` READMEs currently
   describe the couple-combined view as if they compute it — that phrasing describes the user-visible
   effect, not implementation ownership; the READMEs have been updated to point this at `couple`.)
+
+## Test doubles, fakes and fixtures live outside the test class — never inline
+
+Reusable test collaborators are **never** declared as top-level classes inside a test file; they live in
+dedicated files so a test class only holds `@Test` logic and its own file-private constants. The layout
+mirrors the production convention (one package owns its own wiring), split by what the collaborator *is*:
+
+- **Doubles/fakes and their factory helpers** go in the owning package's `factories/` package — e.g.
+  `core/factories/FakeSessionRepository.kt` (the deterministic fake, mirroring identity's
+  `FakePersonRepository`) and `core/factories/clockFixedAt`/`idGeneratorOf`/`session` builders. A fake's
+  own tuning constants (the token it recognizes, the id it owns) are `const`s exported from *its* file, so
+  the test imports them rather than re-declaring them.
+- **The `@Factory @Replaces` wiring** that swaps a real bean for a double in a `@MicronautTest` also lives
+  in `factories/` — e.g. `core/factories/FakeSessionRepositoryFactory.kt`, mirroring identity's
+  `SignUpUseCaseMockFactory`. Never inline the `@Factory`/`@Replaces` in the test class. (These bean
+  definitions are discovered globally across every `@MicronautTest`; that is expected and harmless when the
+  replaced bean is unused by the other tests.)
+- **Shared test *fixtures* that are neither doubles nor factories** — cross-cutting harnesses and probe
+  beans — live in the `support/` package: `support/PostgresHarness.kt`, and `support/AuthProbeController.kt`
+  (the `@Controller` with an open route and an `@Authenticated` route, used to drive the edge-auth guard
+  end-to-end). A probe controller is a fixture, not a double, so it belongs in `support/`, not `factories/`.
+
+Concretely, `AuthenticatedFilterTest` only injects the `HttpClient` and asserts; its fake session
+repository, the `@Replaces` factory, and the probe controller are all separate files under `core/factories/`
+and `support/`.

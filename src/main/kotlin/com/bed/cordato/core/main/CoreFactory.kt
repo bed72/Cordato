@@ -15,6 +15,7 @@ import io.micronaut.context.MessageSource
 import io.micronaut.context.annotation.Factory
 import io.micronaut.context.LocalizedMessageSource
 import io.micronaut.context.i18n.ResourceBundleMessageSource
+import io.micronaut.http.bind.binders.TypedRequestArgumentBinder
 
 import com.bed.cordato.core.application.ports.ClockPort
 import com.bed.cordato.core.application.ports.MessagePort
@@ -28,6 +29,8 @@ import com.bed.cordato.core.infrastructure.adapters.TokenizerAdapter
 import com.bed.cordato.core.infrastructure.adapters.IdGeneratorAdapter
 import com.bed.cordato.core.infrastructure.repositories.PersistenceSessionRepository
 import com.bed.cordato.core.infrastructure.persistence.configurations.DatabaseConfiguration
+import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
+import com.bed.cordato.core.infrastructure.http.authentication.binders.AuthenticatedActorBinder
 
 /**
  * Core's DI factory — the shared kernel every bounded context inherits: determinism ports
@@ -73,6 +76,15 @@ class CoreFactory {
      */
     @Singleton
     fun messageResolver(messages: LocalizedMessageSource): MessagePort = MessageAdapter(messages)
+
+    /**
+     * The honest edge-auth binder — annotation-free, so it is constructed here like every other adapter
+     * (the discovered `@ServerFilter` is the one edge-auth piece that wires itself). It only reads the
+     * person id the filter resolved; it never authenticates.
+     */
+    @Singleton
+    fun authenticatedActorBinder(): TypedRequestArgumentBinder<AuthenticatedActor> =
+        AuthenticatedActorBinder()
 
     @Singleton
     fun dslContext(dataSource: DataSource): DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)

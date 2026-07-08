@@ -16,4 +16,7 @@ class FakePersonRepository : PersonRepository {
 
     override fun findByEmail(email: EmailValueObject): PersonEntity? =
         byEmail[email.value]?.takeIf { it.status == PersonStatusEnum.ACTIVE }
+
+    override fun findById(id: String): PersonEntity? =
+        byEmail.values.firstOrNull { it.id == id }?.takeIf { it.status == PersonStatusEnum.ACTIVE }
 }

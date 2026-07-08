@@ -2,6 +2,7 @@ package com.bed.cordato.features.identity.infrastructure.repositories
 
 import kotlin.test.Test
 import kotlin.test.AfterTest
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.BeforeTest
 import kotlin.test.assertFalse
@@ -95,6 +96,29 @@ class PersistencePersonRepositoryTest {
         } finally {
             pool.shutdownNow()
         }
+    }
+
+    @Test
+    fun `findById returns the active person for a known id`() {
+        repository.signUp(person(id = "person-erin", name = "Erin", rawEmail = "erin@example.com"))
+
+        val found = repository.findById("person-erin")
+
+        assertEquals("Erin", found?.name?.value)
+        assertEquals("person-erin", found?.id)
+        assertEquals("erin@example.com", found?.email?.value)
+    }
+
+    @Test
+    fun `findById returns absence for an unknown id`() {
+        assertNull(repository.findById("nobody"))
+    }
+
+    @Test
+    fun `findById returns absence for a non-active person, indistinguishable from unknown`() {
+        repository.signUp(person(id = "person-frank", rawEmail = "frank@example.com", status = PersonStatusEnum.DELETED))
+
+        assertNull(repository.findById("person-frank"))
     }
 
     private fun personCount(email: String): Int =

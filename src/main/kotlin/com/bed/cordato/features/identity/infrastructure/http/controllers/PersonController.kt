@@ -1,71 +1,53 @@
 package com.bed.cordato.features.identity.infrastructure.http.controllers
 
-import jakarta.validation.Valid
-import io.micronaut.validation.Validated
-
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpResponse
-import io.micronaut.http.annotation.Body
-import io.micronaut.http.annotation.Post
+import io.micronaut.http.annotation.Get
 import io.micronaut.http.annotation.Status
 import io.micronaut.http.annotation.Controller
 
 import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
+import com.bed.cordato.core.infrastructure.http.authentication.annotations.Authenticated
 
-import com.bed.cordato.features.identity.application.results.SignUpResult
-import com.bed.cordato.features.identity.application.results.SignInResult
-import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
-import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
+import com.bed.cordato.features.identity.application.results.MeResult
+import com.bed.cordato.features.identity.application.commands.MeCommand
+import com.bed.cordato.features.identity.application.use_cases.MeUseCase
 
-import com.bed.cordato.features.identity.infrastructure.http.requests.SignUpRequest
-import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequest
 import com.bed.cordato.features.identity.infrastructure.http.mappers.errors.toResponse
-import com.bed.cordato.features.identity.infrastructure.http.mappers.requests.toCommand
 import com.bed.cordato.features.identity.infrastructure.http.mappers.responses.toResponse
 import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.PersonControllerDoc
 
 /**
- * Identity's driving (primary/inbound) HTTP adapter. This is the one infrastructure type that
- * carries framework routing annotations: Micronaut discovers `@Controller` beans and reads
- * `@Post` to register routes — there is no factory-based way to declare a route — so, unlike the
- * annotation-free adapters wired in `IdentityFactory`, the controller is discovered directly. It
- * still depends only on the pure [SignUpUseCase] (the factory-provided bean, injected here); its
- * public `invoke` is the documented driving side, so no extra port is introduced.
+ * Identity's driving (primary/inbound) HTTP adapter for operations on the already-authenticated person —
+ * kept apart from the [AuthenticationController], which owns only the open session-*minting* flows. Today it
+ * exposes `GET /persons/me`; future `PATCH`/`DELETE` on the person slot in here.
  *
- * `@Validated` + `@Valid` run the request's Bean Validation constraints first: a violation is thrown
- * as a `ConstraintViolationException` (turned into a `400` by the shared
- * [com.bed.cordato.core.infrastructure.http.errors.handlers.ConstraintViolationExceptionHandler] in `core`)
- * before the use case is ever reached. Past that, the handler adds no behavior of its own: it maps the
- * body to a command, runs the use case, and branches over the sealed [SignUpResult]. Because the domain
- * never throws, there is nothing more to catch — success becomes `201 Created`, and each domain error is
- * mapped to its status and neutral body by [toResponse], with the message localized via the injected
- * [MessagePort].
+ * `@Authenticated` lives **on the method**, not the class: declaring it is what makes the edge guard require
+ * a live session before `me()` runs — a missing/invalid/expired token is refused with the neutral `401`
+ * *before* the handler, so the [MeUseCase] is never reached without a resolved caller. Marking per-method
+ * keeps the granularity honest for future routes that may guard differently. The [AuthenticatedActor] is
+ * injected by core's binder from the attribute the filter wrote; the handler only turns its `personId` into
+ * a [MeCommand].
  *
- * The OpenAPI documentation lives on the implemented [com.bed.cordato.features.identity.infrastructure.http.controllers.docs.PersonControllerDoc] interface, not here: Micronaut
- * inherits the interface's annotation metadata onto this method, so the controller keeps only routing
- * (`@Controller`/`@Post`), validation (`@Validated`/`@Body`/`@Valid`) and delegation.
+ * Like [AuthenticationController], this is a discovered `@Controller` (there is no factory way to declare a
+ * route); it depends only on the pure [MeUseCase] bean and the [MessagePort]. It branches over the sealed
+ * [MeResult]: `Success` → `200` with the public person view, `Failure` → the neutral `401` from [toResponse]
+ * (an orphaned session, indistinguishable from a missing one). The OpenAPI documentation lives on the
+ * implemented [PersonControllerDoc].
  */
-@Validated
-@Controller
+@Controller("/persons")
 class PersonController(
+    private val meUseCase: MeUseCase,
     private val messages: MessagePort,
-    private val signUpUseCase: SignUpUseCase,
-    private val signInUseCase: SignInUseCase,
 ) : PersonControllerDoc {
 
-    @Post("/sign-up")
-    @Status(HttpStatus.CREATED)
-    override fun signUp(@Body @Valid request: SignUpRequest): HttpResponse<*> =
-        when (val data = signUpUseCase(request.toCommand())) {
-            is SignUpResult.Failure -> data.error.toResponse(messages)
-            is SignUpResult.Success -> HttpResponse.created(data.person.toResponse())
-        }
-
-    @Post("/sign-in")
+    @Authenticated
+    @Get("/me")
     @Status(HttpStatus.OK)
-    override fun signIn(@Body @Valid request: SignInRequest): HttpResponse<*> =
-        when (val data = signInUseCase(request.toCommand())) {
-            is SignInResult.Failure -> data.error.toResponse(messages)
-            is SignInResult.Success -> HttpResponse.ok(data.toResponse())
+    override fun me(actor: AuthenticatedActor): HttpResponse<*> =
+        when (val data = meUseCase(MeCommand(actor.personId))) {
+            is MeResult.Failure -> data.error.toResponse(messages)
+            is MeResult.Success -> HttpResponse.ok(data.person.toResponse())
         }
 }

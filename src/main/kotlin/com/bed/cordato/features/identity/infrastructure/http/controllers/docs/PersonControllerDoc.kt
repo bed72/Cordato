@@ -1,86 +1,55 @@
 package com.bed.cordato.features.identity.infrastructure.http.controllers.docs
 
-import com.bed.cordato.features.identity.infrastructure.http.requests.SignUpRequest
-import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequest
-import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
-import com.bed.cordato.features.identity.infrastructure.http.responses.SignInResponse
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.MediaType
+
+import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
-import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.security.SecurityRequirement
+
+import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
+
+import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 /**
- * OpenAPI documentation for identity's HTTP routes, kept off the controller so the controller stays a
- * thin routing/validation adapter. Micronaut inherits an interface's annotation metadata onto the
- * implementing method, so the micronaut-openapi processor picks up the `@Operation`/`@ApiResponse`
- * declared here when it documents the route the controller registers with `@Post`.
+ * OpenAPI documentation for identity's authenticated person routes, kept off the controller so it stays a
+ * thin routing adapter. Micronaut inherits an interface's annotation metadata onto the implementing method,
+ * so the micronaut-openapi processor picks up the `@Operation`/`@ApiResponse`/`@SecurityRequirement`
+ * declared here when it documents the route [com.bed.cordato.features.identity.infrastructure.http.controllers.PersonController] registers with `@Get`.
  *
- * This is a **documentation artefact of the infrastructure layer**, not an application port: it does not
- * introduce a driving-side application contract nor duplicate the use case's public signature. The
- * controller's own `@Post`/`@Body`/`@Valid` (routing/validation) live on the implementation; only the
- * description of the operation and its responses live here. Each new context's controller follows the
- * same `<Controller>Doc` split.
+ * `@SecurityRequirement(name = "bearerAuth")` references the Bearer scheme declared globally in core's
+ * `OpenApiDefinition`, so the Swagger UI shows the padlock and lets the caller send a token. The
+ * [AuthenticatedActor] parameter is hidden: it is resolved from a request attribute by the edge binder, not
+ * from the wire, so it is never a documented request parameter. This is a documentation artefact of
+ * infrastructure, not an application port — it introduces no driving-side contract.
  */
-@Tag(name = "Identity", description = "Cadastro e autenticação de pessoas.")
+@Tag(name = "Person", description = "Consulta de dados da pessoa autenticada.")
 interface PersonControllerDoc {
 
     @Operation(
-        operationId = "signUp",
-        summary = "Cadastra uma nova pessoa",
-        description = "Registra uma pessoa a partir de nome, e-mail e senha. As respostas de erro seguem o " +
-            "contrato compartilhado (código estável + mensagem localizável); um conflito de e-mail é " +
-            "deliberadamente genérico e nunca confirma que o e-mail já está cadastrado.",
+        operationId = "me",
+        summary = "Recupera a pessoa autenticada",
+        description = "Retorna a visão pública (id, nome, e-mail) da pessoa dona da sessão viva. A rota é " +
+            "protegida: sem um `Authorization: Bearer` válido o guard de borda recusa com o `401` neutro " +
+            "compartilhado, antes do handler. Uma sessão órfã (pessoa não mais ativa) colapsa no mesmo " +
+            "`401`, indistinguível de um token ausente ou inválido.",
     )
-    @ApiResponses(
-        ApiResponse(
-            responseCode = "201",
-            description = "Pessoa cadastrada; retorna o recurso sem qualquer material de senha.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = PersonResponse::class))],
-        ),
-        ApiResponse(
-            responseCode = "400",
-            description = "Requisição malformada ou reprovada na validação de borda.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
-        ),
-        ApiResponse(
-            responseCode = "422",
-            description = "Requisição bem-formada recusada pelo domínio (nome/e-mail inválido, senha fraca, cadastro não concluído).",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
-        ),
-        ApiResponse(
-            responseCode = "500",
-            description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
-        ),
-    )
-    fun signUp(request: SignUpRequest): HttpResponse<*>
-
-    @Operation(
-        operationId = "signIn",
-        summary = "Autentica uma pessoa",
-        description = "Autentica por e-mail e senha e, em caso de sucesso, abre uma sessão retornando o token " +
-            "opaco e sua expiração. A recusa é deliberadamente genérica: senha errada, e-mail desconhecido e " +
-            "pessoa não ativa colapsam no mesmo `401`, sem revelar qual fator falhou nem se o e-mail existe.",
-    )
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
-            description = "Autenticada; retorna o token opaco (uma única vez) e a expiração da sessão.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = SignInResponse::class))],
-        ),
-        ApiResponse(
-            responseCode = "400",
-            description = "Requisição malformada ou sem os campos obrigatórios (validação de presença na borda).",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            description = "Sessão viva; retorna a pessoa sem qualquer material de senha.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = PersonResponse::class))],
         ),
         ApiResponse(
             responseCode = "401",
-            description = "Credenciais inválidas; resposta neutra que não distingue qual fator falhou.",
+            description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
             content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
         ),
         ApiResponse(
@@ -89,5 +58,5 @@ interface PersonControllerDoc {
             content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
         ),
     )
-    fun signIn(request: SignInRequest): HttpResponse<*>
+    fun me(@Parameter(hidden = true) actor: AuthenticatedActor): HttpResponse<*>
 }

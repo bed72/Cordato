@@ -15,7 +15,7 @@ processamento.
 
 #### Scenario: Rota sem a anotação permanece aberta
 
-- **WHEN** uma requisição chega a uma rota que não carrega `@Authenticated` (ex.: `POST /sign-up`, `POST /sessions`)
+- **WHEN** uma requisição chega a uma rota que não carrega `@Authenticated` (ex.: `POST /sign-up`, `POST /sign-in`)
 - **THEN** a ausência de `Authorization` não impede o processamento
 - **AND** nenhuma resolução de sessão é executada para essa rota
 
@@ -62,13 +62,13 @@ outro dado que sinalize o esquema ou a causa. O corpo SHALL NOT ecoar o token ap
 ### Requirement: Ator autenticado tipado disponível ao handler
 
 O sistema SHALL disponibilizar a pessoa autenticada ao handler como um tipo de borda dedicado
-(`AuthenticatedPersonId`), e não como uma estrutura genérica de framework. O mecanismo que popula esse tipo
+(`AuthenticatedActor`), e não como uma estrutura genérica de framework. O mecanismo que popula esse tipo
 SHALL apenas ler o identificador já resolvido pelo filtro (sem consultar a sessão novamente e sem barrar a
 requisição). O tipo SHALL carregar somente o identificador da pessoa — nunca o token nem outros dados da
 pessoa.
 
 #### Scenario: Handler recebe o ator tipado
 
-- **WHEN** uma rota `@Authenticated` declara um parâmetro do tipo `AuthenticatedPersonId` e a requisição passou pelo filtro com sessão viva
+- **WHEN** uma rota `@Authenticated` declara um parâmetro do tipo `AuthenticatedActor` e a requisição passou pelo filtro com sessão viva
 - **THEN** o parâmetro é preenchido com o identificador da pessoa autenticada resolvido pelo filtro
 - **AND** nenhuma nova consulta de sessão é feita para preencher o parâmetro
