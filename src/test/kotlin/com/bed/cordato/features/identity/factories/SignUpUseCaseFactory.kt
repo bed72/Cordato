@@ -2,9 +2,9 @@ package com.bed.cordato.features.identity.factories
 
 import com.bed.cordato.core.factories.idGeneratorOf
 
-import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
-import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
-import com.bed.cordato.features.identity.application.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.driven.ports.PasswordHasherPort
+import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
 
 fun signUpUseCase(
     id: String = "person-1",

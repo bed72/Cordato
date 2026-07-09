@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
 
-import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.application.driven.ports.MessagePort
 
 class UnexpectedFailureExceptionHandlerTest {
 

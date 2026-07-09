@@ -10,12 +10,12 @@ import io.micronaut.http.annotation.Post
 import io.micronaut.http.annotation.Status
 import io.micronaut.http.annotation.Controller
 
-import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.application.driven.ports.MessagePort
 
-import com.bed.cordato.features.identity.application.results.SignUpResult
-import com.bed.cordato.features.identity.application.results.SignInResult
-import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
-import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
+import com.bed.cordato.features.identity.application.driving.results.SignUpResult
+import com.bed.cordato.features.identity.application.driving.results.SignInResult
+import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.SignInUseCase
 
 import com.bed.cordato.features.identity.infrastructure.http.requests.SignUpRequest
 import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequest

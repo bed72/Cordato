@@ -4,7 +4,7 @@ import java.util.Base64
 import java.security.SecureRandom
 import java.security.MessageDigest
 
-import com.bed.cordato.core.application.ports.TokenizerPort
+import com.bed.cordato.core.application.driven.ports.TokenizerPort
 
 /**
  * [TokenizerPort] backed by the JDK alone — no new dependency. [generate] draws

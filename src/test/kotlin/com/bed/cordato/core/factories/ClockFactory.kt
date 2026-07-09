@@ -5,7 +5,7 @@ import io.mockk.mockk
 
 import java.time.Instant
 
-import com.bed.cordato.core.application.ports.ClockPort
+import com.bed.cordato.core.application.driven.ports.ClockPort
 
 fun clockFixedAt(instant: Instant): ClockPort {
     val clock = mockk<ClockPort>()

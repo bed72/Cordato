@@ -1,6 +1,6 @@
 package com.bed.cordato.features.identity.infrastructure.http.mappers.requests
 
-import com.bed.cordato.features.identity.application.commands.UpdateNameCommand
+import com.bed.cordato.features.identity.application.driving.commands.UpdateNameCommand
 
 import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateNameRequest
 

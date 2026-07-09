@@ -17,11 +17,11 @@ import io.micronaut.context.LocalizedMessageSource
 import io.micronaut.context.i18n.ResourceBundleMessageSource
 import io.micronaut.http.bind.binders.TypedRequestArgumentBinder
 
-import com.bed.cordato.core.application.ports.ClockPort
-import com.bed.cordato.core.application.ports.MessagePort
-import com.bed.cordato.core.application.ports.TokenizerPort
-import com.bed.cordato.core.application.ports.IdGeneratorPort
-import com.bed.cordato.core.application.repositories.SessionRepository
+import com.bed.cordato.core.application.driven.ports.ClockPort
+import com.bed.cordato.core.application.driven.ports.MessagePort
+import com.bed.cordato.core.application.driven.ports.TokenizerPort
+import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
+import com.bed.cordato.core.application.driven.repositories.SessionRepository
 
 import com.bed.cordato.core.infrastructure.adapters.ClockAdapter
 import com.bed.cordato.core.infrastructure.adapters.MessageAdapter

@@ -2,7 +2,7 @@ package com.bed.cordato.features.identity.infrastructure.adapters
 
 import at.favre.lib.crypto.bcrypt.BCrypt
 
-import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
+import com.bed.cordato.features.identity.application.driven.ports.PasswordHasherPort
 import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObject
 
 /**

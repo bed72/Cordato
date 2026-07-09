@@ -1,6 +1,6 @@
 package com.bed.cordato.features.identity.infrastructure.http.mappers.requests
 
-import com.bed.cordato.features.identity.application.commands.SignInCommand
+import com.bed.cordato.features.identity.application.driving.commands.SignInCommand
 
 import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequest
 

@@ -24,10 +24,10 @@ import io.micronaut.http.client.exceptions.HttpClientResponseException
 import com.bed.cordato.core.factories.session
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 
-import com.bed.cordato.features.identity.application.results.SignUpResult
-import com.bed.cordato.features.identity.application.results.SignInResult
-import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
-import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
+import com.bed.cordato.features.identity.application.driving.results.SignUpResult
+import com.bed.cordato.features.identity.application.driving.results.SignInResult
+import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.SignInUseCase
 
 import com.bed.cordato.features.identity.domain.errors.SignUpError
 import com.bed.cordato.features.identity.domain.errors.SignInError

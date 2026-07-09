@@ -12,9 +12,9 @@ import com.bed.cordato.features.identity.factories.FakePersonRepository
 import com.bed.cordato.features.identity.domain.errors.UpdateNameError
 import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 
-import com.bed.cordato.features.identity.application.results.UpdateNameResult
-import com.bed.cordato.features.identity.application.commands.UpdateNameCommand
-import com.bed.cordato.features.identity.application.use_cases.UpdateNameUseCase
+import com.bed.cordato.features.identity.application.driving.results.UpdateNameResult
+import com.bed.cordato.features.identity.application.driving.commands.UpdateNameCommand
+import com.bed.cordato.features.identity.application.driving.use_cases.UpdateNameUseCase
 
 class UpdateNameUseCaseTest {
 

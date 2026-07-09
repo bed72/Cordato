@@ -7,8 +7,8 @@ import jakarta.inject.Singleton
 import io.micronaut.context.annotation.Factory
 import io.micronaut.context.annotation.Replaces
 
-import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
-import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.SignInUseCase
 
 @Factory
 class SignUpUseCaseMockFactory {

@@ -7,17 +7,18 @@ import jakarta.inject.Singleton
 import io.micronaut.context.annotation.Factory
 
 
-import com.bed.cordato.core.application.ports.ClockPort
-import com.bed.cordato.core.application.ports.TokenizerPort
-import com.bed.cordato.core.application.ports.IdGeneratorPort
-import com.bed.cordato.core.application.repositories.SessionRepository
+import com.bed.cordato.core.application.driven.ports.ClockPort
+import com.bed.cordato.core.application.driven.ports.TokenizerPort
+import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
+import com.bed.cordato.core.application.driven.repositories.SessionRepository
 
-import com.bed.cordato.features.identity.application.use_cases.MeUseCase
-import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
-import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
-import com.bed.cordato.features.identity.application.use_cases.UpdateNameUseCase
-import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
-import com.bed.cordato.features.identity.application.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driving.use_cases.MeUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.SignInUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.UpdateNameUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.UpdateEmailUseCase
+import com.bed.cordato.features.identity.application.driven.ports.PasswordHasherPort
+import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
 
 import com.bed.cordato.features.identity.infrastructure.adapters.PasswordHasherAdapter
 import com.bed.cordato.features.identity.infrastructure.repositories.PersistencePersonRepository
@@ -46,6 +47,12 @@ class IdentityFactory {
 
     @Singleton
     fun updateNameUseCase(repository: PersonRepository): UpdateNameUseCase = UpdateNameUseCase(repository)
+
+    @Singleton
+    fun updateEmailUseCase(
+        hasher: PasswordHasherPort,
+        repository: PersonRepository,
+    ): UpdateEmailUseCase = UpdateEmailUseCase(hasher, repository)
 
     @Singleton
     fun signUpUseCase(

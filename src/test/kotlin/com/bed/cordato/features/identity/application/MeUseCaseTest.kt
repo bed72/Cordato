@@ -7,9 +7,9 @@ import kotlin.test.assertEquals
 import com.bed.cordato.features.identity.domain.errors.MeError
 import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 
-import com.bed.cordato.features.identity.application.results.MeResult
-import com.bed.cordato.features.identity.application.commands.MeCommand
-import com.bed.cordato.features.identity.application.use_cases.MeUseCase
+import com.bed.cordato.features.identity.application.driving.results.MeResult
+import com.bed.cordato.features.identity.application.driving.commands.MeCommand
+import com.bed.cordato.features.identity.application.driving.use_cases.MeUseCase
 
 import com.bed.cordato.features.identity.factories.person
 import com.bed.cordato.features.identity.factories.FakePersonRepository

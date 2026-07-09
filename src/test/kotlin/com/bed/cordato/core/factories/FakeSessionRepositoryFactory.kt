@@ -5,7 +5,7 @@ import jakarta.inject.Singleton
 import io.micronaut.context.annotation.Factory
 import io.micronaut.context.annotation.Replaces
 
-import com.bed.cordato.core.application.repositories.SessionRepository
+import com.bed.cordato.core.application.driven.repositories.SessionRepository
 
 /**
  * Wires [FakeSessionRepository] in place of the persistence-backed one for `@MicronautTest`, so the

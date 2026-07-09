@@ -3,7 +3,7 @@ package com.bed.cordato.core.factories
 import io.mockk.every
 import io.mockk.mockk
 
-import com.bed.cordato.core.application.ports.TokenizerPort
+import com.bed.cordato.core.application.driven.ports.TokenizerPort
 
 fun tokenizerOf(token: String, hash: String): TokenizerPort {
     val tokenizer = mockk<TokenizerPort>()

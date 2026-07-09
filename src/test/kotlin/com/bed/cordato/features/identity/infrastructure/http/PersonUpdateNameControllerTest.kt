@@ -29,16 +29,16 @@ import com.bed.cordato.features.identity.domain.errors.UpdateNameError
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 
 import com.bed.cordato.features.identity.factories.person
-import com.bed.cordato.features.identity.application.commands.UpdateNameCommand
-import com.bed.cordato.features.identity.application.results.UpdateNameResult
-import com.bed.cordato.features.identity.application.use_cases.UpdateNameUseCase
+import com.bed.cordato.features.identity.application.driving.commands.UpdateNameCommand
+import com.bed.cordato.features.identity.application.driving.results.UpdateNameResult
+import com.bed.cordato.features.identity.application.driving.use_cases.UpdateNameUseCase
 
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 private const val DEAD_TOKEN = "dead-token"
 
 /**
- * End-to-end cover of `PATCH /persons/me` through the edge guard (filter + binder), the edge Bean Validation,
+ * End-to-end cover of `PATCH /persons/me/name` through the edge guard (filter + binder), the edge Bean Validation,
  * and the neutral error contract. The [UpdateNameUseCase] is a mock (wired globally by
  * [com.bed.cordato.features.identity.factories.UpdateNameUseCaseMockFactory]) so each sealed outcome can be
  * driven — mirroring how [AuthenticationControllerTest] mocks the sign-up use case. The `422` domain-error
@@ -59,7 +59,7 @@ class PersonUpdateNameControllerTest {
     fun reset() = clearMocks(useCase)
 
     private fun patch(body: Any, authorization: String? = null): HttpRequest<Any> {
-        val request = HttpRequest.PATCH<Any>("/v1/persons/me", body)
+        val request = HttpRequest.PATCH<Any>("/v1/persons/me/name", body)
         return if (authorization == null) request else request.header("Authorization", authorization)
     }
 
@@ -130,7 +130,7 @@ class PersonUpdateNameControllerTest {
 
     @Test
     fun `a non-JSON body is rejected with 400 in the shared shape without invoking the use case`() {
-        val request = HttpRequest.PATCH("/v1/persons/me", "not-json")
+        val request = HttpRequest.PATCH("/v1/persons/me/name", "not-json")
             .contentType(MediaType.APPLICATION_JSON)
             .header("Authorization", "Bearer $LIVE_TOKEN")
 

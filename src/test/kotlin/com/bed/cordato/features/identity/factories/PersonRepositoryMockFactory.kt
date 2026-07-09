@@ -7,7 +7,7 @@ import jakarta.inject.Singleton
 import io.micronaut.context.annotation.Factory
 import io.micronaut.context.annotation.Replaces
 
-import com.bed.cordato.features.identity.application.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
 
 /**
  * Replaces the persistence-backed [PersonRepository] with a mock for `@MicronautTest`, so the real

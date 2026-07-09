@@ -3,7 +3,7 @@ package com.bed.cordato.core.factories
 import io.mockk.every
 import io.mockk.mockk
 
-import com.bed.cordato.core.application.ports.IdGeneratorPort
+import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
 
 fun idGeneratorOf(vararg ids: String): IdGeneratorPort {
     val generator = mockk<IdGeneratorPort>()

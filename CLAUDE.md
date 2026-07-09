@@ -75,7 +75,7 @@ infrastructure → application → domain
 | Layer | Contents | Knows about the library/framework? |
 |---|---|---|
 | `domain/` | `entities/`, `value_objects/`, `virtual_objects/`, `enums/`, `errors/` — pure, synchronous code | never |
-| `application/` | `ports/` (contracts), `command/` (input commands), `result/` (output read-models), `use_cases/`, `mappers/` | no |
+| `application/` | grouped by hexagon direction: `driving/` (`use_cases/`, `commands/`, `results/`) + `driven/` (`ports/`, `repositories/`, `outcomes/`), with `mappers/` neutral at the root — see below | no |
 | `infrastructure/` | `repositories/` (+ `models/`, `mappers/`) and `adapters/` (everything else external) | only here |
 
 `domain/` never imports anything from outside itself.
@@ -85,9 +85,10 @@ infrastructure → application → domain
 Type names are composed as `<Meaning><Category>`, where the suffix names the architectural
 building block, matching the folder it lives in: `PersonEntity` (entities), `EmailValueObject`
 (value_objects), `PersonStatusEnum` (enums), `SignUpError` (errors), `SignUpCommand` (command),
-`SignUpResult` (result), `SignUpUseCase` (use_cases), `ClockPort`/`PasswordHasherPort` (ports),
-`SystemClockAdapter`/`BcryptPasswordHasherAdapter` (adapters). Repositories keep the DDD term as
-their suffix (`PersonRepository`, `InMemoryPersonRepository`) rather than `Port`/`Adapter`.
+`SignUpResult` (result), `UpdateEmailOutcome` (outcomes), `SignUpUseCase` (use_cases),
+`ClockPort`/`PasswordHasherPort` (ports), `SystemClockAdapter`/`BcryptPasswordHasherAdapter` (adapters).
+Repositories keep the DDD term as their suffix (`PersonRepository`, `InMemoryPersonRepository`) rather than
+`Port`/`Adapter`.
 
 Naming is deliberately Hexagonal (Ports & Adapters), not generic: `application/ports/` holds the
 contracts the application needs from the outside world (repositories, and cross-context contracts — see
@@ -97,6 +98,24 @@ meaning. These are all *driven* (secondary) ports — the app calling out. The *
 the outside world calling in — is already served by the public signatures of `use_cases/`; don't add a
 redundant interface per use case unless a specific one genuinely needs multiple implementations or a
 consumer needs to mock it.
+
+**`application/` is grouped physically by hexagon direction, never by a generic bucket.** The terms are
+Cockburn's Hexagonal Architecture (Ports & Adapters): the axis is *who initiates the call* — `driving`
+(a.k.a. primary/inbound) is the world→app direction, `driven` (a.k.a. secondary/outbound) is the app→world
+direction. The subfolders live under two meaningful grouping segments — `driving/` (primary/inbound, the
+world calling the app: `use_cases/`, `commands/`, `results/`) and `driven/` (secondary/outbound, the app
+calling the world: `ports/`, `repositories/`, `outcomes/`) — with `mappers/` kept **neutral at the root of `application/`**
+(outside both sides), because an application mapper often crosses the two directions (e.g. translating a
+driven `Outcome` into a driving `Result`/`Error`). This materializes the *driving*/*driven* distinction the
+paragraph above already assumes. A generic bucket (`data/`, `dto/`, `models/`) is **forbidden**: it is not
+Hexagonal naming and it would fuse opposite sides of the hexagon; if you group, you group by direction.
+`driving`/`driven` are grouping segments with meaning (like `infrastructure/http/`), so they carry **no**
+suffix of their own — the "leaf-folder = category suffix" rule (`<Meaning><Category>`) is untouched:
+`commands/` still holds `SignUpCommand`, `outcomes/` still holds `UpdateEmailOutcome`. A module creates only
+the sides it has and never an empty grouping folder: `core/` (determinism + persistence + session, no use
+cases) has **only** `driven/`; a feature like `identity/` has both. `domain/` and `infrastructure/` are
+unaffected by this grouping (in particular `infrastructure/http/mappers/` is a separate, unrelated slice).
+The Konsist `ArchitectureTest` uses `..application..` globs, so its layer rules hold across the new nesting.
 
 ### The rule that cuts across every context: derive, don't store
 
@@ -150,6 +169,23 @@ the category further.
 **Domain errors** are `sealed class`/`sealed interface` hierarchies returned from use cases, not thrown
 exceptions — keeps error paths exhaustively checked by the compiler in `when` and testable without
 `assertThrows`.
+
+**Port outcomes** (`application/outcomes/`, suffix `Outcome`) are a small, dedicated category for the
+**enumerated, exhaustive result a *driven* port returns** to name which of several mutually-exclusive things
+happened at the boundary, so the use case branches over it in a `when`. It is deliberately none of the
+neighbours: not a `Result` (that is the use case's *output to the edge* — the driving side; an outcome is a
+repository/adapter's *answer back into* the use case), not a domain `Enum` (it describes what the
+datastore/external system *did* — e.g. a unique-constraint collision — never a business rule, so it must not
+sit in `domain/`), and not an `Error` (a `success` branch like `UPDATED` is a normal outcome, not a
+failure). It is pure and framework-agnostic, so it lives in `application/` next to `outcomes/`, and the use
+case maps it to the domain `Result`/`Error` the edge understands. **When to reach for one:** only when a
+driven-port operation has **three or more** discrete, caller-relevant outcomes that map to *different*
+downstream handling — the trigger is that a `Boolean` would collapse two outcomes that must diverge.
+`PersonRepository.updateEmail` is the worked example: `UPDATED` / `EMAIL_TAKEN` / `PERSON_INACTIVE`, where a
+`Boolean` would fuse "e-mail taken" (a `422`) with "person no longer active" (a neutral `401`). A two-state
+result (updated vs. not — like `updateName`) stays a plain `Boolean`; don't manufacture an `Outcome` for it.
+The `Outcome`'s cases are the port's vocabulary, so name them in the persistence/boundary's terms
+(`EMAIL_TAKEN`), not the domain error's (`EmailAlreadyInUse`) — the translation is the use case's job.
 
 **Money** is BRL-only — no multi-currency abstraction, that complexity isn't needed here. Represent it
 internally as an integer number of cents (or a fixed-scale `BigDecimal`), never `Double`: the domain's

@@ -2,7 +2,7 @@ package com.bed.cordato.core.infrastructure.adapters
 
 import com.fasterxml.uuid.Generators
 
-import com.bed.cordato.core.application.ports.IdGeneratorPort
+import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
 
 /**
  * Real id generator backed by time-ordered UUID v7 (epoch-ms prefix + random). The

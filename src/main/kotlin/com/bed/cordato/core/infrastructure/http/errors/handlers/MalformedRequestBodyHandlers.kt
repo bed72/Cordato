@@ -18,7 +18,7 @@ import io.micronaut.core.convert.exceptions.ConversionErrorException
 
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.badRequest
-import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.application.driven.ports.MessagePort
 
 /**
  * The `400` for a request whose body can't even be read into a command: it never reaches the domain, so

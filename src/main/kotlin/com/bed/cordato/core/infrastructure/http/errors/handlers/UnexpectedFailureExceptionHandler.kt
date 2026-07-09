@@ -11,7 +11,7 @@ import io.micronaut.http.server.exceptions.ExceptionHandler
 
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.internalError
-import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.application.driven.ports.MessagePort
 
 /**
  * The catch-all `500`: any exception no more-specific handler (nor a controller) dealt with. Because

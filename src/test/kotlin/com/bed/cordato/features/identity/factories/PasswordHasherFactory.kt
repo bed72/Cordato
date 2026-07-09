@@ -3,7 +3,7 @@ package com.bed.cordato.features.identity.factories
 import io.mockk.every
 import io.mockk.mockk
 
-import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
+import com.bed.cordato.features.identity.application.driven.ports.PasswordHasherPort
 
 fun passwordHasherMock(verifies: Boolean = false): PasswordHasherPort {
     val hasher = mockk<PasswordHasherPort>()

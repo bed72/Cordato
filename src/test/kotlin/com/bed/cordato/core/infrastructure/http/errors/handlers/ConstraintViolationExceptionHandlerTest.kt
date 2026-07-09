@@ -14,7 +14,7 @@ import jakarta.validation.Path
 import jakarta.validation.ConstraintViolation
 import jakarta.validation.ConstraintViolationException
 
-import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.application.driven.ports.MessagePort
 import com.bed.cordato.core.infrastructure.http.responses.FieldErrorResponse
 
 class ConstraintViolationExceptionHandlerTest {

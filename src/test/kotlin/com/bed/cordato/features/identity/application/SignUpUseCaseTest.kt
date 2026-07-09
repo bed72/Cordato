@@ -8,8 +8,8 @@ import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
-import com.bed.cordato.features.identity.application.results.SignUpResult
-import com.bed.cordato.features.identity.application.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.driving.results.SignUpResult
+import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
 
 import com.bed.cordato.features.identity.domain.errors.SignUpError
 import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum

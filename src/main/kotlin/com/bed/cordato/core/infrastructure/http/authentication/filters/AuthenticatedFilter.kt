@@ -8,9 +8,9 @@ import io.micronaut.web.router.RouteAttributes
 import io.micronaut.http.annotation.ServerFilter
 import io.micronaut.http.annotation.RequestFilter
 
-import com.bed.cordato.core.application.ports.ClockPort
-import com.bed.cordato.core.application.ports.MessagePort
-import com.bed.cordato.core.application.repositories.SessionRepository
+import com.bed.cordato.core.application.driven.ports.ClockPort
+import com.bed.cordato.core.application.driven.ports.MessagePort
+import com.bed.cordato.core.application.driven.repositories.SessionRepository
 import com.bed.cordato.core.infrastructure.http.responses.unauthorized
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor

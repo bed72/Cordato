@@ -5,7 +5,8 @@ import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
-import com.bed.cordato.features.identity.application.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driven.outcomes.UpdateEmailOutcome
 
 class FakePersonRepository : PersonRepository {
     private val byEmail = mutableMapOf<String, PersonEntity>()
@@ -27,5 +28,18 @@ class FakePersonRepository : PersonRepository {
         val person = findById(id) ?: return false
         byEmail[person.email.value] = person.copy(name = name)
         return true
+    }
+
+    // Mirrors the production adapter's three-state outcome: a non-active person matches nothing
+    // (PERSON_INACTIVE); a new e-mail already held by another person is the uniqueness conflict
+    // (EMAIL_TAKEN); otherwise only the active person's e-mail changes (UPDATED), re-keying the store and
+    // leaving every other field untouched.
+    override fun updateEmail(id: String, email: EmailValueObject): UpdateEmailOutcome {
+        val person = findById(id) ?: return UpdateEmailOutcome.PERSON_INACTIVE
+        val owner = byEmail[email.value]
+        if (owner != null && owner.id != person.id) return UpdateEmailOutcome.EMAIL_TAKEN
+        byEmail.remove(person.email.value)
+        byEmail[email.value] = person.copy(email = email)
+        return UpdateEmailOutcome.UPDATED
     }
 }

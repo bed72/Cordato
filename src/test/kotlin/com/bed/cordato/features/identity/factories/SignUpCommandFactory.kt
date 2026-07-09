@@ -1,6 +1,6 @@
 package com.bed.cordato.features.identity.factories
 
-import com.bed.cordato.features.identity.application.commands.SignUpCommand
+import com.bed.cordato.features.identity.application.driving.commands.SignUpCommand
 
 fun signUpCommand(
     name: String = "Alice",

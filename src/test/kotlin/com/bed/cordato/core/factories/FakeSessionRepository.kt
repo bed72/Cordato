@@ -3,7 +3,7 @@ package com.bed.cordato.core.factories
 import java.time.Instant
 
 import com.bed.cordato.core.domain.entities.SessionEntity
-import com.bed.cordato.core.application.repositories.SessionRepository
+import com.bed.cordato.core.application.driven.repositories.SessionRepository
 
 const val LIVE_TOKEN = "live-token"
 const val SESSION_PERSON_ID = "person-1"

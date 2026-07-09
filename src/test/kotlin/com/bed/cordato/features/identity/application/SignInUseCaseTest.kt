@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 import com.bed.cordato.core.domain.entities.SessionEntity
-import com.bed.cordato.core.application.repositories.SessionRepository
+import com.bed.cordato.core.application.driven.repositories.SessionRepository
 
 import com.bed.cordato.core.factories.tokenizerOf
 import com.bed.cordato.core.factories.clockFixedAt
@@ -22,10 +22,10 @@ import com.bed.cordato.core.factories.idGeneratorOf
 import com.bed.cordato.features.identity.domain.errors.SignInError
 import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 
-import com.bed.cordato.features.identity.application.results.SignInResult
-import com.bed.cordato.features.identity.application.use_cases.SignInUseCase
-import com.bed.cordato.features.identity.application.ports.PasswordHasherPort
-import com.bed.cordato.features.identity.application.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driving.results.SignInResult
+import com.bed.cordato.features.identity.application.driving.use_cases.SignInUseCase
+import com.bed.cordato.features.identity.application.driven.ports.PasswordHasherPort
+import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
 
 import com.bed.cordato.features.identity.factories.person
 import com.bed.cordato.features.identity.factories.signInCommand

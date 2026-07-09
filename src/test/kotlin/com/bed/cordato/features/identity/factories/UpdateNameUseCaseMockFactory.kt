@@ -7,7 +7,7 @@ import jakarta.inject.Singleton
 import io.micronaut.context.annotation.Factory
 import io.micronaut.context.annotation.Replaces
 
-import com.bed.cordato.features.identity.application.use_cases.UpdateNameUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.UpdateNameUseCase
 
 /**
  * Replaces the real [UpdateNameUseCase] with a mock for the `PATCH /persons/me` e2e cover, so the test can

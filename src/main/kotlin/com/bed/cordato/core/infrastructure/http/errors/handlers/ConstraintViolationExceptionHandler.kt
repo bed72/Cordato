@@ -13,7 +13,7 @@ import jakarta.validation.ConstraintViolationException
 import com.bed.cordato.core.infrastructure.http.responses.FieldErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.responses.badRequest
-import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.application.driven.ports.MessagePort
 
 /**
  * Renders a failed request-body validation as a `400` in the shared [ErrorResponse] shape, replacing

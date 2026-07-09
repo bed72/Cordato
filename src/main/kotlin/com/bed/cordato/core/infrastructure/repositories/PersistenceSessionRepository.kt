@@ -8,8 +8,8 @@ import org.jooq.exception.DataAccessException
 
 import com.bed.cordato.core.domain.entities.SessionEntity
 
-import com.bed.cordato.core.application.ports.TokenizerPort
-import com.bed.cordato.core.application.repositories.SessionRepository
+import com.bed.cordato.core.application.driven.ports.TokenizerPort
+import com.bed.cordato.core.application.driven.repositories.SessionRepository
 
 import com.bed.cordato.core.infrastructure.repositories.mappers.toEntity
 import com.bed.cordato.core.infrastructure.repositories.mappers.toRecord

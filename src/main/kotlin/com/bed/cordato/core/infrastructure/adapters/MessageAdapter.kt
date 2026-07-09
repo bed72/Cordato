@@ -2,7 +2,7 @@ package com.bed.cordato.core.infrastructure.adapters
 
 import io.micronaut.context.LocalizedMessageSource
 
-import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.application.driven.ports.MessagePort
 
 /**
  * The one adapter that wraps Micronaut's request-scoped [io.micronaut.context.LocalizedMessageSource] behind core's own

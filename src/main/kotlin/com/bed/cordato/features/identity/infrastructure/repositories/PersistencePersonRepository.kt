@@ -10,7 +10,8 @@ import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
-import com.bed.cordato.features.identity.application.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driven.outcomes.UpdateEmailOutcome
 
 import com.bed.cordato.features.identity.infrastructure.repositories.mappers.toEntity
 import com.bed.cordato.features.identity.infrastructure.repositories.mappers.toRecord
@@ -61,6 +62,23 @@ class PersistencePersonRepository(private val dsl: DSLContext) : PersonRepositor
             .where(PERSON.ID.eq(id))
             .and(PERSON.STATUS.eq(PersonStatusEnum.ACTIVE.name))
             .execute() > 0
+
+    // E-mail-only UPDATE, gated on the ACTIVE status in the WHERE so a person deleted between the guard and
+    // this write matches zero rows (PERSON_INACTIVE) — no half-update. Uniqueness is authoritative at the
+    // datastore: a colliding e-mail raises the unique-violation, caught and mapped to EMAIL_TAKEN, so a
+    // concurrent race can never persist two equal e-mails and no datastore exception crosses into application.
+    override fun updateEmail(id: String, email: EmailValueObject): UpdateEmailOutcome =
+        try {
+            val updated = dsl.update(PERSON)
+                .set(PERSON.EMAIL, email.value)
+                .where(PERSON.ID.eq(id))
+                .and(PERSON.STATUS.eq(PersonStatusEnum.ACTIVE.name))
+                .execute() > 0
+
+            if (updated) UpdateEmailOutcome.UPDATED else UpdateEmailOutcome.PERSON_INACTIVE
+        } catch (exception: DataAccessException) {
+            if (exception.sqlState() == UNIQUE_VIOLATION) UpdateEmailOutcome.EMAIL_TAKEN else throw exception
+        }
 
     private companion object {
         const val UNIQUE_VIOLATION = "23505"

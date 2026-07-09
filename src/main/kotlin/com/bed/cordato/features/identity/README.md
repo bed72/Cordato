@@ -45,6 +45,26 @@ produz — a recusa nunca revela que a sessão apontava para uma pessoa que deix
 
 ---
 
+## Trocar o próprio e-mail
+
+O e-mail é diferente do nome: é o identificador de login e o canal de recuperação, então é um campo
+**sensível**. Por isso, trocá-lo é uma operação de confirmação (step-up) — exige uma sessão viva **e** a
+confirmação da **senha atual** naquele momento, como a exclusão de conta já exige, e nunca apenas uma das
+duas provas. A troca altera **apenas** o e-mail: o nome, a senha e o status permanecem exatamente como
+estavam, e uma pessoa só troca o próprio e-mail, nunca o de outra.
+
+O novo e-mail precisa ser válido pela mesma regra do cadastro (a autoridade única do que é um e-mail
+aceitável) e continuar **único** em todo o sistema — não pode ser o e-mail que já pertence a outra pessoa.
+Trocar para o e-mail que a própria pessoa **já tem** não é conflito: é um sucesso sem efeito.
+
+A recusa nunca vira uma ferramenta de descoberta de contas: um e-mail já em uso é recusado de forma
+genérica, sem revelar que aquele endereço está cadastrado nem ecoar o valor tentado. E uma senha de
+confirmação incorreta produz **a mesma** resposta neutra de autenticação que uma sessão ausente ou uma
+sessão viva cuja pessoa deixou de estar ativa (uma corrida com a exclusão de conta) — de fora, esses
+casos são indistinguíveis entre si, e a recusa nunca revela qual fator falhou.
+
+---
+
 ## Não vazar a existência de uma conta
 
 Um dos cuidados mais específicos deste contexto: nunca dar a quem está de fora uma forma de descobrir

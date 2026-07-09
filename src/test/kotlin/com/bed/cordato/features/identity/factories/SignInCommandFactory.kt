@@ -1,6 +1,6 @@
 package com.bed.cordato.features.identity.factories
 
-import com.bed.cordato.features.identity.application.commands.SignInCommand
+import com.bed.cordato.features.identity.application.driving.commands.SignInCommand
 
 fun signInCommand(
     password: String = "s3cretpw",

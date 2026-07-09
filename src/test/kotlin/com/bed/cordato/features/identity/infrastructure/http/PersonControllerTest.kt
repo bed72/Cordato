@@ -24,7 +24,7 @@ import com.bed.cordato.core.factories.SESSION_PERSON_ID
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 
 import com.bed.cordato.features.identity.factories.person
-import com.bed.cordato.features.identity.application.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 private const val DEAD_TOKEN = "dead-token"

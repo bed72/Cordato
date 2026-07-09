@@ -4,7 +4,7 @@ import io.micronaut.http.HttpResponse
 
 import com.bed.cordato.features.identity.domain.errors.SignInError
 
-import com.bed.cordato.core.application.ports.MessagePort
+import com.bed.cordato.core.application.driven.ports.MessagePort
 import com.bed.cordato.core.infrastructure.http.responses.unauthorized
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 

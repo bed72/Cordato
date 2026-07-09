@@ -19,6 +19,7 @@ import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 
 import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateNameRequest
+import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateEmailRequest
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 /**
@@ -104,5 +105,50 @@ interface PersonControllerDoc {
     fun updateName(
         @Parameter(hidden = true) actor: AuthenticatedActor,
         @Body @Valid request: UpdateNameRequest,
+    ): HttpResponse<*>
+
+    @Operation(
+        operationId = "updateEmail",
+        summary = "Troca o e-mail da pessoa autenticada",
+        description = "Altera **apenas** o e-mail da pessoa dona da sessão viva, mediante confirmação da " +
+            "**senha atual** (operação de step-up), e retorna sua visão pública atualizada (id, nome, e-mail). " +
+            "Nome, senha e status permanecem intocados. A rota é protegida: sem um `Authorization: Bearer` " +
+            "válido o guard de borda recusa com o `401` neutro compartilhado, antes do handler. Uma senha de " +
+            "confirmação incorreta e uma sessão órfã (pessoa não mais ativa) colapsam no mesmo `401`, " +
+            "indistinguível de um token ausente ou inválido. Um e-mail que a borda aceita mas o domínio " +
+            "rejeita responde `422`; um e-mail já em uso por outra pessoa também responde `422`, com um corpo " +
+            "genérico que não revela que o e-mail está cadastrado.",
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "E-mail atualizado; retorna a pessoa sem qualquer material de senha.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = PersonResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Corpo ausente/inválido, e-mail que viola o formato de borda, ou senha ausente.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido, senha de confirmação incorreta e sessão órfã.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "422",
+            description = "E-mail bem-formado, porém rejeitado pela invariante de domínio, ou já em uso por outra pessoa (corpo genérico, sem vazar a existência da conta).",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "500",
+            description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    fun updateEmail(
+        @Parameter(hidden = true) actor: AuthenticatedActor,
+        @Body @Valid request: UpdateEmailRequest,
     ): HttpResponse<*>
 }

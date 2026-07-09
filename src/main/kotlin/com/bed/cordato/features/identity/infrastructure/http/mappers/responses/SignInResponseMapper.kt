@@ -1,6 +1,6 @@
 package com.bed.cordato.features.identity.infrastructure.http.mappers.responses
 
-import com.bed.cordato.features.identity.application.results.SignInResult
+import com.bed.cordato.features.identity.application.driving.results.SignInResult
 
 import com.bed.cordato.features.identity.infrastructure.http.responses.SignInResponse
 
