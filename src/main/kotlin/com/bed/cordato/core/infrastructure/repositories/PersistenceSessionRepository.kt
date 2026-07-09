@@ -6,14 +6,14 @@ import java.time.ZoneOffset
 import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 
+import com.bed.cordato.core.infrastructure.repositories.mappers.toEntity
+import com.bed.cordato.core.infrastructure.repositories.mappers.toRecord
+import com.bed.cordato.core.infrastructure.persistence.models.Tables.SESSION
+
 import com.bed.cordato.core.domain.entities.SessionEntity
 
 import com.bed.cordato.core.application.driven.ports.TokenizerPort
 import com.bed.cordato.core.application.driven.repositories.SessionRepository
-
-import com.bed.cordato.core.infrastructure.repositories.mappers.toEntity
-import com.bed.cordato.core.infrastructure.repositories.mappers.toRecord
-import com.bed.cordato.core.infrastructure.persistence.models.Tables.SESSION
 
 /**
  * Durable [SessionRepository] on PostgreSQL via jOOQ. [open] inserts the session; a hash-token
@@ -46,6 +46,15 @@ class PersistenceSessionRepository(
             .and(SESSION.EXPIRES_AT.gt(now.atOffset(ZoneOffset.UTC)))
             .fetchOne()
             ?.toEntity()
+
+    // Mass revocation gated on the person id, sparing the current session by its id. The revoked rows leave the
+    // datastore, so findActiveByToken can no longer resolve their tokens — the revocation is authoritative. No
+    // other live session ⇒ zero rows deleted ⇒ 0, a valid "nothing to revoke", never an error.
+    override fun revokeAllForPersonExcept(personId: String, sessionId: String): Int =
+        dsl.deleteFrom(SESSION)
+            .where(SESSION.PERSON_ID.eq(personId))
+            .and(SESSION.ID.ne(sessionId))
+            .execute()
 
     private companion object {
         const val UNIQUE_VIOLATION = "23505"

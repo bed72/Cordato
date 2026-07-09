@@ -13,12 +13,13 @@ import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
 import com.bed.cordato.core.application.driven.repositories.SessionRepository
 
 import com.bed.cordato.features.identity.application.driving.use_cases.MeUseCase
+import com.bed.cordato.features.identity.application.driven.ports.PasswordHasherPort
 import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.SignInUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdateNameUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdateEmailUseCase
-import com.bed.cordato.features.identity.application.driven.ports.PasswordHasherPort
 import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driving.use_cases.UpdatePasswordUseCase
 
 import com.bed.cordato.features.identity.infrastructure.adapters.PasswordHasherAdapter
 import com.bed.cordato.features.identity.infrastructure.repositories.PersistencePersonRepository
@@ -53,6 +54,15 @@ class IdentityFactory {
         hasher: PasswordHasherPort,
         repository: PersonRepository,
     ): UpdateEmailUseCase = UpdateEmailUseCase(hasher, repository)
+
+    // The password hasher and person repository are identity's own bindings; the session repository comes
+    // from CoreFactory, letting the use case revoke the person's other sessions after the password rotates.
+    @Singleton
+    fun updatePasswordUseCase(
+        hasher: PasswordHasherPort,
+        repository: PersonRepository,
+        sessionRepository: SessionRepository,
+    ): UpdatePasswordUseCase = UpdatePasswordUseCase(hasher, repository, sessionRepository)
 
     @Singleton
     fun signUpUseCase(

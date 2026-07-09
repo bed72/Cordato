@@ -10,11 +10,11 @@ import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
-import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
-import com.bed.cordato.features.identity.application.driven.outcomes.UpdateEmailOutcome
-
 import com.bed.cordato.features.identity.infrastructure.repositories.mappers.toEntity
 import com.bed.cordato.features.identity.infrastructure.repositories.mappers.toRecord
+
+import com.bed.cordato.features.identity.application.driven.outcomes.UpdateEmailOutcome
+import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
 
 /**
  * Durable [PersonRepository] on PostgreSQL via jOOQ. Uniqueness is enforced by the
@@ -79,6 +79,17 @@ class PersistencePersonRepository(private val dsl: DSLContext) : PersonRepositor
         } catch (exception: DataAccessException) {
             if (exception.sqlState() == UNIQUE_VIOLATION) UpdateEmailOutcome.EMAIL_TAKEN else throw exception
         }
+
+    // Hash-only UPDATE, gated on the ACTIVE status in the WHERE so a person deleted between the guard and this
+    // write matches zero rows — no half-update. Zero rows affected ⇒ false ⇒ the use case's PersonNotFound,
+    // the same neutral outcome findById reports for a non-active person. The password is not unique, so there
+    // is no uniqueness conflict to catch — two states suffice.
+    override fun updatePassword(id: String, hash: String): Boolean =
+        dsl.update(PERSON)
+            .set(PERSON.HASH, hash)
+            .where(PERSON.ID.eq(id))
+            .and(PERSON.STATUS.eq(PersonStatusEnum.ACTIVE.name))
+            .execute() > 0
 
     private companion object {
         const val UNIQUE_VIOLATION = "23505"

@@ -337,10 +337,12 @@ Sign-in *mints* the session (opaque token, `hashToken` stored); the consuming si
 `core/infrastructure/http/authentication/` and turns a presented Bearer into an authenticated actor. It is
 organized by kind, each in its own subpackage: `actors/AuthenticatedActor.kt` (the **authenticated actor**
 — the edge category naming the driving-side answer to "who is calling this route?"; a plain `data class`
-carrying **only** the `personId`, not a value class, to dodge the typed-binding pitfall; its `internal const
-ATTRIBUTE` request-attribute key lives in the type's `companion`, namespaced under the type it transports
-rather than as a scattered top-level constant — `personId` is a raw `String` throughout the domain, so this
-is edge-binding machinery, not a domain type), `annotations/Authenticated.kt` (the marker annotation on a
+carrying the `personId` **and** the current `sessionId` (the latter for session-scoped operations, e.g.
+revoking the person's other sessions while sparing the current one), not a value class, to dodge the
+typed-binding pitfall; its `internal const ATTRIBUTE`/`ATTRIBUTE_SESSION` request-attribute keys live in the
+type's `companion`, namespaced under the type they transport rather than as scattered top-level constants —
+`personId`/`sessionId` are raw `String`s throughout, so this is edge-binding machinery, not a domain type; the
+filter stashes both and the binder reads both, so an absent attribute leaves the binding unsatisfied), `annotations/Authenticated.kt` (the marker annotation on a
 `@Controller`/handler that declares the route protected — declaring it is what protects, decoupled from
 whether the handler reads the actor), `filters/AuthenticatedFilter.kt` (the `@ServerFilter` guard, with a
 file-private `bearerToken()` extension), and `binders/AuthenticatedActorArgumentBinder.kt` (the honest

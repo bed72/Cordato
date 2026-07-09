@@ -9,9 +9,10 @@ import io.micronaut.http.bind.binders.TypedRequestArgumentBinder
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 
 /**
- * The honest half of the edge-auth split: it does **not** authenticate. It only reads the person id that
- * `AuthenticatedFilter` already resolved and stashed under [AuthenticatedActor.ATTRIBUTE], and hands it to
- * the handler as the typed [AuthenticatedActor]. No session lookup, no clock, no exception.
+ * The honest half of the edge-auth split: it does **not** authenticate. It only reads the person id **and**
+ * session id that `AuthenticatedFilter` already resolved and stashed under [AuthenticatedActor.ATTRIBUTE] and
+ * [AuthenticatedActor.ATTRIBUTE_SESSION], and hands them to the handler as the typed [AuthenticatedActor]. No
+ * session lookup, no clock, no exception.
  *
  * An absent attribute yields an **unsatisfied** binding — the case of a handler declaring the actor on a
  * route that is not `@Authenticated` (a programming error, never a legitimate request path), never a `401`
@@ -26,9 +27,12 @@ class AuthenticatedActorBinder : TypedRequestArgumentBinder<AuthenticatedActor> 
         context: ArgumentConversionContext<AuthenticatedActor>,
         request: HttpRequest<*>,
     ): BindingResult<AuthenticatedActor> {
-        val actor = request
-            .getAttribute(AuthenticatedActor.ATTRIBUTE, String::class.java)
-            .map(::AuthenticatedActor)
+        val personId = request.getAttribute(AuthenticatedActor.ATTRIBUTE, String::class.java)
+        val sessionId = request.getAttribute(AuthenticatedActor.ATTRIBUTE_SESSION, String::class.java)
+
+        val actor = personId.flatMap { person ->
+            sessionId.map { session -> AuthenticatedActor(person, session) }
+        }
 
         return BindingResult { actor }
     }

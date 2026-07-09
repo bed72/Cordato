@@ -18,18 +18,30 @@ class AuthenticatedActorBinderTest {
     private val context = mockk<ArgumentConversionContext<AuthenticatedActor>>(relaxed = true)
 
     @Test
-    fun `reads the person id the filter stashed and binds it as the typed actor`() {
-        val request = HttpRequest.GET<Any>("/").setAttribute(AuthenticatedActor.ATTRIBUTE, "person-1")
+    fun `reads the person and session ids the filter stashed and binds them as the typed actor`() {
+        val request = HttpRequest.GET<Any>("/")
+            .setAttribute(AuthenticatedActor.ATTRIBUTE, "person-1")
+            .setAttribute(AuthenticatedActor.ATTRIBUTE_SESSION, "session-1")
 
         val result = binder.bind(context, request)
 
         assertTrue(result.isPresentAndSatisfied)
-        assertEquals(AuthenticatedActor("person-1"), result.get())
+        assertEquals(AuthenticatedActor("person-1", "session-1"), result.get())
     }
 
     @Test
-    fun `an absent attribute is an unsatisfied binding, never a fabricated actor`() {
+    fun `an absent person attribute is an unsatisfied binding, never a fabricated actor`() {
         val request = HttpRequest.GET<Any>("/")
+
+        val result = binder.bind(context, request)
+
+        assertFalse(result.isPresentAndSatisfied)
+        assertFalse(result.value.isPresent)
+    }
+
+    @Test
+    fun `an absent session attribute is an unsatisfied binding, never a fabricated actor`() {
+        val request = HttpRequest.GET<Any>("/").setAttribute(AuthenticatedActor.ATTRIBUTE, "person-1")
 
         val result = binder.bind(context, request)
 

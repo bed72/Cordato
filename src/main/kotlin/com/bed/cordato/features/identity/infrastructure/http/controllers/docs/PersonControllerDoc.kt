@@ -20,6 +20,7 @@ import com.bed.cordato.core.infrastructure.http.authentication.actors.Authentica
 
 import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateNameRequest
 import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateEmailRequest
+import com.bed.cordato.features.identity.infrastructure.http.requests.UpdatePasswordRequest
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 /**
@@ -150,5 +151,50 @@ interface PersonControllerDoc {
     fun updateEmail(
         @Parameter(hidden = true) actor: AuthenticatedActor,
         @Body @Valid request: UpdateEmailRequest,
+    ): HttpResponse<*>
+
+    @Operation(
+        operationId = "updatePassword",
+        summary = "Troca a senha da pessoa autenticada",
+        description = "Rotaciona **apenas** a senha da pessoa dona da sessão viva, mediante confirmação da " +
+            "**senha atual** (operação de step-up), e retorna sua visão pública (id, nome, e-mail) — a visão " +
+            "não muda numa troca de senha, mas a forma é uniforme. Nome, e-mail e status permanecem intocados. " +
+            "Ao trocar, **todas as demais sessões vivas da pessoa são encerradas** e a sessão que fez a troca " +
+            "permanece válida. A rota é protegida: sem um `Authorization: Bearer` válido o guard de borda " +
+            "recusa com o `401` neutro compartilhado, antes do handler. Uma senha de confirmação incorreta e " +
+            "uma sessão órfã (pessoa não mais ativa) colapsam no mesmo `401`, indistinguível de um token " +
+            "ausente ou inválido. Uma nova senha fraca (política pública) ou igual à atual responde `422`.",
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Senha trocada; retorna a pessoa sem qualquer material de senha.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = PersonResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Corpo ausente/inválido, senha atual ausente, ou nova senha ausente/abaixo do tamanho mínimo.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido, senha de confirmação incorreta e sessão órfã.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "422",
+            description = "Nova senha fraca (viola a política mínima, regra pública) ou igual à atual; ambas compartilham o `422`, então o status não delata qual ocorreu.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "500",
+            description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    fun updatePassword(
+        @Parameter(hidden = true) actor: AuthenticatedActor,
+        @Body @Valid request: UpdatePasswordRequest,
     ): HttpResponse<*>
 }

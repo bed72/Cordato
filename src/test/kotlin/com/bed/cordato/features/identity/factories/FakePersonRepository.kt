@@ -42,4 +42,12 @@ class FakePersonRepository : PersonRepository {
         byEmail[email.value] = person.copy(email = email)
         return UpdateEmailOutcome.UPDATED
     }
+
+    // Mirrors the production adapter: only the active person's hash changes; a non-active person matches
+    // nothing (false), and no other field is ever touched.
+    override fun updatePassword(id: String, hash: String): Boolean {
+        val person = findById(id) ?: return false
+        byEmail[person.email.value] = person.copy(hash = hash)
+        return true
+    }
 }

@@ -65,6 +65,32 @@ casos são indistinguíveis entre si, e a recusa nunca revela qual fator falhou.
 
 ---
 
+## Trocar a própria senha
+
+A senha é o segredo que autentica todas as outras operações, então é o campo **mais sensível** depois da
+própria conta. Trocá-la é uma operação de confirmação (step-up) — exige uma sessão viva **e** a
+confirmação da **senha atual** naquele momento, nunca apenas uma das duas provas. A troca altera
+**apenas** a senha: o nome, o e-mail e o status permanecem exatamente como estavam, e uma pessoa só troca
+a própria senha, nunca a de outra.
+
+A nova senha precisa cumprir a mesma política mínima do cadastro (a autoridade única do que é uma senha
+aceitável) — e como o tamanho mínimo é uma **regra pública**, uma senha fraca é recusada de forma
+específica, dizendo abertamente o que faltou, sem que isso revele nada sobre ninguém. A nova senha também
+precisa ser **diferente da atual**: trocar para a mesma senha não é um sucesso sem efeito, é uma recusa
+específica (não faz sentido "trocar" para o que já se tem e ainda assim encerrar as outras sessões).
+
+Trocar a senha é o gatilho clássico de comprometimento, então, ao concluir, **todas as demais sessões
+vivas da pessoa são encerradas** — quem quer que estivesse logado em outro lugar precisa entrar de novo.
+A **sessão que fez a troca continua válida**: quem acabou de rotacionar a senha ali não é deslogado do
+próprio dispositivo. O encerramento das outras sessões só acontece depois que a nova senha foi de fato
+gravada; se a gravação falhar, nenhuma sessão é tocada.
+
+Como nas demais operações do contexto, a recusa por senha atual incorreta produz **a mesma** resposta
+neutra de autenticação que uma sessão ausente ou uma sessão viva cuja pessoa deixou de estar ativa — de
+fora, indistinguíveis entre si, sem revelar qual fator falhou.
+
+---
+
 ## Não vazar a existência de uma conta
 
 Um dos cuidados mais específicos deste contexto: nunca dar a quem está de fora uma forma de descobrir

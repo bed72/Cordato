@@ -63,4 +63,17 @@ interface PersonRepository {
      */
     fun updateEmail(id: String, email: EmailValueObject): UpdateEmailOutcome
 
+    /**
+     * Updates **only** the password hash of the **active** person for [id], leaving name, e-mail, status and
+     * identifier untouched. Deliberately narrow (hash-only, not a generic `save(person)`) so the persistence
+     * boundary cannot rewrite any other field. Takes the already-hashed [hash] — the plaintext never reaches
+     * persistence.
+     *
+     * @return `true` when the active person's hash was updated; `false` when no active person matches [id]
+     *   (never existed, or a race with account deletion left it non-active) — zero rows affected collapses to
+     *   the same absent result [findById] reports, so the use case maps it to `PersonNotFound`. The password
+     *   is not unique, so two states suffice (unlike [updateEmail]'s three-state outcome).
+     */
+    fun updatePassword(id: String, hash: String): Boolean
+
 }

@@ -50,6 +50,7 @@ class AuthenticatedFilter(
         val session = sessions.get().findActiveByToken(token, clock()) ?: return reject()
 
         request.setAttribute(AuthenticatedActor.ATTRIBUTE, session.personId)
+        request.setAttribute(AuthenticatedActor.ATTRIBUTE_SESSION, session.id)
 
         return null
     }

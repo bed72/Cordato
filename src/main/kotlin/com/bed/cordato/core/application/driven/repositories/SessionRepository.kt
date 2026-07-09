@@ -27,4 +27,15 @@ interface SessionRepository {
      * invalid and expired tokens indistinguishably.
      */
     fun findActiveByToken(token: String, now: Instant): SessionEntity?
+
+    /**
+     * Revokes every live session of the person [personId] **except** the one identified by [sessionId] (the
+     * caller's current session, spared). Revocation is **server-authoritative**: a revoked session stops being
+     * resolved by [findActiveByToken] immediately, collapsing into the same absent result an unknown token
+     * yields. The spared session is left intact, and "nothing to revoke" (the person has no other live
+     * session) is a valid result — returns `0`, never an error.
+     *
+     * @return the number of sessions revoked (`0` when there were no other live sessions to revoke).
+     */
+    fun revokeAllForPersonExcept(personId: String, sessionId: String): Int
 }
