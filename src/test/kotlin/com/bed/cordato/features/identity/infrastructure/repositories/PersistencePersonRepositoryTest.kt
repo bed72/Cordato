@@ -16,6 +16,9 @@ import java.util.concurrent.CyclicBarrier
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.Assumptions.assumeTrue
+
+import org.testcontainers.DockerClientFactory
 
 import com.bed.cordato.features.identity.factories.email
 import com.bed.cordato.features.identity.factories.person
@@ -34,6 +37,9 @@ class PersistencePersonRepositoryTest {
 
     @BeforeAll
     fun startContainer() {
+        // Testcontainers needs a Docker daemon; when none is reachable, skip (abort) rather than fail the
+        // suite — this test only has meaning against a real PostgreSQL.
+        assumeTrue(DockerClientFactory.instance().isDockerAvailable, "Docker unavailable; skipping container test")
         harness.start()
         repository = PersistencePersonRepository(harness.dsl)
     }
