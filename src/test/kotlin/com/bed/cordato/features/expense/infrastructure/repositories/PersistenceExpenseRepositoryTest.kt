@@ -5,6 +5,7 @@ import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.AfterTest
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.test.BeforeTest
 import kotlin.test.assertEquals
 
@@ -85,5 +86,28 @@ class PersistenceExpenseRepositoryTest {
         val columns = EXPENSE.fields().map { it.name }.toSet()
 
         assertEquals(setOf("id", "person_id", "amount_cents", "spent_on", "description"), columns)
+    }
+
+    @Test
+    fun `findByPerson returns only the owner's expenses, ordered by spent_on desc then id desc`() {
+        // Two owners; for person-1, two expenses share a day so the id tie-break decides their order.
+        repository.create(expense(id = "a", personId = "person-1", date = LocalDate.of(2026, 7, 1)))
+        repository.create(expense(id = "b", personId = "person-1", date = LocalDate.of(2026, 7, 10)))
+        repository.create(expense(id = "c", personId = "person-1", date = LocalDate.of(2026, 7, 10)))
+        repository.create(expense(id = "z", personId = "person-2", date = LocalDate.of(2026, 7, 20)))
+
+        val listed = repository.findByPerson("person-1")
+
+        // Newest day first (b/c on the 10th before a on the 1st); same-day tie broken by id desc (c before b);
+        // person-2's expense never leaks in.
+        assertEquals(listOf("c", "b", "a"), listed.map { it.id })
+        assertTrue(listed.all { it.personId == "person-1" })
+    }
+
+    @Test
+    fun `findByPerson returns an empty list when the person has no expenses`() {
+        repository.create(expense(id = "a", personId = "someone-else"))
+
+        assertTrue(repository.findByPerson("person-1").isEmpty())
     }
 }

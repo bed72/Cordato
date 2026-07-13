@@ -9,8 +9,9 @@ import io.micronaut.context.annotation.Factory
 import com.bed.cordato.core.application.driven.ports.ClockPort
 import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
 
-import com.bed.cordato.features.expense.application.driving.use_cases.CreateExpenseUseCase
 import com.bed.cordato.features.expense.application.driven.repositories.ExpenseRepository
+import com.bed.cordato.features.expense.application.driving.use_cases.CreateExpenseUseCase
+import com.bed.cordato.features.expense.application.driving.use_cases.ListExpensesUseCase
 
 import com.bed.cordato.features.expense.infrastructure.repositories.PersistenceExpenseRepository
 
@@ -36,4 +37,8 @@ class ExpenseFactory {
         generator: IdGeneratorPort,
         repository: ExpenseRepository,
     ): CreateExpenseUseCase = CreateExpenseUseCase(clock, generator, repository)
+
+    // Reading path — the same expense repository above is its only collaborator; no kernel port needed.
+    @Singleton
+    fun listExpensesUseCase(repository: ExpenseRepository): ListExpensesUseCase = ListExpensesUseCase(repository)
 }

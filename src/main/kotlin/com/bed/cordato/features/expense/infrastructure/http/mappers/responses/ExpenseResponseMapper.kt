@@ -15,3 +15,10 @@ internal fun ExpenseEntity.toResponse(): ExpenseResponse = ExpenseResponse(
     amountInCents = amount.cents,
     description = description?.value,
 )
+
+/**
+ * Projects a list of expenses into their public [ExpenseResponse]s, preserving order — the deterministic
+ * order set by the query is the order on the wire. Built over the single-item [toResponse]; an empty list
+ * maps to an empty list (the "no expenses" case is a normal `200` with `[]`, never an error).
+ */
+internal fun List<ExpenseEntity>.toResponse(): List<ExpenseResponse> = map { it.toResponse() }

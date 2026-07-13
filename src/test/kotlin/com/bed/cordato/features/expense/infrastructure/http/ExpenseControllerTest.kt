@@ -16,6 +16,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 
+import io.micronaut.core.type.Argument
 import io.micronaut.http.MediaType
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
@@ -28,6 +29,7 @@ import com.bed.cordato.core.factories.LIVE_TOKEN
 import com.bed.cordato.core.factories.SESSION_PERSON_ID
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 
+import com.bed.cordato.features.expense.factories.expense
 import com.bed.cordato.features.expense.domain.entities.ExpenseEntity
 import com.bed.cordato.features.expense.domain.value_objects.DescriptionValueObject
 import com.bed.cordato.features.expense.infrastructure.http.responses.ExpenseResponse
@@ -68,6 +70,11 @@ class ExpenseControllerTest {
         } catch (exception: HttpClientResponseException) {
             exception
         }
+
+    private fun get(authorization: String? = null): HttpRequest<Any> {
+        val request = HttpRequest.GET<Any>("/v1/expenses")
+        return if (authorization == null) request else request.header("Authorization", authorization)
+    }
 
     @Test
     fun `an authenticated valid request registers the expense and returns 201`() {
@@ -195,5 +202,50 @@ class ExpenseControllerTest {
         assertEquals("FUTURE_DATE", body.code)
         assertTrue(body.errors.isEmpty())
         verify(exactly = 0) { repository.create(any()) }
+    }
+
+    @Test
+    fun `an authenticated request returns 200 with the actor's expenses in the order given`() {
+        val newer = expense(id = "expense-2", personId = SESSION_PERSON_ID, date = LocalDate.of(2026, 7, 10))
+        val older = expense(id = "expense-1", personId = SESSION_PERSON_ID, date = LocalDate.of(2026, 7, 1))
+        every { repository.findByPerson(SESSION_PERSON_ID) } returns listOf(newer, older)
+
+        val response = client.toBlocking().exchange(
+            get("Bearer $LIVE_TOKEN"),
+            Argument.listOf(ExpenseResponse::class.java),
+        )
+
+        assertEquals(HttpStatus.OK, response.status)
+        val body = response.body()!!
+        // The owner comes from the authenticated actor, never the request; the wire order is the query's order.
+        verify(exactly = 1) { repository.findByPerson(SESSION_PERSON_ID) }
+        assertEquals(listOf("expense-2", "expense-1"), body.map { it.id })
+    }
+
+    @Test
+    fun `an actor with no expenses gets 200 with an empty array`() {
+        every { repository.findByPerson(SESSION_PERSON_ID) } returns emptyList()
+
+        val response = client.toBlocking().exchange(
+            get("Bearer $LIVE_TOKEN"),
+            Argument.listOf(ExpenseResponse::class.java),
+        )
+
+        assertEquals(HttpStatus.OK, response.status)
+        assertTrue(response.body()!!.isEmpty())
+    }
+
+    @Test
+    fun `no token is refused with a neutral 401 before the list use case runs`() {
+        val exception = try {
+            client.toBlocking().exchange(get(), Argument.listOf(ExpenseResponse::class.java))
+            error("Expected the request to be refused")
+        } catch (exception: HttpClientResponseException) {
+            exception
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        verify(exactly = 0) { repository.findByPerson(any()) }
+        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorResponse::class.java).get().code)
     }
 }
