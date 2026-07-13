@@ -15,3 +15,9 @@ internal fun ExpenseEntity.toResponse(): ExpenseResponse = ExpenseResponse(
     amountInCents = amount.cents,
     description = description?.value,
 )
+
+/**
+ * Projects a list of expenses into their public views, preserving order (the repository's deterministic
+ * most-recent-first ordering flows straight through to the wire). An empty input maps to an empty list.
+ */
+internal fun List<ExpenseEntity>.toResponse(): List<ExpenseResponse> = map { it.toResponse() }

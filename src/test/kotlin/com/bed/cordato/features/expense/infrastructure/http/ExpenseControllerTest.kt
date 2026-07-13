@@ -19,6 +19,7 @@ import kotlin.test.assertEquals
 import io.micronaut.http.MediaType
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
+import io.micronaut.core.type.Argument
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest
@@ -28,6 +29,7 @@ import com.bed.cordato.core.factories.LIVE_TOKEN
 import com.bed.cordato.core.factories.SESSION_PERSON_ID
 import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 
+import com.bed.cordato.features.expense.factories.expense
 import com.bed.cordato.features.expense.domain.entities.ExpenseEntity
 import com.bed.cordato.features.expense.domain.value_objects.DescriptionValueObject
 import com.bed.cordato.features.expense.infrastructure.http.responses.ExpenseResponse
@@ -60,6 +62,19 @@ class ExpenseControllerTest {
         val request = HttpRequest.POST<Any>("/v1/expenses", body)
         return if (authorization == null) request else request.header("Authorization", authorization)
     }
+
+    private fun get(authorization: String? = null): HttpRequest<Any> {
+        val request = HttpRequest.GET<Any>("/v1/expenses")
+        return if (authorization == null) request else request.header("Authorization", authorization)
+    }
+
+    private fun rejectGet(authorization: String? = null): HttpClientResponseException =
+        try {
+            client.toBlocking().exchange(get(authorization), String::class.java)
+            error("Expected the request to be refused with an HTTP error response")
+        } catch (exception: HttpClientResponseException) {
+            exception
+        }
 
     private fun reject(body: Any, authorization: String? = null): HttpClientResponseException =
         try {
@@ -192,8 +207,62 @@ class ExpenseControllerTest {
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
         val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("FUTURE_DATE", body.code)
         assertTrue(body.errors.isEmpty())
         verify(exactly = 0) { repository.create(any()) }
+        assertEquals("FUTURE_DATE", body.code)
+    }
+
+    @Test
+    fun `an authenticated list returns 200 with the actor's expenses as an array`() {
+        every { repository.findByPerson(SESSION_PERSON_ID) } returns listOf(
+            expense(id = "e-1", personId = SESSION_PERSON_ID, amountInCents = 1_500, description = "Café"),
+            expense(id = "e-2", personId = SESSION_PERSON_ID, amountInCents = 900, description = null),
+        )
+
+        val response = client.toBlocking().exchange(
+            get("Bearer $LIVE_TOKEN"),
+            Argument.listOf(ExpenseResponse::class.java),
+        )
+
+        assertEquals(HttpStatus.OK, response.status)
+        val body = response.body()!!
+        // The owner listed is the authenticated actor, never a parameter/body.
+        verify(exactly = 1) { repository.findByPerson(SESSION_PERSON_ID) }
+        assertEquals(listOf("e-1", "e-2"), body.map { it.id })
+        assertEquals(listOf("Café", null), body.map { it.description })
+        assertEquals(listOf(1_500L, 900L), body.map { it.amountInCents })
+    }
+
+    @Test
+    fun `an authenticated actor with no expenses gets 200 with an empty array`() {
+        every { repository.findByPerson(SESSION_PERSON_ID) } returns emptyList()
+
+        val response = client.toBlocking().exchange(
+            get("Bearer $LIVE_TOKEN"),
+            Argument.listOf(ExpenseResponse::class.java),
+        )
+
+        assertTrue(response.body()!!.isEmpty())
+        assertEquals(HttpStatus.OK, response.status)
+    }
+
+    @Test
+    fun `listing with no token is refused with a neutral 401 before the use case runs`() {
+        val exception = rejectGet()
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        assertTrue(body.errors.isEmpty())
+        assertEquals("UNAUTHENTICATED", body.code)
+        verify(exactly = 0) { repository.findByPerson(any()) }
+    }
+
+    @Test
+    fun `listing with an unresolvable token is refused with a neutral 401 before the use case runs`() {
+        val exception = rejectGet("Bearer $DEAD_TOKEN")
+
+        verify(exactly = 0) { repository.findByPerson(any()) }
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorResponse::class.java).get().code)
     }
 }

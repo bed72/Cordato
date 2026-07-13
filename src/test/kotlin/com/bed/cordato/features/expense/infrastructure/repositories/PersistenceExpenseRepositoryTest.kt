@@ -86,4 +86,26 @@ class PersistenceExpenseRepositoryTest {
 
         assertEquals(setOf("id", "person_id", "amount_cents", "spent_on", "description"), columns)
     }
+
+    @Test
+    fun `findByPerson returns only the owner's expenses, ordered by spent_on desc then id desc`() {
+        val older = expense(id = "a", personId = "person-1", date = LocalDate.of(2026, 7, 1))
+        val newerLow = expense(id = "b", personId = "person-1", date = LocalDate.of(2026, 7, 10))
+        val newerHigh = expense(id = "c", personId = "person-1", date = LocalDate.of(2026, 7, 10))
+        val other = expense(id = "d", personId = "person-2", date = LocalDate.of(2026, 7, 20))
+        // Insert in a scrambled order so the ordering can't be an accident of insertion.
+        listOf(older, newerLow, other, newerHigh).forEach(repository::create)
+
+        val listed = repository.findByPerson("person-1")
+
+        // Same date → id desc tie-break ("c" before "b"); more recent date first; person-2's row excluded.
+        assertEquals(listOf(newerHigh, newerLow, older), listed)
+    }
+
+    @Test
+    fun `findByPerson returns an empty list for a person with no expenses`() {
+        repository.create(expense(id = "a", personId = "person-2"))
+
+        assertEquals(emptyList(), repository.findByPerson("person-1"))
+    }
 }

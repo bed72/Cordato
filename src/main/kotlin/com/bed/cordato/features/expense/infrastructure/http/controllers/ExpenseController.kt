@@ -6,6 +6,7 @@ import io.micronaut.validation.Validated
 
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpResponse
+import io.micronaut.http.annotation.Get
 import io.micronaut.http.annotation.Body
 import io.micronaut.http.annotation.Post
 import io.micronaut.http.annotation.Status
@@ -17,6 +18,8 @@ import com.bed.cordato.core.infrastructure.http.authentication.actors.Authentica
 import com.bed.cordato.core.infrastructure.http.authentication.annotations.Authenticated
 
 import com.bed.cordato.features.expense.application.driving.results.CreateExpenseResult
+import com.bed.cordato.features.expense.application.driving.commands.ListExpensesCommand
+import com.bed.cordato.features.expense.application.driving.use_cases.ListExpensesUseCase
 import com.bed.cordato.features.expense.application.driving.use_cases.CreateExpenseUseCase
 
 import com.bed.cordato.features.expense.infrastructure.http.mappers.errors.toResponse
@@ -41,13 +44,26 @@ import com.bed.cordato.features.expense.infrastructure.http.controllers.docs.Exp
  * branches over the sealed result: `Success` → `201` with the public expense view (`@Status(CREATED)` also
  * documents the success code on the OpenAPI side); `Failure` → [toResponse] (`422`). The documentation lives
  * on the implemented [ExpenseControllerDoc].
+ *
+ * `GET /expenses` lists the authenticated actor's own expenses. It has no domain failure branch (listing
+ * always succeeds, with zero or more items), so it returns `200` with the public view of each expense as a
+ * JSON array — an empty array when the actor has none, never `404`. The owner comes from the actor, never a
+ * parameter/body, so a person can only ever list their own. The only `4xx` is the neutral `401` the guard
+ * emits before the handler.
  */
 @Validated
 @Controller("/expenses")
 class ExpenseController(
     private val messages: MessagePort,
+    private val listExpensesUseCase: ListExpensesUseCase,
     private val createExpenseUseCase: CreateExpenseUseCase,
 ) : ExpenseControllerDoc {
+
+    @Get
+    @Authenticated
+    @Status(HttpStatus.OK)
+    override fun list(actor: AuthenticatedActor): HttpResponse<*> =
+        HttpResponse.ok(listExpensesUseCase(ListExpensesCommand(actor.personId)).toResponse())
 
     @Post
     @Authenticated

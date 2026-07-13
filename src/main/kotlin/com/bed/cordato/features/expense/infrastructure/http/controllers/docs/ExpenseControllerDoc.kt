@@ -1,16 +1,17 @@
 package com.bed.cordato.features.expense.infrastructure.http.controllers.docs
 
+import jakarta.validation.Valid
+
 import io.micronaut.http.MediaType
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.Body
-
-import jakarta.validation.Valid
 
 import io.swagger.v3.oas.annotations.tags.Tag
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ArraySchema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -33,7 +34,7 @@ import com.bed.cordato.features.expense.infrastructure.http.requests.CreateExpen
  * from the wire, so it is never a documented request parameter. This is a documentation artefact of
  * infrastructure, not an application port — it introduces no driving-side contract.
  */
-@Tag(name = "Expense", description = "Registro de gastos da pessoa autenticada.")
+@Tag(name = "Expense", description = "Registro e leitura de gastos da pessoa autenticada.")
 interface ExpenseControllerDoc {
 
     @Operation(
@@ -81,4 +82,38 @@ interface ExpenseControllerDoc {
         @Parameter(hidden = true) actor: AuthenticatedActor,
         @Body @Valid request: CreateExpenseRequest,
     ): HttpResponse<*>
+
+    @Operation(
+        operationId = "listExpenses",
+        summary = "Lista os gastos da pessoa autenticada",
+        description = "Retorna todos e somente os gastos pertencentes à pessoa dona da sessão viva — o dono " +
+            "vem sempre do ator autenticado, nunca de parâmetro/corpo — como um array na visão pública do " +
+            "gasto (id, valor em centavos, data, descrição). A lista vem ordenada de forma determinística: " +
+            "por data do gasto decrescente (o mais recente primeiro), com desempate estável por id. Uma " +
+            "pessoa sem nenhum gasto recebe `200` com um array vazio, nunca `404`. Cada item carrega apenas o " +
+            "fato bruto e nunca referencia orçamento. A rota é protegida: sem um `Authorization: Bearer` " +
+            "válido o guard de borda recusa com o `401` neutro compartilhado, antes do handler.",
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Lista dos gastos do ator autenticado (array possivelmente vazio), na visão pública.",
+            content = [Content(
+                mediaType = MediaType.APPLICATION_JSON,
+                array = ArraySchema(schema = Schema(implementation = ExpenseResponse::class)),
+            )],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "500",
+            description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    fun list(@Parameter(hidden = true) actor: AuthenticatedActor): HttpResponse<*>
 }
