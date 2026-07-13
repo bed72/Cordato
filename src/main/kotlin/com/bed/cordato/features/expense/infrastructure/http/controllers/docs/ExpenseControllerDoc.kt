@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ArraySchema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -81,4 +82,38 @@ interface ExpenseControllerDoc {
         @Parameter(hidden = true) actor: AuthenticatedActor,
         @Body @Valid request: CreateExpenseRequest,
     ): HttpResponse<*>
+
+    @Operation(
+        operationId = "listExpenses",
+        summary = "Lista os gastos da pessoa autenticada",
+        description = "Retorna todos, e somente, os gastos pertencentes à pessoa dona da sessão viva — o dono " +
+            "vem sempre do ator autenticado, nunca de parâmetro/filtro/corpo, de modo que uma pessoa não " +
+            "consegue listar os gastos de outra. A resposta é um array na visão pública do gasto (id, valor em " +
+            "centavos, data, descrição), ordenado pela data do gasto de forma decrescente (o mais recente " +
+            "primeiro) com desempate estável por id. Uma pessoa sem nenhum gasto recebe `200` com um array " +
+            "vazio, nunca `404`. Nenhum item referencia orçamento. A rota é protegida: sem um `Authorization: " +
+            "Bearer` válido o guard de borda recusa com o `401` neutro compartilhado, antes do handler.",
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Lista (possivelmente vazia) dos gastos da pessoa autenticada, ordenada por data decrescente.",
+            content = [Content(
+                mediaType = MediaType.APPLICATION_JSON,
+                array = ArraySchema(schema = Schema(implementation = ExpenseResponse::class)),
+            )],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "500",
+            description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    fun list(@Parameter(hidden = true) actor: AuthenticatedActor): HttpResponse<*>
 }

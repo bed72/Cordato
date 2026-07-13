@@ -5,6 +5,7 @@ import org.jooq.DSLContext
 import com.bed.cordato.core.infrastructure.persistence.models.Tables.EXPENSE
 
 import com.bed.cordato.features.expense.domain.entities.ExpenseEntity
+import com.bed.cordato.features.expense.infrastructure.repositories.mappers.toEntity
 import com.bed.cordato.features.expense.infrastructure.repositories.mappers.toRecord
 import com.bed.cordato.features.expense.application.driven.repositories.ExpenseRepository
 
@@ -21,4 +22,13 @@ class PersistenceExpenseRepository(private val dsl: DSLContext) : ExpenseReposit
             .set(expense.toRecord())
             .execute()
     }
+
+    // Every expense of one owner, ordered in the datastore (never in memory): most recent day first, with a
+    // stable `id` tie-break so same-day expenses keep a deterministic order. Reuses the V3 `person_id` index;
+    // the record type is mapped back to the domain here (`toEntity`) so it never escapes infrastructure.
+    override fun findByPerson(personId: String): List<ExpenseEntity> =
+        dsl.selectFrom(EXPENSE)
+            .where(EXPENSE.PERSON_ID.eq(personId))
+            .orderBy(EXPENSE.SPENT_ON.desc(), EXPENSE.ID.desc())
+            .fetch { it.toEntity() }
 }

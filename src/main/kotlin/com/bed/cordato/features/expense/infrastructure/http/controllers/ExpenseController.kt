@@ -6,6 +6,7 @@ import io.micronaut.validation.Validated
 
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpResponse
+import io.micronaut.http.annotation.Get
 import io.micronaut.http.annotation.Body
 import io.micronaut.http.annotation.Post
 import io.micronaut.http.annotation.Status
@@ -17,6 +18,8 @@ import com.bed.cordato.core.infrastructure.http.authentication.actors.Authentica
 import com.bed.cordato.core.infrastructure.http.authentication.annotations.Authenticated
 
 import com.bed.cordato.features.expense.application.driving.results.CreateExpenseResult
+import com.bed.cordato.features.expense.application.driving.commands.ListExpensesCommand
+import com.bed.cordato.features.expense.application.driving.use_cases.ListExpensesUseCase
 import com.bed.cordato.features.expense.application.driving.use_cases.CreateExpenseUseCase
 
 import com.bed.cordato.features.expense.infrastructure.http.mappers.errors.toResponse
@@ -47,6 +50,7 @@ import com.bed.cordato.features.expense.infrastructure.http.controllers.docs.Exp
 class ExpenseController(
     private val messages: MessagePort,
     private val createExpenseUseCase: CreateExpenseUseCase,
+    private val listExpensesUseCase: ListExpensesUseCase,
 ) : ExpenseControllerDoc {
 
     @Post
@@ -57,4 +61,13 @@ class ExpenseController(
             is CreateExpenseResult.Failure -> data.error.toResponse(messages)
             is CreateExpenseResult.Success -> HttpResponse.created(data.expense.toResponse())
         }
+
+    // Lists the actor's own expenses. There is no domain failure branch (an empty list is a normal `200`), so
+    // no sealed result to branch over; the owner comes from the actor, never the request. The only `4xx` is the
+    // `401` the edge guard emits before the handler.
+    @Get
+    @Authenticated
+    @Status(HttpStatus.OK)
+    override fun list(actor: AuthenticatedActor): HttpResponse<*> =
+        HttpResponse.ok(listExpensesUseCase(ListExpensesCommand(actor.personId)).toResponse())
 }
