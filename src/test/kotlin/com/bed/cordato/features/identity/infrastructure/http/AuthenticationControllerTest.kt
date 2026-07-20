@@ -14,6 +14,8 @@ import kotlin.test.assertEquals
 
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 
+import io.micronaut.core.type.Argument
+
 import io.micronaut.http.MediaType
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
@@ -22,21 +24,22 @@ import io.micronaut.http.client.annotation.Client
 import io.micronaut.http.client.exceptions.HttpClientResponseException
 
 import com.bed.cordato.core.factories.session
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.responses.DataResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
-import com.bed.cordato.features.identity.application.driving.results.SignUpResult
-import com.bed.cordato.features.identity.application.driving.results.SignInResult
-import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
-import com.bed.cordato.features.identity.application.driving.use_cases.SignInUseCase
+import com.bed.cordato.features.identity.factories.person
+import com.bed.cordato.features.identity.factories.signUpRequestBody
+import com.bed.cordato.features.identity.factories.signInRequestBody
 
 import com.bed.cordato.features.identity.domain.errors.SignUpError
 import com.bed.cordato.features.identity.domain.errors.SignInError
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObject
 
-import com.bed.cordato.features.identity.factories.person
-import com.bed.cordato.features.identity.factories.signUpRequestBody
-import com.bed.cordato.features.identity.factories.signInRequestBody
+import com.bed.cordato.features.identity.application.driving.results.SignUpResult
+import com.bed.cordato.features.identity.application.driving.results.SignInResult
+import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.SignInUseCase
 
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 import com.bed.cordato.features.identity.infrastructure.http.responses.SignInResponse
@@ -45,7 +48,7 @@ import com.bed.cordato.features.identity.infrastructure.http.responses.SignInRes
 class AuthenticationControllerTest {
 
     @Inject
-    lateinit var useCase: SignUpUseCase
+    lateinit var signUpUseCase: SignUpUseCase
 
     @Inject
     lateinit var signInUseCase: SignInUseCase
@@ -55,7 +58,7 @@ class AuthenticationControllerTest {
     lateinit var client: HttpClient
 
     @BeforeTest
-    fun reset() = clearMocks(useCase, signInUseCase)
+    fun reset() = clearMocks(signUpUseCase, signInUseCase)
 
     private val validBody = signUpRequestBody()
 
@@ -84,15 +87,15 @@ class AuthenticationControllerTest {
 
     @Test
     fun `successful signup returns 201 and a person body with no password material`() {
-        every { useCase(any()) } returns SignUpResult.Success(person(hash = "bcrypt:leaky"))
+        every { signUpUseCase(any()) } returns SignUpResult.Success(person(hash = "bcrypt:leaky"))
 
         val response = client.toBlocking().exchange(
             HttpRequest.POST("/v1/authentication/sign-up", validBody),
-            PersonResponse::class.java,
+            Argument.of(DataResponse::class.java, PersonResponse::class.java),
         )
 
         assertEquals(HttpStatus.CREATED, response.status)
-        val body = response.body()!!
+        val body = response.body()!!.data as PersonResponse
         assertEquals("Alice", body.name)
         assertEquals("person-1", body.id)
         assertEquals("alice@example.com", body.email)
@@ -100,6 +103,7 @@ class AuthenticationControllerTest {
         val raw = client.toBlocking().retrieve(HttpRequest.POST("/v1/authentication/sign-up", validBody), String::class.java)
         assertFalse(raw.contains("hash"), "response leaked a hash field: $raw")
         assertFalse(raw.contains("bcrypt"), "response leaked the hash value: $raw")
+        assertTrue(raw.contains("\"data\""), "response is not enveloped in data: $raw")
     }
 
     @Test
@@ -107,10 +111,10 @@ class AuthenticationControllerTest {
         val exception = postSignUp(mapOf("name" to "Alice", "email" to "alice@example.com"))
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertTrue(body.errors.isEmpty())
-        verify(exactly = 0) { useCase(any()) }
-        assertEquals("MALFORMED_REQUEST", body.code)
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        verify(exactly = 0) { signUpUseCase(any()) }
+        assertEquals("MALFORMED_REQUEST", item.code)
     }
 
     @Test
@@ -118,10 +122,10 @@ class AuthenticationControllerTest {
         val exception = postSignUp(mapOf("name" to "", "email" to "not-an-email", "password" to "x"))
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        verify(exactly = 0) { useCase(any()) }
-        assertEquals("INVALID_REQUEST", body.code)
-        assertEquals(setOf("name", "email", "password"), body.errors.map { it.field }.toSet())
+        val errors = exception.response.getBody(ErrorsResponse::class.java).get().errors
+        verify(exactly = 0) { signUpUseCase(any()) }
+        assertTrue(errors.all { it.code == "INVALID_REQUEST" })
+        assertEquals(setOf("name", "email", "password"), errors.mapNotNull { it.source?.field }.toSet())
     }
 
     @Test
@@ -130,7 +134,7 @@ class AuthenticationControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(String::class.java).get()
-        verify(exactly = 0) { useCase(any()) }
+        verify(exactly = 0) { signUpUseCase(any()) }
         assertTrue(body.contains("nome"), body)
         assertTrue(body.contains("INVALID_REQUEST"), body)
     }
@@ -141,7 +145,7 @@ class AuthenticationControllerTest {
 
         val exception = postSignUp(validBody + ("name" to tooLong))
 
-        verify(exactly = 0) { useCase(any()) }
+        verify(exactly = 0) { signUpUseCase(any()) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertTrue(exception.response.getBody(String::class.java).get().contains("INVALID_REQUEST"))
     }
@@ -152,7 +156,7 @@ class AuthenticationControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(String::class.java).get()
-        verify(exactly = 0) { useCase(any()) }
+        verify(exactly = 0) { signUpUseCase(any()) }
         assertTrue(body.contains("e-mail"), body)
         assertTrue(body.contains("INVALID_REQUEST"), body)
         assertFalse(body.contains("^["), "leaked the validation regex: $body")
@@ -166,7 +170,7 @@ class AuthenticationControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         val body = exception.response.getBody(String::class.java).get()
-        verify(exactly = 0) { useCase(any()) }
+        verify(exactly = 0) { signUpUseCase(any()) }
         assertTrue(body.contains("INVALID_REQUEST"), body)
         assertTrue(body.contains("${PasswordValueObject.MIN_LENGTH}"), body)
     }
@@ -181,10 +185,10 @@ class AuthenticationControllerTest {
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertTrue(body.errors.isEmpty())
-        verify(exactly = 0) { useCase(any()) }
-        assertEquals("MALFORMED_REQUEST", body.code)
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        verify(exactly = 0) { signUpUseCase(any()) }
+        assertEquals("MALFORMED_REQUEST", item.code)
     }
 
     @Test
@@ -197,15 +201,15 @@ class AuthenticationControllerTest {
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertTrue(body.errors.isEmpty())
-        verify(exactly = 0) { useCase(any()) }
-        assertEquals("MALFORMED_REQUEST", body.code)
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        verify(exactly = 0) { signUpUseCase(any()) }
+        assertEquals("MALFORMED_REQUEST", item.code)
     }
 
     @Test
     fun `invalid e-mail maps to 422`() {
-        every { useCase(any()) } returns SignUpResult.Failure(SignUpError.InvalidEmail)
+        every { signUpUseCase(any()) } returns SignUpResult.Failure(SignUpError.InvalidEmail)
 
         val exception = postSignUp(validBody)
 
@@ -215,7 +219,7 @@ class AuthenticationControllerTest {
 
     @Test
     fun `invalid name maps to 422`() {
-        every { useCase(any()) } returns SignUpResult.Failure(SignUpError.InvalidName)
+        every { signUpUseCase(any()) } returns SignUpResult.Failure(SignUpError.InvalidName)
 
         val exception = postSignUp(validBody)
 
@@ -225,7 +229,7 @@ class AuthenticationControllerTest {
 
     @Test
     fun `weak password maps to 422 and may state the public minimum length`() {
-        every { useCase(any()) } returns SignUpResult.Failure(SignUpError.WeakPassword(minLength = 8))
+        every { signUpUseCase(any()) } returns SignUpResult.Failure(SignUpError.WeakPassword(minLength = 8))
 
         val exception = postSignUp(validBody)
 
@@ -235,7 +239,7 @@ class AuthenticationControllerTest {
 
     @Test
     fun `e-mail already in use maps to a neutral 422 that does not reveal registration`() {
-        every { useCase(any()) } returns SignUpResult.Failure(SignUpError.EmailAlreadyInUse)
+        every { signUpUseCase(any()) } returns SignUpResult.Failure(SignUpError.EmailAlreadyInUse)
 
         val exception = postSignUp(validBody)
         val body = exception.response.getBody(String::class.java).get()
@@ -249,7 +253,7 @@ class AuthenticationControllerTest {
 
     @Test
     fun `unknown Accept-Language falls back to the pt-BR message on a domain error`() {
-        every { useCase(any()) } returns SignUpResult.Failure(SignUpError.InvalidName)
+        every { signUpUseCase(any()) } returns SignUpResult.Failure(SignUpError.InvalidName)
 
         val exception = postSignUp(validBody, language = "fr-FR")
 
@@ -264,11 +268,10 @@ class AuthenticationControllerTest {
         val exception = postSignUp(validBody + ("name" to ""), language = "fr-FR")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        verify(exactly = 0) { useCase(any()) }
-        assertEquals("INVALID_REQUEST", body.code)
-        assertEquals("A requisição contém campos inválidos.", body.message)
-        assertTrue(body.errors.any { it.field == "name" && it.message == "O nome é obrigatório." }, "$body")
+        val errors = exception.response.getBody(ErrorsResponse::class.java).get().errors
+        verify(exactly = 0) { signUpUseCase(any()) }
+        assertTrue(errors.all { it.code == "INVALID_REQUEST" })
+        assertTrue(errors.any { it.source?.field == "name" && it.message == "O nome é obrigatório." }, "$errors")
     }
 
     @Test
@@ -277,11 +280,11 @@ class AuthenticationControllerTest {
 
         val response = client.toBlocking().exchange(
             HttpRequest.POST("/v1/authentication/sign-in", signInRequestBody()),
-            SignInResponse::class.java,
+            Argument.of(DataResponse::class.java, SignInResponse::class.java),
         )
 
         assertEquals(HttpStatus.OK, response.status)
-        val body = response.body()!!
+        val body = response.body()!!.data as SignInResponse
         assertEquals("raw-token", body.token)
         assertEquals(session().expiresAt, body.expiresAt)
 
@@ -295,12 +298,12 @@ class AuthenticationControllerTest {
         every { signInUseCase(any()) } returns SignInResult.Failure(SignInError.InvalidCredentials)
 
         val exception = postSignIn(signInRequestBody())
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
 
+        assertEquals(null, item.source)
+        assertEquals("UNAUTHENTICATED", item.code)
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        assertEquals("UNAUTHENTICATED", body.code)
-        assertTrue(body.errors.isEmpty())
-        assertFalse(body.message.contains("alice@example.com"), "leaked the attempted e-mail: $body")
+        assertFalse(item.message.contains("alice@example.com"), "leaked the attempted e-mail: $item")
     }
 
     @Test
@@ -308,10 +311,10 @@ class AuthenticationControllerTest {
         val exception = postSignIn(signInRequestBody() + ("email" to ""))
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        val errors = exception.response.getBody(ErrorsResponse::class.java).get().errors
         verify(exactly = 0) { signInUseCase(any()) }
-        assertEquals("INVALID_REQUEST", body.code)
-        assertTrue(body.errors.any { it.field == "email" }, "$body")
+        assertTrue(errors.all { it.code == "INVALID_REQUEST" })
+        assertTrue(errors.any { it.source?.field == "email" }, "$errors")
     }
 
     @Test
@@ -319,10 +322,10 @@ class AuthenticationControllerTest {
         val exception = postSignIn(signInRequestBody() + ("password" to ""))
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        val errors = exception.response.getBody(ErrorsResponse::class.java).get().errors
         verify(exactly = 0) { signInUseCase(any()) }
-        assertEquals("INVALID_REQUEST", body.code)
-        assertTrue(body.errors.any { it.field == "password" }, "$body")
+        assertTrue(errors.all { it.code == "INVALID_REQUEST" })
+        assertTrue(errors.any { it.source?.field == "password" }, "$errors")
     }
 
     @Test
@@ -330,9 +333,9 @@ class AuthenticationControllerTest {
         val exception = postSignIn(mapOf("email" to "alice@example.com"))
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
         verify(exactly = 0) { signInUseCase(any()) }
-        assertEquals("MALFORMED_REQUEST", body.code)
+        assertEquals("MALFORMED_REQUEST", item.code)
     }
 }

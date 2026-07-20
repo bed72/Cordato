@@ -8,24 +8,26 @@ import jakarta.inject.Inject
 
 import kotlin.test.Test
 import kotlin.test.BeforeTest
-import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 import kotlin.test.assertEquals
+
+import io.micronaut.core.type.Argument
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
-import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.http.client.exceptions.HttpClientResponseException
 
 import com.bed.cordato.core.factories.LIVE_TOKEN
 import com.bed.cordato.core.factories.SESSION_PERSON_ID
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.responses.DataResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
 import com.bed.cordato.features.identity.factories.person
-import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
 import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
+import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
 
 private const val DEAD_TOKEN = "dead-token"
 
@@ -67,11 +69,11 @@ class PersonControllerTest {
 
         val response = client.toBlocking().exchange(
             request("Bearer $LIVE_TOKEN"),
-            PersonResponse::class.java,
+            Argument.of(DataResponse::class.java, PersonResponse::class.java),
         )
 
         assertEquals(HttpStatus.OK, response.status)
-        val body = response.body()!!
+        val body = response.body()!!.data as PersonResponse
         assertEquals("Alice", body.name)
         assertEquals(SESSION_PERSON_ID, body.id)
         assertEquals("alice@example.com", body.email)
@@ -86,10 +88,10 @@ class PersonControllerTest {
         val exception = reject()
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
         verify(exactly = 0) { repository.findById(any()) }
-        assertEquals("UNAUTHENTICATED", body.code)
+        assertEquals("UNAUTHENTICATED", item.code)
     }
 
     @Test
@@ -98,7 +100,7 @@ class PersonControllerTest {
 
         verify(exactly = 0) { repository.findById(any()) }
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorResponse::class.java).get().code)
+        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorsResponse::class.java).get().errors.single().code)
     }
 
     @Test
@@ -108,9 +110,9 @@ class PersonControllerTest {
         val exception = reject("Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertTrue(body.errors.isEmpty())
-        assertEquals("UNAUTHENTICATED", body.code)
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        assertEquals("UNAUTHENTICATED", item.code)
         verify(exactly = 1) { repository.findById(SESSION_PERSON_ID) }
     }
 

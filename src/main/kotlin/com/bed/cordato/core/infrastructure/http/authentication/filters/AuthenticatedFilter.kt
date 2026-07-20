@@ -10,9 +10,9 @@ import io.micronaut.http.annotation.RequestFilter
 
 import com.bed.cordato.core.application.driven.ports.ClockPort
 import com.bed.cordato.core.application.driven.ports.MessagePort
-import com.bed.cordato.core.application.driven.repositories.SessionRepository
 import com.bed.cordato.core.infrastructure.http.responses.unauthorized
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
+import com.bed.cordato.core.application.driven.repositories.SessionRepository
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 import com.bed.cordato.core.infrastructure.http.authentication.annotations.Authenticated
 
@@ -42,7 +42,7 @@ class AuthenticatedFilter(
     private val sessions: BeanProvider<SessionRepository>,
 ) {
     @RequestFilter
-    fun authenticate(request: HttpRequest<*>): HttpResponse<ErrorResponse>? {
+    fun authenticate(request: HttpRequest<*>): HttpResponse<ErrorsResponse>? {
         val route = RouteAttributes.getRouteMatch(request).orElse(null)
         if (route == null || !route.annotationMetadata.hasAnnotation(Authenticated::class.java)) return null
 
@@ -55,7 +55,7 @@ class AuthenticatedFilter(
         return null
     }
 
-    private fun reject(): HttpResponse<ErrorResponse> =
+    private fun reject(): HttpResponse<ErrorsResponse> =
         unauthorized("UNAUTHENTICATED", messages("error.authentication.message"))
 }
 

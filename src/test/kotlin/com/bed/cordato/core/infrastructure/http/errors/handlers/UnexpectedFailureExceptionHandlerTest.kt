@@ -29,11 +29,12 @@ class UnexpectedFailureExceptionHandlerTest {
         val response = handler.handle(mockk<HttpRequest<*>>(relaxed = true), leaky)
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.status)
-        val body = response.body()!!
-        assertTrue(body.errors.isEmpty())
-        assertEquals("INTERNAL_ERROR", body.code)
-        assertFalse(body.message.contains("SELECT"), body.message)
-        assertFalse(body.message.contains("alice@example.com"), body.message)
-        assertFalse(body.message.contains("IllegalStateException"), body.message)
+        val item = response.body()!!.errors.single()
+        assertEquals("500", item.status)
+        assertEquals("INTERNAL_ERROR", item.code)
+        assertTrue(item.source == null)
+        assertFalse(item.message.contains("SELECT"), item.message)
+        assertFalse(item.message.contains("alice@example.com"), item.message)
+        assertFalse(item.message.contains("IllegalStateException"), item.message)
     }
 }

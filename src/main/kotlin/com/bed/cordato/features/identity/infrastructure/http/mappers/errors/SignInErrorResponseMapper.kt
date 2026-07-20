@@ -6,10 +6,10 @@ import com.bed.cordato.features.identity.domain.errors.SignInError
 
 import com.bed.cordato.core.application.driven.ports.MessagePort
 import com.bed.cordato.core.infrastructure.http.responses.unauthorized
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
 /**
- * Maps the domain [SignInError] to an HTTP status and a neutral [ErrorResponse], as an `internal`
+ * Maps the domain [SignInError] to an HTTP status and a neutral [ErrorsResponse], as an `internal`
  * extension so the controller reads fluently (`error.toResponse(messages)`). This is the one place
  * the HTTP status *policy* for login lives; the `401`-shaping tijolo comes from core's shared
  * [unauthorized] builder.
@@ -20,7 +20,7 @@ import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
  * stays generic, and never says which factor failed nor echoes the attempted e-mail; the `code` is the
  * machine contract and is never localized.
  */
-internal fun SignInError.toResponse(messages: MessagePort): HttpResponse<ErrorResponse> = when (this) {
+internal fun SignInError.toResponse(messages: MessagePort): HttpResponse<ErrorsResponse> = when (this) {
     SignInError.InvalidCredentials ->
         unauthorized("UNAUTHENTICATED", messages("signin.error.invalidCredentials"))
 }

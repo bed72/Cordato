@@ -13,26 +13,28 @@ import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 import kotlin.test.assertEquals
 
+import io.micronaut.core.type.Argument
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest
+
 import io.micronaut.http.MediaType
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
-import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.http.client.exceptions.HttpClientResponseException
 
 import com.bed.cordato.core.factories.LIVE_TOKEN
 import com.bed.cordato.core.factories.SESSION_PERSON_ID
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.responses.DataResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
 import com.bed.cordato.features.identity.domain.errors.UpdateEmailError
+import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 import com.bed.cordato.features.identity.factories.person
-import com.bed.cordato.features.identity.application.driving.commands.UpdateEmailCommand
 import com.bed.cordato.features.identity.application.driving.results.UpdateEmailResult
+import com.bed.cordato.features.identity.application.driving.commands.UpdateEmailCommand
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdateEmailUseCase
-
-import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 private const val DEAD_TOKEN = "dead-token"
 
@@ -80,17 +82,16 @@ class PersonUpdateEmailControllerTest {
 
         val response = client.toBlocking().exchange(
             patch(validBody(), "Bearer $LIVE_TOKEN"),
-            PersonResponse::class.java,
+            Argument.of(DataResponse::class.java, PersonResponse::class.java),
         )
 
         assertEquals(HttpStatus.OK, response.status)
-        val body = response.body()!!
+        val body = response.body()!!.data as PersonResponse
         assertEquals(SESSION_PERSON_ID, body.id)
         assertEquals("new@example.com", body.email)
-        // The command carries the actor's personId (never a body-supplied id) and the raw e-mail/password.
-        assertEquals(SESSION_PERSON_ID, command.captured.personId)
         assertEquals("new@example.com", command.captured.email)
         assertEquals("super-secret", command.captured.password)
+        assertEquals(SESSION_PERSON_ID, command.captured.personId)
 
         val raw = client.toBlocking().retrieve(patch(validBody(), "Bearer $LIVE_TOKEN"), String::class.java)
         assertFalse(raw.contains("hash"), "response leaked a hash field: $raw")
@@ -103,10 +104,10 @@ class PersonUpdateEmailControllerTest {
         val exception = reject(mapOf("email" to "", "password" to "super-secret"), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("INVALID_REQUEST", body.code)
-        assertTrue(body.errors.any { it.field == "email" }, "$body")
+        val errors = exception.response.getBody(ErrorsResponse::class.java).get().errors
         verify(exactly = 0) { useCase(any()) }
+        assertTrue(errors.all { it.code == "INVALID_REQUEST" })
+        assertTrue(errors.any { it.source?.field == "email" }, "$errors")
     }
 
     @Test
@@ -114,10 +115,10 @@ class PersonUpdateEmailControllerTest {
         val exception = reject(mapOf("email" to "not-an-email", "password" to "super-secret"), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("INVALID_REQUEST", body.code)
-        assertTrue(body.errors.any { it.field == "email" }, "$body")
+        val errors = exception.response.getBody(ErrorsResponse::class.java).get().errors
         verify(exactly = 0) { useCase(any()) }
+        assertTrue(errors.all { it.code == "INVALID_REQUEST" })
+        assertTrue(errors.any { it.source?.field == "email" }, "$errors")
     }
 
     @Test
@@ -125,10 +126,10 @@ class PersonUpdateEmailControllerTest {
         val exception = reject(mapOf("email" to "new@example.com", "password" to ""), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("INVALID_REQUEST", body.code)
-        assertTrue(body.errors.any { it.field == "password" }, "$body")
+        val errors = exception.response.getBody(ErrorsResponse::class.java).get().errors
         verify(exactly = 0) { useCase(any()) }
+        assertTrue(errors.all { it.code == "INVALID_REQUEST" })
+        assertTrue(errors.any { it.source?.field == "password" }, "$errors")
     }
 
     @Test
@@ -136,10 +137,10 @@ class PersonUpdateEmailControllerTest {
         val exception = reject(mapOf("email" to "new@example.com"), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("MALFORMED_REQUEST", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(null, item.source)
+        assertEquals("MALFORMED_REQUEST", item.code)
     }
 
     @Test
@@ -155,9 +156,9 @@ class PersonUpdateEmailControllerTest {
             exception
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        assertEquals("MALFORMED_REQUEST", exception.response.getBody(ErrorResponse::class.java).get().code)
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals("MALFORMED_REQUEST", exception.response.getBody(ErrorsResponse::class.java).get().errors.single().code)
     }
 
     @Test
@@ -167,9 +168,9 @@ class PersonUpdateEmailControllerTest {
         val exception = reject(validBody(), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("INVALID_EMAIL", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        assertEquals("INVALID_EMAIL", item.code)
     }
 
     @Test
@@ -180,9 +181,9 @@ class PersonUpdateEmailControllerTest {
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
         val raw = exception.response.getBody(String::class.java).get()
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("EMAIL_UPDATE_REJECTED", body.code)
-        assertTrue(body.errors.isEmpty(), "conflict must not be a per-field error: $body")
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        assertEquals("EMAIL_UPDATE_REJECTED", item.code)
         assertFalse(raw.contains("new@example.com"), "conflict body echoed the attempted e-mail: $raw")
     }
 
@@ -191,19 +192,19 @@ class PersonUpdateEmailControllerTest {
         val exception = reject(validBody())
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(null, item.source)
+        assertEquals("UNAUTHENTICATED", item.code)
     }
 
     @Test
     fun `an unresolvable token is refused with a neutral 401 before the use case runs`() {
         val exception = reject(validBody(), "Bearer $DEAD_TOKEN")
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorResponse::class.java).get().code)
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorsResponse::class.java).get().errors.single().code)
     }
 
     @Test
@@ -213,9 +214,9 @@ class PersonUpdateEmailControllerTest {
         val exception = reject(validBody(), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        assertEquals("UNAUTHENTICATED", item.code)
     }
 
     @Test
@@ -225,9 +226,9 @@ class PersonUpdateEmailControllerTest {
         val exception = reject(validBody(), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals("UNAUTHENTICATED", item.code)
+        assertEquals(null, item.source)
     }
 
     @Test
@@ -245,8 +246,8 @@ class PersonUpdateEmailControllerTest {
         val orphanBody = orphan.response.getBody(String::class.java).get()
         val invalidTokenBody = invalidToken.response.getBody(String::class.java).get()
 
-        assertEquals(invalidToken.status, wrongPassword.status)
         assertEquals(invalidToken.status, orphan.status)
+        assertEquals(invalidToken.status, wrongPassword.status)
         assertEquals(invalidTokenBody, wrongPasswordBody, "wrong-password and invalid-token 401 bodies differ")
         assertEquals(invalidTokenBody, orphanBody, "orphan-session and invalid-token 401 bodies differ")
     }

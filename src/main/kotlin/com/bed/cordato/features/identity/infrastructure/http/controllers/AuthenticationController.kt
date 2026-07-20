@@ -11,6 +11,8 @@ import io.micronaut.http.annotation.Status
 import io.micronaut.http.annotation.Controller
 
 import com.bed.cordato.core.application.driven.ports.MessagePort
+import com.bed.cordato.core.infrastructure.http.responses.ok
+import com.bed.cordato.core.infrastructure.http.responses.created
 
 import com.bed.cordato.features.identity.application.driving.results.SignUpResult
 import com.bed.cordato.features.identity.application.driving.results.SignInResult
@@ -62,7 +64,7 @@ class AuthenticationController(
     override fun signUp(@Body @Valid request: SignUpRequest): HttpResponse<*> =
         when (val data = signUpUseCase(request.toCommand())) {
             is SignUpResult.Failure -> data.error.toResponse(messages)
-            is SignUpResult.Success -> HttpResponse.created(data.person.toResponse())
+            is SignUpResult.Success -> created(data.person.toResponse())
         }
 
     @Post("/sign-in")
@@ -70,6 +72,6 @@ class AuthenticationController(
     override fun signIn(@Body @Valid request: SignInRequest): HttpResponse<*> =
         when (val data = signInUseCase(request.toCommand())) {
             is SignInResult.Failure -> data.error.toResponse(messages)
-            is SignInResult.Success -> HttpResponse.ok(data.toResponse())
+            is SignInResult.Success -> ok(data.toResponse())
         }
 }

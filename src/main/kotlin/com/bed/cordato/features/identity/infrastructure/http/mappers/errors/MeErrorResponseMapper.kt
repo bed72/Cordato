@@ -6,10 +6,10 @@ import com.bed.cordato.features.identity.domain.errors.MeError
 
 import com.bed.cordato.core.application.driven.ports.MessagePort
 import com.bed.cordato.core.infrastructure.http.responses.unauthorized
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
 /**
- * Maps the domain [MeError] to an HTTP status and a neutral [ErrorResponse], as an `internal` extension so
+ * Maps the domain [MeError] to an HTTP status and a neutral [ErrorsResponse], as an `internal` extension so
  * the controller reads fluently (`error.toResponse(messages)`). This is the one place the HTTP status
  * *policy* for the `Me` route lives; the `401`-shaping tijolo comes from core's shared [unauthorized]
  * builder.
@@ -20,7 +20,7 @@ import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
  * that the session pointed at a non-active person, and never echoes any identifier; the `code` is the
  * machine contract and is never localized.
  */
-internal fun MeError.toResponse(messages: MessagePort): HttpResponse<ErrorResponse> = when (this) {
+internal fun MeError.toResponse(messages: MessagePort): HttpResponse<ErrorsResponse> = when (this) {
     MeError.PersonNotFound ->
         unauthorized("UNAUTHENTICATED", messages("error.authentication.message"))
 }

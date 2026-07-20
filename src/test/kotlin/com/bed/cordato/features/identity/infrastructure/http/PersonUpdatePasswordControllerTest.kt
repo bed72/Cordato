@@ -13,27 +13,31 @@ import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 import kotlin.test.assertEquals
 
+import io.micronaut.core.type.Argument
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest
+
 import io.micronaut.http.MediaType
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
-import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.http.client.exceptions.HttpClientResponseException
 
 import com.bed.cordato.core.factories.LIVE_TOKEN
 import com.bed.cordato.core.factories.LIVE_SESSION_ID
 import com.bed.cordato.core.factories.SESSION_PERSON_ID
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 
-import com.bed.cordato.features.identity.domain.errors.UpdatePasswordError
+import com.bed.cordato.core.infrastructure.http.responses.DataResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
 import com.bed.cordato.features.identity.factories.person
-import com.bed.cordato.features.identity.application.driving.commands.UpdatePasswordCommand
+import com.bed.cordato.features.identity.domain.errors.UpdatePasswordError
+import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
+
 import com.bed.cordato.features.identity.application.driving.results.UpdatePasswordResult
+import com.bed.cordato.features.identity.application.driving.commands.UpdatePasswordCommand
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdatePasswordUseCase
 
-import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 private const val DEAD_TOKEN = "dead-token"
 
@@ -71,8 +75,6 @@ class PersonUpdatePasswordControllerTest {
             exception
         }
 
-    // Wire contract is snake_case (micronaut.serde.property-naming-strategy=SNAKE_CASE), so body keys are
-    // snake_case even though the Kotlin properties (and the validation field names) stay camelCase.
     private fun validBody() = mapOf("current_password" to "current-secret", "new_password" to "new-str0ng-secret")
 
     @Test
@@ -83,22 +85,20 @@ class PersonUpdatePasswordControllerTest {
 
         val response = client.toBlocking().exchange(
             patch(validBody(), "Bearer $LIVE_TOKEN"),
-            PersonResponse::class.java,
+            Argument.of(DataResponse::class.java, PersonResponse::class.java),
         )
 
         assertEquals(HttpStatus.OK, response.status)
-        assertEquals(SESSION_PERSON_ID, response.body()!!.id)
-        // The command carries the actor's personId AND sessionId (never body-supplied) plus the raw passwords —
-        // the sessionId is what lets the use case spare the current session while revoking the others.
-        assertEquals(SESSION_PERSON_ID, command.captured.personId)
         assertEquals(LIVE_SESSION_ID, command.captured.sessionId)
-        assertEquals("current-secret", command.captured.currentPassword)
+        assertEquals(SESSION_PERSON_ID, command.captured.personId)
         assertEquals("new-str0ng-secret", command.captured.newPassword)
+        assertEquals("current-secret", command.captured.currentPassword)
+        assertEquals(SESSION_PERSON_ID, (response.body()!!.data as PersonResponse).id)
 
         val raw = client.toBlocking().retrieve(patch(validBody(), "Bearer $LIVE_TOKEN"), String::class.java)
         assertFalse(raw.contains("hash"), "response leaked a hash field: $raw")
-        assertFalse(raw.contains("bcrypt"), "response leaked the hash value: $raw")
         assertFalse(raw.contains("secret"), "response leaked a password: $raw")
+        assertFalse(raw.contains("bcrypt"), "response leaked the hash value: $raw")
     }
 
     @Test
@@ -106,10 +106,10 @@ class PersonUpdatePasswordControllerTest {
         val exception = reject(mapOf("current_password" to "", "new_password" to "new-str0ng-secret"), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("INVALID_REQUEST", body.code)
-        assertTrue(body.errors.any { it.field == "currentPassword" }, "$body")
+        val errors = exception.response.getBody(ErrorsResponse::class.java).get().errors
         verify(exactly = 0) { useCase(any()) }
+        assertTrue(errors.all { it.code == "INVALID_REQUEST" })
+        assertTrue(errors.any { it.source?.field == "currentPassword" }, "$errors")
     }
 
     @Test
@@ -117,10 +117,10 @@ class PersonUpdatePasswordControllerTest {
         val exception = reject(mapOf("current_password" to "current-secret", "new_password" to "short"), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("INVALID_REQUEST", body.code)
-        assertTrue(body.errors.any { it.field == "newPassword" }, "$body")
+        val errors = exception.response.getBody(ErrorsResponse::class.java).get().errors
         verify(exactly = 0) { useCase(any()) }
+        assertTrue(errors.all { it.code == "INVALID_REQUEST" })
+        assertTrue(errors.any { it.source?.field == "newPassword" }, "$errors")
     }
 
     @Test
@@ -128,10 +128,10 @@ class PersonUpdatePasswordControllerTest {
         val exception = reject(mapOf("current_password" to "current-secret"), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("MALFORMED_REQUEST", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(null, item.source)
+        assertEquals("MALFORMED_REQUEST", item.code)
     }
 
     @Test
@@ -147,9 +147,9 @@ class PersonUpdatePasswordControllerTest {
             exception
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        assertEquals("MALFORMED_REQUEST", exception.response.getBody(ErrorResponse::class.java).get().code)
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals("MALFORMED_REQUEST", exception.response.getBody(ErrorsResponse::class.java).get().errors.single().code)
     }
 
     @Test
@@ -159,9 +159,9 @@ class PersonUpdatePasswordControllerTest {
         val exception = reject(validBody(), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("WEAK_PASSWORD", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        assertEquals("WEAK_PASSWORD", item.code)
     }
 
     @Test
@@ -171,9 +171,9 @@ class PersonUpdatePasswordControllerTest {
         val exception = reject(validBody(), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("SAME_PASSWORD", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        assertEquals("SAME_PASSWORD", item.code)
     }
 
     @Test
@@ -181,19 +181,19 @@ class PersonUpdatePasswordControllerTest {
         val exception = reject(validBody())
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(null, item.source)
+        assertEquals("UNAUTHENTICATED", item.code)
     }
 
     @Test
     fun `an unresolvable token is refused with a neutral 401 before the use case runs`() {
         val exception = reject(validBody(), "Bearer $DEAD_TOKEN")
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorResponse::class.java).get().code)
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorsResponse::class.java).get().errors.single().code)
     }
 
     @Test
@@ -203,9 +203,9 @@ class PersonUpdatePasswordControllerTest {
         val exception = reject(validBody(), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        assertEquals("UNAUTHENTICATED", item.code)
     }
 
     @Test
@@ -215,9 +215,9 @@ class PersonUpdatePasswordControllerTest {
         val exception = reject(validBody(), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        assertEquals("UNAUTHENTICATED", item.code)
     }
 
     @Test
@@ -235,8 +235,8 @@ class PersonUpdatePasswordControllerTest {
         val orphanBody = orphan.response.getBody(String::class.java).get()
         val invalidTokenBody = invalidToken.response.getBody(String::class.java).get()
 
-        assertEquals(invalidToken.status, wrongPassword.status)
         assertEquals(invalidToken.status, orphan.status)
+        assertEquals(invalidToken.status, wrongPassword.status)
         assertEquals(invalidTokenBody, wrongPasswordBody, "wrong-password and invalid-token 401 bodies differ")
         assertEquals(invalidTokenBody, orphanBody, "orphan-session and invalid-token 401 bodies differ")
     }

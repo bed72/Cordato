@@ -13,27 +13,30 @@ import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 import kotlin.test.assertEquals
 
+import io.micronaut.core.type.Argument
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest
+
 import io.micronaut.http.MediaType
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
-import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import io.micronaut.http.client.exceptions.HttpClientResponseException
 
 import com.bed.cordato.core.factories.LIVE_TOKEN
 import com.bed.cordato.core.factories.SESSION_PERSON_ID
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
-
-import com.bed.cordato.features.identity.domain.errors.UpdateNameError
-import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
+import com.bed.cordato.core.infrastructure.http.responses.DataResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
 import com.bed.cordato.features.identity.factories.person
-import com.bed.cordato.features.identity.application.driving.commands.UpdateNameCommand
+import com.bed.cordato.features.identity.domain.errors.UpdateNameError
+import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
+import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
+
 import com.bed.cordato.features.identity.application.driving.results.UpdateNameResult
+import com.bed.cordato.features.identity.application.driving.commands.UpdateNameCommand
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdateNameUseCase
 
-import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
 
 private const val DEAD_TOKEN = "dead-token"
 
@@ -79,16 +82,15 @@ class PersonUpdateNameControllerTest {
 
         val response = client.toBlocking().exchange(
             patch(mapOf("name" to "Bob"), "Bearer $LIVE_TOKEN"),
-            PersonResponse::class.java,
+            Argument.of(DataResponse::class.java, PersonResponse::class.java),
         )
 
         assertEquals(HttpStatus.OK, response.status)
-        val body = response.body()!!
-        assertEquals(SESSION_PERSON_ID, body.id)
+        val body = response.body()!!.data as PersonResponse
         assertEquals("Bob", body.name)
-        // The command carries the actor's personId (never a body-supplied id) and the raw name.
-        assertEquals(SESSION_PERSON_ID, command.captured.personId)
+        assertEquals(SESSION_PERSON_ID, body.id)
         assertEquals("Bob", command.captured.name)
+        assertEquals(SESSION_PERSON_ID, command.captured.personId)
 
         val raw = client.toBlocking().retrieve(patch(mapOf("name" to "Bob"), "Bearer $LIVE_TOKEN"), String::class.java)
         assertFalse(raw.contains("hash"), "response leaked a hash field: $raw")
@@ -100,10 +102,10 @@ class PersonUpdateNameControllerTest {
         val exception = reject(mapOf("name" to ""), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("INVALID_REQUEST", body.code)
-        assertTrue(body.errors.any { it.field == "name" }, "$body")
+        val errors = exception.response.getBody(ErrorsResponse::class.java).get().errors
         verify(exactly = 0) { useCase(any()) }
+        assertTrue(errors.all { it.code == "INVALID_REQUEST" })
+        assertTrue(errors.any { it.source?.field == "name" }, "$errors")
     }
 
     @Test
@@ -112,9 +114,9 @@ class PersonUpdateNameControllerTest {
 
         val exception = reject(mapOf("name" to tooLong), "Bearer $LIVE_TOKEN")
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        assertEquals("INVALID_REQUEST", exception.response.getBody(ErrorResponse::class.java).get().code)
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals("INVALID_REQUEST", exception.response.getBody(ErrorsResponse::class.java).get().errors.single().code)
     }
 
     @Test
@@ -122,10 +124,10 @@ class PersonUpdateNameControllerTest {
         val exception = reject(mapOf("other" to "x"), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertTrue(body.errors.isEmpty())
-        assertEquals("MALFORMED_REQUEST", body.code)
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(null, item.source)
+        assertEquals("MALFORMED_REQUEST", item.code)
     }
 
     @Test
@@ -141,9 +143,9 @@ class PersonUpdateNameControllerTest {
             exception
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-        assertEquals("MALFORMED_REQUEST", exception.response.getBody(ErrorResponse::class.java).get().code)
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals("MALFORMED_REQUEST", exception.response.getBody(ErrorsResponse::class.java).get().errors.single().code)
     }
 
     @Test
@@ -153,9 +155,9 @@ class PersonUpdateNameControllerTest {
         val exception = reject(mapOf("name" to "Bob"), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("INVALID_NAME", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals("INVALID_NAME", item.code)
+        assertEquals(null, item.source)
     }
 
     @Test
@@ -163,19 +165,19 @@ class PersonUpdateNameControllerTest {
         val exception = reject(mapOf("name" to "Bob"))
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(null, item.source)
+        assertEquals("UNAUTHENTICATED", item.code)
     }
 
     @Test
     fun `an unresolvable token is refused with a neutral 401 before the use case runs`() {
         val exception = reject(mapOf("name" to "Bob"), "Bearer $DEAD_TOKEN")
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorResponse::class.java).get().code)
         verify(exactly = 0) { useCase(any()) }
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorsResponse::class.java).get().errors.single().code)
     }
 
     @Test
@@ -185,9 +187,9 @@ class PersonUpdateNameControllerTest {
         val exception = reject(mapOf("name" to "Bob"), "Bearer $LIVE_TOKEN")
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        assertEquals("UNAUTHENTICATED", item.code)
     }
 
     @Test

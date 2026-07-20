@@ -3,20 +3,20 @@ package com.bed.cordato.core.infrastructure.http.authentication.filters
 import jakarta.inject.Inject
 
 import kotlin.test.Test
-import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 import kotlin.test.assertEquals
+
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
 import io.micronaut.http.client.exceptions.HttpClientResponseException
-import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 
 import com.bed.cordato.core.factories.LIVE_TOKEN
 import com.bed.cordato.core.factories.SESSION_PERSON_ID
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
 private const val DEAD_TOKEN = "dead-token"
 
@@ -59,9 +59,9 @@ class AuthenticatedFilterTest {
         val exception = reject("/v1/probe/whoami")
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        val body = exception.response.getBody(ErrorResponse::class.java).get()
-        assertEquals("UNAUTHENTICATED", body.code)
-        assertTrue(body.errors.isEmpty())
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals(null, item.source)
+        assertEquals("UNAUTHENTICATED", item.code)
     }
 
     @Test
@@ -69,16 +69,16 @@ class AuthenticatedFilterTest {
         val exception = reject("/v1/probe/whoami", "Bearer $DEAD_TOKEN")
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorResponse::class.java).get().code)
+        assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorsResponse::class.java).get().errors.single().code)
     }
 
     @Test
     fun `absent, malformed and unresolvable tokens collapse to one indistinguishable 401`() {
         val rejections = listOf(
-            reject("/v1/probe/whoami"),                         // absent
-            reject("/v1/probe/whoami", DEAD_TOKEN),             // malformed: no Bearer scheme
-            reject("/v1/probe/whoami", "Bearer "),              // malformed: blank token
-            reject("/v1/probe/whoami", "Bearer $DEAD_TOKEN"),   // well-formed but unresolvable
+            reject("/v1/probe/whoami"),
+            reject("/v1/probe/whoami", DEAD_TOKEN),
+            reject("/v1/probe/whoami", "Bearer "),
+            reject("/v1/probe/whoami", "Bearer $DEAD_TOKEN"),
         )
 
         val statuses = rejections.map { it.status }.toSet()

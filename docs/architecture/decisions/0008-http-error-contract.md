@@ -1,5 +1,9 @@
 # ADR 0008: The HTTP error contract
 
+> **Superseded by [ADR 0014](0014-http-response-envelope.md).** The status/oracle policy described below is
+> still binding; the structural shape (`ErrorResponse` as a single object with an `errors` sub-list) is not
+> — the error body is now always the top-level array `ErrorsResponse`. Kept for historical context.
+
 The HTTP error contract is cross-cutting, so it lives in `core/infrastructure/http/`, not in any
 feature, split by kind the same way a feature's HTTP slice is: the shared response DTOs —
 `ErrorResponse(code, message, errors)` with an optional `errors: List<FieldErrorResponse>` (each `field` +

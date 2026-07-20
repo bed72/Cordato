@@ -1,5 +1,9 @@
 package com.bed.cordato.features.identity.infrastructure.http.controllers
 
+import jakarta.validation.Valid
+
+import io.micronaut.validation.Validated
+
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.Get
@@ -8,11 +12,9 @@ import io.micronaut.http.annotation.Patch
 import io.micronaut.http.annotation.Status
 import io.micronaut.http.annotation.Controller
 
-import io.micronaut.validation.Validated
-
-import jakarta.validation.Valid
 
 import com.bed.cordato.core.application.driven.ports.MessagePort
+import com.bed.cordato.core.infrastructure.http.responses.ok
 
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 import com.bed.cordato.core.infrastructure.http.authentication.annotations.Authenticated
@@ -29,8 +31,8 @@ import com.bed.cordato.features.identity.application.driving.use_cases.UpdatePas
 
 import com.bed.cordato.features.identity.infrastructure.http.mappers.errors.toResponse
 import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateNameRequest
-import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateEmailRequest
 import com.bed.cordato.features.identity.infrastructure.http.mappers.requests.toCommand
+import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateEmailRequest
 import com.bed.cordato.features.identity.infrastructure.http.mappers.responses.toResponse
 import com.bed.cordato.features.identity.infrastructure.http.requests.UpdatePasswordRequest
 import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.PersonControllerDoc
@@ -76,7 +78,7 @@ class PersonController(
     override fun me(actor: AuthenticatedActor): HttpResponse<*> =
         when (val data = meUseCase(MeCommand(actor.personId))) {
             is MeResult.Failure -> data.error.toResponse(messages)
-            is MeResult.Success -> HttpResponse.ok(data.person.toResponse())
+            is MeResult.Success -> ok(data.person.toResponse())
         }
 
     @Authenticated
@@ -85,7 +87,7 @@ class PersonController(
     override fun updateName(actor: AuthenticatedActor, @Body @Valid request: UpdateNameRequest): HttpResponse<*> =
         when (val data = updateNameUseCase(request.toCommand(actor.personId))) {
             is UpdateNameResult.Failure -> data.error.toResponse(messages)
-            is UpdateNameResult.Success -> HttpResponse.ok(data.person.toResponse())
+            is UpdateNameResult.Success -> ok(data.person.toResponse())
         }
 
     @Authenticated
@@ -94,7 +96,7 @@ class PersonController(
     override fun updateEmail(actor: AuthenticatedActor, @Body @Valid request: UpdateEmailRequest): HttpResponse<*> =
         when (val data = updateEmailUseCase(request.toCommand(actor.personId))) {
             is UpdateEmailResult.Failure -> data.error.toResponse(messages)
-            is UpdateEmailResult.Success -> HttpResponse.ok(data.person.toResponse())
+            is UpdateEmailResult.Success -> ok(data.person.toResponse())
         }
 
     @Authenticated
@@ -103,6 +105,6 @@ class PersonController(
     override fun updatePassword(actor: AuthenticatedActor, @Body @Valid request: UpdatePasswordRequest): HttpResponse<*> =
         when (val data = updatePasswordUseCase(request.toCommand(actor.personId, actor.sessionId))) {
             is UpdatePasswordResult.Failure -> data.error.toResponse(messages)
-            is UpdatePasswordResult.Success -> HttpResponse.ok(data.person.toResponse())
+            is UpdatePasswordResult.Success -> ok(data.person.toResponse())
         }
 }

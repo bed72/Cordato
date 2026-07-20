@@ -14,17 +14,9 @@ import jakarta.validation.Path
 import jakarta.validation.ConstraintViolation
 import jakarta.validation.ConstraintViolationException
 
-import com.bed.cordato.core.application.driven.ports.MessagePort
-import com.bed.cordato.core.infrastructure.http.responses.FieldErrorResponse
-
 class ConstraintViolationExceptionHandlerTest {
 
-    private val messages = mockk<MessagePort> {
-        every { this@mockk("error.validation.message", any<Map<String, Any>>()) } returns
-            "A requisição contém campos inválidos."
-    }
-
-    private val handler = ConstraintViolationExceptionHandler(messages)
+    private val handler = ConstraintViolationExceptionHandler()
 
     private fun node(name: String): Path.Node = mockk { every { this@mockk.name } returns name }
 
@@ -40,34 +32,36 @@ class ConstraintViolationExceptionHandlerTest {
         handler.handle(mockk<HttpRequest<*>>(), ConstraintViolationException(violations.toSet()))
 
     @Test
-    fun `a single violation becomes one field error in a 400`() {
+    fun `a single violation becomes one error item with status 400 and source field`() {
         val response = handle(violation(pathOf("signUp", "request", "email"), "O e-mail informado é inválido."))
 
         assertEquals(HttpStatus.BAD_REQUEST, response.status)
-        val body = response.body()!!
-        assertEquals("INVALID_REQUEST", body.code)
-        assertEquals(listOf(FieldErrorResponse("email", "O e-mail informado é inválido.")), body.errors)
+        val item = response.body()!!.errors.single()
+        assertEquals("400", item.status)
+        assertEquals("email", item.source?.field)
+        assertEquals("INVALID_REQUEST", item.code)
+        assertEquals("O e-mail informado é inválido.", item.message)
     }
 
     @Test
-    fun `field is the final path node, not the internal method or argument prefix`() {
+    fun `source field is the final path node, not the internal method or argument prefix`() {
         val response = handle(violation(pathOf("signUp", "request", "password"), "A senha deve ter ao menos 8 caracteres."))
 
-        val field = response.body()!!.errors.single().field
+        val field = response.body()!!.errors.single().source?.field
         assertEquals("password", field)
     }
 
     @Test
-    fun `N violations produce N field errors without concatenating messages`() {
+    fun `N violations produce N error items without concatenating messages`() {
         val response = handle(
             violation(pathOf("signUp", "request", "name"), "O nome é obrigatório."),
             violation(pathOf("signUp", "request", "email"), "O e-mail informado é inválido."),
             violation(pathOf("signUp", "request", "password"), "A senha deve ter ao menos 8 caracteres."),
         )
 
-        val body = response.body()!!
-        assertTrue(!body.message.contains("nome"), body.message)
-        assertTrue(body.errors.any { it.message == "O nome é obrigatório." })
-        assertEquals(setOf("name", "email", "password"), body.errors.map { it.field }.toSet())
+        val errors = response.body()!!.errors
+        assertEquals(3, errors.size)
+        assertTrue(errors.any { it.message == "O nome é obrigatório." })
+        assertEquals(setOf("name", "email", "password"), errors.mapNotNull { it.source?.field }.toSet())
     }
 }

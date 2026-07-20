@@ -7,10 +7,10 @@ import com.bed.cordato.features.identity.domain.errors.UpdateNameError
 import com.bed.cordato.core.application.driven.ports.MessagePort
 import com.bed.cordato.core.infrastructure.http.responses.unauthorized
 import com.bed.cordato.core.infrastructure.http.responses.unprocessable
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
 /**
- * Maps each domain [UpdateNameError] to an HTTP status and a neutral [ErrorResponse], as an `internal`
+ * Maps each domain [UpdateNameError] to an HTTP status and a neutral [ErrorsResponse], as an `internal`
  * extension so the controller reads fluently (`error.toResponse(messages)`). This is the one place the HTTP
  * status *policy* for the update-name route lives; the shaping tijolos come from core's shared builders.
  *
@@ -21,7 +21,7 @@ import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
  * that the session pointed at a non-active person, and never echoes any identifier; the `code` is the machine
  * contract and is never localized.
  */
-internal fun UpdateNameError.toResponse(messages: MessagePort): HttpResponse<ErrorResponse> = when (this) {
+internal fun UpdateNameError.toResponse(messages: MessagePort): HttpResponse<ErrorsResponse> = when (this) {
     UpdateNameError.InvalidName ->
         unprocessable("INVALID_NAME", messages("updateName.error.invalidName"))
     UpdateNameError.PersonNotFound ->

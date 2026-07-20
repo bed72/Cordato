@@ -1,18 +1,19 @@
 package com.bed.cordato.features.identity.infrastructure.http.controllers.docs
 
-import com.bed.cordato.features.identity.infrastructure.http.requests.SignUpRequest
-import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequest
-import com.bed.cordato.features.identity.infrastructure.http.responses.PersonResponse
-import com.bed.cordato.features.identity.infrastructure.http.responses.SignInResponse
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
-import io.micronaut.http.HttpResponse
 import io.micronaut.http.MediaType
+import io.micronaut.http.HttpResponse
+
+import io.swagger.v3.oas.annotations.tags.Tag
 import io.swagger.v3.oas.annotations.Operation
-import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
-import io.swagger.v3.oas.annotations.tags.Tag
+
+import com.bed.cordato.core.infrastructure.http.responses.DataResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
+import com.bed.cordato.features.identity.infrastructure.http.requests.SignUpRequest
+import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequest
 
 /**
  * OpenAPI documentation for identity's HTTP routes, kept off the controller so the controller stays a
@@ -39,23 +40,23 @@ interface AuthenticationControllerDoc {
     @ApiResponses(
         ApiResponse(
             responseCode = "201",
-            description = "Pessoa cadastrada; retorna o recurso sem qualquer material de senha.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = PersonResponse::class))],
+            description = "Pessoa cadastrada; `data` (`PersonResponse`) traz o recurso sem qualquer material de senha.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Requisição malformada ou reprovada na validação de borda.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
         ApiResponse(
             responseCode = "422",
             description = "Requisição bem-formada recusada pelo domínio (nome/e-mail inválido, senha fraca, cadastro não concluído).",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
     )
     fun signUp(request: SignUpRequest): HttpResponse<*>
@@ -70,23 +71,23 @@ interface AuthenticationControllerDoc {
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
-            description = "Autenticada; retorna o token opaco (uma única vez) e a expiração da sessão.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = SignInResponse::class))],
+            description = "Autenticada; `data` (`SignInResponse`) traz o token opaco (uma única vez) e a expiração da sessão.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Requisição malformada ou sem os campos obrigatórios (validação de presença na borda).",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Credenciais inválidas; resposta neutra que não distingue qual fator falhou.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
     )
     fun signIn(request: SignInRequest): HttpResponse<*>

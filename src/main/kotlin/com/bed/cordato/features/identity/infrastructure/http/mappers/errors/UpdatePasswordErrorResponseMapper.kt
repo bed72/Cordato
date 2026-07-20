@@ -5,13 +5,13 @@ import io.micronaut.http.HttpResponse
 import com.bed.cordato.core.application.driven.ports.MessagePort
 import com.bed.cordato.core.infrastructure.http.responses.unauthorized
 import com.bed.cordato.core.infrastructure.http.responses.unprocessable
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
 import com.bed.cordato.features.identity.domain.errors.UpdatePasswordError
 import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObject
 
 /**
- * Maps each domain [UpdatePasswordError] to an HTTP status and a neutral [ErrorResponse], as an `internal`
+ * Maps each domain [UpdatePasswordError] to an HTTP status and a neutral [ErrorsResponse], as an `internal`
  * extension so the controller reads fluently (`error.toResponse(messages)`). This is the one place the HTTP
  * status *policy* for the update-password route lives; the shaping tijolos come from core's shared builders.
  *
@@ -26,7 +26,7 @@ import com.bed.cordato.features.identity.domain.value_objects.PasswordValueObjec
  * are indistinguishable from each other and from an absent/expired/revoked token. The `code` is the machine
  * contract and is never localized.
  */
-internal fun UpdatePasswordError.toResponse(messages: MessagePort): HttpResponse<ErrorResponse> = when (this) {
+internal fun UpdatePasswordError.toResponse(messages: MessagePort): HttpResponse<ErrorsResponse> = when (this) {
     UpdatePasswordError.WeakPassword ->
         unprocessable(
             "WEAK_PASSWORD",

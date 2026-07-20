@@ -7,7 +7,9 @@ import jakarta.validation.constraints.Positive
 import io.micronaut.validation.Validated
 
 import io.micronaut.http.HttpStatus
+import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpResponse
+import io.micronaut.http.uri.UriBuilder
 import io.micronaut.http.annotation.Get
 import io.micronaut.http.annotation.Body
 import io.micronaut.http.annotation.Post
@@ -15,8 +17,14 @@ import io.micronaut.http.annotation.Status
 import io.micronaut.http.annotation.Controller
 import io.micronaut.http.annotation.QueryValue
 
+import com.bed.cordato.core.infrastructure.http.responses.ok
 import com.bed.cordato.core.application.driven.ports.MessagePort
+import com.bed.cordato.core.infrastructure.http.responses.created
 import com.bed.cordato.core.infrastructure.http.responses.badRequest
+import com.bed.cordato.core.infrastructure.http.responses.MetaResponse
+import com.bed.cordato.core.infrastructure.http.responses.LinksResponse
+import com.bed.cordato.core.infrastructure.http.responses.PaginationResponse
+import com.bed.cordato.core.infrastructure.http.responses.PaginationMetaResponse
 
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 import com.bed.cordato.core.infrastructure.http.authentication.annotations.Authenticated
@@ -31,6 +39,7 @@ import com.bed.cordato.features.expense.application.driving.use_cases.CreateExpe
 import com.bed.cordato.features.expense.infrastructure.http.mappers.errors.toResponse
 import com.bed.cordato.features.expense.infrastructure.http.mappers.requests.toCursor
 import com.bed.cordato.features.expense.infrastructure.http.mappers.requests.toCommand
+import com.bed.cordato.features.expense.infrastructure.http.mappers.responses.toToken
 import com.bed.cordato.features.expense.infrastructure.http.mappers.responses.toResponse
 import com.bed.cordato.features.expense.infrastructure.http.requests.CreateExpenseRequest
 import com.bed.cordato.features.expense.infrastructure.http.mappers.requests.DecodedCursor
@@ -54,11 +63,15 @@ import com.bed.cordato.features.expense.infrastructure.http.controllers.docs.Exp
  * on the implemented [ExpenseControllerDoc].
  *
  * `GET /expenses` lists the authenticated actor's own expenses, cursor-paginated. It has no domain failure
- * branch (listing always succeeds, with zero or more items), so it returns `200` with the page envelope — an
- * empty page when the actor has none, never `404`. `limit`/`cursor` are pure-transport query params,
- * validated only at this edge (`@Positive`/`@Max` on `limit`; a malformed `cursor` is decoded by
- * [toCursor] and refused here with a scalar `400`). The owner comes from the actor, never a parameter/body,
- * so a person can only ever list their own.
+ * branch (listing always succeeds, with zero or more items), so it returns `200` with the shared success
+ * envelope — `data` as the item list, `meta.pagination.next_cursor`/`links.next` present only when there is
+ * a next page, `links.self` built from the incoming [HttpRequest] so it survives the server's context-path —
+ * an empty page when the actor has none, never `404`. `limit`/`cursor` are pure-transport query params,
+ * validated only at this edge (`@Positive`/`@Max` on `limit`, bounded by [PaginationResponse.MAX_LIMIT] and
+ * defaulting to [PaginationResponse.DEFAULT_LIMIT] — the shared cursor-pagination policy every context's
+ * listing endpoint uses, so no feature drifts to its own page-size ceiling; a malformed `cursor` is decoded
+ * by [toCursor] and refused here with a scalar `400`). The owner comes from the actor, never a
+ * parameter/body, so a person can only ever list their own.
  */
 @Validated
 @Controller("/expenses")
@@ -72,15 +85,16 @@ class ExpenseController(
     @Authenticated
     @Status(HttpStatus.OK)
     override fun list(
+        request: HttpRequest<*>,
         actor: AuthenticatedActor,
         @QueryValue
         @Positive(message = "{listExpenses.request.limit.positive}")
-        @Max(value = MAX_LIMIT.toLong(), message = "{listExpenses.request.limit.max}")
+        @Max(value = PaginationResponse.MAX_LIMIT.toLong(), message = "{listExpenses.request.limit.max}")
         limit: Int?,
         @QueryValue cursor: String?,
     ): HttpResponse<*> = when (val decoded = cursor.toCursor()) {
-        DecodedCursor.Absent -> page(actor.personId, limit, after = null)
-        is DecodedCursor.Present -> page(actor.personId, limit, decoded.cursor)
+        DecodedCursor.Absent -> page(request, actor.personId, limit, after = null)
+        is DecodedCursor.Present -> page(request, actor.personId, limit, decoded.cursor)
         DecodedCursor.Malformed -> badRequest("MALFORMED_REQUEST", messages("error.malformed.message"))
     }
 
@@ -90,16 +104,21 @@ class ExpenseController(
     override fun create(actor: AuthenticatedActor, @Body @Valid request: CreateExpenseRequest): HttpResponse<*> =
         when (val data = createExpenseUseCase(request.toCommand(actor.personId))) {
             is CreateExpenseResult.Failure -> data.error.toResponse(messages)
-            is CreateExpenseResult.Success -> HttpResponse.created(data.expense.toResponse())
+            is CreateExpenseResult.Success -> created(data.expense.toResponse())
         }
 
-    private fun page(personId: String, limit: Int?, after: ExpenseCursorValueObject?): HttpResponse<*> {
-        val command = ListExpensesCommand(personId, limit ?: DEFAULT_LIMIT, after)
-        return HttpResponse.ok(listExpensesUseCase(command).toResponse())
-    }
+    private fun page(request: HttpRequest<*>, personId: String, limit: Int?, after: ExpenseCursorValueObject?): HttpResponse<*> {
+        val command = ListExpensesCommand(personId, limit ?: PaginationResponse.DEFAULT_LIMIT, after)
+        val page = listExpensesUseCase(command)
+        val cursor = page.nextCursor?.toToken()
 
-    private companion object {
-        const val MAX_LIMIT = 100
-        const val DEFAULT_LIMIT = 20
+        val self = request.uri.toString()
+        val links = LinksResponse(
+            self = self,
+            next = cursor?.let { UriBuilder.of(request.uri).replaceQueryParam("cursor", it).build().toString() },
+        )
+        val meta = cursor?.let { MetaResponse(pagination = PaginationMetaResponse(nextCursor = it)) }
+
+        return ok(page.toResponse(), meta, links)
     }
 }

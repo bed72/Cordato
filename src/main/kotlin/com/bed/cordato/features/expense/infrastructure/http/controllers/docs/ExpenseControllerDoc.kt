@@ -3,6 +3,7 @@ package com.bed.cordato.features.expense.infrastructure.http.controllers.docs
 import jakarta.validation.Valid
 
 import io.micronaut.http.MediaType
+import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.Body
 
@@ -15,11 +16,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 
-import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
+import com.bed.cordato.core.infrastructure.http.responses.DataResponse
+import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 
-import com.bed.cordato.features.expense.infrastructure.http.responses.ExpenseResponse
-import com.bed.cordato.features.expense.infrastructure.http.responses.ExpensePageResponse
 import com.bed.cordato.features.expense.infrastructure.http.requests.CreateExpenseRequest
 
 /**
@@ -54,28 +54,28 @@ interface ExpenseControllerDoc {
     @ApiResponses(
         ApiResponse(
             responseCode = "201",
-            description = "Gasto registrado; retorna a visão pública do gasto criado.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ExpenseResponse::class))],
+            description = "Gasto registrado; `data` (`ExpenseResponse`) traz a visão pública do gasto criado.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Corpo ausente/inválido, ou campo que viola as restrições de borda (valor ausente/não-positivo, descrição acima do máximo).",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
         ApiResponse(
             responseCode = "422",
             description = "Gasto bem-formado, porém rejeitado por uma invariante de domínio (valor ≤ 0, data futura, descrição longa demais); todas compartilham o `422`.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
     )
     fun create(
@@ -100,26 +100,29 @@ interface ExpenseControllerDoc {
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
-            description = "Página de gastos do ator autenticado (itens possivelmente vazios) com o próximo cursor.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ExpensePageResponse::class))],
+            description = "Página de gastos do ator autenticado; `data` (array de `ExpenseResponse`, " +
+                "possivelmente vazio) traz os itens, `meta.pagination.next_cursor`/`links.next` presentes " +
+                "apenas quando há próxima página.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "`limit` acima do teto máximo, ou `cursor` malformado/ilegível.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
         ),
     )
     fun list(
+        @Parameter(hidden = true) request: HttpRequest<*>,
         @Parameter(hidden = true) actor: AuthenticatedActor,
         @Parameter(description = "Tamanho da página. Padrão 20; recusado acima de 100.", example = "20")
         limit: Int?,
