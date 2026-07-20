@@ -1,11 +1,13 @@
-# Local PostgreSQL for development. Tests spin up their own throwaway PostgreSQL via
-# Testcontainers, so this service is only for running the app locally.
+# Local PostgreSQL + Valkey for development. Tests spin up their own throwaway containers via
+# Testcontainers, so these services are only for running the app locally.
 #
 # Credentials come from a git-ignored `.env` file — copy `.env.example` to `.env`
-# (or run `make db-up`, which creates it for you). Never commit `.env`.
+# (or run `make db-up`/`make valkey-up`, which create it for you). Never commit `.env`.
 #
-#   make db-up     # start in the background
-#   make db-down   # stop (data is kept in the named volume)
+#   make db-up       # start PostgreSQL in the background
+#   make db-down     # stop (data is kept in the named volume)
+#   make valkey-up   # start Valkey in the background
+#   make valkey-down # stop (data is kept in the named volume)
 
 services:
   postgres:
@@ -28,5 +30,20 @@ services:
       timeout: 5s
       retries: 5
 
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: cordato-valkey
+    restart: unless-stopped
+    ports:
+      - "${VALKEY_PORT}:6379"
+    volumes:
+      - cordato-valkeydata:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   cordato-pgdata:
+  cordato-valkeydata:

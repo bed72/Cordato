@@ -18,6 +18,7 @@ import org.testcontainers.DockerClientFactory
 import com.bed.cordato.core.infrastructure.persistence.models.Tables.EXPENSE
 
 import com.bed.cordato.features.expense.factories.expense
+import com.bed.cordato.features.expense.domain.value_objects.ExpenseCursorValueObject
 import com.bed.cordato.features.expense.infrastructure.repositories.mappers.toEntity
 
 import com.bed.cordato.support.PostgresHarness
@@ -85,5 +86,64 @@ class PersistenceExpenseRepositoryTest {
         val columns = EXPENSE.fields().map { it.name }.toSet()
 
         assertEquals(setOf("id", "person_id", "amount_cents", "spent_on", "description"), columns)
+    }
+
+    @Test
+    fun `findByPerson returns only the owner's expenses, ordered by spent_on desc then id desc`() {
+        val older = expense(id = "a", personId = "person-1", date = LocalDate.of(2026, 7, 1))
+        val newerLow = expense(id = "b", personId = "person-1", date = LocalDate.of(2026, 7, 10))
+        val newerHigh = expense(id = "c", personId = "person-1", date = LocalDate.of(2026, 7, 10))
+        val other = expense(id = "d", personId = "person-2", date = LocalDate.of(2026, 7, 20))
+        // Insert in a scrambled order so the ordering can't be an accident of insertion.
+        listOf(older, newerLow, other, newerHigh).forEach(repository::create)
+
+        val listed = repository.findByPerson("person-1", after = null, limit = 10)
+
+        // Same date → id desc tie-break ("c" before "b"); more recent date first; person-2's row excluded.
+        assertEquals(listOf(newerHigh, newerLow, older), listed)
+    }
+
+    @Test
+    fun `findByPerson returns an empty list for a person with no expenses`() {
+        repository.create(expense(id = "a", personId = "person-2"))
+
+        assertEquals(emptyList(), repository.findByPerson("person-1", after = null, limit = 10))
+    }
+
+    @Test
+    fun `findByPerson respects the limit, returning at most that many items`() {
+        listOf("a", "b", "c").forEach { id ->
+            repository.create(expense(id = id, personId = "person-1", date = LocalDate.of(2026, 7, 1)))
+        }
+
+        val listed = repository.findByPerson("person-1", after = null, limit = 2)
+
+        assertEquals(2, listed.size)
+    }
+
+    @Test
+    fun `findByPerson continues strictly after the given cursor position, without repeats`() {
+        val newest = expense(id = "c", personId = "person-1", date = LocalDate.of(2026, 7, 10))
+        val middle = expense(id = "b", personId = "person-1", date = LocalDate.of(2026, 7, 5))
+        val oldest = expense(id = "a", personId = "person-1", date = LocalDate.of(2026, 7, 1))
+        listOf(oldest, newest, middle).forEach(repository::create)
+
+        val cursor = ExpenseCursorValueObject.of(middle.date.value, middle.id)
+        val listed = repository.findByPerson("person-1", after = cursor, limit = 10)
+
+        // Continues strictly after "middle" in the deterministic order — neither "middle" nor "newest"
+        // (which comes before it) reappear.
+        assertEquals(listOf(oldest), listed)
+    }
+
+    @Test
+    fun `findByPerson returns an empty list once the cursor has exhausted the owner's expenses`() {
+        val only = expense(id = "a", personId = "person-1", date = LocalDate.of(2026, 7, 1))
+        repository.create(only)
+
+        val cursor = ExpenseCursorValueObject.of(only.date.value, only.id)
+        val listed = repository.findByPerson("person-1", after = cursor, limit = 10)
+
+        assertEquals(emptyList(), listed)
     }
 }

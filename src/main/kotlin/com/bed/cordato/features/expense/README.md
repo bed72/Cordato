@@ -55,6 +55,23 @@ recalculados a partir daqui, nunca copiados ou sincronizados para outro lugar.
 
 ---
 
+## Ver os próprios gastos de volta
+
+Quem registra um gasto pode vê-lo de volta: uma pessoa lista **todos e somente os seus próprios**
+gastos — nunca os de outra pessoa. Cada item mostrado é o fato bruto como foi registrado (valor exato,
+data em que aconteceu, descrição opcional) e, fiel ao resto do domínio, **nunca** carrega vínculo a um
+orçamento. Não ter nenhum gasto ainda não é um erro: a resposta é simplesmente uma página vazia. A ordem
+é sempre a mesma para os mesmos dados — os gastos mais recentes (pela data em que aconteceram) primeiro.
+
+Como uma pessoa pode acumular muitos gastos ao longo do tempo, a listagem é entregue **em páginas**, não
+tudo de uma vez: cada pedido devolve uma fatia de tamanho limitado, mais uma indicação de "continue por
+aqui" para buscar a próxima fatia — ausente quando não há mais nada a ver. Pedir a próxima fatia sempre
+traz exatamente os gastos seguintes, sem repetir nem pular nenhum, mesmo que novos gastos tenham sido
+registrados nesse meio-tempo — a única exceção sendo o próprio gasto recém-registrado, que aparece assim
+que a pessoa lista de novo.
+
+---
+
 ## Os gastos do casal
 
 Quando duas pessoas estão pareadas, a visão compartilhada de gastos é a união simples dos gastos dos

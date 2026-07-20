@@ -1,10 +1,10 @@
 package com.bed.cordato.features.expense.infrastructure.http.controllers.docs
 
+import jakarta.validation.Valid
+
 import io.micronaut.http.MediaType
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.Body
-
-import jakarta.validation.Valid
 
 import io.swagger.v3.oas.annotations.tags.Tag
 import io.swagger.v3.oas.annotations.Parameter
@@ -19,6 +19,7 @@ import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 
 import com.bed.cordato.features.expense.infrastructure.http.responses.ExpenseResponse
+import com.bed.cordato.features.expense.infrastructure.http.responses.ExpensePageResponse
 import com.bed.cordato.features.expense.infrastructure.http.requests.CreateExpenseRequest
 
 /**
@@ -33,7 +34,7 @@ import com.bed.cordato.features.expense.infrastructure.http.requests.CreateExpen
  * from the wire, so it is never a documented request parameter. This is a documentation artefact of
  * infrastructure, not an application port — it introduces no driving-side contract.
  */
-@Tag(name = "Expense", description = "Registro de gastos da pessoa autenticada.")
+@Tag(name = "Expense", description = "Registro e leitura de gastos da pessoa autenticada.")
 interface ExpenseControllerDoc {
 
     @Operation(
@@ -80,5 +81,49 @@ interface ExpenseControllerDoc {
     fun create(
         @Parameter(hidden = true) actor: AuthenticatedActor,
         @Body @Valid request: CreateExpenseRequest,
+    ): HttpResponse<*>
+
+    @Operation(
+        operationId = "listExpenses",
+        summary = "Lista os gastos da pessoa autenticada, paginados por cursor",
+        description = "Retorna uma página, paginada por cursor (keyset), dos gastos pertencentes à pessoa " +
+            "dona da sessão viva — o dono vem sempre do ator autenticado, nunca de parâmetro/corpo. O " +
+            "envelope traz os itens na visão pública do gasto (id, valor em centavos, data, descrição) e um " +
+            "próximo cursor, ausente na última página. A ordem é determinística: por data do gasto " +
+            "decrescente (o mais recente primeiro), com desempate estável por id — a mesma dupla que " +
+            "fundamenta o cursor. Uma pessoa sem nenhum gasto (ou cujo cursor já esgotou os gastos) recebe " +
+            "`200` com uma página vazia, nunca `404`. Cada item carrega apenas o fato bruto e nunca " +
+            "referencia orçamento. A rota é protegida: sem um `Authorization: Bearer` válido o guard de " +
+            "borda recusa com o `401` neutro compartilhado, antes do handler.",
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Página de gastos do ator autenticado (itens possivelmente vazios) com o próximo cursor.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ExpensePageResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "`limit` acima do teto máximo, ou `cursor` malformado/ilegível.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "500",
+            description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    fun list(
+        @Parameter(hidden = true) actor: AuthenticatedActor,
+        @Parameter(description = "Tamanho da página. Padrão 20; recusado acima de 100.", example = "20")
+        limit: Int?,
+        @Parameter(description = "Cursor opaco da página anterior; ausente para a primeira página.")
+        cursor: String?,
     ): HttpResponse<*>
 }
