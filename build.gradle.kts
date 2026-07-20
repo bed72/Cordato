@@ -77,6 +77,10 @@ dependencies {
     implementation("org.flywaydb:flyway-core:$flywayVersion")
     runtimeOnly("org.flywaydb:flyway-database-postgresql:$flywayVersion")
 
+    // Distributed cache (core's cache-valkey kernel): a Redis-compatible client over Valkey. Version
+    // pinned by the platform BOM above, same stance as every other client library here.
+    implementation("io.lettuce:lettuce-core")
+
     jooqCodegen("org.jooq:jooq-meta-extensions:$jooqVersion")
 
     testImplementation(kotlin("test"))

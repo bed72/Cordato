@@ -13,13 +13,14 @@ import java.time.LocalDate
 
 import kotlin.test.Test
 import kotlin.test.BeforeTest
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 import io.micronaut.http.MediaType
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
-import io.micronaut.core.type.Argument
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest
@@ -32,7 +33,10 @@ import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.features.expense.factories.expense
 import com.bed.cordato.features.expense.domain.entities.ExpenseEntity
 import com.bed.cordato.features.expense.domain.value_objects.DescriptionValueObject
+import com.bed.cordato.features.expense.domain.value_objects.ExpenseCursorValueObject
 import com.bed.cordato.features.expense.infrastructure.http.responses.ExpenseResponse
+import com.bed.cordato.features.expense.infrastructure.http.responses.ExpensePageResponse
+import com.bed.cordato.features.expense.infrastructure.http.mappers.responses.toToken
 import com.bed.cordato.features.expense.application.driven.repositories.ExpenseRepository
 
 private const val DEAD_TOKEN = "dead-token"
@@ -63,14 +67,20 @@ class ExpenseControllerTest {
         return if (authorization == null) request else request.header("Authorization", authorization)
     }
 
-    private fun get(authorization: String? = null): HttpRequest<Any> {
-        val request = HttpRequest.GET<Any>("/v1/expenses")
+    private fun get(authorization: String? = null, limit: Int? = null, cursor: String? = null): HttpRequest<Any> {
+        val query = listOfNotNull(limit?.let { "limit=$it" }, cursor?.let { "cursor=$it" }).joinToString("&")
+        val path = if (query.isEmpty()) "/v1/expenses" else "/v1/expenses?$query"
+        val request = HttpRequest.GET<Any>(path)
         return if (authorization == null) request else request.header("Authorization", authorization)
     }
 
-    private fun rejectGet(authorization: String? = null): HttpClientResponseException =
+    private fun rejectGet(
+        authorization: String? = null,
+        limit: Int? = null,
+        cursor: String? = null,
+    ): HttpClientResponseException =
         try {
-            client.toBlocking().exchange(get(authorization), String::class.java)
+            client.toBlocking().exchange(get(authorization, limit, cursor), String::class.java)
             error("Expected the request to be refused with an HTTP error response")
         } catch (exception: HttpClientResponseException) {
             exception
@@ -213,37 +223,84 @@ class ExpenseControllerTest {
     }
 
     @Test
-    fun `an authenticated list returns 200 with the actor's expenses as an array`() {
-        every { repository.findByPerson(SESSION_PERSON_ID) } returns listOf(
+    fun `an authenticated list returns 200 with the actor's expenses in an envelope`() {
+        every { repository.findByPerson(SESSION_PERSON_ID, null, 21) } returns listOf(
             expense(id = "e-1", personId = SESSION_PERSON_ID, amountInCents = 1_500, description = "Café"),
             expense(id = "e-2", personId = SESSION_PERSON_ID, amountInCents = 900, description = null),
         )
 
-        val response = client.toBlocking().exchange(
-            get("Bearer $LIVE_TOKEN"),
-            Argument.listOf(ExpenseResponse::class.java),
-        )
+        val response = client.toBlocking().exchange(get("Bearer $LIVE_TOKEN"), ExpensePageResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.status)
         val body = response.body()!!
-        // The owner listed is the authenticated actor, never a parameter/body.
-        verify(exactly = 1) { repository.findByPerson(SESSION_PERSON_ID) }
-        assertEquals(listOf("e-1", "e-2"), body.map { it.id })
-        assertEquals(listOf("Café", null), body.map { it.description })
-        assertEquals(listOf(1_500L, 900L), body.map { it.amountInCents })
+        // The owner listed is the authenticated actor, never a parameter/body; the default limit is 20,
+        // so the repository is asked for 21 (limit + 1) to probe for a next page.
+        verify(exactly = 1) { repository.findByPerson(SESSION_PERSON_ID, null, 21) }
+        assertEquals(listOf("e-1", "e-2"), body.items.map { it.id })
+        assertEquals(listOf("Café", null), body.items.map { it.description })
+        assertEquals(listOf(1_500L, 900L), body.items.map { it.amountInCents })
+        assertNull(body.nextCursor)
     }
 
     @Test
-    fun `an authenticated actor with no expenses gets 200 with an empty array`() {
-        every { repository.findByPerson(SESSION_PERSON_ID) } returns emptyList()
+    fun `a page with more items than the limit is cut down and offers a next_cursor`() {
+        val first = expense(id = "e-1", personId = SESSION_PERSON_ID, date = LocalDate.of(2026, 7, 10))
+        val second = expense(id = "e-2", personId = SESSION_PERSON_ID, date = LocalDate.of(2026, 7, 9))
+        val third = expense(id = "e-3", personId = SESSION_PERSON_ID, date = LocalDate.of(2026, 7, 8))
+        every { repository.findByPerson(SESSION_PERSON_ID, null, 3) } returns listOf(first, second, third)
 
-        val response = client.toBlocking().exchange(
-            get("Bearer $LIVE_TOKEN"),
-            Argument.listOf(ExpenseResponse::class.java),
+        val response = client.toBlocking().exchange(get("Bearer $LIVE_TOKEN", limit = 2), ExpensePageResponse::class.java)
+
+        val body = response.body()!!
+        assertEquals(listOf("e-1", "e-2"), body.items.map { it.id })
+        assertNotNull(body.nextCursor)
+    }
+
+    @Test
+    fun `following the next_cursor decodes it and asks the repository for the next slice`() {
+        val after = ExpenseCursorValueObject.of(LocalDate.of(2026, 7, 9), "e-2")
+        every { repository.findByPerson(SESSION_PERSON_ID, after, 21) } returns listOf(
+            expense(id = "e-3", personId = SESSION_PERSON_ID, date = LocalDate.of(2026, 7, 8)),
         )
 
-        assertTrue(response.body()!!.isEmpty())
+        val response = client.toBlocking().exchange(
+            get("Bearer $LIVE_TOKEN", cursor = after.toToken()),
+            ExpensePageResponse::class.java,
+        )
+
+        assertEquals(listOf("e-3"), response.body()!!.items.map { it.id })
+        assertNull(response.body()!!.nextCursor)
+        verify(exactly = 1) { repository.findByPerson(SESSION_PERSON_ID, after, 21) }
+    }
+
+    @Test
+    fun `an authenticated actor with no expenses gets 200 with an empty envelope`() {
+        every { repository.findByPerson(SESSION_PERSON_ID, null, 21) } returns emptyList()
+
+        val response = client.toBlocking().exchange(get("Bearer $LIVE_TOKEN"), ExpensePageResponse::class.java)
+
         assertEquals(HttpStatus.OK, response.status)
+        assertTrue(response.body()!!.items.isEmpty())
+        assertNull(response.body()!!.nextCursor)
+    }
+
+    @Test
+    fun `a limit above the ceiling is rejected with 400 without reaching the repository`() {
+        val exception = rejectGet("Bearer $LIVE_TOKEN", limit = 101)
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        verify(exactly = 0) { repository.findByPerson(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a malformed cursor is rejected with a scalar 400 MALFORMED_REQUEST`() {
+        val exception = rejectGet("Bearer $LIVE_TOKEN", cursor = "not-a-valid-cursor!!")
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        val body = exception.response.getBody(ErrorResponse::class.java).get()
+        assertTrue(body.errors.isEmpty())
+        assertEquals("MALFORMED_REQUEST", body.code)
+        verify(exactly = 0) { repository.findByPerson(any(), any(), any()) }
     }
 
     @Test
@@ -254,14 +311,14 @@ class ExpenseControllerTest {
         val body = exception.response.getBody(ErrorResponse::class.java).get()
         assertTrue(body.errors.isEmpty())
         assertEquals("UNAUTHENTICATED", body.code)
-        verify(exactly = 0) { repository.findByPerson(any()) }
+        verify(exactly = 0) { repository.findByPerson(any(), any(), any()) }
     }
 
     @Test
     fun `listing with an unresolvable token is refused with a neutral 401 before the use case runs`() {
         val exception = rejectGet("Bearer $DEAD_TOKEN")
 
-        verify(exactly = 0) { repository.findByPerson(any()) }
+        verify(exactly = 0) { repository.findByPerson(any(), any(), any()) }
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals("UNAUTHENTICATED", exception.response.getBody(ErrorResponse::class.java).get().code)
     }

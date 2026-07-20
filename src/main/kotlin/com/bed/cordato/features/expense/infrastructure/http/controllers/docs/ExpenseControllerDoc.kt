@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.media.Content
-import io.swagger.v3.oas.annotations.media.ArraySchema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -20,6 +19,7 @@ import com.bed.cordato.core.infrastructure.http.responses.ErrorResponse
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 
 import com.bed.cordato.features.expense.infrastructure.http.responses.ExpenseResponse
+import com.bed.cordato.features.expense.infrastructure.http.responses.ExpensePageResponse
 import com.bed.cordato.features.expense.infrastructure.http.requests.CreateExpenseRequest
 
 /**
@@ -85,24 +85,28 @@ interface ExpenseControllerDoc {
 
     @Operation(
         operationId = "listExpenses",
-        summary = "Lista os gastos da pessoa autenticada",
-        description = "Retorna todos e somente os gastos pertencentes à pessoa dona da sessão viva — o dono " +
-            "vem sempre do ator autenticado, nunca de parâmetro/corpo — como um array na visão pública do " +
-            "gasto (id, valor em centavos, data, descrição). A lista vem ordenada de forma determinística: " +
-            "por data do gasto decrescente (o mais recente primeiro), com desempate estável por id. Uma " +
-            "pessoa sem nenhum gasto recebe `200` com um array vazio, nunca `404`. Cada item carrega apenas o " +
-            "fato bruto e nunca referencia orçamento. A rota é protegida: sem um `Authorization: Bearer` " +
-            "válido o guard de borda recusa com o `401` neutro compartilhado, antes do handler.",
+        summary = "Lista os gastos da pessoa autenticada, paginados por cursor",
+        description = "Retorna uma página, paginada por cursor (keyset), dos gastos pertencentes à pessoa " +
+            "dona da sessão viva — o dono vem sempre do ator autenticado, nunca de parâmetro/corpo. O " +
+            "envelope traz os itens na visão pública do gasto (id, valor em centavos, data, descrição) e um " +
+            "próximo cursor, ausente na última página. A ordem é determinística: por data do gasto " +
+            "decrescente (o mais recente primeiro), com desempate estável por id — a mesma dupla que " +
+            "fundamenta o cursor. Uma pessoa sem nenhum gasto (ou cujo cursor já esgotou os gastos) recebe " +
+            "`200` com uma página vazia, nunca `404`. Cada item carrega apenas o fato bruto e nunca " +
+            "referencia orçamento. A rota é protegida: sem um `Authorization: Bearer` válido o guard de " +
+            "borda recusa com o `401` neutro compartilhado, antes do handler.",
     )
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
-            description = "Lista dos gastos do ator autenticado (array possivelmente vazio), na visão pública.",
-            content = [Content(
-                mediaType = MediaType.APPLICATION_JSON,
-                array = ArraySchema(schema = Schema(implementation = ExpenseResponse::class)),
-            )],
+            description = "Página de gastos do ator autenticado (itens possivelmente vazios) com o próximo cursor.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ExpensePageResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "`limit` acima do teto máximo, ou `cursor` malformado/ilegível.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
         ),
         ApiResponse(
             responseCode = "401",
@@ -115,5 +119,11 @@ interface ExpenseControllerDoc {
             content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorResponse::class))],
         ),
     )
-    fun list(@Parameter(hidden = true) actor: AuthenticatedActor): HttpResponse<*>
+    fun list(
+        @Parameter(hidden = true) actor: AuthenticatedActor,
+        @Parameter(description = "Tamanho da página. Padrão 20; recusado acima de 100.", example = "20")
+        limit: Int?,
+        @Parameter(description = "Cursor opaco da página anterior; ausente para a primeira página.")
+        cursor: String?,
+    ): HttpResponse<*>
 }

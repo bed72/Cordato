@@ -1,4 +1,4 @@
-# expense-list Specification
+# expense-list
 
 ## Purpose
 
@@ -9,7 +9,7 @@ mais um cursor para a próxima), o caso da pessoa sem nenhum gasto (página vazi
 de cada item — sem qualquer vínculo a orçamento. É o lado de leitura que fecha o loop do registro
 (`expense-create`) e a base de consulta que outros contextos derivam depois.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Listar retorna os gastos do ator autenticado
 

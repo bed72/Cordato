@@ -18,6 +18,7 @@ import io.micronaut.context.i18n.ResourceBundleMessageSource
 import io.micronaut.http.bind.binders.TypedRequestArgumentBinder
 
 import com.bed.cordato.core.application.driven.ports.ClockPort
+import com.bed.cordato.core.application.driven.ports.CachePort
 import com.bed.cordato.core.application.driven.ports.MessagePort
 import com.bed.cordato.core.application.driven.ports.TokenizerPort
 import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
@@ -27,8 +28,10 @@ import com.bed.cordato.core.infrastructure.adapters.ClockAdapter
 import com.bed.cordato.core.infrastructure.adapters.MessageAdapter
 import com.bed.cordato.core.infrastructure.adapters.TokenizerAdapter
 import com.bed.cordato.core.infrastructure.adapters.IdGeneratorAdapter
+import com.bed.cordato.core.infrastructure.adapters.cache.CacheAdapter
 import com.bed.cordato.core.infrastructure.repositories.PersistenceSessionRepository
 import com.bed.cordato.core.infrastructure.persistence.configurations.DatabaseConfiguration
+import com.bed.cordato.core.infrastructure.persistence.configurations.ValkeyConfiguration
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 import com.bed.cordato.core.infrastructure.http.authentication.binders.AuthenticatedActorBinder
 
@@ -88,6 +91,19 @@ class CoreFactory {
 
     @Singleton
     fun dslContext(dataSource: DataSource): DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)
+
+    /**
+     * The cache-valkey kernel: a [CachePort] singleton over a Lettuce connection built from
+     * [ValkeyConfiguration] — the process environment, with a local `.env` filling in whatever isn't
+     * set (same resolution [DatabaseConfiguration] uses), never a literal address in code. This is the
+     * one place the Lettuce client type is constructed; every feature depends only on [CachePort].
+     */
+    @Singleton
+    fun cachePort(): CachePort {
+        val config = ValkeyConfiguration.fromEnv()
+
+        return CacheAdapter.connect(config.host, config.port)
+    }
 
     // Durable PostgreSQL adapter; the DSLContext comes from this same factory. The tokenizer hashes a
     // presented token before it ever reaches a query, so the repository never sees a plaintext column.

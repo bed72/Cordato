@@ -54,14 +54,14 @@ check: ## Run the full verification suite (tests + Konsist architecture checks)
 # PostgreSQL must be up — `db-up` is a prerequisite here so `make run` is one command. Once it prints
 # "Cordato started on http://localhost:8080", the Swagger UI is at /swagger-ui/index.html.
 .PHONY: run
-run: db-up ## Start the app (brings up Postgres, then serves on http://localhost:8080)
+run: db-up valkey-up ## Start the app (brings up Postgres + Valkey, then serves on http://localhost:8080)
 	$(GRADLE) run
 
-## ─── Local database (Docker) ─────────────────────────────────────────────
+## ─── Local infrastructure (Docker) ────────────────────────────────────────
 
-# Local dev runs against PostgreSQL from compose.yml. Docker must be running.
-# Credentials come from a git-ignored .env (created from .env.example on first `db-up`).
-# Note: the test suite provisions its own PostgreSQL via Testcontainers — these
+# Local dev runs against PostgreSQL + Valkey from compose.yml. Docker must be running.
+# Credentials come from a git-ignored .env (created from .env.example on first `db-up`/`valkey-up`).
+# Note: the test suite provisions its own throwaway containers via Testcontainers — these
 # targets are only for running the app locally, not for `make test`.
 
 .env:
@@ -70,19 +70,35 @@ run: db-up ## Start the app (brings up Postgres, then serves on http://localhost
 
 .PHONY: db-up
 db-up: .env ## Start the local PostgreSQL (docker compose up -d)
-	docker compose up -d
+	docker compose up -d postgres
 
 .PHONY: db-down
 db-down: ## Stop the local PostgreSQL (data kept in the named volume)
-	docker compose down
+	docker compose stop postgres
 
 .PHONY: db-reset
 db-reset: ## Stop the local PostgreSQL and delete its data volume
-	docker compose down -v
+	docker compose rm -f -s -v postgres
 
 .PHONY: db-logs
 db-logs: ## Tail the local PostgreSQL logs
 	docker compose logs -f postgres
+
+.PHONY: valkey-up
+valkey-up: .env ## Start the local Valkey cache (docker compose up -d)
+	docker compose up -d valkey
+
+.PHONY: valkey-down
+valkey-down: ## Stop the local Valkey cache (data kept in the named volume)
+	docker compose stop valkey
+
+.PHONY: valkey-reset
+valkey-reset: ## Stop the local Valkey cache and delete its data volume
+	docker compose rm -f -s -v valkey
+
+.PHONY: valkey-logs
+valkey-logs: ## Tail the local Valkey logs
+	docker compose logs -f valkey
 
 ## ─── Housekeeping ────────────────────────────────────────────────────────
 
