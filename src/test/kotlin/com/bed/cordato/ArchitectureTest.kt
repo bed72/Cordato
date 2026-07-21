@@ -46,6 +46,16 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `domain and application never import a concrete logging library`() {
+        production
+            .files
+            .filter { it.hasPackage("..domain..") || it.hasPackage("..application..") }
+            .assertFalse { file ->
+                file.hasImport { it.hasNameStartingWith("org.slf4j.") }
+            }
+    }
+
+    @Test
     fun `domain and application never import a DI-framework symbol`() {
         val diLibraries = listOf("org.koin", "io.micronaut.context.annotation", "jakarta.inject")
 

@@ -6,6 +6,7 @@ import org.jooq.DSLContext
 
 import javax.sql.DataSource
 import org.flywaydb.core.Flyway
+import org.slf4j.LoggerFactory
 import jakarta.inject.Singleton
 
 import com.zaxxer.hikari.HikariConfig
@@ -19,6 +20,7 @@ import io.micronaut.http.bind.binders.TypedRequestArgumentBinder
 
 import com.bed.cordato.core.application.driven.ports.ClockPort
 import com.bed.cordato.core.application.driven.ports.CachePort
+import com.bed.cordato.core.application.driven.ports.LoggerPort
 import com.bed.cordato.core.application.driven.ports.MessagePort
 import com.bed.cordato.core.application.driven.ports.TokenizerPort
 import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
@@ -28,10 +30,14 @@ import com.bed.cordato.core.infrastructure.adapters.ClockAdapter
 import com.bed.cordato.core.infrastructure.adapters.MessageAdapter
 import com.bed.cordato.core.infrastructure.adapters.TokenizerAdapter
 import com.bed.cordato.core.infrastructure.adapters.IdGeneratorAdapter
+import com.bed.cordato.core.infrastructure.adapters.Slf4jLoggerAdapter
 import com.bed.cordato.core.infrastructure.adapters.cache.CacheAdapter
+
 import com.bed.cordato.core.infrastructure.repositories.PersistenceSessionRepository
-import com.bed.cordato.core.infrastructure.persistence.configurations.DatabaseConfiguration
+
 import com.bed.cordato.core.infrastructure.persistence.configurations.ValkeyConfiguration
+import com.bed.cordato.core.infrastructure.persistence.configurations.DatabaseConfiguration
+
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 import com.bed.cordato.core.infrastructure.http.authentication.binders.AuthenticatedActorBinder
 
@@ -54,6 +60,9 @@ class CoreFactory {
 
     @Singleton
     fun clock(): ClockPort = ClockAdapter()
+
+    @Singleton
+    fun logger(): LoggerPort = Slf4jLoggerAdapter(LoggerFactory.getLogger("com.bed.cordato"))
 
     @Singleton
     fun tokenizer(): TokenizerPort = TokenizerAdapter()

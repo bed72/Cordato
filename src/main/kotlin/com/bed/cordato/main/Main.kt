@@ -5,6 +5,9 @@ import javax.sql.DataSource
 import io.micronaut.context.ApplicationContext
 import io.micronaut.runtime.server.EmbeddedServer
 
+import com.bed.cordato.core.application.driven.ports.LoggerPort
+import com.bed.cordato.core.domain.value_objects.LoggableValueObject
+
 /**
  * Composition root / entry point. Starts a Micronaut `ApplicationContext`, which discovers every
  * package's `@Factory` wiring (core's shared kernel plus each bounded context) into one object
@@ -26,5 +29,10 @@ fun main() {
 
     val server = context.getBean(EmbeddedServer::class.java).start()
 
-    println("Cordato started on ${server.uri} — database migrated, modules wired, HTTP serving.")
+    val logger = context.getBean(LoggerPort::class.java)
+    logger.info(
+        "Main",
+        "Cordato started",
+        mapOf("uri" to LoggableValueObject.Text(server.uri.toString())),
+    )
 }

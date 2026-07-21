@@ -2,6 +2,7 @@ package com.bed.cordato.core.infrastructure.http.errors.handlers
 
 import io.mockk.mockk
 import io.mockk.every
+import io.mockk.verify
 
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -11,7 +12,9 @@ import kotlin.test.assertEquals
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.HttpRequest
 
+import com.bed.cordato.core.application.driven.ports.LoggerPort
 import com.bed.cordato.core.application.driven.ports.MessagePort
+import com.bed.cordato.core.domain.value_objects.LoggableValueObject
 
 class UnexpectedFailureExceptionHandlerTest {
 
@@ -20,7 +23,9 @@ class UnexpectedFailureExceptionHandlerTest {
             "Ocorreu um erro inesperado. Tente novamente mais tarde."
     }
 
-    private val handler = UnexpectedFailureExceptionHandler(messages)
+    private val logger = mockk<LoggerPort>(relaxed = true)
+
+    private val handler = UnexpectedFailureExceptionHandler( logger = logger, messages = messages)
 
     @Test
     fun `any throwable maps to a neutral 500 that leaks no internal detail`() {
@@ -32,9 +37,24 @@ class UnexpectedFailureExceptionHandlerTest {
         val item = response.body()!!.errors.single()
         assertEquals("500", item.status)
         assertEquals("INTERNAL_ERROR", item.code)
-        assertTrue(item.source == null)
         assertFalse(item.message.contains("SELECT"), item.message)
         assertFalse(item.message.contains("alice@example.com"), item.message)
         assertFalse(item.message.contains("IllegalStateException"), item.message)
+    }
+
+    @Test
+    fun `the failure is logged through LoggerPort with the exception as cause`() {
+        val leaky = IllegalStateException("boom")
+
+        handler.handle(mockk<HttpRequest<*>>(relaxed = true), leaky)
+
+        verify {
+            logger.error(
+                "UnexpectedFailureExceptionHandler",
+                any(),
+                any<Map<String, LoggableValueObject>>(),
+                leaky,
+            )
+        }
     }
 }

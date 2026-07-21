@@ -1,7 +1,5 @@
 package com.bed.cordato.core.infrastructure.http.errors.handlers
 
-import org.slf4j.LoggerFactory
-
 import jakarta.inject.Singleton
 
 import io.micronaut.http.HttpRequest
@@ -9,7 +7,9 @@ import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.Produces
 import io.micronaut.http.server.exceptions.ExceptionHandler
 
+import com.bed.cordato.core.application.driven.ports.LoggerPort
 import com.bed.cordato.core.application.driven.ports.MessagePort
+import com.bed.cordato.core.domain.value_objects.LoggableValueObject
 import com.bed.cordato.core.infrastructure.http.responses.internalError
 import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
@@ -26,13 +26,21 @@ import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
  */
 @Produces
 @Singleton
-class UnexpectedFailureExceptionHandler(private val messages: MessagePort) :
-    ExceptionHandler<Throwable, HttpResponse<ErrorsResponse>> {
-
-    private val logger = LoggerFactory.getLogger(UnexpectedFailureExceptionHandler::class.java)
+class UnexpectedFailureExceptionHandler(
+    private val logger: LoggerPort,
+    private val messages: MessagePort,
+) : ExceptionHandler<Throwable, HttpResponse<ErrorsResponse>> {
 
     override fun handle(request: HttpRequest<*>, exception: Throwable): HttpResponse<ErrorsResponse> {
-        logger.error("Unhandled failure while serving {} {}", request.method, request.path, exception)
+        logger.error(
+            "UnexpectedFailureExceptionHandler",
+            "Unhandled failure while serving request",
+            mapOf(
+                "path" to LoggableValueObject.Text(request.path),
+                "method" to LoggableValueObject.Text(request.method.name),
+            ),
+            exception,
+        )
 
         return internalError("INTERNAL_ERROR", messages.invoke("error.internal.message"))
     }
