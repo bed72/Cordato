@@ -11,17 +11,31 @@ import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 
-import com.bed.cordato.core.infrastructure.http.responses.DataResponse
 import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 
 import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateNameRequest
 import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateEmailRequest
 import com.bed.cordato.features.identity.infrastructure.http.requests.UpdatePasswordRequest
+
+/**
+ * Real example payloads for the shared [ErrorsResponse] shape, one per status/code this controller's routes
+ * actually emit — see [com.bed.cordato.core.infrastructure.http.responses.ErrorResponse] for the builders and
+ * `i18n/messages.properties` for the exact resolved text. Without an explicit example, every response
+ * referencing [ErrorsResponse] would render the same schema-level placeholder regardless of its real status,
+ * which is misleading (a `401`/`500` showing a `422` payload).
+ */
+private const val MALFORMED_400 =
+    """{"errors":[{"status":"400","code":"MALFORMED_REQUEST","message":"O corpo da requisição está ausente ou é inválido."}]}"""
+private const val UNAUTHENTICATED_401 =
+    """{"errors":[{"status":"401","code":"UNAUTHENTICATED","message":"Autenticação necessária."}]}"""
+private const val INTERNAL_500 =
+    """{"errors":[{"status":"500","code":"INTERNAL_ERROR","message":"Ocorreu um erro inesperado. Tente novamente mais tarde."}]}"""
 
 /**
  * OpenAPI documentation for identity's authenticated person routes, kept off the controller so it stays a
@@ -51,17 +65,29 @@ interface PersonControllerDoc {
         ApiResponse(
             responseCode = "200",
             description = "Sessão viva; `data` (`PersonResponse`) traz a pessoa sem qualquer material de senha.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = PersonDataResponse::class))],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
         ),
     )
     fun me(@Parameter(hidden = true) actor: AuthenticatedActor): HttpResponse<*>
@@ -80,27 +106,55 @@ interface PersonControllerDoc {
         ApiResponse(
             responseCode = "200",
             description = "Nome atualizado; `data` (`PersonResponse`) traz a pessoa sem qualquer material de senha.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = PersonDataResponse::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Corpo ausente/inválido ou nome que viola as restrições de borda (presença, tamanho).",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = MALFORMED_400)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "422",
             description = "Nome bem-formado, porém rejeitado pela invariante de domínio.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [
+                        ExampleObject(
+                            value = """{"errors":[{"status":"422","code":"INVALID_NAME","message":"O nome informado é inválido."}]}""",
+                        ),
+                    ],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
         ),
     )
     fun updateName(
@@ -125,27 +179,62 @@ interface PersonControllerDoc {
         ApiResponse(
             responseCode = "200",
             description = "E-mail atualizado; `data` (`PersonResponse`) traz a pessoa sem qualquer material de senha.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = PersonDataResponse::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Corpo ausente/inválido, e-mail que viola o formato de borda, ou senha ausente.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = MALFORMED_400)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido, senha de confirmação incorreta e sessão órfã.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "422",
             description = "E-mail bem-formado, porém rejeitado pela invariante de domínio, ou já em uso por outra pessoa (corpo genérico, sem vazar a existência da conta).",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [
+                        ExampleObject(
+                            name = "invalid_email",
+                            summary = "E-mail inválido",
+                            value = """{"errors":[{"status":"422","code":"INVALID_EMAIL","message":"O e-mail informado é inválido."}]}""",
+                        ),
+                        ExampleObject(
+                            name = "email_already_in_use",
+                            summary = "E-mail já em uso (resposta genérica)",
+                            value = """{"errors":[{"status":"422","code":"EMAIL_UPDATE_REJECTED","message":"Não foi possível atualizar o e-mail."}]}""",
+                        ),
+                    ],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
         ),
     )
     fun updateEmail(
@@ -170,27 +259,62 @@ interface PersonControllerDoc {
         ApiResponse(
             responseCode = "200",
             description = "Senha trocada; `data` (`PersonResponse`) traz a pessoa sem qualquer material de senha.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = PersonDataResponse::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Corpo ausente/inválido, senha atual ausente, ou nova senha ausente/abaixo do tamanho mínimo.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = MALFORMED_400)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido, senha de confirmação incorreta e sessão órfã.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "422",
             description = "Nova senha fraca (viola a política mínima, regra pública) ou igual à atual; ambas compartilham o `422`, então o status não delata qual ocorreu.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [
+                        ExampleObject(
+                            name = "weak_password",
+                            summary = "Nova senha abaixo do mínimo público",
+                            value = """{"errors":[{"status":"422","code":"WEAK_PASSWORD","message":"A senha deve ter ao menos 8 caracteres."}]}""",
+                        ),
+                        ExampleObject(
+                            name = "same_password",
+                            summary = "Nova senha igual à atual",
+                            value = """{"errors":[{"status":"422","code":"SAME_PASSWORD","message":"A nova senha deve ser diferente da senha atual."}]}""",
+                        ),
+                    ],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
         ),
     )
     fun updatePassword(

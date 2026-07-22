@@ -11,15 +11,29 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 
 import com.bed.cordato.features.budget.infrastructure.http.requests.CreateBudgetRequest
 
-import com.bed.cordato.core.infrastructure.http.responses.DataResponse
 import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
+
+/**
+ * Real example payloads for the shared [ErrorsResponse] shape, one per status/code this controller's routes
+ * actually emit — see [com.bed.cordato.core.infrastructure.http.responses.ErrorResponse] for the builders and
+ * `i18n/messages.properties` for the exact resolved text. Without an explicit example, every response
+ * referencing [ErrorsResponse] would render the same schema-level placeholder regardless of its real status,
+ * which is misleading (a `401`/`500` showing a `422` payload).
+ */
+private const val MALFORMED_400 =
+    """{"errors":[{"status":"400","code":"MALFORMED_REQUEST","message":"O corpo da requisição está ausente ou é inválido."}]}"""
+private const val UNAUTHENTICATED_401 =
+    """{"errors":[{"status":"401","code":"UNAUTHENTICATED","message":"Autenticação necessária."}]}"""
+private const val INTERNAL_500 =
+    """{"errors":[{"status":"500","code":"INTERNAL_ERROR","message":"Ocorreu um erro inesperado. Tente novamente mais tarde."}]}"""
 
 /**
  * OpenAPI documentation for budget's create route, kept off the controller so it stays a thin routing
@@ -57,27 +71,72 @@ interface BudgetControllerDoc {
         ApiResponse(
             responseCode = "201",
             description = "Orçamento criado; `data` (`BudgetResponse`) traz a visão pública do orçamento criado.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = BudgetDataResponse::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Corpo ausente/inválido, ou campo que viola as restrições de borda (valor ausente/não-positivo, datas ausentes, anotação acima do máximo).",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = MALFORMED_400)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "422",
             description = "Orçamento bem-formado, porém rejeitado por uma invariante de domínio (valor ≤ 0, intervalo inválido, anotação longa demais, sobreposição com outro orçamento vivo); todas compartilham o `422`.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [
+                        ExampleObject(
+                            name = "invalid_amount",
+                            summary = "Valor não positivo",
+                            value = """{"errors":[{"status":"422","code":"INVALID_AMOUNT","message":"O valor do orçamento deve ser maior que zero."}]}""",
+                        ),
+                        ExampleObject(
+                            name = "invalid_period",
+                            summary = "Fim anterior ao início",
+                            value = """{"errors":[{"status":"422","code":"INVALID_PERIOD","message":"A data de fim não pode ser anterior à data de início."}]}""",
+                        ),
+                        ExampleObject(
+                            name = "invalid_note",
+                            summary = "Anotação longa demais",
+                            value = """{"errors":[{"status":"422","code":"INVALID_NOTE","message":"A anotação do orçamento excede o comprimento máximo."}]}""",
+                        ),
+                        ExampleObject(
+                            name = "overlapping_budget",
+                            summary = "Sobreposição com orçamento vivo",
+                            value = """{"errors":[{"status":"422","code":"OVERLAPPING_BUDGET","message":"Já existe um orçamento vivo que se sobrepõe a esse intervalo de datas."}]}""",
+                        ),
+                    ],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
         ),
     )
     fun create(
@@ -101,17 +160,29 @@ interface BudgetControllerDoc {
         ApiResponse(
             responseCode = "200",
             description = "`data` (`ActiveBudgetResponse`, nulável) traz o orçamento ativo de hoje, ou `null` quando não há nenhum.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class, nullable = true))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ActiveBudgetDataResponse::class))],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
         ),
     )
     fun active(@Parameter(hidden = true) actor: AuthenticatedActor): HttpResponse<*>

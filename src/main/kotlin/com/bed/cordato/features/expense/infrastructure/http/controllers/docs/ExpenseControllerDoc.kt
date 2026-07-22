@@ -12,15 +12,29 @@ import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 
-import com.bed.cordato.core.infrastructure.http.responses.DataResponse
 import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 
 import com.bed.cordato.features.expense.infrastructure.http.requests.CreateExpenseRequest
+
+/**
+ * Real example payloads for the shared [ErrorsResponse] shape, one per status/code this controller's routes
+ * actually emit — see [com.bed.cordato.core.infrastructure.http.responses.ErrorResponse] for the builders and
+ * `i18n/messages.properties` for the exact resolved text. Without an explicit example, every response
+ * referencing [ErrorsResponse] would render the same schema-level placeholder regardless of its real status,
+ * which is misleading (a `401`/`500` showing a `422` payload).
+ */
+private const val MALFORMED_400 =
+    """{"errors":[{"status":"400","code":"MALFORMED_REQUEST","message":"O corpo da requisição está ausente ou é inválido."}]}"""
+private const val UNAUTHENTICATED_401 =
+    """{"errors":[{"status":"401","code":"UNAUTHENTICATED","message":"Autenticação necessária."}]}"""
+private const val INTERNAL_500 =
+    """{"errors":[{"status":"500","code":"INTERNAL_ERROR","message":"Ocorreu um erro inesperado. Tente novamente mais tarde."}]}"""
 
 /**
  * OpenAPI documentation for expense's register route, kept off the controller so it stays a thin routing
@@ -55,27 +69,67 @@ interface ExpenseControllerDoc {
         ApiResponse(
             responseCode = "201",
             description = "Gasto registrado; `data` (`ExpenseResponse`) traz a visão pública do gasto criado.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ExpenseDataResponse::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Corpo ausente/inválido, ou campo que viola as restrições de borda (valor ausente/não-positivo, descrição acima do máximo).",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = MALFORMED_400)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "422",
             description = "Gasto bem-formado, porém rejeitado por uma invariante de domínio (valor ≤ 0, data futura, descrição longa demais); todas compartilham o `422`.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [
+                        ExampleObject(
+                            name = "invalid_amount",
+                            summary = "Valor não positivo",
+                            value = """{"errors":[{"status":"422","code":"INVALID_AMOUNT","message":"O valor do gasto deve ser maior que zero."}]}""",
+                        ),
+                        ExampleObject(
+                            name = "future_date",
+                            summary = "Data no futuro",
+                            value = """{"errors":[{"status":"422","code":"FUTURE_DATE","message":"A data do gasto não pode ser no futuro."}]}""",
+                        ),
+                        ExampleObject(
+                            name = "invalid_description",
+                            summary = "Descrição longa demais",
+                            value = """{"errors":[{"status":"422","code":"INVALID_DESCRIPTION","message":"A descrição do gasto excede o comprimento máximo."}]}""",
+                        ),
+                    ],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
         ),
     )
     fun create(
@@ -103,22 +157,51 @@ interface ExpenseControllerDoc {
             description = "Página de gastos do ator autenticado; `data` (array de `ExpenseResponse`, " +
                 "possivelmente vazio) traz os itens, `meta.pagination.next_cursor`/`links.next` presentes " +
                 "apenas quando há próxima página.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DataResponse::class))],
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ExpenseListDataResponse::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "`limit` acima do teto máximo, ou `cursor` malformado/ilegível.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [
+                        ExampleObject(
+                            name = "limit_above_max",
+                            summary = "`limit` acima do teto",
+                            value = """{"errors":[{"status":"400","code":"INVALID_REQUEST","message":"O limite deve ser no máximo 100 itens.","source":{"field":"limit"}}]}""",
+                        ),
+                        ExampleObject(
+                            name = "malformed_cursor",
+                            summary = "`cursor` ilegível",
+                            value = MALFORMED_400,
+                        ),
+                    ],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "401",
             description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
         ),
         ApiResponse(
             responseCode = "500",
             description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
-            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ErrorsResponse::class))],
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
         ),
     )
     fun list(

@@ -82,9 +82,26 @@ kotlin {
 }
 
 ksp {
-    arg("micronaut.openapi.views.spec", "swagger-ui.enabled=true")
+    arg(
+        "micronaut.openapi.views.spec",
+        "swagger-ui.enabled=true," +
+            "swagger-ui.filter=true," +
+            "swagger-ui.deepLinking=true," +
+            "swagger-ui.displayRequestDuration=true," +
+            "swagger-ui.persistAuthorization=true," +
+            "swagger-ui.tagsSorter=alpha," +
+            "swagger-ui.operationsSorter=alpha",
+    )
 
     arg("micronaut.openapi.property.naming.strategy", "SNAKE_CASE")
+
+    // Hibernate Validator's `message = "{key}"` is an i18n placeholder resolved at request time (see
+    // core's message bundle), never inline text — but micronaut-openapi's generator-extensions feature
+    // copies that raw `{key}` literal verbatim into `x-not-null-message`/`x-size-message`/etc vendor
+    // extensions on the schema. Since the key never resolves at compile time, leaving this on just
+    // leaks unreadable placeholders into the public OpenAPI document; disabling it is a pure doc-quality
+    // fix, the real localized messages still work at runtime exactly as before.
+    arg("micronaut.openapi.generator.extensions.enabled", "false")
 }
 
 
