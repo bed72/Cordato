@@ -1,11 +1,15 @@
 package com.bed.cordato.features.expense.infrastructure.repositories
 
+import java.time.LocalDate
+
 import com.bed.cordato.core.infrastructure.adapters.cache.GenerationalCacheAdapter
 
 import com.bed.cordato.features.expense.domain.entities.ExpenseEntity
 import com.bed.cordato.features.expense.domain.value_objects.ExpenseCursorValueObject
-import com.bed.cordato.features.expense.infrastructure.repositories.mappers.toCacheJson
+
 import com.bed.cordato.features.expense.application.driven.repositories.ExpenseRepository
+
+import com.bed.cordato.features.expense.infrastructure.repositories.mappers.toCacheJson
 import com.bed.cordato.features.expense.infrastructure.repositories.mappers.toExpenseEntities
 
 /**
@@ -18,6 +22,10 @@ import com.bed.cordato.features.expense.infrastructure.repositories.mappers.toEx
  * prefix from [com.bed.cordato.features.expense.main.ExpenseFactory], not built here, so this class only
  * owns what's expense-specific: the cursor/limit token that becomes the cache key's [suffix], and the JSON
  * (de)serialization of [ExpenseEntity] lists.
+ *
+ * [sumAmountInRange] passes straight through to [repository], uncached: it isn't reached from any of
+ * expense's own routes, only in-process by `budget`'s ACL adapter, and its result isn't the shape this
+ * decorator's key/invalidation scheme is built around.
  */
 class CachingExpenseRepository(
     private val repository: ExpenseRepository,
@@ -39,6 +47,9 @@ class CachingExpenseRepository(
 
         return fetched
     }
+
+    override fun sumAmountInRange(personId: String, startDate: LocalDate, endDate: LocalDate): Long =
+        repository.sumAmountInRange(personId, startDate, endDate)
 
     private fun suffix(after: ExpenseCursorValueObject?, limit: Int): String {
         val token = after?.let { "${it.spentOn}|${it.id}" } ?: "first"

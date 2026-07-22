@@ -146,4 +146,32 @@ class PersistenceExpenseRepositoryTest {
 
         assertEquals(emptyList(), listed)
     }
+
+    @Test
+    fun `sumAmountInRange sums only the person's expenses within the inclusive date range`() {
+        repository.create(expense(id = "a", personId = "person-1", amountInCents = 1_000, date = LocalDate.of(2026, 7, 1)))
+        repository.create(expense(id = "b", personId = "person-1", amountInCents = 2_000, date = LocalDate.of(2026, 7, 31)))
+        repository.create(expense(id = "c", personId = "person-1", amountInCents = 5_000, date = LocalDate.of(2026, 8, 1)))
+        repository.create(expense(id = "d", personId = "person-2", amountInCents = 9_000, date = LocalDate.of(2026, 7, 15)))
+
+        val total = repository.sumAmountInRange("person-1", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31))
+
+        assertEquals(3_000, total)
+    }
+
+    @Test
+    fun `sumAmountInRange is zero for a person with nothing in range`() {
+        repository.create(expense(id = "a", personId = "person-1", date = LocalDate.of(2026, 6, 1)))
+
+        val total = repository.sumAmountInRange("person-1", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31))
+
+        assertEquals(0, total)
+    }
+
+    @Test
+    fun `sumAmountInRange is zero for a person with no expenses at all`() {
+        val total = repository.sumAmountInRange("person-1", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31))
+
+        assertEquals(0, total)
+    }
 }

@@ -1,5 +1,7 @@
 package com.bed.cordato.features.expense.factories
 
+import java.time.LocalDate
+
 import com.bed.cordato.features.expense.domain.entities.ExpenseEntity
 import com.bed.cordato.features.expense.domain.value_objects.ExpenseCursorValueObject
 import com.bed.cordato.features.expense.application.driven.repositories.ExpenseRepository
@@ -14,6 +16,10 @@ import com.bed.cordato.features.expense.application.driven.repositories.ExpenseR
  * **not** sort) and the [limit] — the fake hands back exactly what it was given, so a use-case test asserts
  * the owner-slicing and the paging cutoff/limit, not the ordering (the deterministic order is the real
  * adapter's guarantee, covered by its own test). A test that needs a specific order seeds rows in that order.
+ *
+ * [sumAmountInRange] sums the [created] expenses owned by [personId] whose date falls within
+ * `[startDate, endDate]` (both included) — an in-memory replay of the real adapter's `SUM`/`COALESCE`
+ * query, `0` when nothing matches.
  */
 class FakeExpenseRepository : ExpenseRepository {
     val created = mutableListOf<ExpenseEntity>()
@@ -27,6 +33,12 @@ class FakeExpenseRepository : ExpenseRepository {
             .filter { it.personId == personId }
             .filter { after == null || isAfter(it, after) }
             .take(limit)
+
+    override fun sumAmountInRange(personId: String, startDate: LocalDate, endDate: LocalDate): Long =
+        created
+            .filter { it.personId == personId }
+            .filter { it.date.value in startDate..endDate }
+            .sumOf { it.amount.cents }
 
     private fun isAfter(expense: ExpenseEntity, cursor: ExpenseCursorValueObject): Boolean =
         expense.date.value < cursor.spentOn || (expense.date.value == cursor.spentOn && expense.id < cursor.id)

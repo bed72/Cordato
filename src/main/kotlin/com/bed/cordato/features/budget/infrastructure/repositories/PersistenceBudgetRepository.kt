@@ -9,6 +9,7 @@ import com.bed.cordato.core.infrastructure.persistence.models.Tables.BUDGET
 import com.bed.cordato.features.budget.domain.enums.BudgetStatusEnum
 import com.bed.cordato.features.budget.domain.entities.BudgetEntity
 import com.bed.cordato.features.budget.infrastructure.repositories.mappers.toRecord
+import com.bed.cordato.features.budget.infrastructure.repositories.mappers.toEntity
 import com.bed.cordato.features.budget.application.driven.repositories.BudgetRepository
 
 /**
@@ -22,6 +23,9 @@ import com.bed.cordato.features.budget.application.driven.repositories.BudgetRep
  * database via `EXISTS`: a live budget of [personId] overlaps `[startDate, endDate]` when
  * `startDate <= existing.end_date AND existing.start_date <= endDate` (both sides inclusive, matching the
  * README's boundary-inclusive rule), filtered to [BudgetStatusEnum.LIVE] only.
+ *
+ * [findLiveBudgetCovering] is a single-row lookup on the same shape: a live budget of [personId] covers
+ * [date] when `start_date <= date AND end_date >= date`; `null` when none does.
  */
 class PersistenceBudgetRepository(private val dsl: DSLContext) : BudgetRepository {
 
@@ -40,4 +44,13 @@ class PersistenceBudgetRepository(private val dsl: DSLContext) : BudgetRepositor
             .set(budget.toRecord())
             .execute()
     }
+
+    override fun findLiveBudgetCovering(personId: String, date: LocalDate): BudgetEntity? =
+        dsl.selectFrom(BUDGET)
+            .where(BUDGET.PERSON_ID.eq(personId))
+            .and(BUDGET.STATUS.eq(BudgetStatusEnum.LIVE.name))
+            .and(BUDGET.START_DATE.le(date))
+            .and(BUDGET.END_DATE.ge(date))
+            .fetchOne()
+            ?.toEntity()
 }

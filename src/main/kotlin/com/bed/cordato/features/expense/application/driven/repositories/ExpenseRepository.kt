@@ -1,5 +1,7 @@
 package com.bed.cordato.features.expense.application.driven.repositories
 
+import java.time.LocalDate
+
 import com.bed.cordato.features.expense.domain.entities.ExpenseEntity
 import com.bed.cordato.features.expense.domain.value_objects.ExpenseCursorValueObject
 
@@ -18,9 +20,17 @@ import com.bed.cordato.features.expense.domain.value_objects.ExpenseCursorValueO
  * recent first, `(spent_on, id)` desc — the same tuple [after] positions against); the application only
  * relies on it being stable. The port knows nothing of an opaque wire cursor or a response envelope — only
  * the typed keyset position and the limit.
+ *
+ * [sumAmountInRange] answers the total, in cents, of [personId]'s expenses whose date falls within
+ * `[startDate, endDate]` (both included) — resolved entirely in the datastore (`SUM` with `COALESCE` to
+ * `0`), never by loading rows to sum in memory. This is the single aggregate question `expense` answers
+ * about its own data to anyone outside (today, `budget`, through its own ACL) — never an individual expense
+ * nor the list of them. A person with nothing in range yields `0`, not an error.
  */
 interface ExpenseRepository {
     fun create(expense: ExpenseEntity)
 
     fun findByPerson(personId: String, after: ExpenseCursorValueObject?, limit: Int): List<ExpenseEntity>
+
+    fun sumAmountInRange(personId: String, startDate: LocalDate, endDate: LocalDate): Long
 }

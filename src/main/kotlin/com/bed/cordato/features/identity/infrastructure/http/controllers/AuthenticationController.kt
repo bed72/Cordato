@@ -11,8 +11,11 @@ import io.micronaut.http.annotation.Status
 import io.micronaut.http.annotation.Controller
 
 import com.bed.cordato.core.application.driven.ports.MessagePort
+
 import com.bed.cordato.core.infrastructure.http.responses.ok
 import com.bed.cordato.core.infrastructure.http.responses.created
+import com.bed.cordato.core.infrastructure.http.rate_limit.annotations.RateLimited
+import com.bed.cordato.core.infrastructure.http.rate_limit.annotations.RateLimitTierEnum
 
 import com.bed.cordato.features.identity.application.driving.results.SignUpResult
 import com.bed.cordato.features.identity.application.driving.results.SignInResult
@@ -40,7 +43,7 @@ import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.Au
  *
  * `@Validated` + `@Valid` run the request's Bean Validation constraints first: a violation is thrown
  * as a `ConstraintViolationException` (turned into a `400` by the shared
- * [ConstraintViolationExceptionHandler] in `core`)
+ * [com.bed.cordato.core.infrastructure.http.errors.handlers.ConstraintViolationExceptionHandler] in `core`)
  * before the use case is ever reached. Past that, the handler adds no behavior of its own: it maps the
  * body to a command, runs the use case, and branches over the sealed [SignUpResult]. Because the domain
  * never throws, there is nothing more to catch — success becomes `201 Created`, and each domain error is
@@ -61,6 +64,7 @@ class AuthenticationController(
 
     @Post("/sign-up")
     @Status(HttpStatus.CREATED)
+    @RateLimited(RateLimitTierEnum.SENSITIVE)
     override fun signUp(@Body @Valid request: SignUpRequest): HttpResponse<*> =
         when (val data = signUpUseCase(request.toCommand())) {
             is SignUpResult.Failure -> data.error.toResponse(messages)
@@ -69,6 +73,7 @@ class AuthenticationController(
 
     @Post("/sign-in")
     @Status(HttpStatus.OK)
+    @RateLimited(RateLimitTierEnum.SENSITIVE)
     override fun signIn(@Body @Valid request: SignInRequest): HttpResponse<*> =
         when (val data = signInUseCase(request.toCommand())) {
             is SignInResult.Failure -> data.error.toResponse(messages)

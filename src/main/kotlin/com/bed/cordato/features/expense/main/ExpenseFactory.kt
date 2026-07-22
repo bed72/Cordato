@@ -17,6 +17,7 @@ import com.bed.cordato.core.infrastructure.adapters.cache.GenerationalCacheAdapt
 import com.bed.cordato.features.expense.application.driven.repositories.ExpenseRepository
 import com.bed.cordato.features.expense.application.driving.use_cases.ListExpensesUseCase
 import com.bed.cordato.features.expense.application.driving.use_cases.CreateExpenseUseCase
+import com.bed.cordato.features.expense.application.driving.use_cases.SumExpensesInRangeUseCase
 
 import com.bed.cordato.features.expense.infrastructure.repositories.CachingExpenseRepository
 import com.bed.cordato.features.expense.infrastructure.repositories.PersistenceExpenseRepository
@@ -31,13 +32,6 @@ import com.bed.cordato.features.expense.infrastructure.repositories.PersistenceE
 @Factory
 class ExpenseFactory {
 
-    // The durable PostgreSQL adapter wrapped by the cache-valkey read-through/invalidation decorator, so
-    // both use cases below see only the ExpenseRepository port, cache-agnostic. The DSLContext and CachePort
-    // come from CoreFactory; the TTL is expense's own config, a floor behind the decorator's primary
-    // generation-based invalidation. The GenerationalCacheAdapter is built here (not inside
-    // CachingExpenseRepository) and handed in already scoped to the "expenses" prefix, so the decorator only
-    // ever receives its finished collaborator. Pure use-case tests use a hand-written fake
-    // (factories.FakeExpenseRepository), not a production binding.
     @Singleton
     fun expenseRepository(
         cache: CachePort,
@@ -48,7 +42,6 @@ class ExpenseFactory {
         repository = PersistenceExpenseRepository(dslContext),
     )
 
-    // Clock and id generator come from CoreFactory; the expense repository is expense's own binding above.
     @Singleton
     fun createExpenseUseCase(
         clock: ClockPort,
@@ -56,7 +49,10 @@ class ExpenseFactory {
         repository: ExpenseRepository,
     ): CreateExpenseUseCase = CreateExpenseUseCase(clock, generator, repository)
 
-    // Reads the actor's own expenses; inherits the same (cache-decorated) repository binding above.
     @Singleton
     fun listExpensesUseCase(repository: ExpenseRepository): ListExpensesUseCase = ListExpensesUseCase(repository)
+
+    @Singleton
+    fun sumExpensesInRangeUseCase(repository: ExpenseRepository): SumExpensesInRangeUseCase =
+        SumExpensesInRangeUseCase(repository)
 }

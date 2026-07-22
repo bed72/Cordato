@@ -79,6 +79,6 @@
 - [x] 6.1 Rodar `./gradlew build` (compila, roda o Konsist `ArchitectureTest`, gera o OpenAPI) e confirmar
       que o spec gerado reflete `DataResponse`/`ErrorsResponse` em toda rota.
 - [x] 6.2 Rodar `./gradlew test` completo e confirmar verde.
-- [ ] 6.3 Rodar `/opsx:sync` para reconciliar `http-response-envelope` (nova), `http-error-handling`,
+- [x] 6.3 Rodar `/opsx:sync` para reconciliar `http-response-envelope` (nova), `http-error-handling`,
       `expense-http-api`, `identity-http-api` com os specs principais.
-- [ ] 6.4 Rodar `/opsx:archive` para arquivar a change.
+- [x] 6.4 Rodar `/opsx:archive` para arquivar a change.

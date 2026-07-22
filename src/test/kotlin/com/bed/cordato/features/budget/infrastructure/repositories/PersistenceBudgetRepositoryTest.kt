@@ -134,4 +134,56 @@ class PersistenceBudgetRepositoryTest {
 
         assertFalse(overlaps)
     }
+
+    @Test
+    fun `findLiveBudgetCovering finds the live budget whose period covers the given date`() {
+        repository.create(budget(id = "a", personId = "person-1", startDate = LocalDate.of(2026, 7, 1), endDate = LocalDate.of(2026, 7, 31)))
+
+        val found = repository.findLiveBudgetCovering("person-1", LocalDate.of(2026, 7, 15))
+
+        assertEquals("a", found?.id)
+    }
+
+    @Test
+    fun `findLiveBudgetCovering treats both period boundaries as included`() {
+        repository.create(budget(id = "a", personId = "person-1", startDate = LocalDate.of(2026, 7, 1), endDate = LocalDate.of(2026, 7, 31)))
+
+        assertEquals("a", repository.findLiveBudgetCovering("person-1", LocalDate.of(2026, 7, 1))?.id)
+        assertEquals("a", repository.findLiveBudgetCovering("person-1", LocalDate.of(2026, 7, 31))?.id)
+    }
+
+    @Test
+    fun `findLiveBudgetCovering returns null when no live budget covers the given date`() {
+        repository.create(budget(id = "a", personId = "person-1", startDate = LocalDate.of(2026, 7, 1), endDate = LocalDate.of(2026, 7, 15)))
+
+        val found = repository.findLiveBudgetCovering("person-1", LocalDate.of(2026, 8, 1))
+
+        assertNull(found)
+    }
+
+    @Test
+    fun `findLiveBudgetCovering never returns a removed budget, even if it covers the date`() {
+        repository.create(
+            budget(
+                id = "a",
+                personId = "person-1",
+                status = BudgetStatusEnum.DELETED,
+                startDate = LocalDate.of(2026, 7, 1),
+                endDate = LocalDate.of(2026, 7, 31),
+            ),
+        )
+
+        val found = repository.findLiveBudgetCovering("person-1", LocalDate.of(2026, 7, 15))
+
+        assertNull(found)
+    }
+
+    @Test
+    fun `findLiveBudgetCovering never compares budgets across different people`() {
+        repository.create(budget(id = "a", personId = "person-2", startDate = LocalDate.of(2026, 7, 1), endDate = LocalDate.of(2026, 7, 31)))
+
+        val found = repository.findLiveBudgetCovering("person-1", LocalDate.of(2026, 7, 15))
+
+        assertNull(found)
+    }
 }

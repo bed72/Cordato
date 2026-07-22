@@ -19,7 +19,7 @@ nenhuma regra de domínio de cadastro.
 
 - **WHEN** o endpoint recebe um corpo com um e-mail não usado, um nome válido e uma senha que cumpre a política
 - **THEN** o `SignUpUseCase` é invocado com um `SignUpCommand` correspondente ao corpo
-- **AND** o sistema responde `201 Created` com um corpo de pessoa criada
+- **AND** o sistema responde `201 Created` com `data` contendo o corpo de pessoa criada
 
 #### Scenario: A controller não valida regras de domínio
 
@@ -75,15 +75,15 @@ normalização que o value object aplica), nunca uma segunda regra independente.
 
 ### Requirement: Resposta de sucesso não vaza a senha
 
-O sistema SHALL responder um cadastro bem-sucedido com uma representação da pessoa criada contendo ao menos
-seu identificador, nome e e-mail. A resposta SHALL NOT conter a senha digitada nem o hash da senha, sob
-nenhuma forma.
+O sistema SHALL responder um cadastro bem-sucedido com `data` contendo uma representação da pessoa criada
+com ao menos seu identificador, nome e e-mail. `data` SHALL NOT conter a senha digitada nem o hash da senha,
+sob nenhuma forma.
 
 #### Scenario: Corpo de sucesso omite qualquer material de senha
 
 - **WHEN** o cadastro é bem-sucedido e o sistema serializa a pessoa criada
-- **THEN** o corpo da resposta contém o identificador, o nome e o e-mail da pessoa
-- **AND** o corpo não contém a senha digitada nem o hash da senha
+- **THEN** `data` contém o identificador, o nome e o e-mail da pessoa
+- **AND** `data` não contém a senha digitada nem o hash da senha
 
 ### Requirement: Mapeamento de erros de domínio para status HTTP
 
@@ -128,7 +128,7 @@ O sistema SHALL expor a operação de login por um endpoint HTTP `POST /sign-in`
 
 - **WHEN** o endpoint recebe um corpo com as credenciais de uma pessoa ativa e senha correta
 - **THEN** o `SignInUseCase` é invocado com um `SignInCommand` correspondente ao corpo
-- **AND** o sistema responde `200 OK` com o corpo de sessão criada
+- **AND** o sistema responde `200 OK` com `data` contendo o corpo de sessão criada
 
 #### Scenario: A controller não decide autenticação
 
@@ -164,15 +164,15 @@ legítimo diante de uma mudança de política e divergiria o sinal do `401` de c
 
 ### Requirement: Resposta de sucesso do login devolve o token e a expiração
 
-O sistema SHALL responder um login bem-sucedido com um corpo contendo o **token opaco** em claro e o
-instante de **expiração** da sessão (`{ token, expiresAt }`). A resposta SHALL NOT conter a senha digitada,
-o hash da senha, nem o hash do token.
+O sistema SHALL responder um login bem-sucedido com `data` contendo o **token opaco** em claro e o instante
+de **expiração** da sessão (`{ token, expiresAt }`). `data` SHALL NOT conter a senha digitada, o hash da
+senha, nem o hash do token.
 
 #### Scenario: Corpo de sucesso traz token e expiração
 
 - **WHEN** o login é bem-sucedido e o sistema serializa a sessão criada
-- **THEN** o corpo contém o token opaco em claro e o instante de expiração
-- **AND** o corpo não contém a senha, o hash da senha, nem o hash do token
+- **THEN** `data` contém o token opaco em claro e o instante de expiração
+- **AND** `data` não contém a senha, o hash da senha, nem o hash do token
 
 ### Requirement: Credenciais inválidas respondem 401 neutro
 
@@ -207,7 +207,7 @@ corpo de requisição.
 
 - **WHEN** o endpoint recebe uma requisição numa sessão viva
 - **THEN** o `MeUseCase` é invocado com o `personId` do ator autenticado
-- **AND** o sistema responde `200 OK` com a visão pública da pessoa (id, nome, e-mail)
+- **AND** o sistema responde `200 OK` com `data` contendo a visão pública da pessoa (id, nome, e-mail)
 
 #### Scenario: Requisição sem sessão viva é recusada pelo guard
 
@@ -217,15 +217,15 @@ corpo de requisição.
 
 ### Requirement: Resposta de sucesso da pessoa autenticada não vaza a senha
 
-O sistema SHALL responder a rota da pessoa autenticada com uma representação contendo ao menos seu
-identificador, nome e e-mail. A resposta SHALL NOT conter a senha nem o hash da senha, sob nenhuma forma —
+O sistema SHALL responder a rota da pessoa autenticada com `data` contendo uma representação com ao menos
+seu identificador, nome e e-mail. `data` SHALL NOT conter a senha nem o hash da senha, sob nenhuma forma —
 reutilizando a mesma representação pública de pessoa que o cadastro devolve.
 
 #### Scenario: Corpo de sucesso omite qualquer material de senha
 
 - **WHEN** a rota responde com sucesso e o sistema serializa a pessoa
-- **THEN** o corpo contém o identificador, o nome e o e-mail da pessoa
-- **AND** o corpo não contém a senha nem o hash da senha
+- **THEN** `data` contém o identificador, o nome e o e-mail da pessoa
+- **AND** `data` não contém a senha nem o hash da senha
 
 ### Requirement: Sessão órfã responde 401 neutro indistinguível
 
@@ -257,7 +257,7 @@ e-mail (`/persons/me/email`), não um `PATCH /persons/me` de patch parcial multi
 
 - **WHEN** o endpoint recebe, numa sessão viva, um corpo com um nome que satisfaz as restrições de borda
 - **THEN** o use case de atualização é invocado com o `personId` do ator autenticado e o nome do corpo
-- **AND** o sistema responde `200 OK` com a visão pública atualizada da pessoa (id, nome, e-mail)
+- **AND** o sistema responde `200 OK` com `data` contendo a visão pública atualizada da pessoa (id, nome, e-mail)
 
 #### Scenario: Requisição sem sessão viva é recusada pelo guard
 
@@ -298,16 +298,16 @@ segunda regra independente.
 
 ### Requirement: Resposta de sucesso da atualização não vaza a senha
 
-O sistema SHALL responder uma atualização de nome bem-sucedida com uma representação da pessoa contendo ao
-menos seu identificador, nome (atualizado) e e-mail. A resposta SHALL NOT conter a senha nem o hash da senha,
-sob nenhuma forma — reutilizando a **mesma** representação pública de pessoa que o cadastro e o
-`GET /persons/me` devolvem.
+O sistema SHALL responder uma atualização de nome bem-sucedida com `data` contendo uma representação da
+pessoa com ao menos seu identificador, nome (atualizado) e e-mail. `data` SHALL NOT conter a senha nem o
+hash da senha, sob nenhuma forma — reutilizando a **mesma** representação pública de pessoa que o cadastro e
+o `GET /persons/me` devolvem.
 
 #### Scenario: Corpo de sucesso omite qualquer material de senha
 
 - **WHEN** a atualização é bem-sucedida e o sistema serializa a pessoa
-- **THEN** o corpo contém o identificador, o nome atualizado e o e-mail da pessoa
-- **AND** o corpo não contém a senha nem o hash da senha
+- **THEN** `data` contém o identificador, o nome atualizado e o e-mail da pessoa
+- **AND** `data` não contém a senha nem o hash da senha
 
 ### Requirement: Nome inválido na atualização responde 422
 
@@ -350,7 +350,7 @@ NOT permitir alterar o e-mail de outra pessoa que não a autenticada.
 
 - **WHEN** o endpoint recebe, numa sessão viva, um corpo com um e-mail e uma senha que satisfazem as restrições de borda
 - **THEN** o use case de troca é invocado com o `personId` do ator autenticado, o e-mail e a senha do corpo
-- **AND** o sistema responde `200 OK` com a visão pública atualizada da pessoa (id, nome, e-mail)
+- **AND** o sistema responde `200 OK` com `data` contendo a visão pública atualizada da pessoa (id, nome, e-mail)
 
 #### Scenario: Requisição sem sessão viva é recusada pelo guard
 
@@ -400,16 +400,16 @@ legítima definida antes de uma mudança de política) — valida **apenas** sua
 
 ### Requirement: Resposta de sucesso da troca de e-mail não vaza a senha
 
-O sistema SHALL responder uma troca de e-mail bem-sucedida com uma representação da pessoa contendo ao menos
-seu identificador, nome e e-mail (atualizado). A resposta SHALL NOT conter a senha (digitada ou de
-confirmação) nem o hash da senha, sob nenhuma forma — reutilizando a **mesma** representação pública de pessoa
-que o cadastro, o `GET /persons/me` e a troca de nome devolvem.
+O sistema SHALL responder uma troca de e-mail bem-sucedida com `data` contendo uma representação da pessoa
+com ao menos seu identificador, nome e e-mail (atualizado). `data` SHALL NOT conter a senha (digitada ou de
+confirmação) nem o hash da senha, sob nenhuma forma — reutilizando a **mesma** representação pública de
+pessoa que o cadastro, o `GET /persons/me` e a troca de nome devolvem.
 
 #### Scenario: Corpo de sucesso omite qualquer material de senha
 
 - **WHEN** a troca é bem-sucedida e o sistema serializa a pessoa
-- **THEN** o corpo contém o identificador, o nome e o e-mail atualizado da pessoa
-- **AND** o corpo não contém a senha nem o hash da senha
+- **THEN** `data` contém o identificador, o nome e o e-mail atualizado da pessoa
+- **AND** `data` não contém a senha nem o hash da senha
 
 ### Requirement: E-mail inválido na troca responde 422
 
@@ -466,12 +466,13 @@ O sistema SHALL expor uma rota HTTP protegida `PATCH /persons/me/password` que d
 de senha, usando o `personId` **e o `sessionId`** do ator autenticado resolvido pela borda — nunca dados do
 corpo — como identidade. A rota SHALL exigir uma sessão viva (via o guard de borda declarativo); sem um
 `Authorization: Bearer` válido, o handler SHALL NOT ser alcançado. Em caso de sucesso, SHALL responder
-`200 OK` com a `PersonResponse` (a mesma visão pública reutilizada pelas demais rotas de pessoa).
+`200 OK` com `data` contendo a `PersonResponse` (a mesma visão pública reutilizada pelas demais rotas de
+pessoa).
 
 #### Scenario: Troca autenticada com senhas válidas responde 200
 
 - **WHEN** uma requisição autenticada envia a senha atual correta e uma nova senha válida e diferente da atual
-- **THEN** o sistema responde `200 OK` com a `PersonResponse` (id, nome, e-mail), sem material de senha
+- **THEN** o sistema responde `200 OK` com `data` contendo a `PersonResponse` (id, nome, e-mail), sem material de senha
 
 ### Requirement: Validação de borda do request de troca de senha
 
@@ -494,14 +495,15 @@ com um erro por campo. O value object SHALL permanecer a autoridade única da po
 
 ### Requirement: Resposta de sucesso da troca de senha não vaza a senha
 
-O sistema SHALL garantir que a resposta `200` da troca de senha carregue apenas a visão pública da pessoa
-(identificador, nome, e-mail) e **nenhum** material de senha — nem a senha atual, nem a nova, nem o hash.
+O sistema SHALL garantir que `data` na resposta `200` da troca de senha carregue apenas a visão pública da
+pessoa (identificador, nome, e-mail) e **nenhum** material de senha — nem a senha atual, nem a nova, nem o
+hash.
 
 #### Scenario: Corpo de sucesso não contém material de senha
 
 - **WHEN** a troca de senha responde `200`
-- **THEN** o corpo contém id, nome e e-mail
-- **AND** o corpo não contém nenhuma senha nem hash
+- **THEN** `data` contém id, nome e e-mail
+- **AND** `data` não contém nenhuma senha nem hash
 
 ### Requirement: Nova senha fraca ou igual à atual responde 422
 

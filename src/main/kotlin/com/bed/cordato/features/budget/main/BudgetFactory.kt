@@ -6,19 +6,30 @@ import jakarta.inject.Singleton
 
 import io.micronaut.context.annotation.Factory
 
+import com.bed.cordato.core.application.driven.ports.ClockPort
 import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
 
+import com.bed.cordato.features.budget.application.driven.ports.ExpenseSpentAmountPort
 import com.bed.cordato.features.budget.application.driven.repositories.BudgetRepository
 import com.bed.cordato.features.budget.application.driving.use_cases.CreateBudgetUseCase
+import com.bed.cordato.features.budget.application.driving.use_cases.GetActiveBudgetUseCase
 
+import com.bed.cordato.features.budget.infrastructure.adapters.ExpenseSpentAmountAdapter
 import com.bed.cordato.features.budget.infrastructure.repositories.PersistenceBudgetRepository
 
+import com.bed.cordato.features.expense.application.driving.use_cases.SumExpensesInRangeUseCase
+
 /**
- * Budget's DI factory — binds budget's own ports to their adapters. The determinism port (id generation)
- * and the [DSLContext] come from [com.bed.cordato.core.main.CoreFactory]; this factory only wires what
- * budget owns and takes those kernel-provided collaborators as method parameters (no second binding of
- * either). Lives in budget's own `main` subpackage — the one place within the context where wiring may
- * reach across layers; domain and application never import Micronaut.
+ * Budget's DI factory — binds budget's own ports to their adapters. The determinism ports (clock, id
+ * generation) and the [DSLContext] come from [com.bed.cordato.core.main.CoreFactory]; this factory only
+ * wires what budget owns and takes those kernel-provided collaborators as method parameters (no second
+ * binding of either). Lives in budget's own `main` subpackage — the one place within the context where
+ * wiring may reach across layers; domain and application never import Micronaut.
+ *
+ * [expenseSpentAmountPort] is the one place this factory reaches across a context boundary: it wires the
+ * ACL adapter (ADR 0013) over expense's own [SumExpensesInRangeUseCase] bean, published by
+ * [com.bed.cordato.features.expense.main.ExpenseFactory] — the sanctioned `budget → expense` dependency,
+ * never the reverse.
  */
 @Factory
 class BudgetFactory {
@@ -29,4 +40,15 @@ class BudgetFactory {
     @Singleton
     fun createBudgetUseCase(generator: IdGeneratorPort, repository: BudgetRepository): CreateBudgetUseCase =
         CreateBudgetUseCase(generator, repository)
+
+    @Singleton
+    fun expenseSpentAmountPort(useCase: SumExpensesInRangeUseCase): ExpenseSpentAmountPort =
+        ExpenseSpentAmountAdapter(useCase)
+
+    @Singleton
+    fun getActiveBudgetUseCase(
+        clock: ClockPort,
+        repository: BudgetRepository,
+        expenseSpentAmountPort: ExpenseSpentAmountPort,
+    ): GetActiveBudgetUseCase = GetActiveBudgetUseCase(clock, repository, expenseSpentAmountPort)
 }

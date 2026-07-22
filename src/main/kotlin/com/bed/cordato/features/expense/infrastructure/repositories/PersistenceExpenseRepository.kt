@@ -1,7 +1,12 @@
 package com.bed.cordato.features.expense.infrastructure.repositories
 
+import java.time.LocalDate
+import java.math.BigDecimal
+
 import org.jooq.DSLContext
 import org.jooq.impl.DSL.row
+import org.jooq.impl.DSL.sum
+import org.jooq.impl.DSL.coalesce
 
 import com.bed.cordato.core.infrastructure.persistence.models.Tables.EXPENSE
 
@@ -23,6 +28,10 @@ import com.bed.cordato.features.expense.application.driven.repositories.ExpenseR
  * `ORDER BY spent_on DESC, id DESC LIMIT ?` does the ordering/cutoff in the database, never in memory. It
  * reuses the `person_id` index from V3 (no new migration). An owner with nothing past the given position
  * yields an empty list, not `null`.
+ *
+ * [sumAmountInRange] is `SELECT COALESCE(SUM(amount_cents), 0) WHERE person_id = ? AND spent_on BETWEEN ?
+ * AND ?` — the aggregate (and the `0`-when-nothing-matches fallback) is resolved entirely by PostgreSQL,
+ * never by loading rows to sum in the application.
  */
 class PersistenceExpenseRepository(private val dsl: DSLContext) : ExpenseRepository {
 
@@ -45,4 +54,13 @@ class PersistenceExpenseRepository(private val dsl: DSLContext) : ExpenseReposit
             .limit(limit)
             .fetch { it.toEntity() }
     }
+
+    override fun sumAmountInRange(personId: String, startDate: LocalDate, endDate: LocalDate): Long =
+        dsl.select(coalesce(sum(EXPENSE.AMOUNT_CENTS), BigDecimal.ZERO))
+            .from(EXPENSE)
+            .where(EXPENSE.PERSON_ID.eq(personId))
+            .and(EXPENSE.SPENT_ON.between(startDate, endDate))
+            .fetchSingle()
+            .value1()
+            .toLong()
 }

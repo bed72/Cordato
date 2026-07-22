@@ -11,9 +11,11 @@ import com.bed.cordato.core.application.driven.ports.CachePort
  * on the same keyspace (a generation counter bumped by `increment` must be readable back by [get]) — storing
  * the running total as its string form. Setting [available] to `false` makes every operation throw, standing
  * in for a genuinely unreachable cache so a caller's degrade-to-miss behavior can be exercised without a real
- * Valkey outage.
+ * Valkey outage. [expire] tracks only which keys have had a TTL armed (no actual expiry, mirroring [set]'s
+ * TTL-less style) — enough to assert `NX` semantics without a real Valkey.
  */
 class FakeCachePort : CachePort {
+    private val armedTtls = mutableSetOf<String>()
     private val values = mutableMapOf<String, String>()
 
     var available = true
@@ -33,5 +35,10 @@ class FakeCachePort : CachePort {
         val next = (values[key]?.toLong() ?: 0L) + 1
         values[key] = next.toString()
         return next
+    }
+
+    override fun expire(key: String, ttl: Duration) {
+        check(available) { "cache unavailable" }
+        armedTtls.add(key)
     }
 }

@@ -64,8 +64,8 @@ data class ErrorSourceResponse(
  *
  * The set covers the statuses the API actually emits in this body today: an edge/malformed `400` (the only
  * one that may carry a per-field breakdown — every other case is scalar), an authentication `401`, a
- * domain-rejection `422`, and an unexpected `500`. New statuses (404/409…) slot in the same way when a real
- * caller needs them.
+ * domain-rejection `422`, a rate-limit refusal `429`, and an unexpected `500`. New statuses (404/409…) slot
+ * in the same way when a real caller needs them.
  */
 
 /**
@@ -113,3 +113,17 @@ fun unprocessable(code: String, message: String): HttpResponse<ErrorsResponse> =
  */
 fun internalError(code: String, message: String): HttpResponse<ErrorsResponse> =
     HttpResponse.serverError(ErrorsResponse(listOf(ErrorItemResponse("500", code, message))))
+
+private const val RETRY_AFTER_HEADER = "Retry-After"
+
+/**
+ * `429 Too Many Requests` — a request refused by the rate limiter. Stays **scalar** (a single item, no
+ * `source`), the same shape every other cross-cutting failure uses. [retryAfterSeconds] — the current
+ * window's remaining lifetime, never a hardcoded constant — is carried as a [RETRY_AFTER_HEADER] response
+ * header rather than a body field, the same "metadata belongs in a header, not the envelope" precedent the
+ * request-logging filter's correlation id header already set.
+ */
+fun tooManyRequests(code: String, message: String, retryAfterSeconds: Long): HttpResponse<ErrorsResponse> =
+    HttpResponse.status<ErrorsResponse>(HttpStatus.TOO_MANY_REQUESTS)
+        .header(RETRY_AFTER_HEADER, retryAfterSeconds.toString())
+        .body(ErrorsResponse(listOf(ErrorItemResponse("429", code, message))))

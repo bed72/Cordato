@@ -3,6 +3,7 @@ package com.bed.cordato.core.infrastructure.adapters.cache
 import java.time.Duration
 
 import io.lettuce.core.SetArgs
+import io.lettuce.core.ExpireArgs
 import io.lettuce.core.RedisClient
 import io.lettuce.core.api.StatefulRedisConnection
 
@@ -28,6 +29,10 @@ class CacheAdapter(connection: StatefulRedisConnection<String, String>) : CacheP
     }
 
     override fun increment(key: String): Long = commands.incr(key)
+
+    override fun expire(key: String, ttl: Duration) {
+        commands.expire(key, ttl, ExpireArgs().nx())
+    }
 
     companion object {
         fun connect(host: String, port: Int): CacheAdapter =

@@ -17,7 +17,7 @@
 
 - [x] 4.1 Update `PersonControllerTest` request paths to `/v1/persons/me`.
 - [x] 4.2 Update `AuthenticationControllerTest` request paths to `/v1/authentication/sign-up` and `/v1/authentication/sign-in`.
-- [x] 4.3 Update the edge-auth tests driven through `AuthProbeController` (the `@Authenticated`/open probe routes) to the `/v1` paths.
+- [x] 4.3 Update the edge-auth tests driven through `AuthenticationProbeController` (the `@Authenticated`/open probe routes) to the `/v1` paths.
 - [x] 4.4 Run `./gradlew build` — Konsist + all HTTP/unit/integration tests green against the versioned paths.
 
 ## 5. Reconcile docs (post-implementation)

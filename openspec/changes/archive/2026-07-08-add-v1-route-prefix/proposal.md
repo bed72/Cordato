@@ -55,7 +55,7 @@ prefix applied uniformly; a multi-version strategy is a later change if and when
 - **OpenAPI**: `core/infrastructure/http/openapi/` — **no** `@Server` added; a doc comment on
   `OpenApiDefinition` records that the processor already bakes `/v1` into the paths, so a server URL would
   double the prefix.
-- **Tests**: `PersonControllerTest`, `AuthenticationControllerTest`, and the `AuthProbeController`-driven
+- **Tests**: `PersonControllerTest`, `AuthenticationControllerTest`, and the `AuthenticationProbeController`-driven
   edge-auth tests update their request paths to `/v1/...`. No production controller/use-case/domain code
   changes.
 - **Docs**: `CLAUDE.md` gains a short note recording the path-based `/v1` versioning decision, the

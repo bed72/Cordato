@@ -18,3 +18,4 @@ self-contained decision; read the ones relevant to what you're touching rather t
 - [0012 — Edge authentication](0012-edge-authentication.md)
 - [0013 — Cross-context communication](0013-cross-context-communication.md)
 - [0014 — The HTTP response envelope](0014-http-response-envelope.md)
+- [0015 — HTTP rate limiting](0015-http-rate-limiting.md)

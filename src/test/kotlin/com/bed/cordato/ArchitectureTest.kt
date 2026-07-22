@@ -5,7 +5,7 @@ import kotlin.test.Test
 import com.lemonappdev.konsist.api.Konsist
 import com.lemonappdev.konsist.api.verify.assertFalse
 
-class ArchitectureTest {
+internal class ArchitectureTest {
 
     private val production = Konsist.scopeFromProduction()
 
@@ -70,9 +70,11 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `budget, expense and identity never depend on a sibling context`() {
+    fun `budget, expense and identity never depend on a sibling context, except the sanctioned budget to expense ACL`() {
+        // ADR 0013: budget -> expense is a sanctioned, one-way ACL dependency (budget asks expense for a
+        // summed amount; expense never knows budget exists) — the same pattern couple uses over both.
         val siblings = mapOf(
-            "budget" to listOf("expense", "identity", "couple"),
+            "budget" to listOf("identity", "couple"),
             "expense" to listOf("budget", "identity", "couple"),
             "identity" to listOf("budget", "expense", "couple"),
         )
