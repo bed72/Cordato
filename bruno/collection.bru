@@ -1,0 +1,22 @@
+headers {
+  Content-Type: application/json
+}
+
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Every request below inherits this Bearer auth (`auth: inherit`), pointed at the
+  `{{token}}` environment variable. That variable is never typed by hand: run
+  `authentication/Sign In` once and its post-response script writes the fresh token
+  into the active environment for every other request to reuse.
+
+  `authentication/Sign Up` and `authentication/Sign In` themselves opt out with
+  `auth: none` since they are the routes that *mint* a session and must not require
+  one.
+}

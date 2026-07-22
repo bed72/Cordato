@@ -1,0 +1,21 @@
+meta {
+  name: List Expenses
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/expenses?limit=20
+  body: none
+  auth: inherit
+}
+
+params:query {
+  limit: 20
+}
+
+docs {
+  Cursor-paginated. When the response's `meta.pagination.next_cursor` (or
+  `links.next`) is present, copy it into a `cursor` query param to fetch the next
+  page — there is no next page once both are absent.
+}

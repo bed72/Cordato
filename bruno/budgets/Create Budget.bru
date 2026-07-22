@@ -1,0 +1,26 @@
+meta {
+  name: Create Budget
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/budgets
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "amount_in_cents": 100000,
+    "start_date": "2026-07-01",
+    "end_date": "2026-07-31",
+    "note": "Viagem de férias"
+  }
+}
+
+docs {
+  `note` is optional. The owner always comes from `{{token}}`'s actor, never the body.
+  Rejected with a 422 if this overlaps another live budget of the same person (even by
+  a shared boundary day) or if `end_date` is before `start_date`.
+}

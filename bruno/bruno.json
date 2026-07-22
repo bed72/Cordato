@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Cordato",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

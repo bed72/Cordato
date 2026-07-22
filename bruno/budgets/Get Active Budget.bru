@@ -1,0 +1,16 @@
+meta {
+  name: Get Active Budget
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/budgets/active
+  body: none
+  auth: inherit
+}
+
+docs {
+  Always 200; `data` is `null` when the actor has no live budget covering today —
+  never a 404.
+}

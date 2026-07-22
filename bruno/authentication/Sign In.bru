@@ -1,0 +1,44 @@
+meta {
+  name: Sign In
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/authentication/sign-in
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "password": "{{password}}"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("token", res.body.data.token);
+  }
+}
+
+tests {
+  test("stores the bearer token", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(bru.getVar("token")).to.be.a("string");
+  });
+}
+
+docs {
+  Run this first (after Sign Up) — the post-response script saves `data.token` into a
+  runtime variable `{{token}}`, which every other request in this collection picks up
+  automatically through the collection-level Bearer auth. No more copying a token out
+  of a response and pasting it into headers by hand.
+
+  `bru.setVar` (not `setEnvVar`) is deliberate: it keeps the live token in memory only
+  for this Bruno session, so it's never written to the git-tracked `Local.bru`
+  environment file.
+
+  Rate-limited to 5 req/min (SENSITIVE tier), same as Sign Up.
+}

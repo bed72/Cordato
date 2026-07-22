@@ -1,0 +1,27 @@
+meta {
+  name: Sign Up
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/authentication/sign-up
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "{{name}}",
+    "email": "{{email}}",
+    "password": "{{password}}"
+  }
+}
+
+docs {
+  Creates a new person. Rate-limited to 5 req/min (SENSITIVE tier).
+
+  Run once per unique `{{email}}` — re-running with the same e-mail returns a domain
+  conflict, worded neutrally so it never confirms whether the e-mail already existed.
+  If you get that conflict, just move on to `Sign In`.
+}
