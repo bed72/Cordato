@@ -17,10 +17,16 @@ import com.bed.cordato.core.infrastructure.http.responses.created
 import com.bed.cordato.core.infrastructure.http.rate_limit.annotations.RateLimited
 import com.bed.cordato.core.infrastructure.http.rate_limit.annotations.RateLimitTierEnum
 
+import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
+import com.bed.cordato.core.infrastructure.http.authentication.annotations.Authenticated
+
 import com.bed.cordato.features.identity.application.driving.results.SignUpResult
 import com.bed.cordato.features.identity.application.driving.results.SignInResult
+import com.bed.cordato.features.identity.application.driving.results.SignOutResult
+import com.bed.cordato.features.identity.application.driving.commands.SignOutCommand
 import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.SignInUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.SignOutUseCase
 
 import com.bed.cordato.features.identity.infrastructure.http.requests.SignUpRequest
 import com.bed.cordato.features.identity.infrastructure.http.requests.SignInRequest
@@ -30,8 +36,8 @@ import com.bed.cordato.features.identity.infrastructure.http.mappers.responses.t
 import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.AuthenticationControllerDoc
 
 /**
- * Identity's authentication driving (primary/inbound) HTTP adapter — the open entry points that *mint* a
- * session: `sign-up` and `sign-in`. Contained user operations on an already-authenticated person
+ * Identity's authentication driving (primary/inbound) HTTP adapter — the entry points that *mint* or *end* a
+ * session: `sign-up`, `sign-in`, and `sign-out`. Contained user operations on an already-authenticated person
  * (`GET`/`PATCH`/`DELETE`) belong on a separate `PersonController`, kept apart from these auth flows.
  *
  * This is the one infrastructure type that
@@ -52,7 +58,10 @@ import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.Au
  *
  * The OpenAPI documentation lives on the implemented [AuthenticationControllerDoc] interface, not here: Micronaut
  * inherits the interface's annotation metadata onto this method, so the controller keeps only routing
- * (`@Controller`/`@Post`), validation (`@Validated`/`@Body`/`@Valid`) and delegation.
+ * (`@Controller`/`@Post`), validation (`@Validated`/`@Body`/`@Valid`) and delegation. `sign-out` is
+ * `@Authenticated` (guarded by the edge filter, not Bean Validation) and, unlike `sign-up`/`sign-in`, is not
+ * yet part of [AuthenticationControllerDoc] — its OpenAPI documentation is deferred (see the
+ * `add-identity-sign-out` change proposal).
  */
 @Validated
 @Controller("/authentication")
@@ -60,6 +69,7 @@ class AuthenticationController(
     private val messages: MessagePort,
     private val signUpUseCase: SignUpUseCase,
     private val signInUseCase: SignInUseCase,
+    private val signOutUseCase: SignOutUseCase,
 ) : AuthenticationControllerDoc {
 
     @Post("/sign-up")
@@ -78,5 +88,13 @@ class AuthenticationController(
         when (val data = signInUseCase(request.toCommand())) {
             is SignInResult.Failure -> data.error.toResponse(messages)
             is SignInResult.Success -> ok(data.toResponse())
+        }
+
+    @Authenticated
+    @Post("/sign-out")
+    @Status(HttpStatus.NO_CONTENT)
+    fun signOut(actor: AuthenticatedActor): HttpResponse<*> =
+        when (signOutUseCase(SignOutCommand(actor.sessionId))) {
+            is SignOutResult.Success -> HttpResponse.noContent<Any>()
         }
 }

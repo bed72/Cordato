@@ -1,0 +1,32 @@
+meta {
+  name: Sign Out
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/authentication/sign-out
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  if (res.getStatus() === 204) {
+    bru.setVar("token", "");
+  }
+}
+
+tests {
+  test("ends the current session", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Ends the session behind `{{token}}` (the one that authenticated this exact request) —
+  no body in, no body out. The post-response script clears the stored `{{token}}` var,
+  since the token no longer resolves; run `Sign In` again to get a fresh one.
+
+  Re-running this request (or any other) with the now-cleared/stale token gets the
+  neutral `401`, same as any missing session.
+}

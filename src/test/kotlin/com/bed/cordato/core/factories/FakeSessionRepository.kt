@@ -6,8 +6,8 @@ import com.bed.cordato.core.domain.entities.SessionEntity
 import com.bed.cordato.core.application.driven.repositories.SessionRepository
 
 const val LIVE_TOKEN = "live-token"
-const val SESSION_PERSON_ID = "person-1"
 const val LIVE_SESSION_ID = "session-1"
+const val SESSION_PERSON_ID = "person-1"
 
 /**
  * Deterministic [SessionRepository] fake for the edge-auth guard: only [LIVE_TOKEN] resolves to a live
@@ -38,4 +38,6 @@ class FakeSessionRepository : SessionRepository {
         sparedSessionId = sessionId
         return 0
     }
+
+    override fun revoke(sessionId: String): Boolean = sessionId == LIVE_SESSION_ID
 }

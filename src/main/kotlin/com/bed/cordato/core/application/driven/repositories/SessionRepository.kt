@@ -10,6 +10,18 @@ import com.bed.cordato.core.domain.entities.SessionEntity
  * edge guard to consume. Implemented in core/infrastructure.
  */
 interface SessionRepository {
+
+    /**
+     * Revokes the single session identified by [sessionId] — the counterpart to [revokeAllForPersonExcept],
+     * scoped by session id alone (no `personId` needed). Revocation is **server-authoritative**: a revoked
+     * session stops being resolved by [findActiveByToken] immediately, collapsing into the same absent result
+     * an unknown token yields. "Nothing to revoke" (an unknown or already-revoked [sessionId]) is a valid
+     * result — returns `false`, never an error.
+     *
+     * @return `true` when a live session was revoked; `false` when there was none to revoke.
+     */
+    fun revoke(sessionId: String): Boolean
+
     /**
      * Persists [session].
      *
@@ -38,4 +50,5 @@ interface SessionRepository {
      * @return the number of sessions revoked (`0` when there were no other live sessions to revoke).
      */
     fun revokeAllForPersonExcept(personId: String, sessionId: String): Int
+
 }

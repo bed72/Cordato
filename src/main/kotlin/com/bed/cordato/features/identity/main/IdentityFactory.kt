@@ -16,6 +16,7 @@ import com.bed.cordato.features.identity.application.driving.use_cases.MeUseCase
 import com.bed.cordato.features.identity.application.driven.ports.PasswordHasherPort
 import com.bed.cordato.features.identity.application.driving.use_cases.SignUpUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.SignInUseCase
+import com.bed.cordato.features.identity.application.driving.use_cases.SignOutUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdateNameUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdateEmailUseCase
 import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
@@ -89,4 +90,9 @@ class IdentityFactory {
         personRepository = personRepository,
         sessionRepository = sessionRepository
     )
+
+    // The session repository comes from CoreFactory; sign-out needs no other collaborator, just the guard-
+    // resolved sessionId the command already carries.
+    @Singleton
+    fun signOutUseCase(sessionRepository: SessionRepository): SignOutUseCase = SignOutUseCase(sessionRepository)
 }

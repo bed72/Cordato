@@ -47,14 +47,16 @@ class PersistenceSessionRepository(
             .fetchOne()
             ?.toEntity()
 
-    // Mass revocation gated on the person id, sparing the current session by its id. The revoked rows leave the
-    // datastore, so findActiveByToken can no longer resolve their tokens — the revocation is authoritative. No
-    // other live session ⇒ zero rows deleted ⇒ 0, a valid "nothing to revoke", never an error.
     override fun revokeAllForPersonExcept(personId: String, sessionId: String): Int =
         dsl.deleteFrom(SESSION)
             .where(SESSION.PERSON_ID.eq(personId))
             .and(SESSION.ID.ne(sessionId))
             .execute()
+
+    override fun revoke(sessionId: String): Boolean =
+        dsl.deleteFrom(SESSION)
+            .where(SESSION.ID.eq(sessionId))
+            .execute() > 0
 
     private companion object {
         const val UNIQUE_VIOLATION = "23505"
