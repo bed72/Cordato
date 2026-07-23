@@ -64,8 +64,8 @@ data class ErrorSourceResponse(
  *
  * The set covers the statuses the API actually emits in this body today: an edge/malformed `400` (the only
  * one that may carry a per-field breakdown — every other case is scalar), an authentication `401`, a
- * domain-rejection `422`, a rate-limit refusal `429`, and an unexpected `500`. New statuses (404/409…) slot
- * in the same way when a real caller needs them.
+ * domain-rejection `422`, a not-found `404`, a rate-limit refusal `429`, and an unexpected `500`. New
+ * statuses (409…) slot in the same way when a real caller needs them.
  */
 
 /**
@@ -106,6 +106,16 @@ fun unauthorized(code: String, message: String): HttpResponse<ErrorsResponse> =
 fun unprocessable(code: String, message: String): HttpResponse<ErrorsResponse> =
     HttpResponse.status<ErrorsResponse>(HttpStatus.UNPROCESSABLE_ENTITY)
         .body(ErrorsResponse(listOf(ErrorItemResponse("422", code, message))))
+
+/**
+ * `404 Not Found` — a resource the caller cannot act on: it never existed, or it exists but isn't the
+ * caller's to see (owner mismatch collapses into the same response as "doesn't exist", never a `403`, so
+ * the endpoint can't be used as an existence oracle). Stays **scalar** (a single item, no `source`); a
+ * missing/mismatched resource is never a per-field breakdown.
+ */
+fun notFound(code: String, message: String): HttpResponse<ErrorsResponse> =
+    HttpResponse.status<ErrorsResponse>(HttpStatus.NOT_FOUND)
+        .body(ErrorsResponse(listOf(ErrorItemResponse("404", code, message))))
 
 /**
  * `500 Internal Server Error` — an unexpected failure. Always scalar and neutral; the caller logs the real

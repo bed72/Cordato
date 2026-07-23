@@ -5,6 +5,7 @@ import jakarta.validation.Valid
 import io.micronaut.http.MediaType
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.Body
+import io.micronaut.http.annotation.PathVariable
 
 import io.swagger.v3.oas.annotations.tags.Tag
 import io.swagger.v3.oas.annotations.Operation
@@ -17,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 
 import com.bed.cordato.features.budget.infrastructure.http.requests.CreateBudgetRequest
+import com.bed.cordato.features.budget.infrastructure.http.requests.UpdateBudgetRequest
 
 import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
@@ -32,6 +34,8 @@ private const val MALFORMED_400 =
     """{"errors":[{"status":"400","code":"MALFORMED_REQUEST","message":"O corpo da requisição está ausente ou é inválido."}]}"""
 private const val UNAUTHENTICATED_401 =
     """{"errors":[{"status":"401","code":"UNAUTHENTICATED","message":"Autenticação necessária."}]}"""
+private const val BUDGET_NOT_FOUND_404 =
+    """{"errors":[{"status":"404","code":"BUDGET_NOT_FOUND","message":"Orçamento não encontrado."}]}"""
 private const val INTERNAL_500 =
     """{"errors":[{"status":"500","code":"INTERNAL_ERROR","message":"Ocorreu um erro inesperado. Tente novamente mais tarde."}]}"""
 
@@ -142,6 +146,170 @@ interface BudgetControllerDoc {
     fun create(
         @Parameter(hidden = true) actor: AuthenticatedActor,
         @Body @Valid request: CreateBudgetRequest,
+    ): HttpResponse<*>
+
+    @Operation(
+        operationId = "updateBudget",
+        summary = "Edita um orçamento vivo da pessoa autenticada",
+        description = "Edita o valor, o intervalo de datas e a anotação de um orçamento **vivo** " +
+            "pertencente à pessoa dona da sessão viva, identificado pelo `id` na URL — o dono vem sempre " +
+            "do ator autenticado, nunca do corpo. Os três campos mutáveis são sempre reenviados juntos, " +
+            "mesmo formato da criação; não há edição de um único campo isolado. Reaplica as mesmas regras " +
+            "de domínio da criação (valor > 0, intervalo com fim ≥ início, anotação opcional/aparada/" +
+            "limitada) e a invariante de não-sobreposição contra os demais orçamentos vivos da pessoa " +
+            "(o próprio orçamento editado nunca compete contra si mesmo). Retorna a visão pública do " +
+            "orçamento atualizado. Um `id` que não existe, que já está removido, ou que pertence a outra " +
+            "pessoa produzem o **mesmo** `404` — o sistema nunca revela, a quem não é dono, se um `id` de " +
+            "orçamento existe. A rota é protegida: sem um `Authorization: Bearer` válido o guard de borda " +
+            "recusa com o `401` neutro compartilhado, antes do handler.",
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Orçamento atualizado; `data` (`BudgetResponse`) traz a visão pública do orçamento editado.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = BudgetDataResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Corpo ausente/inválido, ou campo que viola as restrições de borda (valor ausente/não-positivo, datas ausentes, anotação acima do máximo).",
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = MALFORMED_400)],
+                ),
+            ],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "Orçamento não encontrado: `id` inexistente, já removido, ou pertencente a outra pessoa — as três situações produzem a mesma resposta.",
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = BUDGET_NOT_FOUND_404)],
+                ),
+            ],
+        ),
+        ApiResponse(
+            responseCode = "422",
+            description = "Orçamento bem-formado, porém rejeitado por uma invariante de domínio (valor ≤ 0, intervalo inválido, anotação longa demais, sobreposição com outro orçamento vivo); todas compartilham o `422`.",
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [
+                        ExampleObject(
+                            name = "invalid_amount",
+                            summary = "Valor não positivo",
+                            value = """{"errors":[{"status":"422","code":"INVALID_AMOUNT","message":"O valor do orçamento deve ser maior que zero."}]}""",
+                        ),
+                        ExampleObject(
+                            name = "invalid_period",
+                            summary = "Fim anterior ao início",
+                            value = """{"errors":[{"status":"422","code":"INVALID_PERIOD","message":"A data de fim não pode ser anterior à data de início."}]}""",
+                        ),
+                        ExampleObject(
+                            name = "invalid_note",
+                            summary = "Anotação longa demais",
+                            value = """{"errors":[{"status":"422","code":"INVALID_NOTE","message":"A anotação do orçamento excede o comprimento máximo."}]}""",
+                        ),
+                        ExampleObject(
+                            name = "overlapping_budget",
+                            summary = "Sobreposição com orçamento vivo",
+                            value = """{"errors":[{"status":"422","code":"OVERLAPPING_BUDGET","message":"Já existe um orçamento vivo que se sobrepõe a esse intervalo de datas."}]}""",
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        ApiResponse(
+            responseCode = "500",
+            description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
+        ),
+    )
+    fun update(
+        @Parameter(hidden = true) actor: AuthenticatedActor,
+        @Parameter(description = "Identificador do orçamento a editar.") @PathVariable id: String,
+        @Body @Valid request: UpdateBudgetRequest,
+    ): HttpResponse<*>
+
+    @Operation(
+        operationId = "deleteBudget",
+        summary = "Remove (soft-delete) um orçamento vivo da pessoa autenticada",
+        description = "Remove de forma recuperável (soft-delete) um orçamento **vivo** pertencente à " +
+            "pessoa dona da sessão viva, identificado pelo `id` na URL — o dono vem sempre do ator " +
+            "autenticado. O orçamento passa para o estado removido; nenhum dado é apagado fisicamente. A " +
+            "partir da remoção, o orçamento deixa de competir na invariante de não-sobreposição e de " +
+            "aparecer nas visões ativa/`default`; nenhum gasto é tocado. Retorna a visão pública do " +
+            "orçamento, já no estado removido. Um `id` que não existe, que já está removido, ou que " +
+            "pertence a outra pessoa produzem o **mesmo** `404` — o sistema nunca revela, a quem não é " +
+            "dono, se um `id` de orçamento existe. A rota é protegida: sem um `Authorization: Bearer` " +
+            "válido o guard de borda recusa com o `401` neutro compartilhado, antes do handler.",
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Orçamento removido; `data` (`BudgetResponse`) traz a visão pública do orçamento, já no estado removido.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = BudgetDataResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "Orçamento não encontrado: `id` inexistente, já removido, ou pertencente a outra pessoa — as três situações produzem a mesma resposta.",
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = BUDGET_NOT_FOUND_404)],
+                ),
+            ],
+        ),
+        ApiResponse(
+            responseCode = "500",
+            description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
+        ),
+    )
+    fun delete(
+        @Parameter(hidden = true) actor: AuthenticatedActor,
+        @Parameter(description = "Identificador do orçamento a remover.") @PathVariable id: String,
     ): HttpResponse<*>
 
     @Operation(

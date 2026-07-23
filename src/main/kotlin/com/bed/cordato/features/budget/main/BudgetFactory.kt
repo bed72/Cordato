@@ -11,8 +11,12 @@ import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
 
 import com.bed.cordato.features.budget.application.driven.ports.ExpenseTotalSpentPort
 import com.bed.cordato.features.budget.application.driven.ports.ExpenseSpentAmountPort
+
 import com.bed.cordato.features.budget.application.driven.repositories.BudgetRepository
+
 import com.bed.cordato.features.budget.application.driving.use_cases.CreateBudgetUseCase
+import com.bed.cordato.features.budget.application.driving.use_cases.UpdateBudgetUseCase
+import com.bed.cordato.features.budget.application.driving.use_cases.DeleteBudgetUseCase
 import com.bed.cordato.features.budget.application.driving.use_cases.GetActiveBudgetUseCase
 import com.bed.cordato.features.budget.application.driving.use_cases.GetDefaultBudgetUseCase
 
@@ -44,6 +48,14 @@ class BudgetFactory {
     @Singleton
     fun createBudgetUseCase(generator: IdGeneratorPort, repository: BudgetRepository): CreateBudgetUseCase =
         CreateBudgetUseCase(generator, repository)
+
+    @Singleton
+    fun updateBudgetUseCase(repository: BudgetRepository): UpdateBudgetUseCase =
+        UpdateBudgetUseCase(repository)
+
+    @Singleton
+    fun deleteBudgetUseCase(repository: BudgetRepository): DeleteBudgetUseCase =
+        DeleteBudgetUseCase(repository)
 
     @Singleton
     fun expenseSpentAmountPort(useCase: SumExpensesInRangeUseCase): ExpenseSpentAmountPort =

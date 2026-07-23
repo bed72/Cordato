@@ -228,4 +228,88 @@ class PersistenceBudgetRepositoryTest {
 
         assertEquals(emptyList(), found)
     }
+
+    @Test
+    fun `findById finds a budget of any owner and status`() {
+        repository.create(budget(id = "a", personId = "person-2", status = BudgetStatusEnum.DELETED))
+
+        val found = repository.findById("a")
+
+        assertEquals("a", found?.id)
+    }
+
+    @Test
+    fun `findById returns null for an unknown id`() {
+        assertNull(repository.findById("unknown"))
+    }
+
+    @Test
+    fun `update changes the amount, period and note of an existing budget`() {
+        repository.create(budget(id = "a", note = "Original", amountInCents = 10_000, startDate = LocalDate.of(2026, 7, 1), endDate = LocalDate.of(2026, 7, 10)))
+
+        val updated = budget(id = "a", note = "Editada", amountInCents = 50_000, startDate = LocalDate.of(2026, 8, 1), endDate = LocalDate.of(2026, 8, 10))
+        repository.update(updated)
+
+        val found = repository.findById("a")
+        assertEquals(updated, found)
+    }
+
+    @Test
+    fun `delete removes a live budget owned by the caller`() {
+        repository.create(budget(id = "a", personId = "person-1"))
+
+        val deleted = repository.delete("a", "person-1")
+
+        assertTrue(deleted)
+        assertEquals(BudgetStatusEnum.DELETED, repository.findById("a")?.status)
+    }
+
+    @Test
+    fun `delete does not affect a budget owned by another person`() {
+        repository.create(budget(id = "a", personId = "person-1"))
+
+        val deleted = repository.delete("a", "person-2")
+
+        assertFalse(deleted)
+        assertEquals(BudgetStatusEnum.LIVE, repository.findById("a")?.status)
+    }
+
+    @Test
+    fun `delete does not affect an already removed budget`() {
+        repository.create(budget(id = "a", personId = "person-1", status = BudgetStatusEnum.DELETED))
+
+        val deleted = repository.delete("a", "person-1")
+
+        assertFalse(deleted)
+    }
+
+    @Test
+    fun `delete does not affect an unknown id`() {
+        val deleted = repository.delete("unknown", "person-1")
+
+        assertFalse(deleted)
+    }
+
+    @Test
+    fun `hasOverlappingLiveBudget with excludeId does not count the budget being excluded`() {
+        repository.create(budget(id = "a", personId = "person-1", startDate = LocalDate.of(2026, 7, 1), endDate = LocalDate.of(2026, 7, 15)))
+
+        val overlaps = repository.hasOverlappingLiveBudget(
+            "person-1",
+            LocalDate.of(2026, 7, 1),
+            LocalDate.of(2026, 7, 15),
+            excludeId = "a",
+        )
+
+        assertFalse(overlaps)
+    }
+
+    @Test
+    fun `hasOverlappingLiveBudget without excludeId behaves exactly as before`() {
+        repository.create(budget(id = "a", personId = "person-1", startDate = LocalDate.of(2026, 7, 1), endDate = LocalDate.of(2026, 7, 15)))
+
+        val overlaps = repository.hasOverlappingLiveBudget("person-1", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 15))
+
+        assertTrue(overlaps)
+    }
 }
