@@ -20,6 +20,9 @@ import com.bed.cordato.features.expense.application.driven.repositories.ExpenseR
  * [sumAmountInRange] sums the [created] expenses owned by [personId] whose date falls within
  * `[startDate, endDate]` (both included) — an in-memory replay of the real adapter's `SUM`/`COALESCE`
  * query, `0` when nothing matches.
+ *
+ * [sumAmount] sums **all** [created] expenses owned by [personId], with no date filter — same replay
+ * posture, `0` when the person has none.
  */
 class FakeExpenseRepository : ExpenseRepository {
     val created = mutableListOf<ExpenseEntity>()
@@ -38,6 +41,11 @@ class FakeExpenseRepository : ExpenseRepository {
         created
             .filter { it.personId == personId }
             .filter { it.date.value in startDate..endDate }
+            .sumOf { it.amount.cents }
+
+    override fun sumAmount(personId: String): Long =
+        created
+            .filter { it.personId == personId }
             .sumOf { it.amount.cents }
 
     private fun isAfter(expense: ExpenseEntity, cursor: ExpenseCursorValueObject): Boolean =

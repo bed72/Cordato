@@ -8,18 +8,18 @@ import kotlin.test.assertNull
 import kotlin.test.BeforeTest
 import kotlin.test.assertEquals
 
+import org.testcontainers.DockerClientFactory
+
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.Assumptions.assumeTrue
 
-import org.testcontainers.DockerClientFactory
-
 import com.bed.cordato.core.infrastructure.persistence.models.Tables.EXPENSE
 
 import com.bed.cordato.features.expense.factories.expense
-import com.bed.cordato.features.expense.domain.value_objects.ExpenseCursorValueObject
 import com.bed.cordato.features.expense.infrastructure.repositories.mappers.toEntity
+import com.bed.cordato.features.expense.domain.value_objects.ExpenseCursorValueObject
 
 import com.bed.cordato.support.PostgresHarness
 
@@ -31,8 +31,6 @@ class PersistenceExpenseRepositoryTest {
 
     @BeforeAll
     fun startContainer() {
-        // Testcontainers needs a Docker daemon; when none is reachable, skip (abort) rather than fail the
-        // suite — this test only has meaning against a real PostgreSQL.
         assumeTrue(DockerClientFactory.instance().isDockerAvailable, "Docker unavailable; skipping container test")
         harness.start()
         repository = PersistenceExpenseRepository(harness.dsl)
@@ -91,15 +89,14 @@ class PersistenceExpenseRepositoryTest {
     @Test
     fun `findByPerson returns only the owner's expenses, ordered by spent_on desc then id desc`() {
         val older = expense(id = "a", personId = "person-1", date = LocalDate.of(2026, 7, 1))
+        val other = expense(id = "d", personId = "person-2", date = LocalDate.of(2026, 7, 20))
         val newerLow = expense(id = "b", personId = "person-1", date = LocalDate.of(2026, 7, 10))
         val newerHigh = expense(id = "c", personId = "person-1", date = LocalDate.of(2026, 7, 10))
-        val other = expense(id = "d", personId = "person-2", date = LocalDate.of(2026, 7, 20))
-        // Insert in a scrambled order so the ordering can't be an accident of insertion.
+
         listOf(older, newerLow, other, newerHigh).forEach(repository::create)
 
         val listed = repository.findByPerson("person-1", after = null, limit = 10)
 
-        // Same date → id desc tie-break ("c" before "b"); more recent date first; person-2's row excluded.
         assertEquals(listOf(newerHigh, newerLow, older), listed)
     }
 
@@ -123,16 +120,15 @@ class PersistenceExpenseRepositoryTest {
 
     @Test
     fun `findByPerson continues strictly after the given cursor position, without repeats`() {
-        val newest = expense(id = "c", personId = "person-1", date = LocalDate.of(2026, 7, 10))
         val middle = expense(id = "b", personId = "person-1", date = LocalDate.of(2026, 7, 5))
         val oldest = expense(id = "a", personId = "person-1", date = LocalDate.of(2026, 7, 1))
+        val newest = expense(id = "c", personId = "person-1", date = LocalDate.of(2026, 7, 10))
+
         listOf(oldest, newest, middle).forEach(repository::create)
 
         val cursor = ExpenseCursorValueObject.of(middle.date.value, middle.id)
         val listed = repository.findByPerson("person-1", after = cursor, limit = 10)
 
-        // Continues strictly after "middle" in the deterministic order — neither "middle" nor "newest"
-        // (which comes before it) reappear.
         assertEquals(listOf(oldest), listed)
     }
 
@@ -171,6 +167,24 @@ class PersistenceExpenseRepositoryTest {
     @Test
     fun `sumAmountInRange is zero for a person with no expenses at all`() {
         val total = repository.sumAmountInRange("person-1", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31))
+
+        assertEquals(0, total)
+    }
+
+    @Test
+    fun `sumAmount sums all of the person's expenses regardless of date`() {
+        repository.create(expense(id = "a", personId = "person-1", amountInCents = 1_000, date = LocalDate.of(2026, 7, 1)))
+        repository.create(expense(id = "b", personId = "person-1", amountInCents = 2_000, date = LocalDate.of(2026, 12, 31)))
+        repository.create(expense(id = "c", personId = "person-2", amountInCents = 9_000, date = LocalDate.of(2026, 7, 15)))
+
+        val total = repository.sumAmount("person-1")
+
+        assertEquals(3_000, total)
+    }
+
+    @Test
+    fun `sumAmount is zero for a person with no expenses at all`() {
+        val total = repository.sumAmount("person-1")
 
         assertEquals(0, total)
     }

@@ -16,9 +16,19 @@ import com.bed.cordato.features.budget.application.driven.repositories.BudgetRep
  *
  * [findLiveBudgetCovering] replays the same inclusive-boundary coverage rule, scoped to [personId] and only
  * against [BudgetStatusEnum.LIVE] budgets already [created]; `null` when none covers [date].
+ *
+ * [findAllLiveBudgets] returns every [BudgetStatusEnum.LIVE] budget already [created] owned by [personId],
+ * an empty list when there is none.
  */
 class FakeBudgetRepository : BudgetRepository {
     val created = mutableListOf<BudgetEntity>()
+
+    override fun create(budget: BudgetEntity) {
+        created.add(budget)
+    }
+
+    override fun findAllLiveBudgets(personId: String): List<BudgetEntity> =
+        created.filter { it.personId == personId && it.status == BudgetStatusEnum.LIVE }
 
     override fun hasOverlappingLiveBudget(personId: String, startDate: LocalDate, endDate: LocalDate): Boolean =
         created.any { budget ->
@@ -27,10 +37,6 @@ class FakeBudgetRepository : BudgetRepository {
                 startDate <= budget.period.endDate &&
                 budget.period.startDate <= endDate
         }
-
-    override fun create(budget: BudgetEntity) {
-        created.add(budget)
-    }
 
     override fun findLiveBudgetCovering(personId: String, date: LocalDate): BudgetEntity? =
         created.find { budget ->

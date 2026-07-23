@@ -32,6 +32,9 @@ import com.bed.cordato.features.expense.application.driven.repositories.ExpenseR
  * [sumAmountInRange] is `SELECT COALESCE(SUM(amount_cents), 0) WHERE person_id = ? AND spent_on BETWEEN ?
  * AND ?` — the aggregate (and the `0`-when-nothing-matches fallback) is resolved entirely by PostgreSQL,
  * never by loading rows to sum in the application.
+ *
+ * [sumAmount] is the same query without the date filter — `SELECT COALESCE(SUM(amount_cents), 0) WHERE
+ * person_id = ?`.
  */
 class PersistenceExpenseRepository(private val dsl: DSLContext) : ExpenseRepository {
 
@@ -40,6 +43,14 @@ class PersistenceExpenseRepository(private val dsl: DSLContext) : ExpenseReposit
             .set(expense.toRecord())
             .execute()
     }
+
+    override fun sumAmount(personId: String): Long =
+        dsl.select(coalesce(sum(EXPENSE.AMOUNT_CENTS), BigDecimal.ZERO))
+            .from(EXPENSE)
+            .where(EXPENSE.PERSON_ID.eq(personId))
+            .fetchSingle()
+            .value1()
+            .toLong()
 
     override fun findByPerson(personId: String, after: ExpenseCursorValueObject?, limit: Int): List<ExpenseEntity> {
         var query = dsl.selectFrom(EXPENSE).where(EXPENSE.PERSON_ID.eq(personId))

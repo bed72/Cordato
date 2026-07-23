@@ -26,8 +26,23 @@ import com.bed.cordato.features.budget.application.driven.repositories.BudgetRep
  *
  * [findLiveBudgetCovering] is a single-row lookup on the same shape: a live budget of [personId] covers
  * [date] when `start_date <= date AND end_date >= date`; `null` when none does.
+ *
+ * [findAllLiveBudgets] is a plain filtered SELECT — `WHERE person_id = ? AND status = LIVE`, no ordering
+ * required — an empty list, not `null`, when [personId] has none.
  */
 class PersistenceBudgetRepository(private val dsl: DSLContext) : BudgetRepository {
+
+    override fun create(budget: BudgetEntity) {
+        dsl.insertInto(BUDGET)
+            .set(budget.toRecord())
+            .execute()
+    }
+
+    override fun findAllLiveBudgets(personId: String): List<BudgetEntity> =
+        dsl.selectFrom(BUDGET)
+            .where(BUDGET.PERSON_ID.eq(personId))
+            .and(BUDGET.STATUS.eq(BudgetStatusEnum.LIVE.name))
+            .fetch { it.toEntity() }
 
     override fun hasOverlappingLiveBudget(personId: String, startDate: LocalDate, endDate: LocalDate): Boolean =
         dsl.fetchExists(
@@ -38,12 +53,6 @@ class PersistenceBudgetRepository(private val dsl: DSLContext) : BudgetRepositor
                 .and(BUDGET.START_DATE.le(endDate))
                 .and(BUDGET.END_DATE.ge(startDate)),
         )
-
-    override fun create(budget: BudgetEntity) {
-        dsl.insertInto(BUDGET)
-            .set(budget.toRecord())
-            .execute()
-    }
 
     override fun findLiveBudgetCovering(personId: String, date: LocalDate): BudgetEntity? =
         dsl.selectFrom(BUDGET)

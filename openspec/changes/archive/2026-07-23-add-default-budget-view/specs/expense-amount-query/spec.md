@@ -1,8 +1,5 @@
-# expense-amount-query Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change add-budget-active-view. Update Purpose after archive.
-## Requirements
 ### Requirement: expense expõe somas agregadas por pessoa, nunca gastos individuais
 
 O sistema SHALL expor, na aplicação de `expense`, dois pontos de leitura agregada para consumo por outros
@@ -42,24 +39,3 @@ na aplicação.
 - **WHEN** a pessoa não tem nenhum gasto registrado
 - **THEN** o resultado é `0`
 - **AND** nenhum erro é produzido — zero é uma resposta válida, não uma falha
-
-### Requirement: expense nunca conhece budget nem qualquer outro consumidor desta consulta
-
-O sistema SHALL manter esta consulta agregada como parte da aplicação de `expense`, exposta como o `invoke`
-público de um caso de uso — nunca uma exceção que `expense` faça à regra de "não referenciar nenhum outro
-contexto". `expense/domain` e `expense/application` SHALL NOT importar nenhum tipo de `budget` ou de
-qualquer outro contexto consumidor. Todo consumidor desta consulta (hoje, `budget`) SHALL chamá-la
-in-process através do próprio caso de uso público de `expense`, nunca acessando o `ExpenseRepository` ou
-qualquer tipo interno de `expense` diretamente — a Anti-Corruption Layer (ADR 0013) é responsabilidade do
-consumidor, definida no vocabulário dele.
-
-#### Scenario: expense não importa nada de budget
-
-- **WHEN** o código-fonte de `expense/domain` e `expense/application` é inspecionado
-- **THEN** nenhum tipo de `budget` (ou de qualquer outro contexto) aparece em nenhuma importação
-
-#### Scenario: O consumidor chama o caso de uso público, não o repositório
-
-- **WHEN** `budget` precisa da soma de gastos de uma pessoa num intervalo
-- **THEN** a chamada ocorre através do caso de uso público de `expense` (in-process), nunca por acesso
-  direto ao `ExpenseRepository` de `expense` a partir de `budget`

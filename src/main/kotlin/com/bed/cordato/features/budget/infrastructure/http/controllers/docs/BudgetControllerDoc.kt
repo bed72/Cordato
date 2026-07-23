@@ -186,4 +186,47 @@ interface BudgetControllerDoc {
         ),
     )
     fun active(@Parameter(hidden = true) actor: AuthenticatedActor): HttpResponse<*>
+
+    @Operation(
+        operationId = "getDefaultBudget",
+        summary = "Retorna o orçamento padrão (\"sem orçamento\") da pessoa autenticada",
+        description = "Retorna o gasto somado, em centavos, de todos os gastos vivos do ator que não caem " +
+            "dentro do intervalo de nenhum orçamento vivo dele — um agrupamento fabricado, nunca um " +
+            "orçamento de verdade, sem `id`/`valor`/`anotação`. O valor é recalculado a cada leitura e " +
+            "nunca persistido. Ao contrário de `/active`, não há um conceito de ausência aqui: o " +
+            "agrupamento sempre \"existe\", então a rota sempre responde `200` com `data` presente, mesmo " +
+            "quando o total é zero. A rota é protegida: sem um `Authorization: Bearer` válido o guard de " +
+            "borda recusa com o `401` neutro compartilhado, antes do handler.",
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "`data` (`DefaultBudgetResponse`, sempre presente) traz o gasto somado fora de qualquer orçamento vivo.",
+            content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = DefaultBudgetDataResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "Autenticação necessária; resposta neutra que não distingue token ausente/inválido de sessão órfã.",
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = UNAUTHENTICATED_401)],
+                ),
+            ],
+        ),
+        ApiResponse(
+            responseCode = "500",
+            description = "Falha inesperada; a resposta é neutra e não vaza detalhes internos.",
+            content = [
+                Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ErrorsResponse::class),
+                    examples = [ExampleObject(value = INTERNAL_500)],
+                ),
+            ],
+        ),
+    )
+    fun default(@Parameter(hidden = true) actor: AuthenticatedActor): HttpResponse<*>
 }

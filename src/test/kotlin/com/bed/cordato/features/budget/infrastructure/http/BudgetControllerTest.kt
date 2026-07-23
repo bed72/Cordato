@@ -30,6 +30,8 @@ import com.bed.cordato.core.factories.SESSION_PERSON_ID
 import com.bed.cordato.core.infrastructure.http.responses.DataResponse
 import com.bed.cordato.core.infrastructure.http.responses.ErrorsResponse
 
+import com.bed.cordato.features.expense.application.driven.repositories.ExpenseRepository
+
 import com.bed.cordato.features.budget.factories.budget
 
 import com.bed.cordato.features.budget.domain.entities.BudgetEntity
@@ -37,8 +39,7 @@ import com.bed.cordato.features.budget.domain.value_objects.NoteValueObject
 import com.bed.cordato.features.budget.infrastructure.http.responses.BudgetResponse
 import com.bed.cordato.features.budget.application.driven.repositories.BudgetRepository
 import com.bed.cordato.features.budget.infrastructure.http.responses.ActiveBudgetResponse
-
-import com.bed.cordato.features.expense.application.driven.repositories.ExpenseRepository
+import com.bed.cordato.features.budget.infrastructure.http.responses.DefaultBudgetResponse
 
 private const val DEAD_TOKEN = "dead-token"
 
@@ -70,8 +71,10 @@ internal class BudgetControllerTest {
     fun reset() {
         clearMocks(budgetRepository)
         clearMocks(expenseRepository)
-        every { budgetRepository.hasOverlappingLiveBudget(any(), any(), any()) } returns false
+        every { expenseRepository.sumAmount(any()) } returns 0
+        every { budgetRepository.findAllLiveBudgets(any()) } returns emptyList()
         every { expenseRepository.sumAmountInRange(any(), any(), any()) } returns 0
+        every { budgetRepository.hasOverlappingLiveBudget(any(), any(), any()) } returns false
     }
 
     private fun post(body: Any, authorization: String? = null): HttpRequest<Any> {
@@ -81,6 +84,11 @@ internal class BudgetControllerTest {
 
     private fun getActive(authorization: String? = null): HttpRequest<Any> {
         val request = HttpRequest.GET<Any>("/v1/budgets/active")
+        return if (authorization == null) request else request.header("Authorization", authorization)
+    }
+
+    private fun getDefault(authorization: String? = null): HttpRequest<Any> {
+        val request = HttpRequest.GET<Any>("/v1/budgets/default")
         return if (authorization == null) request else request.header("Authorization", authorization)
     }
 
@@ -100,6 +108,14 @@ internal class BudgetControllerTest {
             exception
         }
 
+    private fun rejectGetDefault(authorization: String? = null): HttpClientResponseException =
+        try {
+            client.toBlocking().exchange(getDefault(authorization), String::class.java)
+            error("Expected the request to be refused with an HTTP error response")
+        } catch (exception: HttpClientResponseException) {
+            exception
+        }
+
     @Test
     fun `an authenticated valid request creates the budget and returns 201`() {
         val persisted = slot<BudgetEntity>()
@@ -108,10 +124,10 @@ internal class BudgetControllerTest {
         val response = client.toBlocking().exchange(
             post(
                 mapOf(
-                    "amount_in_cents" to 100_000,
-                    "start_date" to "2026-07-01",
-                    "end_date" to "2026-07-31",
                     "note" to "  Viagem  ",
+                    "end_date" to "2026-07-31",
+                    "start_date" to "2026-07-01",
+                    "amount_in_cents" to 100_000,
                 ),
                 "Bearer $LIVE_TOKEN",
             ),
@@ -210,10 +226,10 @@ internal class BudgetControllerTest {
 
         val exception = reject(
             mapOf(
-                "amount_in_cents" to 100_000,
-                "start_date" to "2026-07-01",
-                "end_date" to "2026-07-31",
                 "note" to tooLong,
+                "end_date" to "2026-07-31",
+                "start_date" to "2026-07-01",
+                "amount_in_cents" to 100_000,
             ),
             "Bearer $LIVE_TOKEN",
         )
@@ -385,5 +401,93 @@ internal class BudgetControllerTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         verify(exactly = 0) { budgetRepository.findLiveBudgetCovering(any(), any()) }
+    }
+
+    @Test
+    fun `an authenticated request with expenses outside any live budget returns 200 with the total`() {
+        every { expenseRepository.sumAmount(SESSION_PERSON_ID) } returns 30_000
+        every { budgetRepository.findAllLiveBudgets(SESSION_PERSON_ID) } returns emptyList()
+
+        val response = client.toBlocking().exchange(
+            getDefault("Bearer $LIVE_TOKEN"),
+            Argument.of(DataResponse::class.java, DefaultBudgetResponse::class.java),
+        )
+
+        assertEquals(HttpStatus.OK, response.status)
+        assertEquals(30_000, (response.body()!!.data as DefaultBudgetResponse).spentInCents)
+    }
+
+    @Test
+    fun `all expenses covered by live budgets returns 200 with a zero spent amount`() {
+        every { budgetRepository.findAllLiveBudgets(SESSION_PERSON_ID) } returns listOf(
+            budget(id = "budget-1", personId = SESSION_PERSON_ID, startDate = LocalDate.of(2026, 7, 1), endDate = LocalDate.of(2026, 7, 31)),
+        )
+        every { expenseRepository.sumAmount(SESSION_PERSON_ID) } returns 30_000
+        every { expenseRepository.sumAmountInRange(SESSION_PERSON_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)) } returns 30_000
+
+        val response = client.toBlocking().exchange(
+            getDefault("Bearer $LIVE_TOKEN"),
+            Argument.of(DataResponse::class.java, DefaultBudgetResponse::class.java),
+        )
+
+        assertEquals(HttpStatus.OK, response.status)
+        assertEquals(0, (response.body()!!.data as DefaultBudgetResponse).spentInCents)
+    }
+
+    @Test
+    fun `no expenses registered returns 200 with a zero spent amount, never 404`() {
+        val response = client.toBlocking().exchange(
+            getDefault("Bearer $LIVE_TOKEN"),
+            Argument.of(DataResponse::class.java, DefaultBudgetResponse::class.java),
+        )
+
+        assertEquals(HttpStatus.OK, response.status)
+        assertEquals(0, (response.body()!!.data as DefaultBudgetResponse).spentInCents)
+    }
+
+    @Test
+    fun `a removed budget's period no longer counts against the default spend`() {
+        every { budgetRepository.findAllLiveBudgets(SESSION_PERSON_ID) } returns emptyList()
+        every { expenseRepository.sumAmount(SESSION_PERSON_ID) } returns 30_000
+
+        val response = client.toBlocking().exchange(
+            getDefault("Bearer $LIVE_TOKEN"),
+            Argument.of(DataResponse::class.java, DefaultBudgetResponse::class.java),
+        )
+
+        assertEquals(30_000, (response.body()!!.data as DefaultBudgetResponse).spentInCents)
+    }
+
+    @Test
+    fun `another person's budgets and expenses never enter the calculation`() {
+        every { expenseRepository.sumAmount(SESSION_PERSON_ID) } returns 10_000
+        every { budgetRepository.findAllLiveBudgets(SESSION_PERSON_ID) } returns emptyList()
+
+        val response = client.toBlocking().exchange(
+            getDefault("Bearer $LIVE_TOKEN"),
+            Argument.of(DataResponse::class.java, DefaultBudgetResponse::class.java),
+        )
+
+        verify(exactly = 0) { expenseRepository.sumAmount(match { it != SESSION_PERSON_ID }) }
+        assertEquals(10_000, (response.body()!!.data as DefaultBudgetResponse).spentInCents)
+        verify(exactly = 0) { budgetRepository.findAllLiveBudgets(match { it != SESSION_PERSON_ID }) }
+    }
+
+    @Test
+    fun `reading the default budget with no token is refused with a neutral 401 before the use case runs`() {
+        val exception = rejectGetDefault()
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        val item = exception.response.getBody(ErrorsResponse::class.java).get().errors.single()
+        assertEquals("UNAUTHENTICATED", item.code)
+        verify(exactly = 0) { expenseRepository.sumAmount(any()) }
+    }
+
+    @Test
+    fun `reading the default budget with an unresolvable token is refused with a neutral 401`() {
+        val exception = rejectGetDefault("Bearer $DEAD_TOKEN")
+
+        verify(exactly = 0) { expenseRepository.sumAmount(any()) }
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
     }
 }

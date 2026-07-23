@@ -23,14 +23,20 @@ import com.bed.cordato.features.expense.domain.value_objects.ExpenseCursorValueO
  *
  * [sumAmountInRange] answers the total, in cents, of [personId]'s expenses whose date falls within
  * `[startDate, endDate]` (both included) — resolved entirely in the datastore (`SUM` with `COALESCE` to
- * `0`), never by loading rows to sum in memory. This is the single aggregate question `expense` answers
- * about its own data to anyone outside (today, `budget`, through its own ACL) — never an individual expense
- * nor the list of them. A person with nothing in range yields `0`, not an error.
+ * `0`), never by loading rows to sum in memory. This is one of the two aggregate questions `expense`
+ * answers about its own data to anyone outside (today, `budget`, through its own ACL) — never an individual
+ * expense nor the list of them. A person with nothing in range yields `0`, not an error.
+ *
+ * [sumAmount] answers the total, in cents, of **all** of [personId]'s expenses, with no date limit — same
+ * resolution posture as [sumAmountInRange] (`SUM`/`COALESCE` in the datastore, never in memory). A person
+ * with no expenses at all yields `0`, not an error.
  */
 interface ExpenseRepository {
     fun create(expense: ExpenseEntity)
 
-    fun findByPerson(personId: String, after: ExpenseCursorValueObject?, limit: Int): List<ExpenseEntity>
+    fun sumAmount(personId: String): Long
 
     fun sumAmountInRange(personId: String, startDate: LocalDate, endDate: LocalDate): Long
+
+    fun findByPerson(personId: String, after: ExpenseCursorValueObject?, limit: Int): List<ExpenseEntity>
 }

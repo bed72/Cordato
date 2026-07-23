@@ -10,12 +10,13 @@ import kotlin.test.BeforeTest
 import kotlin.test.assertFalse
 import kotlin.test.assertEquals
 
+import org.testcontainers.DockerClientFactory
+
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.Assumptions.assumeTrue
 
-import org.testcontainers.DockerClientFactory
 
 import com.bed.cordato.core.infrastructure.persistence.models.Tables.BUDGET
 
@@ -33,8 +34,6 @@ class PersistenceBudgetRepositoryTest {
 
     @BeforeAll
     fun startContainer() {
-        // Testcontainers needs a Docker daemon; when none is reachable, skip (abort) rather than fail the
-        // suite — this test only has meaning against a real PostgreSQL.
         assumeTrue(DockerClientFactory.instance().isDockerAvailable, "Docker unavailable; skipping container test")
         harness.start()
         repository = PersistenceBudgetRepository(harness.dsl)
@@ -53,11 +52,11 @@ class PersistenceBudgetRepositoryTest {
     fun `a created budget survives being re-read from the datastore`() {
         val stored = budget(
             id = "budget-1",
+            note = "Mercado",
             personId = "person-1",
             amountInCents = 259_900,
-            note = "Mercado",
-            startDate = LocalDate.of(2026, 7, 1),
             endDate = LocalDate.of(2026, 7, 31),
+            startDate = LocalDate.of(2026, 7, 1),
         )
 
         repository.create(stored)
@@ -115,9 +114,9 @@ class PersistenceBudgetRepositoryTest {
             budget(
                 id = "a",
                 personId = "person-1",
-                startDate = LocalDate.of(2026, 7, 1),
-                endDate = LocalDate.of(2026, 7, 15),
                 status = BudgetStatusEnum.DELETED,
+                endDate = LocalDate.of(2026, 7, 15),
+                startDate = LocalDate.of(2026, 7, 1),
             ),
         )
 
@@ -168,8 +167,8 @@ class PersistenceBudgetRepositoryTest {
                 id = "a",
                 personId = "person-1",
                 status = BudgetStatusEnum.DELETED,
-                startDate = LocalDate.of(2026, 7, 1),
                 endDate = LocalDate.of(2026, 7, 31),
+                startDate = LocalDate.of(2026, 7, 1),
             ),
         )
 
@@ -185,5 +184,48 @@ class PersistenceBudgetRepositoryTest {
         val found = repository.findLiveBudgetCovering("person-1", LocalDate.of(2026, 7, 15))
 
         assertNull(found)
+    }
+
+    @Test
+    fun `findAllLiveBudgets finds every live budget of the person`() {
+        repository.create(budget(id = "a", personId = "person-1", startDate = LocalDate.of(2026, 7, 1), endDate = LocalDate.of(2026, 7, 15)))
+        repository.create(budget(id = "b", personId = "person-1", startDate = LocalDate.of(2026, 7, 16), endDate = LocalDate.of(2026, 7, 31)))
+
+        val found = repository.findAllLiveBudgets("person-1")
+
+        assertEquals(setOf("a", "b"), found.map { it.id }.toSet())
+    }
+
+    @Test
+    fun `findAllLiveBudgets returns an empty list for a person with no live budget`() {
+        val found = repository.findAllLiveBudgets("person-1")
+
+        assertEquals(emptyList(), found)
+    }
+
+    @Test
+    fun `findAllLiveBudgets never returns a removed budget`() {
+        repository.create(
+            budget(
+                id = "a",
+                personId = "person-1",
+                status = BudgetStatusEnum.DELETED,
+                endDate = LocalDate.of(2026, 7, 31),
+                startDate = LocalDate.of(2026, 7, 1),
+            ),
+        )
+
+        val found = repository.findAllLiveBudgets("person-1")
+
+        assertEquals(emptyList(), found)
+    }
+
+    @Test
+    fun `findAllLiveBudgets never returns budgets of another person`() {
+        repository.create(budget(id = "a", personId = "person-2", startDate = LocalDate.of(2026, 7, 1), endDate = LocalDate.of(2026, 7, 31)))
+
+        val found = repository.findAllLiveBudgets("person-1")
+
+        assertEquals(emptyList(), found)
     }
 }

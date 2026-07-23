@@ -23,14 +23,19 @@ import com.bed.cordato.features.expense.infrastructure.repositories.mappers.toEx
  * owns what's expense-specific: the cursor/limit token that becomes the cache key's [suffix], and the JSON
  * (de)serialization of [ExpenseEntity] lists.
  *
- * [sumAmountInRange] passes straight through to [repository], uncached: it isn't reached from any of
- * expense's own routes, only in-process by `budget`'s ACL adapter, and its result isn't the shape this
- * decorator's key/invalidation scheme is built around.
+ * [sumAmountInRange]/[sumAmount] pass straight through to [repository], uncached: neither is reached from
+ * any of expense's own routes, only in-process by `budget`'s ACL adapters, and their result isn't the shape
+ * this decorator's key/invalidation scheme is built around.
  */
 class CachingExpenseRepository(
     private val repository: ExpenseRepository,
     private val adapter: GenerationalCacheAdapter,
 ) : ExpenseRepository {
+
+    override fun sumAmount(personId: String): Long = repository.sumAmount(personId)
+
+    override fun sumAmountInRange(personId: String, startDate: LocalDate, endDate: LocalDate): Long =
+        repository.sumAmountInRange(personId, startDate, endDate)
 
     override fun create(expense: ExpenseEntity) {
         repository.create(expense)
@@ -47,9 +52,6 @@ class CachingExpenseRepository(
 
         return fetched
     }
-
-    override fun sumAmountInRange(personId: String, startDate: LocalDate, endDate: LocalDate): Long =
-        repository.sumAmountInRange(personId, startDate, endDate)
 
     private fun suffix(after: ExpenseCursorValueObject?, limit: Int): String {
         val token = after?.let { "${it.spentOn}|${it.id}" } ?: "first"

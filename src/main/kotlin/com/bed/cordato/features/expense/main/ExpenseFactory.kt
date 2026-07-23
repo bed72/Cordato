@@ -17,6 +17,7 @@ import com.bed.cordato.core.infrastructure.adapters.cache.GenerationalCacheAdapt
 import com.bed.cordato.features.expense.application.driven.repositories.ExpenseRepository
 import com.bed.cordato.features.expense.application.driving.use_cases.ListExpensesUseCase
 import com.bed.cordato.features.expense.application.driving.use_cases.CreateExpenseUseCase
+import com.bed.cordato.features.expense.application.driving.use_cases.SumAllExpensesUseCase
 import com.bed.cordato.features.expense.application.driving.use_cases.SumExpensesInRangeUseCase
 
 import com.bed.cordato.features.expense.infrastructure.repositories.CachingExpenseRepository
@@ -31,6 +32,17 @@ import com.bed.cordato.features.expense.infrastructure.repositories.PersistenceE
  */
 @Factory
 class ExpenseFactory {
+
+    @Singleton
+    fun sumAllExpensesUseCase(repository: ExpenseRepository): SumAllExpensesUseCase =
+        SumAllExpensesUseCase(repository)
+
+    @Singleton
+    fun sumExpensesInRangeUseCase(repository: ExpenseRepository): SumExpensesInRangeUseCase =
+        SumExpensesInRangeUseCase(repository)
+
+    @Singleton
+    fun listExpensesUseCase(repository: ExpenseRepository): ListExpensesUseCase = ListExpensesUseCase(repository)
 
     @Singleton
     fun expenseRepository(
@@ -48,11 +60,4 @@ class ExpenseFactory {
         generator: IdGeneratorPort,
         repository: ExpenseRepository,
     ): CreateExpenseUseCase = CreateExpenseUseCase(clock, generator, repository)
-
-    @Singleton
-    fun listExpensesUseCase(repository: ExpenseRepository): ListExpensesUseCase = ListExpensesUseCase(repository)
-
-    @Singleton
-    fun sumExpensesInRangeUseCase(repository: ExpenseRepository): SumExpensesInRangeUseCase =
-        SumExpensesInRangeUseCase(repository)
 }

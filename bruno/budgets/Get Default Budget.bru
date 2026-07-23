@@ -1,0 +1,17 @@
+meta {
+  name: Get Default Budget
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/budgets/default
+  body: none
+  auth: inherit
+}
+
+docs {
+  Always 200; `data` is the "no budget" grouping — total spent outside every live budget's
+  period. Unlike `/active`, there is no entity being looked for, so it's always a present
+  object, never `null`.
+}
