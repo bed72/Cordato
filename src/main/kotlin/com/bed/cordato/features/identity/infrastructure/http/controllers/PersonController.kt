@@ -9,42 +9,51 @@ import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.Get
 import io.micronaut.http.annotation.Body
 import io.micronaut.http.annotation.Patch
+import io.micronaut.http.annotation.Delete
 import io.micronaut.http.annotation.Status
 import io.micronaut.http.annotation.Controller
 
 
-import com.bed.cordato.core.application.driven.ports.MessagePort
 import com.bed.cordato.core.infrastructure.http.responses.ok
+import com.bed.cordato.core.application.driven.ports.MessagePort
 
 import com.bed.cordato.core.infrastructure.http.authentication.actors.AuthenticatedActor
 import com.bed.cordato.core.infrastructure.http.authentication.annotations.Authenticated
 
-import com.bed.cordato.features.identity.application.driving.results.MeResult
 import com.bed.cordato.features.identity.application.driving.commands.MeCommand
-import com.bed.cordato.features.identity.application.driving.use_cases.MeUseCase
+
+import com.bed.cordato.features.identity.application.driving.results.MeResult
 import com.bed.cordato.features.identity.application.driving.results.UpdateNameResult
 import com.bed.cordato.features.identity.application.driving.results.UpdateEmailResult
+import com.bed.cordato.features.identity.application.driving.results.DeleteAccountResult
+import com.bed.cordato.features.identity.application.driving.results.UpdatePasswordResult
+
+import com.bed.cordato.features.identity.application.driving.use_cases.MeUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdateNameUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdateEmailUseCase
-import com.bed.cordato.features.identity.application.driving.results.UpdatePasswordResult
+import com.bed.cordato.features.identity.application.driving.use_cases.DeleteAccountUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdatePasswordUseCase
 
 import com.bed.cordato.features.identity.infrastructure.http.mappers.errors.toResponse
-import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateNameRequest
 import com.bed.cordato.features.identity.infrastructure.http.mappers.requests.toCommand
-import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateEmailRequest
 import com.bed.cordato.features.identity.infrastructure.http.mappers.responses.toResponse
+
+import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateNameRequest
+import com.bed.cordato.features.identity.infrastructure.http.requests.UpdateEmailRequest
+import com.bed.cordato.features.identity.infrastructure.http.requests.DeleteAccountRequest
 import com.bed.cordato.features.identity.infrastructure.http.requests.UpdatePasswordRequest
+
 import com.bed.cordato.features.identity.infrastructure.http.controllers.docs.PersonControllerDoc
 
 /**
  * Identity's driving (primary/inbound) HTTP adapter for operations on the already-authenticated person —
  * kept apart from the [AuthenticationController], which owns only the open session-*minting* flows. Today it
  * exposes `GET /persons/me` (read), `PATCH /persons/me/name` (edit the own name), `PATCH /persons/me/email`
- * (change the own e-mail, confirming the current password) and `PATCH /persons/me/password` (rotate the own
- * password, confirming the current one and ending the other live sessions); future `DELETE` slots in here.
- * The edits are symmetric single-field sub-resources (`/me/name`, `/me/email`, `/me/password`), not one
- * ambiguous multi-field `PATCH /me`.
+ * (change the own e-mail, confirming the current password), `PATCH /persons/me/password` (rotate the own
+ * password, confirming the current one and ending the other live sessions), and `DELETE /persons/me` (delete
+ * the own account, confirming the current password and ending every live session). The edits are symmetric
+ * single-field sub-resources (`/me/name`, `/me/email`, `/me/password`), not one ambiguous multi-field
+ * `PATCH /me`.
  *
  * `@Authenticated` lives **on the method**, not the class: declaring it is what makes the edge guard require
  * a live session before the handler runs — a missing/invalid/expired token is refused with the neutral `401`
@@ -69,6 +78,7 @@ class PersonController(
     private val meUseCase: MeUseCase,
     private val updateNameUseCase: UpdateNameUseCase,
     private val updateEmailUseCase: UpdateEmailUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase,
     private val updatePasswordUseCase: UpdatePasswordUseCase,
 ) : PersonControllerDoc {
 
@@ -106,5 +116,14 @@ class PersonController(
         when (val data = updatePasswordUseCase(request.toCommand(actor.personId, actor.sessionId))) {
             is UpdatePasswordResult.Failure -> data.error.toResponse(messages)
             is UpdatePasswordResult.Success -> ok(data.person.toResponse())
+        }
+
+    @Authenticated
+    @Delete("/me")
+    @Status(HttpStatus.NO_CONTENT)
+    fun deleteAccount(actor: AuthenticatedActor, @Body @Valid request: DeleteAccountRequest): HttpResponse<*> =
+        when (val data = deleteAccountUseCase(request.toCommand(actor.personId))) {
+            is DeleteAccountResult.Failure -> data.error.toResponse(messages)
+            is DeleteAccountResult.Success -> HttpResponse.noContent<Any>()
         }
 }

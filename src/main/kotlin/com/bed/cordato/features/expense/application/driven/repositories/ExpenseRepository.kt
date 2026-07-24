@@ -30,11 +30,18 @@ import com.bed.cordato.features.expense.domain.value_objects.ExpenseCursorValueO
  * [sumAmount] answers the total, in cents, of **all** of [personId]'s expenses, with no date limit — same
  * resolution posture as [sumAmountInRange] (`SUM`/`COALESCE` in the datastore, never in memory). A person
  * with no expenses at all yields `0`, not an error.
+ *
+ * [deleteAllOwnedBy] **physically removes** every expense row of [personId] — the first delete capability
+ * `expense` gets at all. It exists solely to serve `identity`'s account-deletion cascade (ADR-0013). A
+ * person with no expenses is a silent no-op, not an error; a datastore failure surfaces as an infrastructure
+ * exception, the same posture as [create].
  */
 interface ExpenseRepository {
     fun create(expense: ExpenseEntity)
 
     fun sumAmount(personId: String): Long
+
+    fun deleteAllOwnedBy(personId: String)
 
     fun sumAmountInRange(personId: String, startDate: LocalDate, endDate: LocalDate): Long
 

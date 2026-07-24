@@ -91,6 +91,23 @@ class PersistencePersonRepository(private val dsl: DSLContext) : PersonRepositor
             .and(PERSON.STATUS.eq(PersonStatusEnum.ACTIVE.name))
             .execute() > 0
 
+    // E-mail-neutralize-and-status UPDATE, gated on the ACTIVE status in the WHERE so a person already
+    // deleted (or never existent) matches zero rows — no half-update. The neutralized address is unique by
+    // construction (it carries the person's own id) and syntactically valid through EmailValueObject.of, so
+    // there is no uniqueness conflict to catch here, unlike updateEmail.
+    override fun deleteAccount(id: String): Boolean {
+        val neutralizedEmail = checkNotNull(EmailValueObject.of("deleted+$id@deleted.invalid")) {
+            "Neutralized e-mail for person $id failed EmailValueObject's own format rule"
+        }
+
+        return dsl.update(PERSON)
+            .set(PERSON.EMAIL, neutralizedEmail.value)
+            .set(PERSON.STATUS, PersonStatusEnum.DELETED.name)
+            .where(PERSON.ID.eq(id))
+            .and(PERSON.STATUS.eq(PersonStatusEnum.ACTIVE.name))
+            .execute() > 0
+    }
+
     private companion object {
         const val UNIQUE_VIOLATION = "23505"
     }

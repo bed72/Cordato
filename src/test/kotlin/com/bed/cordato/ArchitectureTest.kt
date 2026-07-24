@@ -70,13 +70,11 @@ internal class ArchitectureTest {
     }
 
     @Test
-    fun `budget, expense and identity never depend on a sibling context, except the sanctioned budget to expense ACL`() {
-        // ADR 0013: budget -> expense is a sanctioned, one-way ACL dependency (budget asks expense for a
-        // summed amount; expense never knows budget exists) — the same pattern couple uses over both.
+    fun `budget, expense and identity never depend on a sibling context, except the sanctioned ACLs`() {
         val siblings = mapOf(
             "budget" to listOf("identity", "couple"),
             "expense" to listOf("budget", "identity", "couple"),
-            "identity" to listOf("budget", "expense", "couple"),
+            "identity" to listOf("couple"),
         )
 
         production

@@ -5,8 +5,8 @@ import com.bed.cordato.features.identity.domain.enums.PersonStatusEnum
 import com.bed.cordato.features.identity.domain.value_objects.NameValueObject
 import com.bed.cordato.features.identity.domain.value_objects.EmailValueObject
 
-import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
 import com.bed.cordato.features.identity.application.driven.outcomes.UpdateEmailOutcome
+import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
 
 class FakePersonRepository : PersonRepository {
     private val byEmail = mutableMapOf<String, PersonEntity>()
@@ -22,18 +22,12 @@ class FakePersonRepository : PersonRepository {
     override fun findById(id: String): PersonEntity? =
         byEmail.values.firstOrNull { it.id == id }?.takeIf { it.status == PersonStatusEnum.ACTIVE }
 
-    // Mirrors the production adapter: only the active person's name changes; a non-active person matches
-    // nothing (false), and no other field is ever touched.
     override fun updateName(id: String, name: NameValueObject): Boolean {
         val person = findById(id) ?: return false
         byEmail[person.email.value] = person.copy(name = name)
         return true
     }
 
-    // Mirrors the production adapter's three-state outcome: a non-active person matches nothing
-    // (PERSON_INACTIVE); a new e-mail already held by another person is the uniqueness conflict
-    // (EMAIL_TAKEN); otherwise only the active person's e-mail changes (UPDATED), re-keying the store and
-    // leaving every other field untouched.
     override fun updateEmail(id: String, email: EmailValueObject): UpdateEmailOutcome {
         val person = findById(id) ?: return UpdateEmailOutcome.PERSON_INACTIVE
         val owner = byEmail[email.value]
@@ -43,11 +37,18 @@ class FakePersonRepository : PersonRepository {
         return UpdateEmailOutcome.UPDATED
     }
 
-    // Mirrors the production adapter: only the active person's hash changes; a non-active person matches
-    // nothing (false), and no other field is ever touched.
     override fun updatePassword(id: String, hash: String): Boolean {
         val person = findById(id) ?: return false
         byEmail[person.email.value] = person.copy(hash = hash)
+        return true
+    }
+
+    override fun deleteAccount(id: String): Boolean {
+        val person = findById(id) ?: return false
+        val neutralizedEmail = checkNotNull(EmailValueObject.of("deleted+$id@deleted.invalid"))
+
+        byEmail.remove(person.email.value)
+        byEmail[neutralizedEmail.value] = person.copy(email = neutralizedEmail, status = PersonStatusEnum.DELETED)
         return true
     }
 }

@@ -14,14 +14,15 @@ import com.bed.cordato.core.application.driven.ports.CachePort
 import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
 import com.bed.cordato.core.infrastructure.adapters.cache.GenerationalCacheAdapter
 
+import com.bed.cordato.features.expense.infrastructure.repositories.CachingExpenseRepository
+import com.bed.cordato.features.expense.infrastructure.repositories.PersistenceExpenseRepository
+
 import com.bed.cordato.features.expense.application.driven.repositories.ExpenseRepository
 import com.bed.cordato.features.expense.application.driving.use_cases.ListExpensesUseCase
 import com.bed.cordato.features.expense.application.driving.use_cases.CreateExpenseUseCase
 import com.bed.cordato.features.expense.application.driving.use_cases.SumAllExpensesUseCase
 import com.bed.cordato.features.expense.application.driving.use_cases.SumExpensesInRangeUseCase
-
-import com.bed.cordato.features.expense.infrastructure.repositories.CachingExpenseRepository
-import com.bed.cordato.features.expense.infrastructure.repositories.PersistenceExpenseRepository
+import com.bed.cordato.features.expense.application.driving.use_cases.DeleteAllOwnedExpensesUseCase
 
 /**
  * Expense's DI factory — binds expense's own ports to their adapters. The determinism ports (clock, id
@@ -43,6 +44,10 @@ class ExpenseFactory {
 
     @Singleton
     fun listExpensesUseCase(repository: ExpenseRepository): ListExpensesUseCase = ListExpensesUseCase(repository)
+
+    @Singleton
+    fun deleteAllOwnedExpensesUseCase(repository: ExpenseRepository): DeleteAllOwnedExpensesUseCase =
+        DeleteAllOwnedExpensesUseCase(repository)
 
     @Singleton
     fun expenseRepository(

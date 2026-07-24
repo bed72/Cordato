@@ -76,4 +76,17 @@ interface PersonRepository {
      */
     fun updatePassword(id: String, hash: String): Boolean
 
+    /**
+     * Neutralizes the e-mail and transitions status to [com.bed.cordato.features.identity.domain.enums.PersonStatusEnum.DELETED]
+     * for the **active** person matching [id], in a single atomic write. Leaves name, password hash and
+     * identifier untouched — the row itself, at its stable `id`, is what "kept for audit history" means
+     * here, no second column needed. Deliberately narrow, the same posture as [updateName]/[updateEmail]/
+     * [updatePassword], not a generic `save(person)`.
+     *
+     * @return `true` when the active person's row was changed; `false` when no active person matches [id]
+     *   (never existed, or a race with a concurrent deletion left it non-active) — zero rows affected
+     *   collapses to the same absent result [findById] reports, so the use case maps it to `PersonNotFound`.
+     */
+    fun deleteAccount(id: String): Boolean
+
 }

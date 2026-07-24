@@ -23,6 +23,15 @@ interface SessionRepository {
     fun revoke(sessionId: String): Boolean
 
     /**
+     * Revokes **every** live session of the person [personId], with no exclusion — distinct from
+     * [revokeAllForPersonExcept], which spares one. Used by account deletion, where there is no session left
+     * to spare because the account itself stops existing. Revocation is **server-authoritative**: a revoked
+     * session stops being resolved by [findActiveByToken] immediately. "Nothing to revoke" (the person has no
+     * live session) is a valid result, never an error.
+     */
+    fun revokeAllForPerson(personId: String)
+
+    /**
      * Persists [session].
      *
      * @return `true` when the row was inserted; `false` when it could not be (e.g. a token-hash

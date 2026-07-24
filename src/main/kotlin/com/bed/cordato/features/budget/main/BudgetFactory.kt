@@ -9,6 +9,13 @@ import io.micronaut.context.annotation.Factory
 import com.bed.cordato.core.application.driven.ports.ClockPort
 import com.bed.cordato.core.application.driven.ports.IdGeneratorPort
 
+import com.bed.cordato.features.expense.application.driving.use_cases.SumAllExpensesUseCase
+import com.bed.cordato.features.expense.application.driving.use_cases.SumExpensesInRangeUseCase
+
+import com.bed.cordato.features.budget.infrastructure.adapters.ExpenseTotalSpentAdapter
+import com.bed.cordato.features.budget.infrastructure.adapters.ExpenseSpentAmountAdapter
+import com.bed.cordato.features.budget.infrastructure.repositories.PersistenceBudgetRepository
+
 import com.bed.cordato.features.budget.application.driven.ports.ExpenseTotalSpentPort
 import com.bed.cordato.features.budget.application.driven.ports.ExpenseSpentAmountPort
 
@@ -19,13 +26,7 @@ import com.bed.cordato.features.budget.application.driving.use_cases.UpdateBudge
 import com.bed.cordato.features.budget.application.driving.use_cases.DeleteBudgetUseCase
 import com.bed.cordato.features.budget.application.driving.use_cases.GetActiveBudgetUseCase
 import com.bed.cordato.features.budget.application.driving.use_cases.GetDefaultBudgetUseCase
-
-import com.bed.cordato.features.budget.infrastructure.adapters.ExpenseTotalSpentAdapter
-import com.bed.cordato.features.budget.infrastructure.adapters.ExpenseSpentAmountAdapter
-import com.bed.cordato.features.budget.infrastructure.repositories.PersistenceBudgetRepository
-
-import com.bed.cordato.features.expense.application.driving.use_cases.SumAllExpensesUseCase
-import com.bed.cordato.features.expense.application.driving.use_cases.SumExpensesInRangeUseCase
+import com.bed.cordato.features.budget.application.driving.use_cases.DeleteAllOwnedBudgetsUseCase
 
 /**
  * Budget's DI factory — binds budget's own ports to their adapters. The determinism ports (clock, id
@@ -56,6 +57,11 @@ class BudgetFactory {
     @Singleton
     fun deleteBudgetUseCase(repository: BudgetRepository): DeleteBudgetUseCase =
         DeleteBudgetUseCase(repository)
+
+    // Called by identity's PersonOwnedFinancialsAdapter (ADR 0013), never by a route in this context.
+    @Singleton
+    fun deleteAllOwnedBudgetsUseCase(repository: BudgetRepository): DeleteAllOwnedBudgetsUseCase =
+        DeleteAllOwnedBudgetsUseCase(repository)
 
     @Singleton
     fun expenseSpentAmountPort(useCase: SumExpensesInRangeUseCase): ExpenseSpentAmountPort =

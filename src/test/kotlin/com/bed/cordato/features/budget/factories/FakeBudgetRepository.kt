@@ -38,6 +38,10 @@ class FakeBudgetRepository : BudgetRepository {
         created.add(budget)
     }
 
+    override fun deleteAllOwnedBy(personId: String) {
+        created.removeAll { it.personId == personId }
+    }
+
     override fun update(budget: BudgetEntity) {
         val index = created.indexOfFirst { it.id == budget.id }
         if (index >= 0) created[index] = budget

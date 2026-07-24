@@ -23,6 +23,8 @@ class FakeSessionRepository : SessionRepository {
         private set
     var sparedSessionId: String? = null
         private set
+    var revokedAllForPerson: String? = null
+        private set
 
     override fun open(session: SessionEntity): Boolean = true
 
@@ -37,6 +39,10 @@ class FakeSessionRepository : SessionRepository {
         revokedForPerson = personId
         sparedSessionId = sessionId
         return 0
+    }
+
+    override fun revokeAllForPerson(personId: String) {
+        revokedAllForPerson = personId
     }
 
     override fun revoke(sessionId: String): Boolean = sessionId == LIVE_SESSION_ID

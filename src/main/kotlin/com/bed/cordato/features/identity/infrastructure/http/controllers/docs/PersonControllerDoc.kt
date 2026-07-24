@@ -48,6 +48,10 @@ private const val INTERNAL_500 =
  * [AuthenticatedActor] parameter is hidden: it is resolved from a request attribute by the edge binder, not
  * from the wire, so it is never a documented request parameter. This is a documentation artefact of
  * infrastructure, not an application port — it introduces no driving-side contract.
+ *
+ * `DELETE /persons/me` (account deletion) is `@Authenticated` and, like `sign-out`'s route, is not yet part
+ * of this interface — its OpenAPI documentation is deferred, per the `delete-account` change proposal's
+ * scope (same split prior identity changes used).
  */
 @Tag(name = "Person", description = "Consulta de dados da pessoa autenticada.")
 interface PersonControllerDoc {

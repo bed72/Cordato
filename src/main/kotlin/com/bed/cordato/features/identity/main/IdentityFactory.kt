@@ -20,10 +20,16 @@ import com.bed.cordato.features.identity.application.driving.use_cases.SignOutUs
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdateNameUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdateEmailUseCase
 import com.bed.cordato.features.identity.application.driven.repositories.PersonRepository
+import com.bed.cordato.features.identity.application.driven.ports.PersonOwnedFinancialsPort
+import com.bed.cordato.features.identity.application.driving.use_cases.DeleteAccountUseCase
 import com.bed.cordato.features.identity.application.driving.use_cases.UpdatePasswordUseCase
 
 import com.bed.cordato.features.identity.infrastructure.adapters.PasswordHasherAdapter
+import com.bed.cordato.features.identity.infrastructure.adapters.PersonOwnedFinancialsAdapter
 import com.bed.cordato.features.identity.infrastructure.repositories.PersistencePersonRepository
+
+import com.bed.cordato.features.budget.application.driving.use_cases.DeleteAllOwnedBudgetsUseCase
+import com.bed.cordato.features.expense.application.driving.use_cases.DeleteAllOwnedExpensesUseCase
 
 /**
  * Identity's DI factory — binds identity's own ports to their adapters. The determinism ports
@@ -39,11 +45,6 @@ class IdentityFactory {
     @Singleton
     fun passwordHasher(): PasswordHasherPort = PasswordHasherAdapter()
 
-    // Durable PostgreSQL adapter; the DSLContext comes from CoreFactory. Pure use-case tests use
-    // a hand-written fake (support.FakePersonRepository), not a production binding.
-    @Singleton
-    fun personRepository(dslContext: DSLContext): PersonRepository = PersistencePersonRepository(dslContext)
-
     @Singleton
     fun meUseCase(repository: PersonRepository): MeUseCase = MeUseCase(repository)
 
@@ -51,13 +52,17 @@ class IdentityFactory {
     fun updateNameUseCase(repository: PersonRepository): UpdateNameUseCase = UpdateNameUseCase(repository)
 
     @Singleton
+    fun personRepository(dslContext: DSLContext): PersonRepository = PersistencePersonRepository(dslContext)
+
+    @Singleton
+    fun signOutUseCase(sessionRepository: SessionRepository): SignOutUseCase = SignOutUseCase(sessionRepository)
+
+    @Singleton
     fun updateEmailUseCase(
         hasher: PasswordHasherPort,
         repository: PersonRepository,
     ): UpdateEmailUseCase = UpdateEmailUseCase(hasher, repository)
 
-    // The password hasher and person repository are identity's own bindings; the session repository comes
-    // from CoreFactory, letting the use case revoke the person's other sessions after the password rotates.
     @Singleton
     fun updatePasswordUseCase(
         hasher: PasswordHasherPort,
@@ -72,8 +77,6 @@ class IdentityFactory {
         repository: PersonRepository,
     ): SignUpUseCase = SignUpUseCase(hasher, generator, repository)
 
-    // Clock, tokenizer, id generator and session repository come from CoreFactory; the password
-    // hasher and person repository are identity's own bindings above.
     @Singleton
     fun signInUseCase(
         clock: ClockPort,
@@ -91,8 +94,18 @@ class IdentityFactory {
         sessionRepository = sessionRepository
     )
 
-    // The session repository comes from CoreFactory; sign-out needs no other collaborator, just the guard-
-    // resolved sessionId the command already carries.
     @Singleton
-    fun signOutUseCase(sessionRepository: SessionRepository): SignOutUseCase = SignOutUseCase(sessionRepository)
+    fun personOwnedFinancialsPort(
+        deleteAllOwnedBudgetsUseCase: DeleteAllOwnedBudgetsUseCase,
+        deleteAllOwnedExpensesUseCase: DeleteAllOwnedExpensesUseCase,
+    ): PersonOwnedFinancialsPort =
+        PersonOwnedFinancialsAdapter(deleteAllOwnedBudgetsUseCase, deleteAllOwnedExpensesUseCase)
+
+    @Singleton
+    fun deleteAccountUseCase(
+        hasher: PasswordHasherPort,
+        repository: PersonRepository,
+        sessionRepository: SessionRepository,
+        personOwnedFinancialsPort: PersonOwnedFinancialsPort,
+    ): DeleteAccountUseCase = DeleteAccountUseCase(hasher, repository, sessionRepository, personOwnedFinancialsPort)
 }

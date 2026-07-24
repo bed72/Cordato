@@ -48,6 +48,10 @@ class FakeExpenseRepository : ExpenseRepository {
             .filter { it.personId == personId }
             .sumOf { it.amount.cents }
 
+    override fun deleteAllOwnedBy(personId: String) {
+        created.removeAll { it.personId == personId }
+    }
+
     private fun isAfter(expense: ExpenseEntity, cursor: ExpenseCursorValueObject): Boolean =
         expense.date.value < cursor.spentOn || (expense.date.value == cursor.spentOn && expense.id < cursor.id)
 }

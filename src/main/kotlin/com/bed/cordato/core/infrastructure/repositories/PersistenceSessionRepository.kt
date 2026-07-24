@@ -53,6 +53,12 @@ class PersistenceSessionRepository(
             .and(SESSION.ID.ne(sessionId))
             .execute()
 
+    override fun revokeAllForPerson(personId: String) {
+        dsl.deleteFrom(SESSION)
+            .where(SESSION.PERSON_ID.eq(personId))
+            .execute()
+    }
+
     override fun revoke(sessionId: String): Boolean =
         dsl.deleteFrom(SESSION)
             .where(SESSION.ID.eq(sessionId))

@@ -40,11 +40,19 @@ import com.bed.cordato.features.budget.domain.entities.BudgetEntity
  * [findAllLiveBudgets] answers **every** live budget of [personId], resolved entirely in the datastore, an
  * empty [List] (never `null`) when the person has none. The order is unspecified — summing spend across
  * these periods is commutative, so no caller depends on a particular order.
+ *
+ * [deleteAllOwnedBy] **physically removes** every budget row of [personId] — live and already soft-deleted
+ * alike — unlike [delete], which only transitions a single budget's state. It exists solely to serve
+ * `identity`'s account-deletion cascade (ADR-0013), never the self-service single-budget removal flow. A
+ * person with no budgets is a silent no-op, not an error; a datastore failure surfaces as an infrastructure
+ * exception, the same posture as [create].
  */
 interface BudgetRepository {
     fun create(budget: BudgetEntity)
 
     fun update(budget: BudgetEntity)
+
+    fun deleteAllOwnedBy(personId: String)
 
     fun delete(id: String, personId: String): Boolean
 

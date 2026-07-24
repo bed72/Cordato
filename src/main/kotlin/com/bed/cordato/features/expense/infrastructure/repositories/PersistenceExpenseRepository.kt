@@ -38,6 +38,12 @@ import com.bed.cordato.features.expense.application.driven.repositories.ExpenseR
  */
 class PersistenceExpenseRepository(private val dsl: DSLContext) : ExpenseRepository {
 
+    override fun deleteAllOwnedBy(personId: String) {
+        dsl.deleteFrom(EXPENSE)
+            .where(EXPENSE.PERSON_ID.eq(personId))
+            .execute()
+    }
+
     override fun create(expense: ExpenseEntity) {
         dsl.insertInto(EXPENSE)
             .set(expense.toRecord())

@@ -100,4 +100,10 @@ class PersistenceBudgetRepository(private val dsl: DSLContext) : BudgetRepositor
             .and(BUDGET.END_DATE.ge(date))
             .fetchOne()
             ?.toEntity()
+
+    override fun deleteAllOwnedBy(personId: String) {
+        dsl.deleteFrom(BUDGET)
+            .where(BUDGET.PERSON_ID.eq(personId))
+            .execute()
+    }
 }

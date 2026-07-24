@@ -42,6 +42,11 @@ class CachingExpenseRepository(
         adapter.invalidate(expense.personId)
     }
 
+    override fun deleteAllOwnedBy(personId: String) {
+        repository.deleteAllOwnedBy(personId)
+        adapter.invalidate(personId)
+    }
+
     override fun findByPerson(personId: String, after: ExpenseCursorValueObject?, limit: Int): List<ExpenseEntity> {
         val suffix = suffix(after, limit)
 
