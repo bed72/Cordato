@@ -1,0 +1,37 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Cordato (debug)",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+                "--dart-define=SUPABASE_URL=https://supabase.cordato.cloud",
+                "--dart-define=SUPABASE_REDIRECT_URL=trocado://authentication/callback",
+                "--dart-define=SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc4Nzc3MjY2MCwiZXhwIjo0OTQzNDQ2MjYwLCJyb2xlIjoiYW5vbiJ9.nhhGm1WFTp3MbfrDC0dujuxPx-VM1Si-4wicZzh0I20"
+            ]
+        },
+        {
+            "name": "Cordato (profile)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "args": [
+                "--dart-define=SUPABASE_URL=https://supabase.cordato.cloud",
+                "--dart-define=SUPABASE_REDIRECT_URL=trocado://authentication/callback",
+                "--dart-define=SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc4Nzc3MjY2MCwiZXhwIjo0OTQzNDQ2MjYwLCJyb2xlIjoiYW5vbiJ9.nhhGm1WFTp3MbfrDC0dujuxPx-VM1Si-4wicZzh0I20"
+            ]
+        },
+        {
+            "name": "Cordato (release)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "args": [
+                "--dart-define=SUPABASE_URL=https://supabase.cordato.cloud",
+                "--dart-define=SUPABASE_REDIRECT_URL=trocado://authentication/callback",
+                "--dart-define=SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc4Nzc3MjY2MCwiZXhwIjo0OTQzNDQ2MjYwLCJyb2xlIjoiYW5vbiJ9.nhhGm1WFTp3MbfrDC0dujuxPx-VM1Si-4wicZzh0I20"
+            ]
+        }
+    ]
+}
