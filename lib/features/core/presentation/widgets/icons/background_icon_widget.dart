@@ -4,7 +4,7 @@ import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dar
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 class BackgroundIconWidget extends StatelessWidget {
-  final Color color;
+  final Color backgroundColor;
   final IconData icon;
   final double? width;
   final double? height;
@@ -16,7 +16,7 @@ class BackgroundIconWidget extends StatelessWidget {
   const BackgroundIconWidget({
     super.key,
     required this.icon,
-    required this.color,
+    required this.backgroundColor,
     this.width,
     this.height,
     this.iconSize,
@@ -34,10 +34,10 @@ class BackgroundIconWidget extends StatelessWidget {
       width: width ?? 48.0,
       height: height ?? 48.0,
       decoration: BoxDecoration(
-        color: hasBackground ? color.withValues(alpha: 0.2) : null,
+        color: hasBackground ? backgroundColor : null,
         borderRadius: borderRadius ?? context.radius.cornerRadius100,
       ),
-      child: IconWidget(icon: icon, color: iconColor ?? color, size: iconSize),
+      child: IconWidget(icon: icon, color: iconColor, size: iconSize),
     );
   }
 }

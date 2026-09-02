@@ -1,13 +1,16 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 
 final class IconButtonWidget extends StatelessWidget {
   final IconData icon;
-  final Color? color;
+  final Color backgroundColor;
   final double? width;
   final double? height;
+  final Color? iconColor;
   final double? iconSize;
   final VoidCallback? onPress;
   final bool? withoutBackground;
@@ -17,8 +20,9 @@ final class IconButtonWidget extends StatelessWidget {
     super.key,
     required this.icon,
     required this.onPress,
+    required this.backgroundColor,
     this.width,
-    this.color,
+    this.iconColor,
     this.height,
     this.iconSize,
     this.borderRadius,
@@ -27,14 +31,23 @@ final class IconButtonWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = color ?? context.colors.primary;
+    final iconColor = this.iconColor ?? context.colors.primary;
     final resolvedBorderRadius = borderRadius ?? context.radius.cornerRadius100;
 
     return BounceWidget.withOnPress(
       onPress: onPress,
       child: IconButton(
         padding: .zero,
-        icon: Icon(icon),
+        icon: BackgroundIconWidget(
+          icon: icon,
+          width: width,
+          height: height,
+          iconSize: iconSize,
+          iconColor: iconColor,
+          backgroundColor: backgroundColor,
+          borderRadius: resolvedBorderRadius,
+          withoutBackground: withoutBackground,
+        ),
         iconSize: iconSize,
         onPressed: onPress,
         constraints: BoxConstraints.tightFor(
@@ -44,9 +57,8 @@ final class IconButtonWidget extends StatelessWidget {
         color: iconColor,
         style: IconButton.styleFrom(
           tapTargetSize: .shrinkWrap,
-          backgroundColor: withoutBackground == true
-              ? Colors.transparent
-              : iconColor.withValues(alpha: 0.2),
+          backgroundColor: Colors.transparent,
+          overlayColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: resolvedBorderRadius),
         ),
       ),

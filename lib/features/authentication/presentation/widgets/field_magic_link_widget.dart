@@ -2,13 +2,13 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
 
-final class MagicLinkEmailField extends StatelessWidget {
+final class FieldMagicLinkWidget extends StatelessWidget {
   final ValueChanged<String> onSubmitted;
   final TextEditingController controller;
   final String? failure;
   final ValueChanged<String>? onChanged;
 
-  const MagicLinkEmailField({
+  const FieldMagicLinkWidget({
     super.key,
     required this.controller,
     required this.onSubmitted,

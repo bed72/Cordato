@@ -205,7 +205,7 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
         contentPadding: const .symmetric(horizontal: 8.0, vertical: 18.0),
         hintStyle: context.typography.bodyMedium?.copyWith(
           height: 1.0,
-          color: color.withValues(alpha: .4),
+          color: color.withValues(alpha: .6),
         ),
         disabledBorder: _outlinedBorder(
           context.colors.onSurfaceVariant.withValues(alpha: .4),
@@ -222,10 +222,11 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
     if (widget.hideTrailingIconWhenEmpty && !_hasText) return null;
 
     return IconButtonWidget(
-      color: color,
+      iconColor: color,
       withoutBackground: true,
       icon: widget.trailingIcon!,
       onPress: widget.onTrailingIconTap,
+      backgroundColor: Colors.transparent,
     );
   }
 

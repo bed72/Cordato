@@ -34,7 +34,8 @@ final authenticationModule = createModule(
       ..addLazySingleton<MagicLinkCommand>(MagicLinkCommand.new)
       ..route(
         '/magic-link',
-        child: (_, _) => MagicLinkScreen(command: inject<MagicLinkCommand>()),
+        child: (context, _) =>
+            MagicLinkScreen(command: inject<MagicLinkCommand>()),
       );
   },
 );
