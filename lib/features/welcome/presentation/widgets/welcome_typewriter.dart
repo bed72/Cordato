@@ -3,17 +3,15 @@ import 'dart:async';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:material_ui/material_ui.dart';
 
-const _supportingPhrases = [
-  'no dia a dia.',
-  'sem complicação.',
-  'com mais clareza.',
-  'junto com quem importa.',
-];
-
 final class WelcomeTypewriterWidget extends StatefulWidget {
   final Color color;
+  final List<String> phrases;
 
-  const WelcomeTypewriterWidget({super.key, required this.color});
+  const WelcomeTypewriterWidget({
+    super.key,
+    required this.color,
+    required this.phrases,
+  }) : assert(phrases.length > 0);
 
   @override
   State<WelcomeTypewriterWidget> createState() =>
@@ -24,10 +22,13 @@ final class _WelcomeTypewriterWidgetState
     extends State<WelcomeTypewriterWidget> {
   Timer? _timer;
   String _typedPhrase = '';
+  int _cursorBlinkCount = 0;
   int _activePhraseIndex = 0;
+  bool _isCursorVisible = true;
   bool _isErasingPhrase = false;
+  bool _isBlinkingCursor = false;
 
-  String get _activePhrase => _supportingPhrases[_activePhraseIndex];
+  String get _activePhrase => widget.phrases[_activePhraseIndex];
 
   @override
   void initState() {
@@ -49,6 +50,24 @@ final class _WelcomeTypewriterWidgetState
   void _updateTypewriter() {
     if (!mounted) return;
 
+    if (_isBlinkingCursor) {
+      setState(() {
+        _isCursorVisible = !_isCursorVisible;
+        if (_isCursorVisible) _cursorBlinkCount++;
+      });
+
+      if (_cursorBlinkCount == 4) {
+        setState(() {
+          _isBlinkingCursor = false;
+          _isErasingPhrase = true;
+        });
+        _schedule(const Duration(milliseconds: 45));
+      } else {
+        _schedule(const Duration(milliseconds: 250));
+      }
+      return;
+    }
+
     if (_isErasingPhrase && _typedPhrase.isNotEmpty) {
       setState(() {
         _typedPhrase = _typedPhrase.substring(0, _typedPhrase.length - 1);
@@ -60,8 +79,8 @@ final class _WelcomeTypewriterWidgetState
     if (_isErasingPhrase) {
       setState(() {
         _isErasingPhrase = false;
-        _activePhraseIndex =
-            (_activePhraseIndex + 1) % _supportingPhrases.length;
+        _activePhraseIndex = (_activePhraseIndex + 1) % widget.phrases.length;
+        _isCursorVisible = true;
       });
       _schedule(const Duration(milliseconds: 70));
       return;
@@ -75,7 +94,11 @@ final class _WelcomeTypewriterWidgetState
       return;
     }
 
-    setState(() => _isErasingPhrase = true);
+    setState(() {
+      _isBlinkingCursor = true;
+      _cursorBlinkCount = 0;
+      _isCursorVisible = true;
+    });
     _schedule(const Duration(milliseconds: 1600));
   }
 
@@ -88,7 +111,12 @@ final class _WelcomeTypewriterWidgetState
         TextSpan(
           children: [
             TextSpan(text: _typedPhrase),
-            const TextSpan(text: '|'),
+            TextSpan(
+              text: '|',
+              style: TextStyle(
+                color: _isCursorVisible ? widget.color : Colors.transparent,
+              ),
+            ),
           ],
         ),
         textAlign: .center,

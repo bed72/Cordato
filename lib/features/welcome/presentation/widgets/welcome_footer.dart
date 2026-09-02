@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/presentation/widgets/toast/toast.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/link_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
@@ -10,14 +11,10 @@ final class WelcomeFooterWidget extends StatelessWidget {
   const WelcomeFooterWidget({super.key, required this.onContinueWithEmail});
 
   void _showTerms(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: context.colors.tertiaryContainer,
-        content: Text(
-          'Termos de uso\nEm breve você poderá consultar nossos termos.',
-          style: TextStyle(color: context.colors.onTertiaryContainer),
-        ),
-      ),
+    context.showToast(
+      title: 'Termos de uso',
+      description: 'Em breve você poderá consultar nossos termos.',
+      variant: ToastVariant.info,
     );
   }
 

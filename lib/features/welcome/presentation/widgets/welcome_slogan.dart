@@ -2,6 +2,13 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/welcome/presentation/widgets/welcome_typewriter.dart';
 import 'package:material_ui/material_ui.dart';
 
+const _supportingPhrases = [
+  'no dia a dia.',
+  'sem complicação.',
+  'com mais clareza.',
+  'junto com quem importa.',
+];
+
 final class WelcomeSloganWidget extends StatelessWidget {
   const WelcomeSloganWidget({super.key});
 
@@ -17,14 +24,15 @@ final class WelcomeSloganWidget extends StatelessWidget {
             'A maneira mais simples de cuidar do seu dinheiro',
             textAlign: .center,
             style: context.typography.headlineLarge?.copyWith(
-              color: context.colors.onSurface,
               fontWeight: .w600,
               letterSpacing: -0.6,
+              color: context.colors.onSurface,
             ),
           ),
         ),
         WelcomeTypewriterWidget(
           color: context.colors.onSurfaceVariant.withValues(alpha: 0.65),
+          phrases: _supportingPhrases,
         ),
       ],
     );

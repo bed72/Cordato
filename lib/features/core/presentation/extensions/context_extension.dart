@@ -1,3 +1,6 @@
+import 'package:cordato/features/core/presentation/widgets/toast/toast.dart';
+import 'package:cordato/features/core/presentation/widgets/toast/toast_notifier.dart';
+import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/themes/radius_theme.dart';
@@ -16,4 +19,20 @@ extension BuildContextCommonExtension on BuildContext {
   TextTheme get typography => Theme.of(this).textTheme;
   CornerRadiusToken get radius =>
       Theme.of(this).extension<CornerRadiusToken>()!;
+
+  ToastNotifier get toast => ToastProviderWidget.of(this);
+
+  void showToast({
+    required String title,
+    Duration? duration,
+    String? description,
+    ToastAction? action,
+    ToastVariant variant = .info,
+  }) => toast.show(
+    title: title,
+    action: action,
+    variant: variant,
+    duration: duration,
+    description: description,
+  );
 }
