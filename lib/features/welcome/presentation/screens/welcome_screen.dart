@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/welcome/presentation/widgets/welcome_hero.dart';
-import 'package:cordato/features/welcome/presentation/widgets/welcome_slogan.dart';
-import 'package:cordato/features/welcome/presentation/widgets/welcome_footer.dart';
+import 'package:cordato/features/welcome/presentation/widgets/welcome_icon_widget.dart';
+import 'package:cordato/features/welcome/presentation/widgets/welcome_slogan_widget.dart';
+import 'package:cordato/features/welcome/presentation/widgets/welcome_footer_widget.dart';
 
 class WelcomeScreen extends StatelessWidget {
   final ValueChanged<BuildContext> onContinueWithEmail;

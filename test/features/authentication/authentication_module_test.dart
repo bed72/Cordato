@@ -1,8 +1,8 @@
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
-    show LocalStorage, SupabaseClient;
+    show LocalStorage, Supabase;
 
 import 'package:cordato/features/authentication/authentication_module.dart';
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
@@ -13,24 +13,40 @@ import 'package:cordato/features/authentication/infrastructure/remoto/authentica
 import 'package:cordato/features/authentication/presentation/commands/magic_link_command.dart';
 import 'package:cordato/features/core/core_module.dart';
 
-class _SupabaseClientMock extends Mock implements SupabaseClient {}
-
-Module _createAppModule(SupabaseClient supabaseClient) => createModule(
+Module _createAppModule() => createModule(
   register: (c) {
     c
       ..module(coreModule)
-      ..module(
-        createAuthenticationModule(
-          supabaseClient: supabaseClient,
-          redirectUrl: 'com.cordato://login-callback',
-        ),
-      );
+      ..module(authenticationModule);
   },
 );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const sharedPreferencesChannel = MethodChannel(
+    'plugins.flutter.io/shared_preferences',
+  );
+
+  setUpAll(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(sharedPreferencesChannel, (call) async {
+          if (call.method == 'getAll') return <String, Object?>{};
+          return null;
+        });
+
+    await Supabase.initialize(
+      url: 'https://test.supabase.co',
+      publishableKey: 'test-publishable-key',
+    );
+  });
+
+  tearDownAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(sharedPreferencesChannel, null);
+  });
+
   test('registers SupabaseStorageClient as LocalStorage', () {
-    final bootstrap = bootstrapModule(_createAppModule(_SupabaseClientMock()));
+    final bootstrap = bootstrapModule(_createAppModule());
     final route = bootstrap.routes.match(
       Uri.parse('/authentication/magic-link'),
     )!;

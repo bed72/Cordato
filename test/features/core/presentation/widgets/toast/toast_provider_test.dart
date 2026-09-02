@@ -49,8 +49,7 @@ void main() {
     expect(
       tester.widget<BackgroundIconWidget>(find.byType(BackgroundIconWidget)),
       isA<BackgroundIconWidget>()
-          .having((widget) => widget.width, 'width', 44.0)
-          .having((widget) => widget.iconSize, 'iconSize', 26.0)
+          .having((widget) => widget.iconSize, 'iconSize', 22.0)
           .having(
             (widget) => widget.iconColor,
             'iconColor',
@@ -68,6 +67,10 @@ void main() {
     expect(
       tester.getSize(find.byType(BackgroundIconWidget)).height,
       tester.getSize(contentColumn.first).height,
+    );
+    expect(
+      tester.getSize(find.byType(BackgroundIconWidget)).width,
+      tester.getSize(find.byType(BackgroundIconWidget)).height,
     );
   });
 

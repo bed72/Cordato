@@ -41,13 +41,26 @@ final class ToastWidget extends StatelessWidget {
                 children: [
                   Semantics(
                     label: getToastAccessibilityLabel(data.variant),
-                    child: BackgroundIconWidget(
-                      width: 48.0,
-                      height: 48.0,
-                      iconSize: 22.0,
-                      iconColor: palette.foreground,
-                      icon: getToastIcon(data.variant),
-                      color: Color.lerp(palette.background, Colors.black, .6)!,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 48.0,
+                        minHeight: 48.0,
+                      ),
+                      child: AspectRatio(
+                        aspectRatio: 1.0,
+                        child: BackgroundIconWidget(
+                          iconSize: 24.0,
+                          width: .infinity,
+                          height: .infinity,
+                          iconColor: palette.foreground,
+                          icon: getToastIcon(data.variant),
+                          color: Color.lerp(
+                            palette.background,
+                            Colors.black,
+                            .6,
+                          )!,
+                        ),
+                      ),
                     ),
                   ),
                   Expanded(

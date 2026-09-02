@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/toast/toast.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/link_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
@@ -10,12 +9,12 @@ final class WelcomeFooterWidget extends StatelessWidget {
 
   const WelcomeFooterWidget({super.key, required this.onContinueWithEmail});
 
-  void _showTerms(BuildContext context) {
-    context.showToast(
-      title: 'Termos de uso',
-      description: 'Em breve você poderá consultar nossos termos.',
-      variant: ToastVariant.info,
-    );
+  void _showToast(
+    BuildContext context, {
+    required String title,
+    required String description,
+  }) {
+    context.showToast(variant: .info, title: title, description: description);
   }
 
   @override
@@ -50,7 +49,11 @@ final class WelcomeFooterWidget extends StatelessWidget {
             children: [
               LinkButtonWidget(
                 label: 'Termos de uso',
-                onTap: () => _showTerms(context),
+                onTap: () => _showToast(
+                  context,
+                  title: 'Termos de uso',
+                  description: 'Em breve você poderá consultar nossos termos.',
+                ),
               ),
               Text(
                 'e',
@@ -58,7 +61,14 @@ final class WelcomeFooterWidget extends StatelessWidget {
                   color: context.colors.onSurfaceVariant,
                 ),
               ),
-              LinkButtonWidget(label: 'Políticas de Privacidade', onTap: () {}),
+              LinkButtonWidget(
+                label: 'Políticas de Privacidade',
+                onTap: () => _showToast(
+                  context,
+                  title: 'Políticas de Privacidade',
+                  description: 'Em breve você poderá consultar nossas políticas de privacidade.',
+                ),
+              ),
             ],
           ),
         ],
