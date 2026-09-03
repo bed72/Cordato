@@ -125,7 +125,6 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
   }
 
   void _onChanged(String value) {
-    // Some IMEs underline their composing region even with autocorrect off.
     if (!_controller.value.composing.isCollapsed) {
       _controller.clearComposing();
     }
@@ -177,8 +176,8 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
       textAlignVertical: .center,
       autofocus: widget.autofocus,
       obscureText: widget.obscureText,
-      keyboardType: widget.keyboardType,
       onSubmitted: widget.onSubmitted,
+      keyboardType: widget.keyboardType,
       autofillHints: widget.autofillHints,
       textInputAction: widget.inputAction,
       inputFormatters: widget.inputFormatters,
@@ -193,6 +192,7 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
             : materialTextSelectionHandleControls,
       ),
       decoration: InputDecoration(
+        hintMaxLines: 1,
         hintText: widget.hint,
         suffixIcon: _buildSuffixIcon(color),
         constraints: const .tightFor(height: 56.0),
@@ -205,7 +205,7 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
         contentPadding: const .symmetric(horizontal: 8.0, vertical: 18.0),
         hintStyle: context.typography.bodyMedium?.copyWith(
           height: 1.0,
-          color: color.withValues(alpha: .6),
+          color: color.withValues(alpha: .82),
         ),
         disabledBorder: _outlinedBorder(
           context.colors.onSurfaceVariant.withValues(alpha: .4),
@@ -231,7 +231,7 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
   }
 
   Widget _buildFailure(Color color) {
-    final failureColor = color.withValues(alpha: .62);
+    final failureColor = color.withValues(alpha: .82);
 
     return Row(
       spacing: 6.0,

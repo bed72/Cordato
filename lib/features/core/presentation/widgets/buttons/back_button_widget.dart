@@ -10,14 +10,19 @@ final class BackButtonWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IconButtonWidget(
-    width: 40.0,
-    height: 40.0,
-    iconSize: 24.0,
+    width: 48.0,
+    height: 48.0,
+    iconSize: 26.0,
     onPress: onPress,
     icon: Icons.chevron_left,
     withoutBackground: false,
     iconColor: context.colors.onSurface,
-    borderRadius: context.radius.cornerRadius050,
+    borderRadius: context.radius.cornerRadius100,
     backgroundColor: context.colors.onSurface.withValues(alpha: .06),
+    backgroundGradient: LinearGradient(
+      begin: .topLeft,
+      end: .bottomRight,
+      colors: [context.colors.surfaceBright, context.colors.surface],
+    ),
   );
 }

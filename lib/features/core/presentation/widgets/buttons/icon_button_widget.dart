@@ -14,6 +14,7 @@ final class IconButtonWidget extends StatelessWidget {
   final double? iconSize;
   final VoidCallback? onPress;
   final bool? withoutBackground;
+  final Gradient? backgroundGradient;
   final BorderRadiusGeometry? borderRadius;
 
   const IconButtonWidget({
@@ -22,44 +23,45 @@ final class IconButtonWidget extends StatelessWidget {
     required this.onPress,
     required this.backgroundColor,
     this.width,
-    this.iconColor,
     this.height,
     this.iconSize,
+    this.iconColor,
     this.borderRadius,
     this.withoutBackground,
+    this.backgroundGradient,
   });
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = this.iconColor ?? context.colors.primary;
-    final resolvedBorderRadius = borderRadius ?? context.radius.cornerRadius100;
-
     return BounceWidget.withOnPress(
       onPress: onPress,
       child: IconButton(
         padding: .zero,
-        icon: BackgroundIconWidget(
-          icon: icon,
-          width: width,
-          height: height,
-          iconSize: iconSize,
-          iconColor: iconColor,
-          backgroundColor: backgroundColor,
-          borderRadius: resolvedBorderRadius,
-          withoutBackground: withoutBackground,
-        ),
+        color: iconColor,
         iconSize: iconSize,
         onPressed: onPress,
         constraints: BoxConstraints.tightFor(
           width: width ?? 48.0,
           height: height ?? 48.0,
         ),
-        color: iconColor,
+        icon: BackgroundIconWidget(
+          icon: icon,
+          width: width,
+          height: height,
+          iconSize: iconSize,
+          iconColor: iconColor,
+          borderRadius: borderRadius,
+          gradient: backgroundGradient,
+          backgroundColor: backgroundColor,
+          withoutBackground: withoutBackground,
+        ),
         style: IconButton.styleFrom(
           tapTargetSize: .shrinkWrap,
-          backgroundColor: Colors.transparent,
           overlayColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: resolvedBorderRadius),
+          backgroundColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: borderRadius ?? context.radius.cornerRadius100,
+          ),
         ),
       ),
     );

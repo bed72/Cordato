@@ -4,6 +4,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+dependencies {
+    implementation("androidx.core:core-splashscreen:1.2.0")
+}
+
 android {
     namespace = "com.bed.cordato"
     compileSdk = 37

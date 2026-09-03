@@ -10,6 +10,7 @@ class BackgroundIconWidget extends StatelessWidget {
   final double? height;
   final double? iconSize;
   final Color? iconColor;
+  final Gradient? gradient;
   final bool? withoutBackground;
   final BorderRadiusGeometry? borderRadius;
 
@@ -20,6 +21,7 @@ class BackgroundIconWidget extends StatelessWidget {
     this.width,
     this.height,
     this.iconSize,
+    this.gradient,
     this.iconColor,
     this.borderRadius,
     this.withoutBackground,
@@ -34,8 +36,9 @@ class BackgroundIconWidget extends StatelessWidget {
       width: width ?? 48.0,
       height: height ?? 48.0,
       decoration: BoxDecoration(
-        color: hasBackground ? backgroundColor : null,
+        gradient: hasBackground ? gradient : null,
         borderRadius: borderRadius ?? context.radius.cornerRadius100,
+        color: hasBackground && gradient == null ? backgroundColor : null,
       ),
       child: IconWidget(icon: icon, color: iconColor, size: iconSize),
     );
