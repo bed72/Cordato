@@ -2,6 +2,8 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show LocalStorage, Supabase, SupabaseClient;
 
+import 'package:cordato/features/core/domain/enums/app_route.dart';
+
 import 'data/repositories/authentication_repository.dart';
 import 'domain/repositories/interface_authentication_repository.dart';
 import 'infrastructure/clients/supabase_authentication_client.dart';
@@ -17,7 +19,7 @@ const _supabaseRedirectUrl = String.fromEnvironment(
 );
 
 final authenticationModule = createModule(
-  path: '/',
+  path: AppRoute.root.path,
   register: (context) {
     context
       ..addInstance<String>(_supabaseRedirectUrl)
@@ -34,12 +36,12 @@ final authenticationModule = createModule(
       )
       ..addLazySingleton<MagicLinkCommand>(MagicLinkCommand.new)
       ..route(
-        '/authentication/magic-link',
+        AppRoute.authenticationMagicLink.path,
         child: (context, _) =>
             MagicLinkScreen(command: inject<MagicLinkCommand>()),
       )
       ..route(
-        '/callback',
+        AppRoute.authenticationCallback.path,
         child: (_, _) => const AuthenticationCallbackScreen(),
       );
   },

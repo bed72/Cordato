@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/authentication/presentation/widgets/redirect_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/redirect_widget.dart';
 
 void main() {
   testWidgets('redirects after authentication completes', (tester) async {

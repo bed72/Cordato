@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/app_widget.dart';
+import 'package:cordato/features/core/domain/enums/app_route.dart';
 
 void main() {
   testWidgets('navigates to dashboard after authentication', (tester) async {
@@ -13,15 +14,21 @@ void main() {
     final module = createModule(
       register: (context) {
         context
-          ..route('/welcome', child: (_, _) => const Text('Boas-vindas'))
-          ..route('/dashboard', child: (_, _) => const Text('Dashboard'));
+          ..route(
+            AppRoute.welcome.path,
+            child: (_, _) => const Text('Boas-vindas'),
+          )
+          ..route(
+            AppRoute.dashboard.path,
+            child: (_, _) => const Text('Dashboard'),
+          );
       },
     );
 
     await tester.pumpWidget(
       ModularApp(
         module: module,
-        initialRoute: '/welcome',
+        initialRoute: AppRoute.welcome.path,
         child: AppWidget(events: authenticationEvents.stream),
       ),
     );
