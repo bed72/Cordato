@@ -1,9 +1,10 @@
-import 'package:cordato/features/core/presentation/widgets/toast/toast.dart';
-import 'package:cordato/features/core/presentation/widgets/toast/toast_notifier.dart';
-import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/themes/radius_theme.dart';
+
+import 'package:cordato/features/core/presentation/widgets/toast/toast.dart';
+import 'package:cordato/features/core/presentation/widgets/toast/toast_notifier.dart';
+import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
 
 extension BuildContextCommonExtension on BuildContext {
   double get width => MediaQuery.of(this).size.width;

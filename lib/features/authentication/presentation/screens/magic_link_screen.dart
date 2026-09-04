@@ -1,49 +1,54 @@
-import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+
 import 'package:cordato/features/authentication/presentation/commands/magic_link_command.dart';
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
-import 'package:cordato/features/core/presentation/validators/validation.dart';
 
 import 'package:cordato/features/authentication/presentation/widgets/field_magic_link_widget.dart';
-import 'package:cordato/features/authentication/presentation/widgets/button_magic_link_widget.dart';
 import 'package:cordato/features/authentication/presentation/widgets/header_magic_link_widget.dart';
 import 'package:cordato/features/authentication/presentation/widgets/app_bar_magic_link_widget.dart';
+import 'package:cordato/features/authentication/presentation/widgets/button_magic_link_builder_widget.dart';
 
 final class MagicLinkScreen extends StatefulWidget {
   final MagicLinkCommand command;
+  final EmailValidation validation;
 
-  const MagicLinkScreen({super.key, required this.command});
+  const MagicLinkScreen({
+    super.key,
+    required this.command,
+    required this.validation,
+  });
 
   @override
   State<MagicLinkScreen> createState() => _MagicLinkScreenState();
 }
 
 final class _MagicLinkScreenState extends State<MagicLinkScreen> {
-  String? _emailFailure;
+  String? _failure;
 
-  final _emailController = TextEditingController();
-  final _emailValidation = const EmailValidation();
+  final _controller = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    widget.command.send.results.addListener(_handleSendResult);
+
+    widget.command.send.results.addListener(_handleSend);
   }
 
   @override
   void dispose() {
-    widget.command.send.results.removeListener(_handleSendResult);
-    _emailController.dispose();
+    widget.command.send.results.removeListener(_handleSend);
+    _controller.dispose();
     super.dispose();
   }
 
-  void _handleSendResult() {
-    final result = widget.command.send.results.value;
-    if (!mounted || result.isRunning || result.paramData == null) return;
+  void _handleSend() {
+    final command = widget.command.send.results.value;
+    if (!mounted || command.isRunning || command.paramData == null) return;
 
-    if (result.hasError) {
+    if (command.hasError) {
       context.showToast(
         variant: .error,
         title: 'Erro ao enviar e-mail',
@@ -52,7 +57,7 @@ final class _MagicLinkScreenState extends State<MagicLinkScreen> {
       return;
     }
 
-    if (result.isSuccess) {
+    if (command.isSuccess) {
       context.showToast(
         variant: .success,
         title: 'E-mail enviado',
@@ -63,13 +68,13 @@ final class _MagicLinkScreenState extends State<MagicLinkScreen> {
 
   void _sendMagicLink() {
     context.dismissKeyboard();
-    final validation = _emailValidation(_emailController.text);
+    final validation = widget.validation(_controller.text);
 
     switch (validation) {
       case Invalid(:final message):
-        setState(() => _emailFailure = message);
+        setState(() => _failure = message);
       case Valid(:final value):
-        setState(() => _emailFailure = null);
+        setState(() => _failure = null);
         widget.command.send.run(value);
     }
   }
@@ -82,6 +87,7 @@ final class _MagicLinkScreenState extends State<MagicLinkScreen> {
         child: Padding(
           padding: const .fromLTRB(16.0, 0.0, 16.0, 24.0),
           child: Column(
+            spacing: 16.0,
             crossAxisAlignment: .stretch,
             children: [
               Expanded(
@@ -89,17 +95,17 @@ final class _MagicLinkScreenState extends State<MagicLinkScreen> {
                   child: SingleChildScrollView(
                     padding: const .symmetric(vertical: 24.0),
                     child: Column(
+                      spacing: 24.0,
                       crossAxisAlignment: .stretch,
                       children: [
                         const HeaderMagicLinkWidget(),
-                        const SizedBox(height: 24),
                         FieldMagicLinkWidget(
-                          failure: _emailFailure,
-                          controller: _emailController,
+                          failure: _failure,
+                          controller: _controller,
                           onSubmitted: (_) => _sendMagicLink(),
                           onChanged: (_) {
-                            if (_emailFailure != null) {
-                              setState(() => _emailFailure = null);
+                            if (_failure != null) {
+                              setState(() => _failure = null);
                             }
                           },
                         ),
@@ -108,21 +114,9 @@ final class _MagicLinkScreenState extends State<MagicLinkScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16.0),
-              CommandBuilder<String, void>(
-                command: widget.command.send,
-                whileRunning: (context, _, _) => const ButtonMagicLinkWidget(
-                  isLoading: true,
-                  onPressed: null,
-                ),
-                onSuccess: (context, _) => ButtonMagicLinkWidget(
-                  isLoading: false,
-                  onPressed: _sendMagicLink,
-                ),
-                onError: (context, error, _, _) => ButtonMagicLinkWidget(
-                  isLoading: false,
-                  onPressed: _sendMagicLink,
-                ),
+              ButtonMagicLinkBuilderWidget(
+                command: widget.command,
+                onPressed: _sendMagicLink,
               ),
             ],
           ),

@@ -3,10 +3,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
 
 final class FieldMagicLinkWidget extends StatelessWidget {
-  final ValueChanged<String> onSubmitted;
-  final TextEditingController controller;
   final String? failure;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String> onSubmitted;
+  final TextEditingController controller;
 
   const FieldMagicLinkWidget({
     super.key,

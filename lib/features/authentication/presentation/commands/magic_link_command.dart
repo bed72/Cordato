@@ -1,7 +1,7 @@
 import 'package:command_it/command_it.dart';
 
-import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 import 'package:cordato/features/core/presentation/commands/interface_command.dart';
+import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 
 final class MagicLinkCommand implements ICommand {
   final Command<String, void> send;

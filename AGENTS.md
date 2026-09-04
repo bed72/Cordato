@@ -95,6 +95,10 @@ import 'package:cordato/features/...';
 Use imports explícitos e remova imports não utilizados. Não adicione barrel
 files ou exports globais sem uma necessidade clara.
 
+Imports internos do projeto devem sempre usar o caminho completo com o prefixo
+`package:cordato/`. Não use imports relativos como `import 'data/...';` ou
+`import '../...';`.
+
 ## Widgets
 
 ### Convenções
@@ -110,6 +114,9 @@ files ou exports globais sem uma necessidade clara.
 - Mantenha o nome do arquivo alinhado ao nome da classe. Arquivos antigos podem
   conter exceções, como `welcome_hero.dart` definindo `WelcomeIconWidget`; não
   replique essa inconsistência em código novo sem motivo.
+- Não crie widgets privados, como `_AvatarWidget`, para extrair partes visuais.
+  Quando uma parte visual precisar ser extraída, crie um widget público `final`
+  com nome e arquivo próprios, seguindo o sufixo `Widget`.
 - Prefira `build` curto e extraia métodos privados quando uma parte tiver uma
   responsabilidade visual ou comportamental própria.
 - Não coloque acesso a Supabase, storage ou regras de negócio dentro de um

@@ -1,5 +1,5 @@
-import 'package:flutter_modular/flutter_modular.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
 

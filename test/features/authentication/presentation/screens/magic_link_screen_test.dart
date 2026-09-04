@@ -7,7 +7,9 @@ import 'package:cordato/features/authentication/domain/failures/authentication_f
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 import 'package:cordato/features/authentication/presentation/commands/magic_link_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/magic_link_screen.dart';
+import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/widgets/app_bar_magic_link_widget.dart';
+import 'package:cordato/features/authentication/presentation/widgets/button_magic_link_builder_widget.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/previews/material_preview_widget.dart';
 import 'package:cordato/features/core/presentation/themes/themes.dart';
@@ -21,15 +23,15 @@ class _AuthenticationRepositoryMock extends Mock
 void main() {
   const email = 'person@example.com';
 
-  late IAuthenticationRepository repository;
   late ModularBootstrap bootstrap;
+  late IAuthenticationRepository repository;
 
   setUp(() {
     repository = _AuthenticationRepositoryMock();
     bootstrap = bootstrapModule(
       createModule(
-        register: (c) {
-          c
+        register: (context) {
+          context
             ..addInstance<IAuthenticationRepository>(repository)
             ..addSingleton<MagicLinkCommand>(MagicLinkCommand.new);
         },
@@ -41,20 +43,24 @@ void main() {
     await tester.pumpWidget(
       MaterialPreviewWidget(
         child: ToastProviderWidget(
-          child: MagicLinkScreen(command: bootstrap.injector.get()),
+          child: MagicLinkScreen(
+            command: bootstrap.injector.get(),
+            validation: const EmailValidation(),
+          ),
         ),
       ),
     );
 
+    expect(find.text('Enviar'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
+    expect(find.byType(BackButtonWidget), findsOneWidget);
     expect(find.byType(AppBarMagicLinkWidget), findsOneWidget);
     expect(find.text('Que bom ter você por aqui'), findsOneWidget);
+    expect(find.byType(ButtonMagicLinkBuilderWidget), findsOneWidget);
     expect(
       find.text('Entre com seu e-mail e enviaremos o link'),
       findsOneWidget,
     );
-    expect(find.text('Enviar'), findsOneWidget);
-    expect(find.byType(BackButtonWidget), findsOneWidget);
     expect(
       tester.getSize(find.byType(BackgroundIconWidget)),
       const Size(48.0, 48.0),
@@ -80,7 +86,10 @@ void main() {
     await tester.pumpWidget(
       MaterialPreviewWidget(
         child: ToastProviderWidget(
-          child: MagicLinkScreen(command: bootstrap.injector.get()),
+          child: MagicLinkScreen(
+            command: bootstrap.injector.get(),
+            validation: const EmailValidation(),
+          ),
         ),
       ),
     );
@@ -112,7 +121,10 @@ void main() {
     await tester.pumpWidget(
       MaterialPreviewWidget(
         child: ToastProviderWidget(
-          child: MagicLinkScreen(command: bootstrap.injector.get()),
+          child: MagicLinkScreen(
+            command: bootstrap.injector.get(),
+            validation: const EmailValidation(),
+          ),
         ),
       ),
     );
@@ -130,7 +142,10 @@ void main() {
   testWidgets('does not send an invalid email', (tester) async {
     await tester.pumpWidget(
       MaterialPreviewWidget(
-        child: MagicLinkScreen(command: bootstrap.injector.get()),
+        child: MagicLinkScreen(
+          command: bootstrap.injector.get(),
+          validation: const EmailValidation(),
+        ),
       ),
     );
     await tester.enterText(find.byType(TextField), 'invalid-email');

@@ -1,6 +1,7 @@
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show LocalStorage, Supabase;
 
@@ -11,13 +12,15 @@ import 'package:cordato/features/authentication/infrastructure/clients/supabase_
 import 'package:cordato/features/authentication/infrastructure/clients/supabase_storage_client.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
 import 'package:cordato/features/authentication/presentation/commands/magic_link_command.dart';
-import 'package:cordato/features/core/core_module.dart';
 import 'package:cordato/features/core/domain/enums/app_route.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage_client.dart';
 
-Module _createAppModule() => createModule(
+class _StorageClientMock extends Mock implements IStorageClient {}
+
+Module _createAppModule(IStorageClient storageClient) => createModule(
   register: (c) {
     c
-      ..module(coreModule)
+      ..addInstance<IStorageClient>(storageClient)
       ..module(authenticationModule);
   },
 );
@@ -47,7 +50,7 @@ void main() {
   });
 
   test('registers SupabaseStorageClient as LocalStorage', () {
-    final bootstrap = bootstrapModule(_createAppModule());
+    final bootstrap = bootstrapModule(_createAppModule(_StorageClientMock()));
     final route = bootstrap.routes.match(
       Uri.parse(AppRoute.authenticationMagicLink.path),
     )!;
@@ -77,7 +80,7 @@ void main() {
   });
 
   test('matches the authentication callback deep link', () {
-    final bootstrap = bootstrapModule(_createAppModule());
+    final bootstrap = bootstrapModule(_createAppModule(_StorageClientMock()));
 
     final route = bootstrap.routes.match(
       Uri.parse(
