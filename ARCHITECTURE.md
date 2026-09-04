@@ -2,9 +2,15 @@
 
 ## Visão Geral
 
-Cordato é um aplicativo Flutter organizado por feature e por camadas. O
-objetivo é manter a apresentação independente de Supabase, storage e plugins,
-permitindo testar regras e integrações com doubles.
+Cordato é um aplicativo Flutter de finanças pessoais organizado por feature e
+por camadas. Cada pessoa é dona dos próprios dados financeiros; o casal é uma
+lente de leitura compartilhada, nunca um dono de dinheiro.
+
+O backend original em Kotlin definiu o modelo de domínio. Ele foi migrado para
+o Supabase, mas suas regras de negócio continuam sendo a referência para as
+features que serão implementadas no app. A apresentação permanece independente
+de Supabase, storage e plugins, permitindo testar regras e integrações com
+doubles.
 
 ```text
                  +----------------------+
@@ -37,6 +43,33 @@ A regra principal é que a UI conhece contratos, não detalhes de integração.
 Uma screen pode conhecer um command e um command pode conhecer uma interface de
 repositório. Nenhuma screen deve chamar `SupabaseClient`, `FlutterSecureStorage`
 ou um cliente de rede diretamente.
+
+## Produto E Bounded Contexts
+
+Os contextos financeiros são isolados e devem ser implementados em features
+próprias:
+
+- `expense`: registra fatos atômicos de gastos pertencentes a uma pessoa.
+- `budget`: registra tetos planejados por intervalo de datas; gasto e saldo são derivados.
+- `couple`: conecta duas pessoas e compõe leituras combinadas, sem conceder escrita nos dados do outro.
+- `insight`: calcula análises derivadas, somente leitura e sem persistência própria.
+
+`dashboard` é uma feature de apresentação e composição, não um bounded context
+de negócio. `authentication` encapsula o Supabase Auth e o magic link. O
+contexto `identity` do backend não deve ser recriado no app neste momento, e o
+contexto `chat` está fora do escopo atual.
+
+As regras transversais mais importantes são:
+
+- dinheiro somente em centavos inteiros e BRL;
+- um gasto nunca possui referência a um orçamento; a associação é derivada pela data;
+- orçamentos vivos da mesma pessoa não podem compartilhar nenhum dia;
+- visões de casal e insights são recompostas a partir dos dados proprietários, nunca persistidas;
+- dissolver um casal preserva integralmente os dados individuais.
+
+As dependências entre contextos apontam para quem possui os dados: `couple`
+consome `budget` e `expense` para leitura, e `insight` consome `budget`,
+`expense` e `couple`. Os contextos proprietários nunca dependem das lentes.
 
 ## Estrutura De Diretórios
 
@@ -78,6 +111,19 @@ lib/
       presentation/
         screens/
         widgets/
+    dashboard/
+      dashboard_module.dart
+      domain/
+      data/
+      infrastructure/
+      presentation/
+        commands/
+        screens/
+        widgets/
+    expense/                  # bounded context futuro
+    budget/                   # bounded context futuro
+    couple/                   # bounded context futuro
+    insight/                  # bounded context futuro
 ```
 
 O diretório `core` é compartilhado. Ele não deve virar um depósito de código de
@@ -90,9 +136,8 @@ O fluxo de bootstrap é:
 ```text
 main.dart
   -> WidgetsFlutterBinding.ensureInitialized()
-  -> valida SUPABASE_URL e SUPABASE_ANON_KEY
-  -> Supabase.initialize(...)
-  -> ModularApp(module: appModule, initialRoute: '/welcome')
+  -> SupabaseClient.ensureInitialized()
+  -> ModularApp(module: appModule, initialRoute conforme sessão)
   -> AppWidget
   -> MaterialApp.router
 ```
@@ -102,8 +147,9 @@ Arquivos envolvidos:
 - `main.dart` inicializa Flutter e Supabase.
 - `app_module.dart` registra os módulos de aplicação.
 - `app_widget.dart` configura título, temas e `ModularApp.routerConfigOf`.
-- `welcome_module.dart` fornece a rota inicial.
-- `authentication_module.dart` fornece o fluxo de autenticação.
+- `welcome_module.dart` fornece a tela inicial para pessoas sem sessão.
+- `authentication_module.dart` fornece o fluxo de magic link.
+- `dashboard_module.dart` fornece a tela inicial para pessoas autenticadas.
 
 O startup falha com `StateError` quando `SUPABASE_URL` ou
 `SUPABASE_ANON_KEY` não são fornecidos. Essa configuração é obrigatória no
@@ -132,6 +178,7 @@ appModule
   +-- coreModule
   +-- welcomeModule
   +-- authenticationModule
+  +-- dashboardModule
 ```
 
 O módulo de aplicação não deve conter regras de uma feature. Ele apenas conecta
@@ -151,11 +198,18 @@ os módulos de alto nível.
 - redirect URL como `String`;
 - `SupabaseClient` já inicializado;
 - `LocalStorage` com `SupabaseStorageClient`;
-- `ISupabaseAuthenticationClient` com `SupabaseAuthenticationClient`;
+- `IAuthenticationClient` com `SupabaseAuthenticationClient`;
 - `IAuthenticationDataSource` com `AuthenticationDataSource`;
 - `IAuthenticationRepository` com `AuthenticationRepository`;
 - `MagicLinkCommand` como lazy singleton;
-- rota `/magic-link`.
+- rotas `/authentication/magic-link` e `/callback`.
+
+### Dashboard
+
+`dashboardModule` registra o acesso aos dados básicos do usuário, seu
+repositório e `GetUserNameCommand`, além da rota `/dashboard/`. O dashboard
+atual é apenas uma composição inicial; ele não deve concentrar regras dos
+bounded contexts financeiros.
 
 Use interfaces nos bindings sempre que a camada consumidora depender de uma
 abstração:
@@ -178,6 +232,8 @@ As rotas atuais são:
 ```text
 /welcome/
 /authentication/magic-link
+/callback
+/dashboard/
 ```
 
 O Modular 7 moveu a navegação para extensões de `BuildContext`:
@@ -201,8 +257,9 @@ child: (_, _) => WelcomeScreen(
 O callback `ValueChanged<BuildContext>` é deliberado: a screen continua
 testável e não fica acoplada ao Modular.
 
-`main.dart` usa `initialRoute: '/welcome'` e `TransitionType.none`. A diferença
-entre `/welcome` e a rota filha `/welcome/` deve ser mantida consistente e
+`main.dart` usa `/dashboard` quando já existe uma sessão e `/welcome` caso
+contrário, sempre com `TransitionType.none`. A diferença entre as rotas base e
+as rotas filhas (`/welcome/` e `/dashboard/`) deve ser mantida consistente e
 testada antes de alterar a convenção.
 
 ## Camadas
@@ -212,10 +269,15 @@ testada antes de alterar a convenção.
 O domínio contém contratos e tipos que expressam o comportamento da aplicação.
 Não deve importar Supabase, Flutter UI ou widgets.
 
-Exemplos:
+Em features financeiras, o domínio deve manter a posse individual dos dados e
+as regras de derivação. Por exemplo, `expense` não conhece `budget`, e uma
+visão combinada pertence à feature que a consulta, não aos dados proprietários.
 
-- `IAuthenticationRepository` define sessão, logout, request e confirmação do
-  magic link.
+Exemplos atuais e futuros:
+
+- `IAuthenticationRepository` define sessão, logout, solicitação e confirmação do magic link.
+- Repositórios de `expense` e `budget` devem expor contratos dos próprios dados,
+  sem referências cruzadas artificiais.
 - `Failure` e suas subclasses representam falhas conhecidas.
 - `Either<L, R>` representa sucesso (`Right`) ou falha (`Left`).
 
@@ -241,6 +303,9 @@ resultado sem lançar exceções de domínio desnecessariamente.
 Data implementa interfaces do domínio e traduz resultados da fonte de dados
 para `Either<Failure, R>`.
 
+Esta camada é uma convenção do cliente Flutter. Ela não altera a separação de
+bounded contexts: cada repositório pertence à feature que possui seu contrato.
+
 Fluxo de autenticação:
 
 ```text
@@ -248,8 +313,8 @@ IAuthenticationRepository
   <- AuthenticationRepository
        -> IAuthenticationDataSource
             -> AuthenticationDataSource
-                 -> ISupabaseAuthenticationClient
-                      -> SupabaseAuthenticationClient
+                  -> IAuthenticationClient
+                       -> SupabaseAuthenticationClient
 ```
 
 O repository converte booleanos da fonte em failures tipadas:
@@ -512,6 +577,9 @@ test/features/
   authentication/data/...
   authentication/presentation/commands/...
   authentication/presentation/screens/...
+
+test/architecture/
+  bounded_context_dependencies_test.dart
 ```
 
 O teste de `MagicLinkCommand` está atualmente em um diretório chamado
@@ -532,6 +600,10 @@ Teste comportamentos observáveis:
 - estados de loading;
 - erros e feedback;
 - disposição de controllers e commands quando aplicável.
+
+O teste em `test/architecture/bounded_context_dependencies_test.dart` faz uma
+verificação estática dos imports em `lib/`. Ele protege as direções entre
+bounded contexts e a separação entre domínio, apresentação e infraestrutura.
 
 ### Comandos De Verificação
 

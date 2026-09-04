@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -30,6 +31,7 @@ class AppWidget extends StatelessWidget {
         theme: Themes.light,
         darkTheme: Themes.dark,
         routerConfig: routerConfig,
+        debugShowCheckedModeBanner: kDebugMode,
         builder: (_, child) =>
             ToastProviderWidget(child: child ?? const SizedBox.shrink()),
       ),

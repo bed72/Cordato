@@ -10,6 +10,32 @@ Antes de alterar código, leia a feature afetada, os widgets compartilhados que
 ela usa e os testes correspondentes. O projeto evolui por alterações pequenas;
 não substitua uma convenção existente por uma abstração nova sem necessidade.
 
+## Contexto Do Produto
+
+Cordato é um aplicativo de finanças pessoais. Cada pessoa é dona dos próprios
+dados financeiros; um casal é somente uma lente de leitura compartilhada, não
+um dono de dinheiro.
+
+O modelo de domínio validado possui estes bounded contexts:
+
+- `expense`: fatos atômicos de gastos, pertencentes a uma pessoa.
+- `budget`: tetos planejados por intervalo de datas; gasto e saldo são derivados.
+- `couple`: pareamento entre duas pessoas, com leitura combinada e sem escrita nos dados do outro.
+- `insight`: análises derivadas, somente leitura e sem persistência própria.
+
+O backend foi migrado para o Supabase. A autenticação atual usa Supabase Auth
+com magic link; não crie um contexto `identity` no app para reproduzir o
+backend antigo. O contexto `chat` não faz parte do escopo atual.
+
+Regras de domínio que devem ser preservadas nas features financeiras:
+
+- valores monetários são representados em centavos inteiros e somente em BRL;
+- um gasto não referencia um orçamento; o pertencimento é derivado pela data;
+- orçamentos vivos da mesma pessoa não podem se sobrepor;
+- dissolver um casal não altera os dados individuais;
+- parear nunca concede permissão de escrita sobre os dados da outra pessoa;
+- visões combinadas e insights são recalculados a partir dos dados proprietários.
+
 ## Princípios De Trabalho
 
 - Preserve alterações existentes do usuário, mesmo que estejam fora do escopo.
@@ -30,7 +56,7 @@ não substitua uma convenção existente por uma abstração nova sem necessidad
 - `flutter_modular` 7 para módulos, injeção de dependências e rotas.
 - `command_it` para operações assíncronas observáveis pela apresentação.
 - `listen_it` está declarado, mas não é usado diretamente no código atual.
-- Supabase através de `supabase_flutter`.
+- Supabase Auth e dados através de `supabase_flutter`.
 - `flutter_secure_storage` para armazenamento seguro.
 - `mocktail` e `flutter_test` para testes.
 - Fonte de aplicação: `Inter-Variable.ttf`.
@@ -67,6 +93,12 @@ test/
 Feature code deve ficar dentro da própria feature. O `core` contém apenas
 capacidades realmente compartilhadas, como tema, widgets básicos, animações,
 imagens, storage e `Either`.
+
+Os bounded contexts do produto devem ser refletidos em features próprias,
+quando implementados. `dashboard` é uma feature de apresentação e composição,
+não um bounded context de negócio. `authentication` encapsula o fluxo de
+Supabase Auth e magic link; não deve assumir a responsabilidade de modelar
+todo o ciclo de vida de `identity` do backend antigo.
 
 ## Imports
 
@@ -364,6 +396,8 @@ Rotas atuais:
 
 - `/welcome/` para a tela de boas-vindas.
 - `/authentication/magic-link` para o magic link.
+- `/callback` para o retorno do magic link.
+- `/dashboard/` para a área autenticada inicial.
 
 ## Erros E Falhas
 
@@ -388,6 +422,7 @@ Cada mudança deve incluir ou atualizar testes na camada correspondente.
 - `presentation/screens` e `presentation/widgets`: testes de renderização,
   interação, loading, erro, callbacks e acessibilidade.
 - módulos: bindings e rotas.
+- `architecture`: dependências entre bounded contexts e isolamento das camadas.
 
 Use `mocktail`. Dê nomes aos testes pelo comportamento observável, não pelo
 método privado.
@@ -407,6 +442,12 @@ Execute, nesta ordem, quando aplicável:
 flutter pub get
 flutter analyze
 flutter test
+```
+
+Para validar rapidamente os limites arquiteturais:
+
+```bash
+flutter test test/architecture
 ```
 
 Para executar o app, forneça as configurações obrigatórias:
