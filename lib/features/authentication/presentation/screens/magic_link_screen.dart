@@ -62,6 +62,7 @@ final class _MagicLinkScreenState extends State<MagicLinkScreen> {
   }
 
   void _sendMagicLink() {
+    context.dismissKeyboard();
     final validation = _emailValidation(_emailController.text);
 
     switch (validation) {

@@ -21,7 +21,7 @@ void main() {
 
   late SupabaseClient supabaseClient;
   late GoTrueClient auth;
-  late ISupabaseAuthenticationClient client;
+  late IAuthenticationClient client;
 
   setUp(() {
     supabaseClient = _SupabaseClientMock();

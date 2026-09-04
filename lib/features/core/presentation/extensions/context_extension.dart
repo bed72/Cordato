@@ -22,6 +22,8 @@ extension BuildContextCommonExtension on BuildContext {
 
   ToastNotifier get toast => ToastProviderWidget.of(this);
 
+  void dismissKeyboard() => FocusScope.of(this).unfocus();
+
   void showToast({
     required String title,
     Duration? duration,

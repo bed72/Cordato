@@ -57,7 +57,7 @@ void main() {
       isA<SupabaseStorageClient>(),
     );
     expect(
-      bootstrap.injector.get<ISupabaseAuthenticationClient>(),
+      bootstrap.injector.get<IAuthenticationClient>(),
       isA<SupabaseAuthenticationClient>(),
     );
     expect(
@@ -72,6 +72,19 @@ void main() {
     expect(route.last.route.path, '/authentication/magic-link');
 
     bootstrap.manager.leave('authentication-test', route.last.route.ownerTags);
+    bootstrap.manager.root.disposeRecursive();
+  });
+
+  test('matches the authentication callback deep link', () {
+    final bootstrap = bootstrapModule(_createAppModule());
+
+    final route = bootstrap.routes.match(
+      Uri.parse('trocado://authentication/callback?code=magic-link-code'),
+    );
+
+    expect(route, isNotNull);
+    expect(route!.last.route.path, '/callback');
+
     bootstrap.manager.root.disposeRecursive();
   });
 }

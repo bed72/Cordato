@@ -5,13 +5,13 @@ import 'package:cordato/features/authentication/infrastructure/clients/supabase_
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
 
 class _SupabaseAuthenticationClientMock extends Mock
-    implements ISupabaseAuthenticationClient {}
+    implements IAuthenticationClient {}
 
 void main() {
   const email = 'person@example.com';
   const code = 'magic-link-code';
 
-  late ISupabaseAuthenticationClient client;
+  late IAuthenticationClient client;
   late IAuthenticationDataSource dataSource;
 
   setUp(() {

@@ -57,7 +57,7 @@ void main() {
     expect(find.byType(BackButtonWidget), findsOneWidget);
     expect(
       tester.getSize(find.byType(BackgroundIconWidget)),
-      const Size(40.0, 40.0),
+      const Size(48.0, 48.0),
     );
     expect(
       tester
@@ -85,9 +85,15 @@ void main() {
       ),
     );
     await tester.enterText(find.byType(TextField), email);
+    final focusNode = tester
+        .widget<EditableText>(find.byType(EditableText))
+        .focusNode;
+    expect(focusNode.hasFocus, isTrue);
+
     await tester.tap(find.text('Enviar'));
     await tester.pumpAndSettle();
 
+    expect(focusNode.hasFocus, isFalse);
     verify(() => repository.requestMagicLink(email: email)).called(1);
     expect(find.text('E-mail enviado'), findsOneWidget);
     expect(

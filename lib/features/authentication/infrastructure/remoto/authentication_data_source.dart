@@ -11,7 +11,7 @@ abstract interface class IAuthenticationDataSource {
 }
 
 final class AuthenticationDataSource implements IAuthenticationDataSource {
-  final ISupabaseAuthenticationClient _client;
+  final IAuthenticationClient _client;
 
   AuthenticationDataSource({required this._client});
 

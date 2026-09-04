@@ -46,16 +46,26 @@ void main() {
     expect(find.text('Falha na conexão'), findsOneWidget);
     expect(find.text('Tente novamente em instantes.'), findsOneWidget);
     expect(find.byIcon(Icons.error_outline), findsOneWidget);
+    final iconBackground = tester.widget<BackgroundIconWidget>(
+      find.byType(BackgroundIconWidget),
+    );
     expect(
-      tester.widget<BackgroundIconWidget>(find.byType(BackgroundIconWidget)),
+      iconBackground,
       isA<BackgroundIconWidget>()
-          .having((widget) => widget.iconSize, 'iconSize', 22.0)
+          .having((widget) => widget.iconSize, 'iconSize', 24.0)
           .having(
             (widget) => widget.iconColor,
             'iconColor',
             lightColors.textOnErrorSoft,
           ),
     );
+    final gradient = iconBackground.gradient! as LinearGradient;
+    expect(gradient.begin, Alignment.topLeft);
+    expect(gradient.end, Alignment.bottomRight);
+    expect(gradient.colors, [
+      Color.lerp(lightColors.errorSoft, Colors.black87, .08),
+      Color.lerp(lightColors.errorSoft, Colors.black87, .2),
+    ]);
     expect(
       tester.widget<Text>(find.text('Tente novamente em instantes.')).maxLines,
       2,

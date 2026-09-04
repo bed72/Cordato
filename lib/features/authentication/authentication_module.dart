@@ -8,6 +8,7 @@ import 'infrastructure/clients/supabase_authentication_client.dart';
 import 'infrastructure/clients/supabase_storage_client.dart';
 import 'infrastructure/remoto/authentication_data_source.dart';
 import 'presentation/commands/magic_link_command.dart';
+import 'presentation/screens/authentication_callback_screen.dart';
 import 'presentation/screens/magic_link_screen.dart';
 
 const _supabaseRedirectUrl = String.fromEnvironment(
@@ -16,13 +17,13 @@ const _supabaseRedirectUrl = String.fromEnvironment(
 );
 
 final authenticationModule = createModule(
-  path: '/authentication',
+  path: '/',
   register: (context) {
     context
       ..addInstance<String>(_supabaseRedirectUrl)
       ..addInstance<SupabaseClient>(Supabase.instance.client)
       ..addLazySingleton<LocalStorage>(SupabaseStorageClient.new)
-      ..addLazySingleton<ISupabaseAuthenticationClient>(
+      ..addLazySingleton<IAuthenticationClient>(
         SupabaseAuthenticationClient.new,
       )
       ..addLazySingleton<IAuthenticationDataSource>(
@@ -33,9 +34,13 @@ final authenticationModule = createModule(
       )
       ..addLazySingleton<MagicLinkCommand>(MagicLinkCommand.new)
       ..route(
-        '/magic-link',
+        '/authentication/magic-link',
         child: (context, _) =>
             MagicLinkScreen(command: inject<MagicLinkCommand>()),
+      )
+      ..route(
+        '/callback',
+        child: (_, _) => const AuthenticationCallbackScreen(),
       );
   },
 );

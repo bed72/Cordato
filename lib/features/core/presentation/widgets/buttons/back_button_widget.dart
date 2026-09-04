@@ -13,7 +13,12 @@ final class BackButtonWidget extends StatelessWidget {
     width: 48.0,
     height: 48.0,
     iconSize: 26.0,
-    onPress: onPress,
+    onPress: onPress == null
+        ? null
+        : () {
+            context.dismissKeyboard();
+            onPress!();
+          },
     icon: Icons.chevron_left,
     withoutBackground: false,
     iconColor: context.colors.onSurface,
@@ -22,7 +27,7 @@ final class BackButtonWidget extends StatelessWidget {
     backgroundGradient: LinearGradient(
       begin: .topLeft,
       end: .bottomRight,
-      colors: [context.colors.surfaceBright, context.colors.surface],
+      colors: [context.colors.surfaceDim, context.colors.surface],
     ),
   );
 }

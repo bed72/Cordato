@@ -21,12 +21,19 @@ Future<void> main() async {
     publishableKey: _supabaseAnonKey,
   );
 
+  final authentication = Supabase.instance.client.auth;
+  final events = authentication.onAuthStateChange
+      .where((state) => state.event == AuthChangeEvent.signedIn)
+      .map<void>((_) {});
+
   runApp(
     ModularApp(
       module: appModule,
-      initialRoute: '/welcome',
       defaultTransition: TransitionType.none,
-      child: const AppWidget(),
+      initialRoute: authentication.currentSession == null
+          ? '/welcome'
+          : '/dashboard',
+      child: AppWidget(events: events),
     ),
   );
 }

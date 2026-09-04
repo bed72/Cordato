@@ -24,4 +24,32 @@ void main() {
       Themes.light.colorScheme.surface,
     ]);
   });
+
+  testWidgets('dismisses the keyboard before handling press', (tester) async {
+    final focusNode = FocusNode();
+    addTearDown(focusNode.dispose);
+    var pressed = false;
+
+    await tester.pumpWidget(
+      MaterialPreviewWidget(
+        child: Scaffold(
+          body: Column(
+            children: [
+              TextField(focusNode: focusNode, autofocus: true),
+              BackButtonWidget(onPress: () => pressed = true),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(focusNode.hasFocus, isTrue);
+
+    await tester.tap(find.byType(BackButtonWidget));
+    await tester.pump();
+
+    expect(focusNode.hasFocus, isFalse);
+    expect(pressed, isTrue);
+  });
 }

@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart' show SupabaseClient;
 
-abstract interface class ISupabaseAuthenticationClient {
+abstract interface class IAuthenticationClient {
   Future<bool> logout();
 
   Future<bool> checkSession();
@@ -10,8 +10,7 @@ abstract interface class ISupabaseAuthenticationClient {
   Future<bool> completeMagicLink({required String code});
 }
 
-final class SupabaseAuthenticationClient
-    implements ISupabaseAuthenticationClient {
+final class SupabaseAuthenticationClient implements IAuthenticationClient {
   final String _redirectUrl;
   final SupabaseClient _client;
 
