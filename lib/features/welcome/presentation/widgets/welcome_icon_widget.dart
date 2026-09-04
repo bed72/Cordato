@@ -1,5 +1,7 @@
-import 'package:cordato/features/core/presentation/widgets/images/image_widget.dart';
 import 'package:material_ui/material_ui.dart';
+
+import 'package:cordato/features/core/domain/enums/asset_enum.dart';
+import 'package:cordato/features/core/presentation/widgets/images/image_widget.dart';
 
 final class WelcomeIconWidget extends StatelessWidget {
   const WelcomeIconWidget({super.key});
@@ -11,8 +13,8 @@ final class WelcomeIconWidget extends StatelessWidget {
     child: Center(
       child: ImageWidget(
         fit: .contain,
-        alt: 'Logo Trocado',
-        source: 'assets/images/logo.webp',
+        alt: AssetEnum.logo.alt,
+        source: AssetEnum.logo.source,
       ),
     ),
   );

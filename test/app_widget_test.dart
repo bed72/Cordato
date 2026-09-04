@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/app_widget.dart';
-import 'package:cordato/features/core/domain/enums/app_route.dart';
+import 'package:cordato/features/core/domain/enums/route_enum.dart';
 
 void main() {
   testWidgets('navigates to dashboard after authentication', (tester) async {
@@ -15,11 +15,11 @@ void main() {
       register: (context) {
         context
           ..route(
-            AppRoute.welcome.path,
+            RouteEnum.welcome.path,
             child: (_, _) => const Text('Boas-vindas'),
           )
           ..route(
-            AppRoute.dashboard.path,
+            RouteEnum.dashboard.path,
             child: (_, _) => const Text('Dashboard'),
           );
       },
@@ -28,7 +28,7 @@ void main() {
     await tester.pumpWidget(
       ModularApp(
         module: module,
-        initialRoute: AppRoute.welcome.path,
+        initialRoute: RouteEnum.welcome.path,
         child: AppWidget(events: authenticationEvents.stream),
       ),
     );

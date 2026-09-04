@@ -2,7 +2,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show LocalStorage, Supabase, SupabaseClient;
 
-import 'package:cordato/features/core/domain/enums/app_route.dart';
+import 'package:cordato/features/core/domain/enums/route_enum.dart';
 
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
@@ -22,7 +22,7 @@ const _supabaseRedirectUrl = String.fromEnvironment(
 );
 
 final authenticationModule = createModule(
-  path: AppRoute.root.path,
+  path: RouteEnum.root.path,
   register: (context) {
     context
       ..add(EmailValidation.new)
@@ -40,11 +40,11 @@ final authenticationModule = createModule(
         SupabaseAuthenticationClient.new,
       )
       ..route(
-        AppRoute.authenticationCallback.path,
+        RouteEnum.authenticationCallback.path,
         child: (_, _) => const AuthenticationCallbackScreen(),
       )
       ..route(
-        AppRoute.authenticationMagicLink.path,
+        RouteEnum.authenticationMagicLink.path,
         child: (_, _) => MagicLinkScreen(
           command: inject<MagicLinkCommand>(),
           validation: inject<EmailValidation>(),

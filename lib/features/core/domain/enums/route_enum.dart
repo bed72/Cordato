@@ -1,4 +1,4 @@
-enum AppRoute {
+enum RouteEnum {
   root('/'),
   welcome('/welcome'),
   dashboard('/dashboard'),
@@ -7,5 +7,5 @@ enum AppRoute {
 
   final String path;
 
-  const AppRoute(this.path);
+  const RouteEnum(this.path);
 }

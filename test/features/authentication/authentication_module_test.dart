@@ -1,25 +1,27 @@
-import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show LocalStorage, Supabase;
 
-import 'package:cordato/features/authentication/authentication_module.dart';
+import 'package:cordato/features/core/domain/enums/route_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage_client.dart';
+
+import 'package:cordato/features/authentication/presentation/commands/magic_link_command.dart';
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
-import 'package:cordato/features/authentication/infrastructure/clients/supabase_authentication_client.dart';
+
+import 'package:cordato/features/authentication/authentication_module.dart';
 import 'package:cordato/features/authentication/infrastructure/clients/supabase_storage_client.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
-import 'package:cordato/features/authentication/presentation/commands/magic_link_command.dart';
-import 'package:cordato/features/core/domain/enums/app_route.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage_client.dart';
+import 'package:cordato/features/authentication/infrastructure/clients/supabase_authentication_client.dart';
 
 class _StorageClientMock extends Mock implements IStorageClient {}
 
 Module _createAppModule(IStorageClient storageClient) => createModule(
-  register: (c) {
-    c
+  register: (context) {
+    context
       ..addInstance<IStorageClient>(storageClient)
       ..module(authenticationModule);
   },
@@ -52,10 +54,12 @@ void main() {
   test('registers SupabaseStorageClient as LocalStorage', () {
     final bootstrap = bootstrapModule(_createAppModule(_StorageClientMock()));
     final route = bootstrap.routes.match(
-      Uri.parse(AppRoute.authenticationMagicLink.path),
+      Uri.parse(RouteEnum.authenticationMagicLink.path),
     )!;
     bootstrap.manager.enter('authentication-test', route.last.route.ownerTags);
 
+    expect(route.last.route.path, RouteEnum.authenticationMagicLink.path);
+    expect(bootstrap.injector.get<MagicLinkCommand>(), isA<MagicLinkCommand>());
     expect(
       bootstrap.injector.get<LocalStorage>(),
       isA<SupabaseStorageClient>(),
@@ -72,8 +76,6 @@ void main() {
       bootstrap.injector.get<IAuthenticationRepository>(),
       isA<AuthenticationRepository>(),
     );
-    expect(bootstrap.injector.get<MagicLinkCommand>(), isA<MagicLinkCommand>());
-    expect(route.last.route.path, AppRoute.authenticationMagicLink.path);
 
     bootstrap.manager.leave('authentication-test', route.last.route.ownerTags);
     bootstrap.manager.root.disposeRecursive();
@@ -84,13 +86,13 @@ void main() {
 
     final route = bootstrap.routes.match(
       Uri.parse(
-        'trocado://authentication${AppRoute.authenticationCallback.path}'
+        'trocado://authentication${RouteEnum.authenticationCallback.path}'
         '?code=magic-link-code',
       ),
     );
 
     expect(route, isNotNull);
-    expect(route!.last.route.path, AppRoute.authenticationCallback.path);
+    expect(route!.last.route.path, RouteEnum.authenticationCallback.path);
 
     bootstrap.manager.root.disposeRecursive();
   });

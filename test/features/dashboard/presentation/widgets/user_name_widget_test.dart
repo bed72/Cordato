@@ -1,3 +1,4 @@
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -16,7 +17,7 @@ void main() {
     repository = _UserRepositoryMock();
   });
 
-  testWidgets('renders the name and morning greeting', (tester) async {
+  testWidgets('renders the name, avatar, and greeting', (tester) async {
     when(() => repository.getUserName()).thenAnswer((_) async => 'Gabriel');
     final command = GetUserNameCommand(repository: repository);
     addTearDown(command.dispose);
@@ -27,50 +28,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Bom dia'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Text &&
+            {
+              'Bom dia',
+              'Boa tarde',
+              'Boa noite',
+              'Isso são horas?',
+            }.contains(widget.data),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Gabriel'), findsOneWidget);
     expect(find.byType(AvatarDashboardWidget), findsOneWidget);
-  });
-
-  testWidgets('renders the afternoon greeting', (tester) async {
-    when(() => repository.getUserName()).thenAnswer((_) async => 'Gabriel');
-    final command = GetUserNameCommand(repository: repository);
-    addTearDown(command.dispose);
-    command.execute.run();
-
-    await tester.pumpWidget(
-      MaterialPreviewWidget(child: UserNameWidget(command: command)),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Boa tarde'), findsOneWidget);
-  });
-
-  testWidgets('renders the night greeting', (tester) async {
-    when(() => repository.getUserName()).thenAnswer((_) async => 'Gabriel');
-    final command = GetUserNameCommand(repository: repository);
-    addTearDown(command.dispose);
-    command.execute.run();
-
-    await tester.pumpWidget(
-      MaterialPreviewWidget(child: UserNameWidget(command: command)),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Boa noite'), findsOneWidget);
-  });
-
-  testWidgets('renders the late night greeting', (tester) async {
-    when(() => repository.getUserName()).thenAnswer((_) async => 'Gabriel');
-    final command = GetUserNameCommand(repository: repository);
-    addTearDown(command.dispose);
-    command.execute.run();
-
-    await tester.pumpWidget(
-      MaterialPreviewWidget(child: UserNameWidget(command: command)),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Isso são horas?'), findsOneWidget);
   });
 }

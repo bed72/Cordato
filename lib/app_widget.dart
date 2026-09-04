@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/features/core/domain/enums/app_route.dart';
+import 'package:cordato/features/core/domain/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/themes/themes.dart';
 import 'package:cordato/features/core/presentation/widgets/redirect_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
@@ -21,7 +21,7 @@ class AppWidget extends StatelessWidget {
       events: events,
       onAuthenticated: () => unawaited(
         routerConfig.routerDelegate.setNewRoutePath(
-          RouteState(uri: Uri.parse(AppRoute.dashboard.path)),
+          RouteState(uri: Uri.parse(RouteEnum.dashboard.path)),
         ),
       ),
       child: MaterialApp.router(

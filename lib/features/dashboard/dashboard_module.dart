@@ -1,7 +1,7 @@
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
-import 'package:cordato/features/core/domain/enums/app_route.dart';
+import 'package:cordato/features/core/domain/enums/route_enum.dart';
 
 import 'package:cordato/features/dashboard/data/repositories/user_repository.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -11,7 +11,7 @@ import 'package:cordato/features/dashboard/infrastructure/clients/supabase_user_
 import 'package:cordato/features/dashboard/domain/repositories/interface_user_repository.dart';
 
 final dashboardModule = createModule(
-  path: AppRoute.dashboard.path,
+  path: RouteEnum.dashboard.path,
   register: (context) {
     context
       ..addLazySingleton<IUserClient>(
@@ -21,7 +21,7 @@ final dashboardModule = createModule(
       ..addLazySingleton<IUserRepository>(UserRepository.new)
       ..addLazySingleton<GetUserNameCommand>(GetUserNameCommand.new)
       ..route(
-        AppRoute.root.path,
+        RouteEnum.root.path,
         child: (_, _) => DashboardScreen(command: inject<GetUserNameCommand>()),
       );
   },

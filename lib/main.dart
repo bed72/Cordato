@@ -4,7 +4,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:cordato/app_module.dart';
 import 'package:cordato/app_widget.dart';
 
-import 'package:cordato/features/core/domain/enums/app_route.dart';
+import 'package:cordato/features/core/domain/enums/route_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/supabase_client.dart';
 
 Future<void> main() async {
@@ -17,8 +17,8 @@ Future<void> main() async {
       module: appModule,
       defaultTransition: TransitionType.none,
       initialRoute: client.hasSession
-          ? AppRoute.dashboard.path
-          : AppRoute.welcome.path,
+          ? RouteEnum.dashboard.path
+          : RouteEnum.welcome.path,
       child: AppWidget(events: client.events),
     ),
   );
