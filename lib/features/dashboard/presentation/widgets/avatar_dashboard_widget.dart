@@ -19,7 +19,7 @@ final class AvatarDashboardWidget extends StatelessWidget {
       child: Center(
         child: Text(
           initial,
-          style: context.typography.headlineMedium?.copyWith(
+          style: context.typography.headlineSmall?.copyWith(
             fontWeight: .w700,
             color: context.colors.onPrimaryContainer,
           ),

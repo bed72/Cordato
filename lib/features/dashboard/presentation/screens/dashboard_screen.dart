@@ -5,8 +5,8 @@ import 'package:cordato/features/dashboard/presentation/widgets/app_bar_dashboar
 
 final class DashboardScreen extends StatefulWidget {
   final GetUserNameCommand command;
-  final VoidCallback? onNotificationsPressed;
   final VoidCallback? onMenuPressed;
+  final VoidCallback? onNotificationsPressed;
 
   const DashboardScreen({
     super.key,
@@ -30,8 +30,8 @@ final class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBarDashboardWidget(
       command: widget.command,
-      onNotificationsPressed: widget.onNotificationsPressed,
       onMenuPressed: widget.onMenuPressed,
+      onNotificationsPressed: widget.onNotificationsPressed,
     ),
     body: const SafeArea(child: Center(child: Text('Dashboard'))),
   );

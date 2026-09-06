@@ -1,5 +1,5 @@
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:cordato/features/core/domain/enums/route_enum.dart';
 
@@ -22,7 +22,11 @@ final dashboardModule = createModule(
       ..addLazySingleton<GetUserNameCommand>(GetUserNameCommand.new)
       ..route(
         RouteEnum.root.path,
-        child: (_, _) => DashboardScreen(command: inject<GetUserNameCommand>()),
+        child: (_, _) => DashboardScreen(
+          command: inject<GetUserNameCommand>(),
+          onMenuPressed: () {},
+          onNotificationsPressed: () {},
+        ),
       );
   },
 );

@@ -10,6 +10,8 @@ import 'package:cordato/features/dashboard/domain/repositories/interface_user_re
 import 'package:cordato/features/dashboard/presentation/commands/get_user_name_command.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/app_bar_dashboard_widget.dart';
+import 'package:cordato/features/dashboard/presentation/widgets/menu_button_dashboard_widget.dart';
+import 'package:cordato/features/dashboard/presentation/widgets/notification_button_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/user/user_name_skeleton_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/user/user_name_widget.dart';
 
@@ -65,8 +67,17 @@ void main() {
 
     expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
     expect(find.byIcon(Icons.menu), findsOneWidget);
+    expect(find.byType(NotificationButtonDashboardWidget), findsOneWidget);
+    expect(find.byType(MenuButtonDashboardWidget), findsOneWidget);
     expect(find.bySemanticsLabel('Notificações'), findsOneWidget);
     expect(find.bySemanticsLabel('Menu'), findsOneWidget);
+    final notificationRect = tester.getRect(
+      find.byType(NotificationButtonDashboardWidget),
+    );
+    final menuRect = tester.getRect(find.byType(MenuButtonDashboardWidget));
+    final appBarRect = tester.getRect(find.byType(AppBar));
+    expect(menuRect.left - notificationRect.right, 8.0);
+    expect(appBarRect.right - menuRect.right, 16.0);
 
     await tester.tap(find.byIcon(Icons.notifications_none_rounded));
     await tester.tap(find.byIcon(Icons.menu));
