@@ -23,7 +23,7 @@ final class WelcomeSloganWidget extends StatelessWidget {
           child: Text(
             'A maneira mais simples de cuidar do seu dinheiro',
             textAlign: .center,
-            style: context.typography.headlineLarge?.copyWith(
+            style: context.typography.headlineMedium?.copyWith(
               fontWeight: .w600,
               letterSpacing: -0.6,
               color: context.colors.onSurface,

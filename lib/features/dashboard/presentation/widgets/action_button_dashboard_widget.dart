@@ -32,8 +32,8 @@ final class ActionButtonDashboardWidget extends StatelessWidget {
     children: [
       Semantics(
         button: true,
-        enabled: onExpense != null,
         label: 'Adicionar gasto',
+        enabled: onExpense != null,
         child: ExcludeSemantics(
           child: BounceWidget.withOnPress(
             onPress: onExpense,
@@ -71,8 +71,8 @@ final class ActionButtonDashboardWidget extends StatelessWidget {
               ),
               child: IconWidget(
                 size: 20.0,
-                color: context.colors.onPrimary,
                 icon: Icons.savings_outlined,
+                color: context.colors.onPrimary,
               ),
             ),
           ),

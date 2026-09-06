@@ -54,24 +54,11 @@ final class ToastWidget extends StatelessWidget {
                           height: .infinity,
                           iconColor: palette.foreground,
                           icon: getToastIcon(data.variant),
-                          backgroundColor: palette.background,
-                          gradient: LinearGradient(
-                            begin: .topLeft,
-                            tileMode: .clamp,
-                            end: .bottomRight,
-                            colors: [
-                              Color.lerp(
-                                palette.background,
-                                Colors.black87,
-                                .02,
-                              )!,
-                              Color.lerp(
-                                palette.background,
-                                Colors.black87,
-                                .2,
-                              )!,
-                            ],
-                          ),
+                          backgroundColor: Color.lerp(
+                            palette.background,
+                            Colors.black,
+                            .12,
+                          )!,
                         ),
                       ),
                     ),

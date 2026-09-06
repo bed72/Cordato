@@ -25,23 +25,7 @@ final class NotificationButtonDashboardWidget extends StatelessWidget {
             iconColor: context.colors.onSurface,
             icon: Icons.notifications_none_rounded,
             borderRadius: context.radius.cornerRadius100,
-            backgroundColor: context.colors.onSurface.withValues(alpha: .06),
-            backgroundGradient: LinearGradient(
-              begin: .topLeft,
-              end: .bottomRight,
-              colors: [
-                Color.lerp(
-                  context.colors.surfaceDim,
-                  context.colors.onSurface,
-                  .0,
-                )!,
-                Color.lerp(
-                  context.colors.surface,
-                  context.colors.onSurface,
-                  .06,
-                )!,
-              ],
-            ),
+            backgroundColor: context.colors.onSurface.withValues(alpha: .02),
           ),
         ),
         _buildDot(context),
