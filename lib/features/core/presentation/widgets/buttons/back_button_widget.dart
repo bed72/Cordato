@@ -27,7 +27,10 @@ final class BackButtonWidget extends StatelessWidget {
     backgroundGradient: LinearGradient(
       begin: .topLeft,
       end: .bottomRight,
-      colors: [context.colors.surfaceDim, context.colors.surface],
+      colors: [
+        Color.lerp(context.colors.surfaceDim, context.colors.onSurface, .0)!,
+        Color.lerp(context.colors.surface, context.colors.onSurface, .06)!,
+      ],
     ),
   );
 }

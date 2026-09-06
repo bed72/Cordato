@@ -62,8 +62,9 @@ void main() {
     final gradient = iconBackground.gradient! as LinearGradient;
     expect(gradient.begin, Alignment.topLeft);
     expect(gradient.end, Alignment.bottomRight);
+    expect(gradient.tileMode, TileMode.clamp);
     expect(gradient.colors, [
-      Color.lerp(lightColors.errorSoft, Colors.black87, .08),
+      Color.lerp(lightColors.errorSoft, Colors.black87, .02),
       Color.lerp(lightColors.errorSoft, Colors.black87, .2),
     ]);
     expect(

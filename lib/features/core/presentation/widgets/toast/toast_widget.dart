@@ -57,12 +57,13 @@ final class ToastWidget extends StatelessWidget {
                           backgroundColor: palette.background,
                           gradient: LinearGradient(
                             begin: .topLeft,
+                            tileMode: .clamp,
                             end: .bottomRight,
                             colors: [
                               Color.lerp(
                                 palette.background,
                                 Colors.black87,
-                                .08,
+                                .02,
                               )!,
                               Color.lerp(
                                 palette.background,

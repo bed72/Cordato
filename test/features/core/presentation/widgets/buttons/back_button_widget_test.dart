@@ -7,7 +7,7 @@ import 'package:cordato/features/core/presentation/widgets/buttons/back_button_w
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 
 void main() {
-  testWidgets('renders a subtle diagonal background gradient', (tester) async {
+  testWidgets('renders a visible diagonal background gradient', (tester) async {
     await tester.pumpWidget(
       MaterialPreviewWidget(child: BackButtonWidget(onPress: () {})),
     );
@@ -20,8 +20,16 @@ void main() {
     expect(gradient.begin, Alignment.topLeft);
     expect(gradient.end, Alignment.bottomRight);
     expect(gradient.colors, [
-      Themes.light.colorScheme.surfaceDim,
-      Themes.light.colorScheme.surface,
+      Color.lerp(
+        Themes.light.colorScheme.surfaceDim,
+        Themes.light.colorScheme.onSurface,
+        .0,
+      ),
+      Color.lerp(
+        Themes.light.colorScheme.surface,
+        Themes.light.colorScheme.onSurface,
+        .06,
+      ),
     ]);
   });
 
