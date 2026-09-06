@@ -413,23 +413,21 @@ de SDK diretamente na UI.
 
 ## Testes
 
-Cada mudança deve incluir ou atualizar testes na camada correspondente.
+Cada mudança nas camadas testadas deve incluir ou atualizar testes na camada
+correspondente.
 
 - `domain`: testes unitários puros para regras, `Either` e failures.
 - `data`: mocks de data source e testes de mapeamento para `Either`.
 - `infrastructure`: mocks dos SDKs e testes de delegação/resultado.
 - `presentation/commands`: sucesso, erro e descarte do command.
-- `presentation/screens` e `presentation/widgets`: testes de renderização,
-  interação, loading, erro, callbacks e acessibilidade.
-- módulos: bindings e rotas.
 - `architecture`: dependências entre bounded contexts e isolamento das camadas.
+
+Não crie nem mantenha testes Flutter automatizados para widgets, screens, tema
+e seus derivados, ou módulos e rotas do `flutter_modular`. A validação visual,
+de interação e de fluxos completos dessas camadas será feita com Maestro.
 
 Use `mocktail`. Dê nomes aos testes pelo comportamento observável, não pelo
 método privado.
-
-Para widgets que usam tema, prefira `MaterialPreviewWidget` ou `Theme` com
-`Themes.light`/`Themes.dark`. Um `MaterialApp` sem as extensões do tema quebra
-`context.radius` e não representa o runtime real.
 
 Toda subscription criada em teste deve ser removida e todo command criado
 manualmente deve ser descartado no `tearDown`.

@@ -1,16 +1,22 @@
+import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/dashboard/presentation/commands/get_user_name_command.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/app_bar_dashboard_widget.dart';
+import 'package:cordato/features/dashboard/presentation/widgets/action_button_dashboard_widget.dart';
 
 final class DashboardScreen extends StatefulWidget {
   final GetUserNameCommand command;
+  final VoidCallback? onBudgetPressed;
+  final VoidCallback? onExpensePressed;
   final VoidCallback? onMenuPressed;
   final VoidCallback? onNotificationsPressed;
 
   const DashboardScreen({
     super.key,
     required this.command,
+    this.onBudgetPressed,
+    this.onExpensePressed,
     this.onNotificationsPressed,
     this.onMenuPressed,
   });
@@ -34,5 +40,10 @@ final class _DashboardScreenState extends State<DashboardScreen> {
       onNotificationsPressed: widget.onNotificationsPressed,
     ),
     body: const SafeArea(child: Center(child: Text('Dashboard'))),
+    floatingActionButtonLocation: ExpandableFab.location,
+    floatingActionButton: ActionButtonDashboardWidget(
+      onBudget: widget.onBudgetPressed,
+      onExpense: widget.onExpensePressed,
+    ),
   );
 }

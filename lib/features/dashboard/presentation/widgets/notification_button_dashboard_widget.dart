@@ -44,20 +44,19 @@ final class NotificationButtonDashboardWidget extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(
-          top: 9.0,
-          right: 11.0,
-          child: ExcludeSemantics(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: .circle,
-                color: context.colors.error,
-              ),
-              child: const SizedBox.square(dimension: 7.0),
-            ),
-          ),
-        ),
+        _buildDot(context),
       ],
+    ),
+  );
+
+  Positioned _buildDot(BuildContext context) => Positioned(
+    top: 10.0,
+    right: 12.0,
+    child: ExcludeSemantics(
+      child: DecoratedBox(
+        decoration: BoxDecoration(shape: .circle, color: context.colors.error),
+        child: const SizedBox.square(dimension: 8.0),
+      ),
     ),
   );
 }
