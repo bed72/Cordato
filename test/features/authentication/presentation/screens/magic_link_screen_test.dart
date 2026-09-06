@@ -53,6 +53,8 @@ void main() {
 
     expect(find.text('Enviar'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
+    expect(tester.getSize(find.byType(InputDecorator)).height, 56.0);
+    expect(tester.getSize(find.byType(ElevatedButton)).height, 56.0);
     expect(find.byType(BackButtonWidget), findsOneWidget);
     expect(find.byType(AppBarMagicLinkWidget), findsOneWidget);
     expect(find.text('Que bom ter você por aqui'), findsOneWidget);

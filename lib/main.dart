@@ -5,12 +5,12 @@ import 'package:cordato/app_module.dart';
 import 'package:cordato/app_widget.dart';
 
 import 'package:cordato/features/core/domain/enums/route_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/supabase_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/external_client.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final client = await SupabaseClient.ensureInitialized();
+  final client = await ExternalClient.ensureInitialized();
 
   runApp(
     ModularApp(

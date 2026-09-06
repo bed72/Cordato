@@ -1,10 +1,10 @@
-import 'package:cupertino_ui/cupertino_ui.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/widgets/fields/colored_text_selection_controls.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/fields/colored_text_selection_controls.dart';
 
 class TextFieldWidget extends StatefulWidget {
   final String hint;
@@ -43,8 +43,8 @@ class TextFieldWidget extends StatefulWidget {
     this.keyboardType,
     this.onSubmitted,
     this.maxLines = 1,
-    this.onFocusChanged,
     this.autofillHints,
+    this.onFocusChanged,
     this.enabled = true,
     this.inputFormatters,
     this.readOnly = false,
@@ -163,55 +163,61 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
       selectionHandleColor: color,
       selectionColor: color.withValues(alpha: .4),
     ),
-    child: TextField(
-      focusNode: _focus,
-      cursorHeight: 16.0,
-      cursorColor: color,
-      autocorrect: false,
-      onChanged: _onChanged,
-      enabled: widget.enabled,
-      controller: _controller,
-      enableSuggestions: false,
-      readOnly: widget.readOnly,
-      textAlignVertical: .center,
-      autofocus: widget.autofocus,
-      obscureText: widget.obscureText,
-      onSubmitted: widget.onSubmitted,
-      keyboardType: widget.keyboardType,
-      autofillHints: widget.autofillHints,
-      textInputAction: widget.inputAction,
-      inputFormatters: widget.inputFormatters,
-      spellCheckConfiguration: const .disabled(),
-      textCapitalization: widget.textCapitalization,
-      maxLines: widget.obscureText ? 1 : widget.maxLines,
-      style: context.typography.bodyMedium?.copyWith(color: color, height: 1.0),
-      selectionControls: ColoredTextSelectionControls(
-        color: color,
-        delegate: context.platform == .iOS
-            ? cupertinoTextSelectionHandleControls
-            : materialTextSelectionHandleControls,
-      ),
-      decoration: InputDecoration(
-        hintMaxLines: 1,
-        hintText: widget.hint,
-        suffixIcon: _buildSuffixIcon(color),
-        constraints: const .tightFor(height: 56.0),
-        errorBorder: _outlinedBorder(context.colors.error),
-        border: _outlinedBorder(context.colors.onSurfaceVariant),
-        focusedErrorBorder: _outlinedBorder(context.colors.error),
-        focusedBorder: _outlinedBorder(
-          _isFailure ? context.colors.error : context.colors.primary,
-        ),
-        contentPadding: const .symmetric(horizontal: 8.0, vertical: 18.0),
-        hintStyle: context.typography.bodyMedium?.copyWith(
+    child: SizedBox(
+      height: 56.0,
+      child: TextField(
+        focusNode: _focus,
+        cursorHeight: 16.0,
+        cursorColor: color,
+        autocorrect: false,
+        onChanged: _onChanged,
+        enabled: widget.enabled,
+        controller: _controller,
+        enableSuggestions: false,
+        readOnly: widget.readOnly,
+        textAlignVertical: .center,
+        autofocus: widget.autofocus,
+        obscureText: widget.obscureText,
+        onSubmitted: widget.onSubmitted,
+        keyboardType: widget.keyboardType,
+        autofillHints: widget.autofillHints,
+        textInputAction: widget.inputAction,
+        inputFormatters: widget.inputFormatters,
+        spellCheckConfiguration: const .disabled(),
+        textCapitalization: widget.textCapitalization,
+        maxLines: widget.obscureText ? 1 : widget.maxLines,
+        style: context.typography.bodyMedium?.copyWith(
+          color: color,
           height: 1.0,
-          color: color.withValues(alpha: .82),
         ),
-        disabledBorder: _outlinedBorder(
-          context.colors.onSurfaceVariant.withValues(alpha: .4),
+        selectionControls: ColoredTextSelectionControls(
+          color: color,
+          delegate: context.platform == .iOS
+              ? cupertinoTextSelectionHandleControls
+              : materialTextSelectionHandleControls,
         ),
-        enabledBorder: _outlinedBorder(
-          _isFailure ? context.colors.error : context.colors.onSurfaceVariant,
+        decoration: InputDecoration(
+          hintMaxLines: 1,
+          hintText: widget.hint,
+          suffixIcon: _buildSuffixIcon(color),
+          constraints: const .tightFor(height: 56.0),
+          errorBorder: _outlinedBorder(context.colors.error),
+          border: _outlinedBorder(context.colors.onSurfaceVariant),
+          focusedErrorBorder: _outlinedBorder(context.colors.error),
+          focusedBorder: _outlinedBorder(
+            _isFailure ? context.colors.error : context.colors.primary,
+          ),
+          contentPadding: const .symmetric(horizontal: 8.0, vertical: 20.0),
+          hintStyle: context.typography.bodyMedium?.copyWith(
+            height: 1.0,
+            color: color.withValues(alpha: .82),
+          ),
+          disabledBorder: _outlinedBorder(
+            context.colors.onSurfaceVariant.withValues(alpha: .4),
+          ),
+          enabledBorder: _outlinedBorder(
+            _isFailure ? context.colors.error : context.colors.onSurfaceVariant,
+          ),
         ),
       ),
     ),

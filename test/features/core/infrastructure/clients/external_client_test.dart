@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/supabase_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/external_client.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -24,13 +24,13 @@ void main() {
 
   test('requires the Supabase configuration', () {
     expect(
-      () => SupabaseClient.ensureInitialized(url: '', publishableKey: ''),
+      () => ExternalClient.ensureInitialized(url: '', publishableKey: ''),
       throwsA(isA<StateError>()),
     );
   });
 
   test('initializes Supabase and exposes authentication state', () async {
-    final client = await SupabaseClient.ensureInitialized(
+    final client = await ExternalClient.ensureInitialized(
       url: 'https://test.supabase.co',
       publishableKey: 'test-publishable-key',
     );

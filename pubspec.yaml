@@ -38,7 +38,6 @@ dependencies:
   command_it: ^9.5.1
   flutter_modular: ^7.1.0
   supabase_flutter: ^2.17.2
-  flutter_secure_storage: ^11.0.0
 
   material_ui: ^1.1.0
   cupertino_ui: ^1.0.1
