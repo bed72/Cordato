@@ -48,14 +48,14 @@ void main() {
       verify(() => client.requestMagicLink(email: email)).called(1);
     });
 
-    test('delegates magic link completion with the code', () async {
-      when(() => client.completeMagicLink(code: code))
+    test('delegates code confirmation with the email and code', () async {
+      when(() => client.confirmCode(email: email, code: code))
           .thenAnswer((_) async => false);
 
-      final result = await dataSource.completeMagicLink(code: code);
+      final result = await dataSource.confirmCode(email: email, code: code);
 
       expect(result, isFalse);
-      verify(() => client.completeMagicLink(code: code)).called(1);
+      verify(() => client.confirmCode(email: email, code: code)).called(1);
     });
   });
 }

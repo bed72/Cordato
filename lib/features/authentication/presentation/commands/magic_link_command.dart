@@ -34,8 +34,8 @@ final class MagicLinkCommand implements ICommand {
 
   static Command<String, void> _request(IAuthenticationRepository repository) =>
       Command.createAsyncNoResult<String>((email) async {
-        final data = await repository.requestMagicLink(email: email);
-        data.fold((failure) => throw failure, (_) {});
+        final response = await repository.requestMagicLink(email: email);
+        response.fold((failure) => throw failure, (_) {});
       });
 
   void beginConfirmation(String email) {

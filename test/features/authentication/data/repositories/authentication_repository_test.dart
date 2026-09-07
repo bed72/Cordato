@@ -75,26 +75,23 @@ void main() {
       expect(result.left, isA<MagicLinkRequestFailure>());
     });
 
-    test('returns Right when magic link completion succeeds', () async {
-      when(() => dataSource.completeMagicLink(code: code))
+    test('returns Right when code confirmation succeeds', () async {
+      when(() => dataSource.confirmCode(email: email, code: code))
           .thenAnswer((_) async => true);
 
-      final result = await repository.completeMagicLink(
-        code: code,
-        flowId: 'flow-id',
-      );
+      final result = await repository.confirmCode(email: email, code: code);
 
       expect(result, equals(const Right<Failure, void>(null)));
-      verify(() => dataSource.completeMagicLink(code: code)).called(1);
+      verify(() => dataSource.confirmCode(email: email, code: code)).called(1);
     });
 
     test(
       'returns MagicLinkConfirmationFailure when completion fails',
       () async {
-        when(() => dataSource.completeMagicLink(code: code))
+        when(() => dataSource.confirmCode(email: email, code: code))
             .thenAnswer((_) async => false);
 
-        final result = await repository.completeMagicLink(code: code);
+        final result = await repository.confirmCode(email: email, code: code);
 
         expect(result.left, isA<MagicLinkConfirmationFailure>());
       },

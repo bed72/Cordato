@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
-    show AuthSessionUrlResponse, GoTrueClient, Session, SupabaseClient;
+    show AuthResponse, GoTrueClient, OtpType, Session, SupabaseClient;
 
 import 'package:cordato/features/authentication/infrastructure/clients/supabase_authentication_client.dart';
 
@@ -9,8 +9,7 @@ class _GoTrueClientMock extends Mock implements GoTrueClient {}
 
 class _SessionMock extends Mock implements Session {}
 
-class _AuthSessionUrlResponseMock extends Mock
-    implements AuthSessionUrlResponse {}
+class _AuthResponseMock extends Mock implements AuthResponse {}
 
 class _SupabaseClientMock extends Mock implements SupabaseClient {}
 
@@ -78,31 +77,30 @@ void main() {
       expect(await client.requestMagicLink(email: email), isFalse);
     });
 
-    test('completes a magic link when a session is created', () async {
-      when(() => auth.exchangeCodeForSession(code))
-          .thenAnswer((_) async => _AuthSessionUrlResponseMock());
+    test('confirms a code when a session is created', () async {
+      when(() => auth.verifyOTP(email: email, token: code, type: OtpType.email))
+          .thenAnswer((_) async => _AuthResponseMock());
       when(() => auth.currentSession).thenReturn(_SessionMock());
 
-      expect(await client.completeMagicLink(code: code), isTrue);
-      verify(() => auth.exchangeCodeForSession(code)).called(1);
+      expect(await client.confirmCode(email: email, code: code), isTrue);
+      verify(
+        () => auth.verifyOTP(email: email, token: code, type: OtpType.email),
+      ).called(1);
     });
 
-    test(
-      'returns false when completing a magic link leaves no session',
-      () async {
-        when(() => auth.exchangeCodeForSession(code))
-            .thenAnswer((_) async => _AuthSessionUrlResponseMock());
-        when(() => auth.currentSession).thenReturn(null);
+    test('returns false when confirming a code leaves no session', () async {
+      when(() => auth.verifyOTP(email: email, token: code, type: OtpType.email))
+          .thenAnswer((_) async => _AuthResponseMock());
+      when(() => auth.currentSession).thenReturn(null);
 
-        expect(await client.completeMagicLink(code: code), isFalse);
-      },
-    );
+      expect(await client.confirmCode(email: email, code: code), isFalse);
+    });
 
-    test('returns false when completing a magic link fails', () async {
-      when(() => auth.exchangeCodeForSession(code))
-          .thenThrow(Exception('completion failed'));
+    test('returns false when confirming a code fails', () async {
+      when(() => auth.verifyOTP(email: email, token: code, type: OtpType.email))
+          .thenThrow(Exception('confirmation failed'));
 
-      expect(await client.completeMagicLink(code: code), isFalse);
+      expect(await client.confirmCode(email: email, code: code), isFalse);
     });
 
     test('logs out successfully', () async {

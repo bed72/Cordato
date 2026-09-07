@@ -23,6 +23,6 @@ final class MagicLinkRequestFailure extends Failure {
 
 final class MagicLinkConfirmationFailure extends Failure {
   const MagicLinkConfirmationFailure([
-    super.message = 'Não foi possível confirmar o link de acesso.',
+    super.message = 'Não foi possível confirmar o código de acesso.',
   ]);
 }

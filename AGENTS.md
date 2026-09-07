@@ -203,6 +203,23 @@ Screens são pontos de composição e integração da feature. Elas devem:
 - Delegar operações assíncronas para commands.
 - Não conhecer detalhes de clientes Supabase ou implementações de storage.
 
+### Mixins De Estado De UI
+
+Quando uma screen `StatefulWidget` acumular estado efêmero, lifecycle e handlers
+de UI suficientes para prejudicar a leitura do `build`, extraia-os para um mixin
+restrito à própria screen em `presentation/mixins/`. O mixin deve declarar
+`on State<Screen>` para tornar seu acoplamento explícito.
+
+O mixin pode possuir controllers, timers, listeners de commands, validação de
+entrada, loading local, feedback visual e os métodos `initState` e `dispose`.
+Ele deve descartar todo recurso que criar. A screen deve manter somente a
+composição visual e repassar os membros públicos do mixin aos widgets.
+
+Não use esse padrão em `StatelessWidget`: lógica visual pura deve permanecer em
+métodos privados ou widgets de composição. Não crie mixins genéricos, nem mova
+regras de domínio, acesso a repositórios, data sources, storage ou SDKs para um
+mixin de UI.
+
 Padrão de callback de navegação:
 
 ```dart

@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/animations/animation.dart';
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/circular_progress_indicator_widget.dart';
 
@@ -25,11 +26,11 @@ final class OutlineButtonWidget extends StatelessWidget {
       onPressed: onTap,
       child: SwitcherAnimation(
         child: (isLoading ?? false)
-            ? const CircularProgressIndicatorWidget(
+            ? CircularProgressIndicatorWidget(
                 key: ValueKey('loading'),
                 width: 20.0,
                 height: 20.0,
-                color: Colors.transparent,
+                color: context.colors.primary,
               )
             : Row(
                 key: const ValueKey('content'),

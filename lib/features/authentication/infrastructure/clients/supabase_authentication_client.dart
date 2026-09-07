@@ -1,4 +1,5 @@
-import 'package:supabase_flutter/supabase_flutter.dart' show SupabaseClient;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show OtpType, SupabaseClient;
 
 abstract interface class IAuthenticationClient {
   Future<bool> logout();
@@ -7,7 +8,7 @@ abstract interface class IAuthenticationClient {
 
   Future<bool> requestMagicLink({required String email});
 
-  Future<bool> completeMagicLink({required String code});
+  Future<bool> confirmCode({required String email, required String code});
 }
 
 final class SupabaseAuthenticationClient implements IAuthenticationClient {
@@ -38,9 +39,16 @@ final class SupabaseAuthenticationClient implements IAuthenticationClient {
   }
 
   @override
-  Future<bool> completeMagicLink({required String code}) async {
+  Future<bool> confirmCode({
+    required String email,
+    required String code,
+  }) async {
     try {
-      await _client.auth.exchangeCodeForSession(code);
+      await _client.auth.verifyOTP(
+        email: email,
+        token: code,
+        type: OtpType.email,
+      );
 
       return _client.auth.currentSession != null;
     } catch (_) {

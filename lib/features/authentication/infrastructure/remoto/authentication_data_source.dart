@@ -7,7 +7,7 @@ abstract interface class IAuthenticationDataSource {
 
   Future<bool> requestMagicLink({required String email});
 
-  Future<bool> completeMagicLink({required String code});
+  Future<bool> confirmCode({required String email, required String code});
 }
 
 final class AuthenticationDataSource implements IAuthenticationDataSource {
@@ -26,6 +26,6 @@ final class AuthenticationDataSource implements IAuthenticationDataSource {
       _client.requestMagicLink(email: email);
 
   @override
-  Future<bool> completeMagicLink({required String code}) =>
-      _client.completeMagicLink(code: code);
+  Future<bool> confirmCode({required String email, required String code}) =>
+      _client.confirmCode(email: email, code: code);
 }

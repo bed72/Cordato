@@ -509,6 +509,23 @@ paralelo de tipografia.
 Esse padrão é adequado quando o estado não precisa sobreviver à tela nem ser
 compartilhado por múltiplas rotas.
 
+### Mixins De Estado De UI
+
+Uma `StatefulWidget` cuja lógica local de UI torne o `build` difícil de ler deve
+delegar esse estado a um mixin específico da mesma screen, localizado em
+`presentation/mixins/`. O mixin declara `on State<Screen>`, mantendo explícito
+que ele não é reutilizável fora daquela tela.
+
+O mixin encapsula controllers, timers, subscriptions, validação de entrada,
+handlers de interação e feedback visual, incluindo `initState` e `dispose`. A
+screen consome seus membros públicos para compor os widgets. Esse padrão não se
+aplica a `StatelessWidget`, que deve resolver lógica visual pura com composição
+ou métodos privados.
+
+Mixins de UI continuam na camada presentation: podem observar commands, mas não
+acessam repositórios concretos, data sources, storage ou SDKs. Não crie mixins
+genéricos para concentrar estados de telas distintas.
+
 ### Commands E Resultados
 
 `MagicLinkCommand` cria um `Command<String, void>` assíncrono. Ele chama o

@@ -23,7 +23,7 @@ final class HeaderConfirmationCodeWidget extends StatelessWidget {
           ),
         ),
         Text(
-          'Enviamos um código de 6 dígitos para o seu e-mail',
+          'Enviamos um código para o seu e-mail',
           style: context.typography.bodyLarge?.copyWith(
             color: context.colors.onSurfaceVariant.withValues(alpha: .8),
           ),

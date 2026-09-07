@@ -29,11 +29,11 @@ final class AuthenticationRepository implements IAuthenticationRepository {
   }
 
   @override
-  Future<Either<Failure, void>> completeMagicLink({
+  Future<Either<Failure, void>> confirmCode({
+    required String email,
     required String code,
-    String? flowId,
   }) async {
-    final accepted = await _dataSource.completeMagicLink(code: code);
+    final accepted = await _dataSource.confirmCode(email: email, code: code);
     return accepted
         ? const Right(null)
         : const Left(MagicLinkConfirmationFailure());

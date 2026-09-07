@@ -1,14 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/validators/validation.dart';
-import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-
 import 'package:cordato/features/authentication/presentation/commands/magic_link_command.dart';
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 
 import 'package:cordato/features/authentication/presentation/widgets/field_magic_link_widget.dart';
 import 'package:cordato/features/authentication/presentation/widgets/header_magic_link_widget.dart';
 import 'package:cordato/features/authentication/presentation/widgets/app_bar_magic_link_widget.dart';
+import 'package:cordato/features/authentication/presentation/mixins/magic_link_screen_state_mixin.dart';
 import 'package:cordato/features/authentication/presentation/widgets/button_magic_link_builder_widget.dart';
 
 final class MagicLinkScreen extends StatefulWidget {
@@ -27,66 +25,8 @@ final class MagicLinkScreen extends StatefulWidget {
   State<MagicLinkScreen> createState() => _MagicLinkScreenState();
 }
 
-final class _MagicLinkScreenState extends State<MagicLinkScreen> {
-  String? _failure;
-
-  final _controller = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-
-    widget.command.send.results.addListener(_handleSend);
-  }
-
-  @override
-  void dispose() {
-    widget.command.send.results.removeListener(_handleSend);
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handleSend() {
-    final command = widget.command.send.results.value;
-    if (!mounted || command.isRunning || command.paramData == null) return;
-
-    if (command.hasError) {
-      context.showToast(
-        variant: .error,
-        title: 'Erro ao enviar e-mail',
-        description: 'Não foi possível enviar o e-mail. Tente novamente.',
-      );
-      return;
-    }
-
-    if (command.isSuccess) {
-      final email = command.paramData;
-      if (email == null) return;
-
-      widget.command.beginConfirmation(email);
-      _controller.clear();
-      context.showToast(
-        variant: .success,
-        title: 'E-mail enviado',
-        description: 'Enviamos um link de acesso para o seu e-mail.',
-      );
-      widget.onConfirmationCode(context);
-    }
-  }
-
-  void _sendMagicLink() {
-    context.dismissKeyboard();
-    final validation = widget.validation(_controller.text);
-
-    switch (validation) {
-      case Invalid(:final message):
-        setState(() => _failure = message);
-      case Valid(:final value):
-        setState(() => _failure = null);
-        widget.command.send.run(value);
-    }
-  }
-
+final class _MagicLinkScreenState extends State<MagicLinkScreen>
+    with MagicLinkScreenStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,14 +48,10 @@ final class _MagicLinkScreenState extends State<MagicLinkScreen> {
                       children: [
                         const HeaderMagicLinkWidget(),
                         FieldMagicLinkWidget(
-                          failure: _failure,
-                          controller: _controller,
-                          onSubmitted: (_) => _sendMagicLink(),
-                          onChanged: (_) {
-                            if (_failure != null) {
-                              setState(() => _failure = null);
-                            }
-                          },
+                          failure: failure,
+                          controller: controller,
+                          onChanged: clearFailure,
+                          onSubmitted: (_) => sendMagicLink(),
                         ),
                       ],
                     ),
@@ -124,7 +60,7 @@ final class _MagicLinkScreenState extends State<MagicLinkScreen> {
               ),
               ButtonMagicLinkBuilderWidget(
                 command: widget.command,
-                onPressed: _sendMagicLink,
+                onPressed: sendMagicLink,
               ),
             ],
           ),

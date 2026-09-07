@@ -9,6 +9,7 @@ import 'package:cordato/features/authentication/presentation/validators/code_val
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/commands/magic_link_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/confirmation_code_screen.dart';
+import 'package:cordato/features/authentication/presentation/commands/confirmation_code_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/authentication_callback_screen.dart';
 
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
@@ -31,6 +32,7 @@ final authenticationModule = createModule(
       ..addInstance<String>(_supabaseRedirectUrl)
       ..addInstance<SupabaseClient>(Supabase.instance.client)
       ..addLazySingleton<MagicLinkCommand>(MagicLinkCommand.new)
+      ..addLazySingleton<ConfirmationCodeCommand>(ConfirmationCodeCommand.new)
       ..addLazySingleton<IAuthenticationDataSource>(
         AuthenticationDataSource.new,
       )
@@ -47,8 +49,9 @@ final authenticationModule = createModule(
       ..route(
         RouteEnum.authenticationConfirmationCode.path,
         child: (_, _) => ConfirmationCodeScreen(
-          command: inject<MagicLinkCommand>(),
+          magicLinkcommand: inject<MagicLinkCommand>(),
           validation: inject<CodeValidation>(),
+          confirmationCommand: inject<ConfirmationCodeCommand>(),
         ),
       )
       ..route(

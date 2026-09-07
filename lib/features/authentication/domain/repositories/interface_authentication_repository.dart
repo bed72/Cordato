@@ -8,8 +8,8 @@ abstract interface class IAuthenticationRepository {
 
   Future<Either<Failure, void>> requestMagicLink({required String email});
 
-  Future<Either<Failure, void>> completeMagicLink({
+  Future<Either<Failure, void>> confirmCode({
+    required String email,
     required String code,
-    String? flowId,
   });
 }
