@@ -9,7 +9,7 @@ import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_
 extension BuildContextCommonExtension on BuildContext {
   double get width => MediaQuery.of(this).size.width;
   double get height => MediaQuery.of(this).size.height;
-  double get bottom => MediaQuery.of(this).viewInsets.bottom;
+  double get bottom => View.of(this).viewInsets.bottom;
 
   bool get isDark => Theme.of(this).brightness == .dark;
 

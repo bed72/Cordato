@@ -65,19 +65,32 @@ abstract final class Themes {
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: colors.primary,
-        minimumSize: const Size(56.0, 56.0),
-        shape: const RoundedRectangleBorder(
-          borderRadius: .all(.circular(14.0)),
-        ),
-        side: BorderSide(color: colorScheme.primary),
-        textStyle: TextStyle(
-          fontSize: 15.0,
-          height: 20 / 15,
-          fontWeight: .w600,
-        ),
-      ),
+      style:
+          OutlinedButton.styleFrom(
+            foregroundColor: colors.primary,
+            minimumSize: const Size(56.0, 56.0),
+            shape: const RoundedRectangleBorder(
+              borderRadius: .all(.circular(14.0)),
+            ),
+            textStyle: TextStyle(
+              fontSize: 15.0,
+              height: 20 / 15,
+              fontWeight: .w600,
+            ),
+          ).copyWith(
+            foregroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? colorScheme.onSurface.withValues(alpha: .38)
+                  : colors.primary,
+            ),
+            side: WidgetStateProperty.resolveWith(
+              (states) => BorderSide(
+                color: states.contains(WidgetState.disabled)
+                    ? colorScheme.onSurface.withValues(alpha: .38)
+                    : colorScheme.primary,
+              ),
+            ),
+          ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(

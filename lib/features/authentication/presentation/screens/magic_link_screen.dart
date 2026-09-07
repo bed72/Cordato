@@ -14,11 +14,13 @@ import 'package:cordato/features/authentication/presentation/widgets/button_magi
 final class MagicLinkScreen extends StatefulWidget {
   final MagicLinkCommand command;
   final EmailValidation validation;
+  final ValueChanged<BuildContext> onConfirmationCode;
 
   const MagicLinkScreen({
     super.key,
     required this.command,
     required this.validation,
+    required this.onConfirmationCode,
   });
 
   @override
@@ -58,11 +60,17 @@ final class _MagicLinkScreenState extends State<MagicLinkScreen> {
     }
 
     if (command.isSuccess) {
+      final email = command.paramData;
+      if (email == null) return;
+
+      widget.command.beginConfirmation(email);
+      _controller.clear();
       context.showToast(
         variant: .success,
         title: 'E-mail enviado',
         description: 'Enviamos um link de acesso para o seu e-mail.',
       );
+      widget.onConfirmationCode(context);
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
 
 final class AppBarMagicLinkWidget extends StatelessWidget
@@ -15,7 +16,13 @@ final class AppBarMagicLinkWidget extends StatelessWidget
     leadingWidth: 72.0,
     leading: Padding(
       padding: const .only(left: 16.0),
-      child: BackButtonWidget(onPress: context.pop),
+      child: BackButtonWidget(onPress: () => _goBack(context)),
     ),
   );
+
+  void _goBack(BuildContext context) {
+    context
+      ..dismissKeyboard()
+      ..pop();
+  }
 }

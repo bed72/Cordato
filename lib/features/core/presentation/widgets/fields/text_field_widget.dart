@@ -144,7 +144,7 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
           absorbing: widget.absorbing,
           child: _buildField(context, color),
         ),
-        if (_isFailure) _buildFailure(color),
+        if (_isFailure) ...[const SizedBox(height: 8.0), _buildFailure(color)],
       ],
     );
   }
