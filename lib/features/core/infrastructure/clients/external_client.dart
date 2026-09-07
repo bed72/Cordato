@@ -28,6 +28,12 @@ final class ExternalClient {
 
   bool get hasSession => _client.currentSession != null;
 
+  Future<void> signOut() async {
+    try {
+      await _client.signOut();
+    } catch (_) {}
+  }
+
   Stream<void> get events => _client.onAuthStateChange
       .where((state) => state.event == .signedIn)
       .map<void>((_) {});

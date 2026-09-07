@@ -10,16 +10,22 @@ import 'package:cordato/features/core/infrastructure/clients/external_client.dar
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final navigatorKey = GlobalKey<NavigatorState>();
   final client = await ExternalClient.ensureInitialized();
 
   runApp(
     ModularApp(
       module: appModule,
+      navigatorKey: navigatorKey,
       defaultTransition: TransitionType.none,
       initialRoute: client.hasSession
           ? RouteEnum.dashboard.path
           : RouteEnum.welcome.path,
-      child: AppWidget(events: client.events),
+      child: AppWidget(
+        events: client.events,
+        signOut: client.signOut,
+        navigatorKey: navigatorKey,
+      ),
     ),
   );
 }

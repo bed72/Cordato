@@ -6,12 +6,14 @@ final class RedirectWidget extends StatefulWidget {
   final Widget child;
   final Stream<void> events;
   final VoidCallback onAuthenticated;
+  final ValueChanged<BuildContext> onAuthenticationFailure;
 
   const RedirectWidget({
     super.key,
     required this.child,
     required this.events,
     required this.onAuthenticated,
+    required this.onAuthenticationFailure,
   });
 
   @override
@@ -39,12 +41,20 @@ final class _RedirectWidgetState extends State<RedirectWidget> {
   }
 
   void _subscribe() {
-    _subscription = widget.events.listen((_) {
-      if (!mounted) return;
+    _subscription = widget.events.listen(
+      (_) => _schedule(widget.onAuthenticated),
+      onError: _handleAuthenticationFailure,
+    );
+  }
 
-      scheduleMicrotask(() {
-        if (mounted) widget.onAuthenticated();
-      });
+  void _handleAuthenticationFailure(Object _, StackTrace _) =>
+      _schedule(() => widget.onAuthenticationFailure(context));
+
+  void _schedule(VoidCallback callback) {
+    if (!mounted) return;
+
+    scheduleMicrotask(() {
+      if (mounted) callback();
     });
   }
 
