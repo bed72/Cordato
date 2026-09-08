@@ -24,21 +24,23 @@ final class _BudgetAmountCalculatorWidgetState
     extends State<BudgetAmountCalculatorWidget>
     with BudgetAmountCalculatorWidgetStateMixin {
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const .only(top: 6.0),
-    child: Column(
-      spacing: 16.0,
-      mainAxisSize: .min,
-      crossAxisAlignment: .start,
-      children: [
-        BudgetCalculatorFieldWidget(value: displayValue),
-        BudgetCalculatorKeyboardWidget(
-          onClear: clear,
-          onDelete: delete,
-          onSubmit: confirm,
-          onDigit: appendDigit,
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const .only(top: 6.0),
+      child: Column(
+        spacing: 16.0,
+        mainAxisSize: .min,
+        crossAxisAlignment: .start,
+        children: [
+          BudgetCalculatorFieldWidget(value: displayValue),
+          BudgetCalculatorKeyboardWidget(
+            onClear: clear,
+            onDelete: delete,
+            onSubmit: confirm,
+            onDigit: appendDigit,
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -8,12 +8,14 @@ final class BudgetAmountFieldWidget extends StatelessWidget {
   final int value;
   final IMoneyFormatter formatter;
   final VoidCallback? onTap;
+  final String? failure;
 
   const BudgetAmountFieldWidget({
     super.key,
     required this.value,
     required this.onTap,
     required this.formatter,
+    this.failure,
   });
 
   @override
@@ -24,6 +26,7 @@ final class BudgetAmountFieldWidget extends StatelessWidget {
       label: 'Valor',
       readOnly: true,
       absorbing: true,
+      failure: failure,
       hint: 'Ex: R\$ 1.000,00',
       initialValue: value > 0 ? formatter.formatCents(value) : null,
     ),

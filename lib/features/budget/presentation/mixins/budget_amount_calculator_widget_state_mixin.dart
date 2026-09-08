@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/budget/presentation/widgets/calculator/budget_amount_calculator_widget.dart';
 
@@ -25,5 +24,5 @@ mixin BudgetAmountCalculatorWidgetStateMixin
     setState(() => _digits = _digits.substring(0, _digits.length - 1));
   }
 
-  void confirm() => context.pop(_value > 0 ? _value : null);
+  void confirm() => Navigator.pop(context, _value > 0 ? _value : null);
 }
