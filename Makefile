@@ -3,7 +3,8 @@ SHELL := /bin/zsh
 .DEFAULT_GOAL := help
 
 MCP_SSH_USER ?= root
-MCP_SSH_HOST ?= 179.198.116.98
+# Uses the SSH host alias configured with the VPS identity key in ~/.ssh/config.
+MCP_SSH_HOST ?= supabase-vps
 MCP_KONG_IP ?= 172.16.2.9
 MCP_LOCAL_PORT ?= 18080
 MCP_REMOTE_PORT ?= 8000
@@ -22,7 +23,7 @@ MCP_TEST_MAX_TIME ?= 15
 # Command executed on the VPS to resolve the current Kong container IP. This avoids depending on an IP
 # that changes when Coolify recreates the container. Set it to an empty value to use MCP_KONG_IP instead.
 # The default matches either the container name or image and selects the first match.
-MCP_REMOTE_TARGET_COMMAND ?= docker ps --format '{{.Names}}\t{{.Image}}' | awk 'tolower($$0) ~ /kong/ { print $$1; exit }' | xargs -r docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+MCP_REMOTE_TARGET_COMMAND ?= docker ps --format '{{.Names}}\t{{.Image}}' | awk 'tolower(\$$0) ~ /kong/ { print \$$1; exit }' | xargs -r docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
 
 .PHONY: help mcp-tunnel mcp-test mcp-resolve
 

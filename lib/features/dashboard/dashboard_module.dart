@@ -22,8 +22,9 @@ final dashboardModule = createModule(
       ..addLazySingleton<GetUserNameCommand>(GetUserNameCommand.new)
       ..route(
         RouteEnum.root.path,
-        child: (_, _) => DashboardScreen(
+        child: (context, _) => DashboardScreen(
           command: inject<GetUserNameCommand>(),
+          onBudgetPressed: () => context.pushNamed(RouteEnum.budget.path),
           onMenuPressed: () {},
           onNotificationsPressed: () {},
         ),

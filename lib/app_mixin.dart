@@ -14,6 +14,9 @@ mixin AppMixin on State<AppWidget> {
     unawaited(_recoverFromAuthenticationFailure(context));
   }
 
+  void _navigate(String path) =>
+      widget.navigatorKey.currentContext?.navigate(path);
+
   Future<void> _recoverFromAuthenticationFailure(BuildContext context) async {
     await widget.signOut();
     if (!context.mounted) return;
@@ -23,9 +26,7 @@ mixin AppMixin on State<AppWidget> {
       title: 'Link de acesso inválido',
       description: 'Este link expirou ou é inválido. Solicite um novo link.',
     );
+
     _navigate(RouteEnum.authenticationMagicLink.path);
   }
-
-  void _navigate(String path) =>
-      widget.navigatorKey.currentContext?.navigate(path);
 }
