@@ -1,14 +1,14 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 
-final class BudgetCalculatorKeyWidget extends StatelessWidget {
+final class AmountCalculatorKeyWidget extends StatelessWidget {
   final String label;
   final bool isAction;
   final VoidCallback onTap;
 
-  const BudgetCalculatorKeyWidget({
+  const AmountCalculatorKeyWidget({
     super.key,
     required this.label,
     required this.onTap,

@@ -2,12 +2,12 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/calculator/amount_calculator_widget.dart';
 
 import 'package:cordato/features/budget/domain/entities/budget_entity.dart';
 import 'package:cordato/features/budget/presentation/states/budget_form_state.dart';
 import 'package:cordato/features/budget/presentation/widgets/budget_form_widget.dart';
 import 'package:cordato/features/budget/presentation/widgets/budget_date_range_picker_widget.dart';
-import 'package:cordato/features/budget/presentation/widgets/calculator/budget_amount_calculator_widget.dart';
 
 mixin BudgetFormWidgetStateMixin on State<BudgetFormWidget> {
   BudgetFormState formState = const BudgetFormState();
@@ -31,7 +31,7 @@ mixin BudgetFormWidgetStateMixin on State<BudgetFormWidget> {
       context: context,
       title: 'Qual o valor?',
       subtitle: 'Informe o valor do orçamento.',
-      child: BudgetAmountCalculatorWidget(
+      child: AmountCalculatorWidget(
         value: formState.value,
         formatter: widget.formatter,
       ),

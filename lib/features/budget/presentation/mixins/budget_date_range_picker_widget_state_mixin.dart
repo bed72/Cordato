@@ -7,6 +7,13 @@ mixin BudgetDateRangePickerWidgetStateMixin
     on State<BudgetDateRangePickerWidget> {
   PickerDateRange? selectedRange;
 
+  bool get hasCompleteRange {
+    final start = selectedRange?.startDate;
+    final end = selectedRange?.endDate;
+
+    return start != null && end != null && end.isAfter(start);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -25,8 +32,8 @@ mixin BudgetDateRangePickerWidgetStateMixin
 
   void confirm() {
     final start = selectedRange?.startDate;
-    final end = selectedRange?.endDate ?? start;
-    if (start == null || end == null) return;
+    final end = selectedRange?.endDate;
+    if (start == null || end == null || !end.isAfter(start)) return;
 
     Navigator.pop(
       context,

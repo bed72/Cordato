@@ -86,7 +86,7 @@ final class _BudgetDateRangePickerWidgetState
             width: .infinity,
             child: ElevatedButtonWidget(
               label: 'Selecionar',
-              onTap: selectedRange == null ? null : confirm,
+              onTap: hasCompleteRange ? confirm : null,
             ),
           ),
         ],

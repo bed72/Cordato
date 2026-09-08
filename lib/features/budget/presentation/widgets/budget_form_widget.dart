@@ -1,17 +1,16 @@
 import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/budget/domain/entities/budget_entity.dart';
-import 'package:cordato/features/budget/presentation/commands/create_budget_command.dart';
+import 'package:cordato/features/core/presentation/widgets/fields/date_field_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/fields/amount_field_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
+import 'package:cordato/features/budget/domain/entities/budget_entity.dart';
+import 'package:cordato/features/budget/presentation/widgets/budget_header_widget.dart';
+import 'package:cordato/features/budget/presentation/commands/create_budget_command.dart';
 import 'package:cordato/features/budget/presentation/validators/budget_form_validator.dart';
 import 'package:cordato/features/budget/presentation/mixins/budget_form_widget_state_mixin.dart';
-
-import 'package:cordato/features/budget/presentation/widgets/budget_header_widget.dart';
-import 'package:cordato/features/budget/presentation/widgets/fields/budget_date_field_widget.dart';
-import 'package:cordato/features/budget/presentation/widgets/fields/budget_amount_field_widget.dart';
 import 'package:cordato/features/budget/presentation/widgets/fields/budget_description_field_widget.dart';
 
 final class BudgetFormWidget extends StatefulWidget {
@@ -49,15 +48,17 @@ final class _BudgetFormWidgetState extends State<BudgetFormWidget>
                 crossAxisAlignment: .stretch,
                 children: [
                   const BudgetHeaderWidget(),
-                  BudgetAmountFieldWidget(
+                  AmountFieldWidget(
                     onTap: selectAmount,
                     value: formState.value,
                     formatter: widget.formatter,
                     failure: formState.valueFailure,
                   ),
-                  BudgetDateFieldWidget(
-                    value: formState.period,
+                  DateFieldWidget(
+                    label: 'Período',
                     onTap: selectPeriod,
+                    value: formState.period,
+                    hint: 'Data de início e término',
                     failure: formState.periodFailure,
                   ),
                   BudgetDescriptionFieldWidget(

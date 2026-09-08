@@ -1,9 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/budget/presentation/widgets/calculator/budget_amount_calculator_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/calculator/amount_calculator_widget.dart';
 
-mixin BudgetAmountCalculatorWidgetStateMixin
-    on State<BudgetAmountCalculatorWidget> {
+mixin AmountCalculatorWidgetStateMixin on State<AmountCalculatorWidget> {
   static const _maxDigits = 9;
 
   late String _digits = widget.value > 0 ? widget.value.toString() : '';
