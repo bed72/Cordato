@@ -1,5 +1,8 @@
+import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/budget/domain/entities/budget_entity.dart';
+import 'package:cordato/features/budget/presentation/commands/create_budget_command.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
@@ -13,12 +16,16 @@ import 'package:cordato/features/budget/presentation/widgets/fields/budget_descr
 
 final class BudgetFormWidget extends StatefulWidget {
   final IMoneyFormatter formatter;
+  final CreateBudgetCommand command;
   final BudgetFormValidator validator;
+  final ValueChanged<BuildContext> onBudgetCreated;
 
   const BudgetFormWidget({
     super.key,
+    required this.command,
     required this.formatter,
     required this.validator,
+    required this.onBudgetCreated,
   });
 
   @override
@@ -54,16 +61,27 @@ final class _BudgetFormWidgetState extends State<BudgetFormWidget>
                     failure: formState.periodFailure,
                   ),
                   BudgetDescriptionFieldWidget(
+                    onChanged: updateDescription,
+                    onSubmitted: (_) => submit(),
                     controller: descriptionController,
                     failure: formState.descriptionFailure,
-                    onChanged: updateDescription,
-                    onSubmitted: (_) => validateForm(),
                   ),
                 ],
               ),
             ),
           ),
-          ElevatedButtonWidget(label: 'Cadastrar', onTap: validateForm),
+          CommandBuilder<BudgetEntity, void>(
+            command: widget.command.create,
+            whileRunning: (_, _, _) => const ElevatedButtonWidget(
+              onTap: null,
+              isLoading: true,
+              label: 'Cadastrar',
+            ),
+            onSuccess: (_, _) =>
+                ElevatedButtonWidget(label: 'Cadastrar', onTap: submit),
+            onError: (_, _, _, _) =>
+                ElevatedButtonWidget(label: 'Cadastrar', onTap: submit),
+          ),
         ],
       ),
     );

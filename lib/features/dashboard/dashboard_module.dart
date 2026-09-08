@@ -1,7 +1,7 @@
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:cordato/features/core/domain/enums/route_enum.dart';
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/dashboard/data/repositories/user_repository.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard_screen.dart';

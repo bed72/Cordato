@@ -1,11 +1,11 @@
 enum RouteEnum {
   root('/'),
+  budget('/budget'),
   welcome('/welcome'),
   dashboard('/dashboard'),
-  budget('/budget'),
   authenticationCallback('/callback'),
-  authenticationConfirmationCode('/authentication/confirmation-code'),
-  authenticationMagicLink('/authentication/magic-link');
+  authenticationMagicLink('/authentication/magic-link'),
+  authenticationConfirmationCode('/authentication/confirmation-code');
 
   final String path;
 
