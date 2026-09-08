@@ -3,6 +3,7 @@ enum RouteEnum {
   budget('/budget'),
   expense('/expense'),
   welcome('/welcome'),
+  settings('/settings'),
   dashboard('/dashboard'),
   authenticationCallback('/callback'),
   authenticationMagicLink('/authentication/magic-link'),

@@ -14,19 +14,19 @@ final dashboardModule = createModule(
   path: RouteEnum.dashboard.path,
   register: (context) {
     context
-      ..addLazySingleton<IUserClient>(
-        () => SupabaseUserClient(client: Supabase.instance.client),
-      )
       ..addLazySingleton<IUserDataSource>(UserDataSource.new)
       ..addLazySingleton<IUserRepository>(UserRepository.new)
       ..addLazySingleton<GetUserNameCommand>(GetUserNameCommand.new)
+      ..addLazySingleton<IUserClient>(
+        () => SupabaseUserClient(client: Supabase.instance.client),
+      )
       ..route(
         RouteEnum.root.path,
         child: (context, _) => DashboardScreen(
           command: inject<GetUserNameCommand>(),
+          onMenuPressed: () => context.pushNamed(RouteEnum.settings.path),
           onBudgetPressed: () => context.pushNamed(RouteEnum.budget.path),
           onExpensePressed: () => context.pushNamed(RouteEnum.expense.path),
-          onMenuPressed: () {},
           onNotificationsPressed: () {},
         ),
       );
