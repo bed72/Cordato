@@ -25,6 +25,7 @@ final dashboardModule = createModule(
         child: (context, _) => DashboardScreen(
           command: inject<GetUserNameCommand>(),
           onBudgetPressed: () => context.pushNamed(RouteEnum.budget.path),
+          onExpensePressed: () => context.pushNamed(RouteEnum.expense.path),
           onMenuPressed: () {},
           onNotificationsPressed: () {},
         ),

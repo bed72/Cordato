@@ -1,6 +1,7 @@
 enum RouteEnum {
   root('/'),
   budget('/budget'),
+  expense('/expense'),
   welcome('/welcome'),
   dashboard('/dashboard'),
   authenticationCallback('/callback'),

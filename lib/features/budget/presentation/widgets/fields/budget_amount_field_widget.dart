@@ -7,8 +7,8 @@ import 'package:cordato/features/core/presentation/formatters/interface_money_fo
 final class BudgetAmountFieldWidget extends StatelessWidget {
   final int value;
   final IMoneyFormatter formatter;
-  final VoidCallback? onTap;
   final String? failure;
+  final VoidCallback? onTap;
 
   const BudgetAmountFieldWidget({
     super.key,
