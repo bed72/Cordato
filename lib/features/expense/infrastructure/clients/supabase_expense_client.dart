@@ -1,6 +1,5 @@
-import 'package:supabase_flutter/supabase_flutter.dart' show SupabaseClient;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:cordato/features/core/infrastructure/enums/supabase_table_enum.dart';
 import 'package:cordato/features/core/infrastructure/extensions/date_time_extension.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
@@ -18,11 +17,14 @@ final class SupabaseExpenseClient implements IExpenseClient {
   @override
   Future<ExpenseCreateOutcomeEnum> create(ExpenseEntity expense) async {
     try {
-      await client.from(SupabaseTableEnum.expenses.value).insert({
-        'amount': expense.amount,
-        'description': expense.description,
-        'date': expense.date.toIsoDateString(),
-      });
+      await client.rpc(
+        'create_expense',
+        params: {
+          'p_amount': expense.amount,
+          'p_description': expense.description,
+          'p_date': expense.date.toIsoDateString(),
+        },
+      );
       return .created;
     } catch (_) {
       return .failed;

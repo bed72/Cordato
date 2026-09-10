@@ -68,3 +68,21 @@ flutter run \
 
 `SUPABASE_REDIRECT_URL` é opcional e possui um valor padrão no módulo de
 autenticação.
+
+## Backend Supabase
+
+A configuração local, migrações ordenadas e documentação do backend vivem em
+[`supabase/`](supabase/README.md). Para provisionar e validar um banco local
+limpo, com Docker e a Supabase CLI instalados:
+
+```bash
+supabase start
+supabase db reset
+supabase migration list --local
+supabase db lint --local
+supabase test db
+```
+
+Não edite o schema pelo dashboard. Toda mudança de banco, RLS, grants,
+triggers ou funções deve ser adicionada como uma nova migration em
+`supabase/migrations/`.

@@ -18,12 +18,10 @@ Future<void> main() async {
       module: appModule,
       navigatorKey: navigatorKey,
       defaultTransition: TransitionType.none,
-      initialRoute: client.hasSession
-          ? RouteEnum.dashboard.path
-          : RouteEnum.welcome.path,
+      initialRoute: RouteEnum.welcome.path,
       child: AppWidget(
-        events: client.events,
-        signOut: client.signOut,
+        sessionState: client.sessionState,
+        disposeSession: client.dispose,
         navigatorKey: navigatorKey,
       ),
     ),

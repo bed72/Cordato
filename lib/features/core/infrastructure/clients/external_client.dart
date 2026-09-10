@@ -1,12 +1,28 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:cordato/features/core/domain/entities/auth_session_state.dart';
 
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
 final class ExternalClient {
   final GoTrueClient _client;
+  final sessionState = ValueNotifier<AuthSessionStateEnum>(.loading);
+  late final StreamSubscription<AuthState> _authSubscription;
+  Object? _lastSessionError;
 
-  const ExternalClient._(this._client);
+  ExternalClient._(this._client) {
+    _authSubscription = _client.onAuthStateChange.listen(
+      _onAuthStateChange,
+      onError: _onAuthStateError,
+    );
+  }
+
+  @visibleForTesting
+  ExternalClient.forClient({required GoTrueClient client}) : this._(client);
 
   static Future<ExternalClient> ensureInitialized({
     String url = _supabaseUrl,
@@ -28,13 +44,30 @@ final class ExternalClient {
 
   bool get hasSession => _client.currentSession != null;
 
-  Future<void> signOut() async {
-    try {
-      await _client.signOut();
-    } catch (_) {}
+  Object? get lastSessionError => _lastSessionError;
+
+  void _onAuthStateChange(AuthState state) {
+    _lastSessionError = null;
+    sessionState.value = switch (state.event) {
+      .signedOut => .unauthenticated,
+      .initialSession ||
+      .passwordRecovery ||
+      .signedIn ||
+      .tokenRefreshed ||
+      .userUpdated ||
+      .mfaChallengeVerified =>
+        state.session == null ? .unauthenticated : .authenticated,
+      _ => state.session == null ? .unauthenticated : .authenticated,
+    };
   }
 
-  Stream<void> get events => _client.onAuthStateChange
-      .where((state) => state.event == .signedIn)
-      .map<void>((_) {});
+  void _onAuthStateError(Object error, StackTrace _) {
+    _lastSessionError = error;
+    sessionState.value = .restorationFailure;
+  }
+
+  Future<void> dispose() async {
+    await _authSubscription.cancel();
+    sessionState.dispose();
+  }
 }

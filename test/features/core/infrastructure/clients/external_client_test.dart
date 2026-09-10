@@ -1,7 +1,18 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show AuthChangeEvent, AuthState, GoTrueClient, Session;
 
+import 'package:cordato/features/core/domain/entities/auth_session_state.dart';
 import 'package:cordato/features/core/infrastructure/clients/external_client.dart';
+
+class _GoTrueClientMock extends Mock implements GoTrueClient {}
+
+class _SessionMock extends Mock implements Session {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +47,75 @@ void main() {
     );
 
     expect(client.hasSession, isFalse);
-    expect(client.events, isA<Stream<void>>());
+    expect(client.sessionState, isA<ValueListenable<AuthSessionStateEnum>>());
+    await client.dispose();
+  });
+
+  test('maps auth changes to routing session states', () async {
+    final auth = _GoTrueClientMock();
+    final events = StreamController<AuthState>();
+    when(() => auth.onAuthStateChange).thenAnswer((_) => events.stream);
+    final client = ExternalClient.forClient(client: auth);
+
+    expect(client.sessionState.value, AuthSessionStateEnum.loading);
+
+    events.add(const AuthState(AuthChangeEvent.initialSession, null));
+    await _flushEvents();
+    expect(client.sessionState.value, AuthSessionStateEnum.unauthenticated);
+
+    events.add(AuthState(AuthChangeEvent.signedIn, _SessionMock()));
+    await _flushEvents();
+    expect(client.sessionState.value, AuthSessionStateEnum.authenticated);
+
+    events.add(AuthState(AuthChangeEvent.tokenRefreshed, _SessionMock()));
+    await _flushEvents();
+    expect(client.sessionState.value, AuthSessionStateEnum.authenticated);
+
+    events.add(const AuthState(AuthChangeEvent.signedOut, null));
+    await _flushEvents();
+    expect(client.sessionState.value, AuthSessionStateEnum.unauthenticated);
+
+    await client.dispose();
+    await events.close();
+  });
+
+  test(
+    'uses a recoverable state for unexpected auth observation errors',
+    () async {
+      final auth = _GoTrueClientMock();
+      final events = StreamController<AuthState>();
+      when(() => auth.onAuthStateChange).thenAnswer((_) => events.stream);
+      final client = ExternalClient.forClient(client: auth);
+
+      events.addError(StateError('refresh failed'));
+      await _flushEvents();
+
+      expect(
+        client.sessionState.value,
+        AuthSessionStateEnum.restorationFailure,
+      );
+
+      await client.dispose();
+      await events.close();
+    },
+  );
+
+  test('ignores auth events after disposal', () async {
+    final auth = _GoTrueClientMock();
+    final events = StreamController<AuthState>();
+    when(() => auth.onAuthStateChange).thenAnswer((_) => events.stream);
+    final client = ExternalClient.forClient(client: auth);
+
+    events.add(AuthState(AuthChangeEvent.signedIn, _SessionMock()));
+    await _flushEvents();
+    await client.dispose();
+
+    events.add(const AuthState(AuthChangeEvent.signedOut, null));
+    await _flushEvents();
+
+    expect(client.sessionState.value, AuthSessionStateEnum.authenticated);
+    await events.close();
   });
 }
+
+Future<void> _flushEvents() => Future<void>.delayed(Duration.zero);

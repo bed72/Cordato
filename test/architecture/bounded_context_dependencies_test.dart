@@ -17,6 +17,10 @@ const _forbiddenPresentationImports = {
   'package:supabase_flutter/',
   'package:flutter_secure_storage/',
 };
+final _financialDirectWritePattern = RegExp(
+  r'''\.from\s*\(\s*(?:SupabaseTableEnum\.(?:expenses|budgets)\.value|['"](?:expenses|budgets)['"])\s*\)\s*\.(?:insert|update|delete)\s*\(''',
+  multiLine: true,
+);
 
 void main() {
   test('keeps out-of-scope backend contexts out of the app', () {
@@ -110,6 +114,21 @@ void main() {
       if (isPresentation && _forbiddenPresentationImports.any(source.contains)) {
         violations.add('${file.path}: presentation imports an external adapter SDK');
       }
+    }
+
+    expect(violations, isEmpty, reason: violations.join('\n'));
+  });
+
+  test('requires financial writes to use RPCs', () {
+    final violations = <String>[];
+
+    for (final file in _dartFiles()) {
+      if (!_financialContexts.contains(_contextFrom(file))) continue;
+      if (!_financialDirectWritePattern.hasMatch(file.readAsStringSync())) {
+        continue;
+      }
+
+      violations.add('${file.path}: direct financial table write detected');
     }
 
     expect(violations, isEmpty, reason: violations.join('\n'));

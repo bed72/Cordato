@@ -137,8 +137,9 @@ O fluxo de bootstrap é:
 main.dart
   -> WidgetsFlutterBinding.ensureInitialized()
   -> SupabaseClient.ensureInitialized()
-  -> ModularApp(module: appModule, initialRoute conforme sessão)
+  -> ModularApp(module: appModule, initialRoute: /welcome)
   -> AppWidget
+  -> SessionGuardWidget(session do Supabase)
   -> MaterialApp.router
 ```
 
@@ -257,10 +258,13 @@ child: (_, _) => WelcomeScreen(
 O callback `ValueChanged<BuildContext>` é deliberado: a screen continua
 testável e não fica acoplada ao Modular.
 
-`main.dart` usa `/dashboard` quando já existe uma sessão e `/welcome` caso
-contrário, sempre com `TransitionType.none`. A diferença entre as rotas base e
-as rotas filhas (`/welcome/` e `/dashboard/`) deve ser mantida consistente e
-testada antes de alterar a convenção.
+`main.dart` inicia em `/welcome`, sempre com `TransitionType.none`. Antes de
+expor o router, `SessionGuardWidget` aguarda o estado reativo de sessão: uma
+sessão autenticada entra em `/dashboard`; ausência, expiração ou logout levam a
+`/welcome` por `context.navigate`, removendo o histórico protegido. Enquanto a
+restauração está pendente, o guard mostra uma tela neutra de carregamento. A
+diferença entre as rotas base e as rotas filhas (`/welcome/` e `/dashboard/`)
+deve ser mantida consistente e testada antes de alterar a convenção.
 
 ## Camadas
 

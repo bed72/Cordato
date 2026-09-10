@@ -45,3 +45,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Supabase local state and environment values
+supabase/.temp/
+supabase/.env
+supabase/functions/.env
