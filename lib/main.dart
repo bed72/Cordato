@@ -24,12 +24,12 @@ Future<void> main() async {
     ModularApp(
       module: appModule,
       navigatorKey: navigatorKey,
-      defaultTransition: TransitionType.none,
       initialRoute: RouteEnum.welcome.path,
+      defaultTransition: TransitionType.none,
       child: AppWidget(
-        sessionState: client.sessionState,
-        disposeSession: client.dispose,
         navigatorKey: navigatorKey,
+        disposeSession: client.dispose,
+        sessionState: client.sessionState,
       ),
     ),
   );

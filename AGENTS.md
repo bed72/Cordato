@@ -6,6 +6,8 @@ Este arquivo orienta agentes e pessoas que alteram o aplicativo Flutter Cordato.
 As regras abaixo descrevem o padrão que deve ser seguido ao criar features,
 widgets, telas, estado, rotas e testes.
 
+Documentação canônica: [ARCHITECTURE.md](ARCHITECTURE.md).
+
 Antes de alterar código, leia a feature afetada, os widgets compartilhados que
 ela usa e os testes correspondentes. O projeto evolui por alterações pequenas;
 não substitua uma convenção existente por uma abstração nova sem necessidade.
