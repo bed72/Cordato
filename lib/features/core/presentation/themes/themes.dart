@@ -25,7 +25,7 @@ abstract final class Themes {
     fontFamily: 'Inter',
     colorScheme: colorScheme,
     splashFactory: splashFactory,
-    visualDensity: VisualDensity.standard,
+    visualDensity: .standard,
     scaffoldBackgroundColor: colors.background,
     extensions: <ThemeExtension<dynamic>>[radius, colors],
     textSelectionTheme: TextSelectionThemeData(

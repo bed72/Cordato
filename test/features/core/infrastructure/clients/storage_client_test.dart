@@ -24,29 +24,27 @@ void main() {
   });
 
   test('writes a value with its key', () async {
-    when(() => storage.write(key: 'access_token', value: 'token'))
+    when(() => storage.write(key: 'key', value: 'value'))
         .thenAnswer((_) async {});
 
-    await client.write(key: 'access_token', value: 'token');
+    await client.write(key: 'key', value: 'value');
 
-    verify(() => storage.write(key: 'access_token', value: 'token')).called(1);
+    verify(() => storage.write(key: 'key', value: 'value')).called(1);
   });
 
   test('reads a value with its key', () async {
-    when(() => storage.read(key: 'access_token'))
-        .thenAnswer((_) async => 'token');
+    when(() => storage.read(key: 'key')).thenAnswer((_) async => 'value');
 
-    final value = await client.read(key: 'access_token');
+    expect(await client.read(key: 'key'), 'value');
 
-    expect(value, 'token');
-    verify(() => storage.read(key: 'access_token')).called(1);
+    verify(() => storage.read(key: 'key')).called(1);
   });
 
   test('deletes a value with its key', () async {
-    when(() => storage.delete(key: 'access_token')).thenAnswer((_) async {});
+    when(() => storage.delete(key: 'key')).thenAnswer((_) async {});
 
-    await client.delete(key: 'access_token');
+    await client.delete(key: 'key');
 
-    verify(() => storage.delete(key: 'access_token')).called(1);
+    verify(() => storage.delete(key: 'key')).called(1);
   });
 }

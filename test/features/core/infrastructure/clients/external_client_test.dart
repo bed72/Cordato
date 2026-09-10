@@ -52,7 +52,7 @@ void main() {
     );
 
     expect(client.hasSession, isFalse);
-    expect(client.sessionState, isA<ValueListenable<AuthSessionStateEnum>>());
+    expect(client.state, isA<ValueListenable<AuthSessionStateEnum>>());
     await client.dispose();
   });
 
@@ -62,23 +62,23 @@ void main() {
     when(() => auth.onAuthStateChange).thenAnswer((_) => events.stream);
     final client = ExternalClient.forClient(client: auth);
 
-    expect(client.sessionState.value, AuthSessionStateEnum.loading);
+    expect(client.state.value, AuthSessionStateEnum.loading);
 
     events.add(const AuthState(AuthChangeEvent.initialSession, null));
     await _flushEvents();
-    expect(client.sessionState.value, AuthSessionStateEnum.unauthenticated);
+    expect(client.state.value, AuthSessionStateEnum.unauthenticated);
 
     events.add(AuthState(AuthChangeEvent.signedIn, _SessionMock()));
     await _flushEvents();
-    expect(client.sessionState.value, AuthSessionStateEnum.authenticated);
+    expect(client.state.value, AuthSessionStateEnum.authenticated);
 
     events.add(AuthState(AuthChangeEvent.tokenRefreshed, _SessionMock()));
     await _flushEvents();
-    expect(client.sessionState.value, AuthSessionStateEnum.authenticated);
+    expect(client.state.value, AuthSessionStateEnum.authenticated);
 
     events.add(const AuthState(AuthChangeEvent.signedOut, null));
     await _flushEvents();
-    expect(client.sessionState.value, AuthSessionStateEnum.unauthenticated);
+    expect(client.state.value, AuthSessionStateEnum.unauthenticated);
 
     await client.dispose();
     await events.close();
@@ -95,10 +95,7 @@ void main() {
       events.addError(StateError('refresh failed'));
       await _flushEvents();
 
-      expect(
-        client.sessionState.value,
-        AuthSessionStateEnum.restorationFailure,
-      );
+      expect(client.state.value, AuthSessionStateEnum.restorationFailure);
 
       await client.dispose();
       await events.close();
@@ -118,7 +115,7 @@ void main() {
     events.add(const AuthState(AuthChangeEvent.signedOut, null));
     await _flushEvents();
 
-    expect(client.sessionState.value, AuthSessionStateEnum.authenticated);
+    expect(client.state.value, AuthSessionStateEnum.authenticated);
     await events.close();
   });
 }

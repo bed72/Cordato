@@ -50,7 +50,12 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
         final background = toast == null
             ? context.colors.surface
             : getToastPalette(context, toast.variant).background;
+        final navigationBarBackground = context.colors.surfaceDim;
         final iconBrightness = background.computeLuminance() > .5
+            ? Brightness.dark
+            : Brightness.light;
+        final navigationBarIconBrightness =
+            navigationBarBackground.computeLuminance() > .5
             ? Brightness.dark
             : Brightness.light;
 
@@ -58,6 +63,9 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
           value: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: iconBrightness,
+            systemNavigationBarContrastEnforced: false,
+            systemNavigationBarColor: navigationBarBackground,
+            systemNavigationBarIconBrightness: navigationBarIconBrightness,
             statusBarBrightness: iconBrightness == Brightness.dark
                 ? Brightness.light
                 : Brightness.dark,
@@ -78,7 +86,7 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
                     child: SlideTransition(
                       position: Tween<Offset>(
                         begin: const Offset(0.0, -0.15),
-                        end: Offset.zero,
+                        end: .zero,
                       ).animate(animation),
                       child: child,
                     ),

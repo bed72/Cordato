@@ -11,14 +11,14 @@ import 'package:cordato/features/core/presentation/widgets/session_guard_widget.
 import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
 
 class AppWidget extends StatefulWidget {
-  final ValueListenable<AuthSessionStateEnum> sessionState;
-  final Future<void> Function() disposeSession;
+  final Future<void> Function() dispose;
   final GlobalKey<NavigatorState> navigatorKey;
+  final ValueListenable<AuthSessionStateEnum> state;
 
   const AppWidget({
     super.key,
-    required this.sessionState,
-    required this.disposeSession,
+    required this.state,
+    required this.dispose,
     required this.navigatorKey,
   });
 
@@ -30,14 +30,14 @@ final class _AppWidgetState extends State<AppWidget> with AppMixin {
   @override
   void didUpdateWidget(AppWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.sessionState, widget.sessionState)) {
-      unawaited(oldWidget.disposeSession());
+    if (!identical(oldWidget.state, widget.state)) {
+      unawaited(oldWidget.dispose());
     }
   }
 
   @override
   void dispose() {
-    unawaited(widget.disposeSession());
+    unawaited(widget.dispose());
     super.dispose();
   }
 
@@ -54,7 +54,7 @@ final class _AppWidgetState extends State<AppWidget> with AppMixin {
       debugShowCheckedModeBanner: kDebugMode,
       builder: (_, child) => ToastProviderWidget(
         child: SessionGuardWidget(
-          sessionState: widget.sessionState,
+          state: widget.state,
           onAuthenticated: navigateToDashboard,
           onUnauthenticated: navigateToWelcome,
           child: child ?? const SizedBox.shrink(),

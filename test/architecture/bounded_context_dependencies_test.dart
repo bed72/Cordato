@@ -55,8 +55,9 @@ void main() {
           continue;
         }
 
-        final isInfrastructure =
-            file.uri.pathSegments.contains('infrastructure');
+        final isInfrastructure = file.uri.pathSegments.contains(
+          'infrastructure',
+        );
         final allowed = switch (sourceContext) {
           'couple' => targetContext != 'insight' && isInfrastructure,
           'insight' => isInfrastructure,
@@ -86,8 +87,9 @@ void main() {
 
       final source = file.readAsStringSync();
       if (isDomain &&
-          RegExp(r'''package:cordato/features/[^/'"]+/(?:data|infrastructure|presentation)/''')
-              .hasMatch(source)) {
+          RegExp(
+            r'''package:cordato/features/[^/'"]+/(?:data|infrastructure|presentation)/''',
+          ).hasMatch(source)) {
         violations.add('${file.path}: domain imports an outer layer');
       }
 
@@ -104,15 +106,22 @@ void main() {
       }
 
       if (isDomain && _forbiddenDomainImports.any(source.contains)) {
-        violations.add('${file.path}: domain imports a UI or external SDK dependency');
+        violations.add(
+          '${file.path}: domain imports a UI or external SDK dependency',
+        );
       }
 
       if (isDomain && source.contains('package:command_it/')) {
-        violations.add('${file.path}: domain imports a presentation dependency');
+        violations.add(
+          '${file.path}: domain imports a presentation dependency',
+        );
       }
 
-      if (isPresentation && _forbiddenPresentationImports.any(source.contains)) {
-        violations.add('${file.path}: presentation imports an external adapter SDK');
+      if (isPresentation &&
+          _forbiddenPresentationImports.any(source.contains)) {
+        violations.add(
+          '${file.path}: presentation imports an external adapter SDK',
+        );
       }
     }
 
@@ -135,10 +144,11 @@ void main() {
   });
 }
 
-Iterable<File> _dartFiles() => Directory('lib/features')
-    .listSync(recursive: true)
-    .whereType<File>()
-    .where((file) => file.path.endsWith('.dart'));
+Iterable<File> _dartFiles() =>
+    Directory('lib/features')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => file.path.endsWith('.dart'));
 
 String? _contextFrom(File file) {
   final segments = file.uri.pathSegments;

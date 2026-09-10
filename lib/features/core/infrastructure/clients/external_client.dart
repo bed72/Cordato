@@ -10,7 +10,7 @@ const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
 final class ExternalClient {
   final GoTrueClient _client;
-  final sessionState = ValueNotifier<AuthSessionStateEnum>(.loading);
+  final state = ValueNotifier<AuthSessionStateEnum>(.loading);
   late final StreamSubscription<AuthState> _authSubscription;
   Object? _lastSessionError;
 
@@ -50,13 +50,13 @@ final class ExternalClient {
 
   void _onAuthStateChange(AuthState state) {
     _lastSessionError = null;
-    sessionState.value = switch (state.event) {
+    this.state.value = switch (state.event) {
       .signedOut => .unauthenticated,
-      .initialSession ||
-      .passwordRecovery ||
       .signedIn ||
-      .tokenRefreshed ||
       .userUpdated ||
+      .initialSession ||
+      .tokenRefreshed ||
+      .passwordRecovery ||
       .mfaChallengeVerified =>
         state.session == null ? .unauthenticated : .authenticated,
       _ => state.session == null ? .unauthenticated : .authenticated,
@@ -65,11 +65,11 @@ final class ExternalClient {
 
   void _onAuthStateError(Object error, StackTrace _) {
     _lastSessionError = error;
-    sessionState.value = .restorationFailure;
+    state.value = .restorationFailure;
   }
 
   Future<void> dispose() async {
     await _authSubscription.cancel();
-    sessionState.dispose();
+    state.dispose();
   }
 }

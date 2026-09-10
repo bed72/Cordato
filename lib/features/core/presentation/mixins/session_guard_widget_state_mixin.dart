@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/entities/auth_session_state.dart';
@@ -7,43 +5,38 @@ import 'package:cordato/features/core/presentation/widgets/session_guard_widget.
 
 mixin SessionGuardWidgetStateMixin on State<SessionGuardWidget> {
   int _transitionId = 0;
-  late AuthSessionStateEnum _sessionState;
+  late AuthSessionStateEnum _state;
 
-  AuthSessionStateEnum get sessionState => _sessionState;
+  AuthSessionStateEnum get sessionState => _state;
 
   @override
   void initState() {
     super.initState();
-    _sessionState = widget.sessionState.value;
-    widget.sessionState.addListener(_onSessionChanged);
+    _state = widget.state.value;
+    widget.state.addListener(_onSessionChanged);
     _scheduleNavigation(
-      _sessionState,
-      shouldNavigate:
-          _sessionState == .authenticated ||
-          _sessionState == .restorationFailure,
+      _state,
+      shouldNavigate: _state == .authenticated || _state == .restorationFailure,
     );
   }
 
   @override
   void didUpdateWidget(covariant SessionGuardWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (identical(oldWidget.sessionState, widget.sessionState)) return;
+    if (identical(oldWidget.state, widget.state)) return;
 
-    oldWidget.sessionState.removeListener(_onSessionChanged);
-    _sessionState = widget.sessionState.value;
-    widget.sessionState.addListener(_onSessionChanged);
-    _scheduleNavigation(
-      _sessionState,
-      shouldNavigate: _sessionState != .unauthenticated,
-    );
+    oldWidget.state.removeListener(_onSessionChanged);
+    _state = widget.state.value;
+    widget.state.addListener(_onSessionChanged);
+    _scheduleNavigation(_state, shouldNavigate: _state != .unauthenticated);
   }
 
   void _onSessionChanged() {
-    final nextState = widget.sessionState.value;
-    if (_sessionState == nextState) return;
+    final nextState = widget.state.value;
+    if (_state == nextState) return;
 
-    final previousState = _sessionState;
-    setState(() => _sessionState = nextState);
+    final previousState = _state;
+    setState(() => _state = nextState);
     _scheduleNavigation(
       nextState,
       shouldNavigate:
@@ -60,7 +53,7 @@ mixin SessionGuardWidgetStateMixin on State<SessionGuardWidget> {
     final transitionId = ++_transitionId;
     if (!shouldNavigate) return;
 
-    scheduleMicrotask(() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || transitionId != _transitionId) return;
 
       switch (state) {
@@ -76,7 +69,7 @@ mixin SessionGuardWidgetStateMixin on State<SessionGuardWidget> {
 
   @override
   void dispose() {
-    widget.sessionState.removeListener(_onSessionChanged);
+    widget.state.removeListener(_onSessionChanged);
     super.dispose();
   }
 }

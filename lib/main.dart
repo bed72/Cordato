@@ -27,9 +27,9 @@ Future<void> main() async {
       initialRoute: RouteEnum.welcome.path,
       defaultTransition: TransitionType.none,
       child: AppWidget(
+        state: client.state,
+        dispose: client.dispose,
         navigatorKey: navigatorKey,
-        disposeSession: client.dispose,
-        sessionState: client.sessionState,
       ),
     ),
   );

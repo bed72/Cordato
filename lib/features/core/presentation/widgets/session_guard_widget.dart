@@ -8,12 +8,12 @@ final class SessionGuardWidget extends StatefulWidget {
   final Widget child;
   final VoidCallback onAuthenticated;
   final VoidCallback onUnauthenticated;
-  final ValueListenable<AuthSessionStateEnum> sessionState;
+  final ValueListenable<AuthSessionStateEnum> state;
 
   const SessionGuardWidget({
     super.key,
     required this.child,
-    required this.sessionState,
+    required this.state,
     required this.onAuthenticated,
     required this.onUnauthenticated,
   });
