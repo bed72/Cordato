@@ -16,7 +16,8 @@ Os bounded contexts do produto são:
 - `expense`: implementado. Fatos atômicos de gastos de uma pessoa.
 - `budget`: implementado. Tetos planejados por intervalo de datas; gasto e saldo são derivados.
 - `couple`: planejado. Pareamento com acesso compartilhado somente de leitura.
-- `insight`: planejado. Análises financeiras derivadas, somente leitura e sem persistência própria.
+- `insight`: placeholder de apresentação visível. Análises financeiras derivadas,
+  somente leitura e sem persistência própria continuam planejadas.
 
 O contexto `identity` do backend não será reproduzido no app neste momento. A
 autenticação e a sessão são fornecidas pelo Supabase Auth através de magic link.
@@ -32,6 +33,8 @@ O app já possui:
 - dashboard inicial com dados do usuário;
 - criação de gastos e orçamentos individuais;
 - tela de configurações;
+- navegação autenticada persistente entre Dashboard, Transações, Insights e
+  Configurações, com Transações e Insights ainda como placeholders;
 - tema claro/escuro e componentes de apresentação reutilizáveis.
 
 As próximas features devem priorizar pareamento e insights, sem transformar o

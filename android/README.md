@@ -33,6 +33,13 @@ to debug signing.
 
 ## Build And Verify
 
+Android builds require JDK 21. Confirm that Flutter and Gradle are using it:
+
+```bash
+flutter doctor -v
+./gradlew -version
+```
+
 Build an Android App Bundle for distribution:
 
 ```bash

@@ -1,8 +1,9 @@
 import java.util.Properties
 
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -17,9 +18,9 @@ fun releaseSigningValue(propertyName: String, environmentName: String): String? 
     System.getenv(environmentName) ?: signingProperties.getProperty(propertyName)
 
 val releaseStoreFile = releaseSigningValue("storeFile", "ANDROID_RELEASE_STORE_FILE")
-val releaseStorePassword = releaseSigningValue("storePassword", "ANDROID_RELEASE_STORE_PASSWORD")
 val releaseKeyAlias = releaseSigningValue("keyAlias", "ANDROID_RELEASE_KEY_ALIAS")
 val releaseKeyPassword = releaseSigningValue("keyPassword", "ANDROID_RELEASE_KEY_PASSWORD")
+val releaseStorePassword = releaseSigningValue("storePassword", "ANDROID_RELEASE_STORE_PASSWORD")
 
 val missingReleaseSigningValues = listOfNotNull(
     "ANDROID_RELEASE_STORE_FILE or android/key.properties storeFile".takeIf {
@@ -41,8 +42,8 @@ dependencies {
 }
 
 android {
-    namespace = "com.bed.cordato"
     compileSdk = 37
+    namespace = "com.bed.cordato"
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -94,7 +95,7 @@ tasks.matching { it.name == "preReleaseBuild" }.configureEach {
 
 kotlin {
     compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        jvmTarget = JvmTarget.JVM_21
     }
 }
 

@@ -25,7 +25,8 @@ Os contextos financeiros e seu estado atual são:
 - `expense`: implementado. Registra gastos individuais por RPC Supabase.
 - `budget`: implementado. Registra tetos individuais por intervalo de datas por RPC Supabase.
 - `couple`: planejado. Será somente uma leitura combinada autorizada.
-- `insight`: planejado. Será uma projeção derivada e somente leitura.
+- `insight`: placeholder de apresentação visível. As análises derivadas e
+  somente leitura continuam planejadas e não possuem dados ou consultas.
 
 `dashboard` é uma feature de apresentação e composição. `settings` é uma tela
 de apresentação. `authentication` encapsula Supabase Auth e magic link; não
@@ -61,6 +62,7 @@ lib/
     expense/
     budget/
     settings/
+    insight/
 
 supabase/
   migrations/
@@ -102,9 +104,7 @@ logout ou falha de restauração navegam para `/welcome`.
 ```text
 coreModule
 budgetModule
-expenseModule
 welcomeModule
-settingsModule
 dashboardModule
 authenticationModule
 ```
@@ -114,10 +114,16 @@ Registros importantes:
 - `coreModule`: `IMoneyFormatter` com `MoneyFormatter`.
 - `authenticationModule`: cliente Supabase, URL de redirect, validators,
   data source, repository, client e commands do magic link e confirmação.
-- `dashboardModule`: acesso ao perfil, `GetUserNameCommand` e tela inicial.
+- `dashboardModule`: acesso ao perfil, `GetUserNameCommand`, destino inicial e
+  shell autenticado persistente.
 - `expenseModule` e `budgetModule`: validators, commands, repositories, data
-  sources e clientes Supabase para criar registros financeiros.
-- `welcomeModule` e `settingsModule`: apenas as telas e navegação associada.
+  sources e clientes Supabase para criar registros financeiros. `expenseModule`
+  também contém o placeholder de Transactions, uma leitura de apresentação
+  pertencente a Expense.
+- `insightModule`: somente o placeholder de apresentação Insights; não possui
+  caso de uso, consulta ou persistência analítica.
+- `welcomeModule` e `settingsModule`: telas e navegação associada. Settings é
+  composto como destino filho do shell autenticado.
 
 Rotas registradas:
 
@@ -127,15 +133,24 @@ Rotas registradas:
 /authentication/confirmation-code
 /callback
 /dashboard
-/expense
+/dashboard/transactions
+/dashboard/insights
+/dashboard/settings
+/dashboard/expense
 /budget
-/settings
 ```
 
-Os módulos financeiros, dashboard, welcome e settings registram sua tela em
-`/`, compondo o caminho do módulo. A navegação usa extensões de `BuildContext`
-do Modular 7, como `context.pushNamed`, `context.navigate`, `context.replace` e
-`context.pop`; não use `Modular.to`.
+`/dashboard` é um shell autenticado persistente de `dashboard/presentation`,
+renderizado abaixo de `SessionGuardWidget`. Seu `RouterOutlet` compõe Dashboard,
+Transactions (Expense), Insights (Insight) e Settings. A seleção da barra inferior
+é derivada da rota ativa; as trocas de destino usam `navigate` no outlet e não
+acumulam histórico. `/dashboard/expense` é uma ação distinta, empilhada sobre o
+destino ativo com `pushNamed`, e não é uma aba selecionável.
+
+Os módulos financeiros, dashboard e welcome registram suas rotas dentro de seu
+escopo de composição. A navegação usa extensões de `BuildContext` do Modular 7,
+como `context.pushNamed`, `context.navigate`, `context.replace` e `context.pop`;
+não use `Modular.to`.
 
 O redirect de autenticação pode ser configurado com `SUPABASE_REDIRECT_URL`.
 Na ausência dele, o valor de compatibilidade é
@@ -165,6 +180,11 @@ forem implementados como features.
 Código novo de UI importa `package:material_ui/material_ui.dart`. Reutilize os
 widgets compartilhados de `core`, especialmente os botões e `BounceWidget`, em
 vez de estilizar botões Material diretamente.
+
+A barra inferior autenticada é um componente específico de
+`dashboard/presentation`. Ela usa `BounceWidget`, `ColorScheme`, os raios do tema
+e um `AnnotatedRegion<SystemUiOverlayStyle>` para estender sua superfície pela
+área de navegação do Android. Não a promova para `core` sem reutilização real.
 
 Use os acessos de tema existentes:
 
