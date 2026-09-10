@@ -6,17 +6,17 @@ uma visão compartilhada das finanças do casal.
 
 ## Produto
 
-O modelo de negócio foi definido no backend legado em Kotlin e está sendo
-migrado para o Supabase. A regra central é:
+O modelo de negócio foi definido no backend legado em Kotlin. O backend ativo
+do aplicativo é o Supabase versionado neste repositório. A regra central é:
 
 > A pessoa é dona dos próprios dados. O casal é apenas uma lente de leitura.
 
 Os bounded contexts do produto são:
 
-- `expense`: fatos atômicos de gastos, pertencentes a uma pessoa.
-- `budget`: tetos planejados por intervalo de datas; gasto e saldo são derivados.
-- `couple`: pareamento entre duas pessoas, com acesso compartilhado somente de leitura.
-- `insight`: análises financeiras derivadas, somente leitura e sem persistência própria.
+- `expense`: implementado. Fatos atômicos de gastos de uma pessoa.
+- `budget`: implementado. Tetos planejados por intervalo de datas; gasto e saldo são derivados.
+- `couple`: planejado. Pareamento com acesso compartilhado somente de leitura.
+- `insight`: planejado. Análises financeiras derivadas, somente leitura e sem persistência própria.
 
 O contexto `identity` do backend não será reproduzido no app neste momento. A
 autenticação e a sessão são fornecidas pelo Supabase Auth através de magic link.
@@ -30,10 +30,12 @@ O app já possui:
 - autenticação por e-mail com magic link;
 - callback de autenticação e restauração de sessão;
 - dashboard inicial com dados do usuário;
+- criação de gastos e orçamentos individuais;
+- tela de configurações;
 - tema claro/escuro e componentes de apresentação reutilizáveis.
 
-As próximas features devem priorizar gastos, orçamentos, pareamento e insights,
-sem transformar o casal em dono de dados financeiros.
+As próximas features devem priorizar pareamento e insights, sem transformar o
+casal em dono de dados financeiros.
 
 ## Arquitetura
 
@@ -47,8 +49,9 @@ presentation -> domain -> data -> infrastructure -> Supabase
 independentes de framework, `data` implementa os repositórios e
 `infrastructure` encapsula Supabase, storage e plugins.
 
-Consulte [`ARCHITECTURE.md`](ARCHITECTURE.md) para os limites técnicos e
-[`AGENTS.md`](AGENTS.md) para as convenções de contribuição.
+Consulte [`ARCHITECTURE.md`](ARCHITECTURE.md) para módulos, rotas, limites
+técnicos e validação, e [`AGENTS.md`](AGENTS.md) para as convenções de
+contribuição.
 
 ## Desenvolvimento
 
@@ -90,4 +93,12 @@ supabase test db
 
 Não edite o schema pelo dashboard. Toda mudança de banco, RLS, grants,
 triggers ou funções deve ser adicionada como uma nova migration em
-`supabase/migrations/`.
+`supabase/migrations/`. `supabase test db` executa testes locais de schema, RPC,
+autorização, invariantes e concorrência; eles são distintos dos testes Flutter.
+
+## Revisão De Mudanças
+
+Mudanças em módulos, rotas, contratos, migrations, RPCs, RLS, comandos de
+validação ou configuração de release devem atualizar, na mesma alteração, a
+documentação canônica correspondente. Consulte a seção de revisão em
+[`ARCHITECTURE.md`](ARCHITECTURE.md#revisão-de-documentação).

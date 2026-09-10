@@ -25,6 +25,7 @@ final class ExternalClient {
   ExternalClient.forClient({required GoTrueClient client}) : this._(client);
 
   static Future<ExternalClient> ensureInitialized({
+    required LocalStorage client,
     String url = _supabaseUrl,
     String publishableKey = _supabaseAnonKey,
   }) async {
@@ -37,6 +38,7 @@ final class ExternalClient {
     final instance = await Supabase.initialize(
       url: url,
       publishableKey: publishableKey,
+      authOptions: FlutterAuthClientOptions(localStorage: client),
     );
 
     return ExternalClient._(instance.client.auth);

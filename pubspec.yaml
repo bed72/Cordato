@@ -38,6 +38,7 @@ dependencies:
   command_it: ^9.5.1
   flutter_modular: ^7.1.0
   supabase_flutter: ^2.17.2
+  flutter_secure_storage: ^11.1.0
 
   pinput: ^6.0.2
   material_ui: ^1.1.0

@@ -23,9 +23,12 @@ O modelo de domínio validado possui estes bounded contexts:
 - `couple`: pareamento entre duas pessoas, com leitura combinada e sem escrita nos dados do outro.
 - `insight`: análises derivadas, somente leitura e sem persistência própria.
 
-O backend foi migrado para o Supabase. A autenticação atual usa Supabase Auth
-com magic link; não crie um contexto `identity` no app para reproduzir o
-backend antigo. O contexto `chat` não faz parte do escopo atual.
+O backend ativo está versionado em `supabase/`; o Kotlin legado é somente
+referência de domínio. `expense` e `budget` estão implementados. `couple` e
+`insight` são planejados e não devem ser descritos ou tratados como código
+existente. A autenticação atual usa Supabase Auth com magic link; não crie um
+contexto `identity` no app para reproduzir o backend antigo. O contexto `chat`
+não faz parte do escopo atual.
 
 Regras de domínio que devem ser preservadas nas features financeiras:
 
@@ -48,6 +51,7 @@ Regras de domínio que devem ser preservadas nas features financeiras:
 - Não esconda falhas de análise ou testes. Registre a causa e se ela é anterior
   à alteração.
 - Não faça commit, push ou alterações destrutivas sem solicitação explícita.
+- Mudanças estruturais devem atualizar a documentação canônica na mesma alteração.
 
 ## Stack Atual
 
@@ -378,6 +382,20 @@ Screen/Widget
     -> External service
 ```
 
+## Supabase
+
+`supabase/` é a fonte de verdade para schema, migrations, RLS, grants, RPCs e
+testes de banco. A UI Flutter não concede autoridade: a propriedade financeira
+é aplicada por RLS e pelas RPCs transacionais, que derivam o ator de
+`auth.uid()`. Clientes autenticados não devem escrever diretamente nas tabelas
+financeiras.
+
+Para uma feature financeira, identifique o contexto proprietário e altere a
+migration/RPC e os testes de autorização ou invariantes aplicáveis. Não adicione
+tabelas, políticas ou RPCs de `couple` ou `insight` antes de essas features
+existirem. Consulte `supabase/README.md` para os artefatos e comandos de banco;
+não replique SQL em documentação geral.
+
 ## Módulos, DI E Rotas
 
 Use a API funcional do `flutter_modular` 7:
@@ -476,6 +494,21 @@ flutter run \
 `SUPABASE_REDIRECT_URL` é opcional e possui valor padrão no módulo de
 autenticação.
 
+Para alterações de banco, com Docker Desktop e Supabase CLI instalados, execute
+depois de um reset local limpo:
+
+```bash
+supabase start
+supabase db reset
+supabase migration list --local
+supabase db lint --local
+supabase test db
+```
+
+Esses são testes de integração locais de schema, RPC, RLS e invariantes, não
+substitutos da suíte Flutter. A configuração e verificação de release Android
+estão em `android/README.md`.
+
 ## Checklist De Pull Request
 
 - A feature respeita as camadas e não acessa SDK na apresentação.
@@ -487,6 +520,10 @@ autenticação.
 - `flutter analyze` foi executado.
 - `flutter test` foi executado e qualquer falha não relacionada foi registrada.
 - Nenhuma extensão, token ou abstração duplicada foi criada.
+- Mudanças em módulos, rotas, contratos ou comandos atualizaram `ARCHITECTURE.md`.
+- Mudanças em migrations, RPCs, RLS ou testes de banco atualizaram `supabase/README.md`.
+- Mudanças de release Android atualizaram `android/README.md`.
+- O `README.md` foi revisado quando o estado do produto, configuração ou início rápido mudou.
 
 ## Pendências Conhecidas
 

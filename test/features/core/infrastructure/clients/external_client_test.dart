@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
-    show AuthChangeEvent, AuthState, GoTrueClient, Session;
+    show AuthChangeEvent, AuthState, EmptyLocalStorage, GoTrueClient, Session;
 
 import 'package:cordato/features/core/domain/entities/auth_session_state.dart';
 import 'package:cordato/features/core/infrastructure/clients/external_client.dart';
@@ -35,13 +35,18 @@ void main() {
 
   test('requires the Supabase configuration', () {
     expect(
-      () => ExternalClient.ensureInitialized(url: '', publishableKey: ''),
+      () => ExternalClient.ensureInitialized(
+        client: const EmptyLocalStorage(),
+        url: '',
+        publishableKey: '',
+      ),
       throwsA(isA<StateError>()),
     );
   });
 
   test('initializes Supabase and exposes authentication state', () async {
     final client = await ExternalClient.ensureInitialized(
+      client: const EmptyLocalStorage(),
       url: 'https://test.supabase.co',
       publishableKey: 'test-publishable-key',
     );
