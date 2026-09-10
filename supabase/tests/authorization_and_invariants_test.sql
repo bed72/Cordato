@@ -41,7 +41,7 @@ values
     now()
   );
 
-select plan(4);
+select plan(5);
 
 do $$
 declare
@@ -89,6 +89,36 @@ end;
 $$;
 
 select pass('profiles are readable only by the authenticated owner');
+
+do $$
+declare
+  owner_b_id constant uuid := '20000000-0000-0000-0000-000000000002';
+  expense_id uuid;
+begin
+  delete from public.profiles where id = owner_b_id;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', owner_b_id::text, true);
+  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', owner_b_id, 'role', 'authenticated')::text,
+    true
+  );
+
+  select public.create_expense(100, 'Perfil ausente', '2026-01-14')
+  into expense_id;
+
+  if not exists (select 1 from public.profiles where id = owner_b_id) then
+    raise exception 'Financial RPC did not restore the actor profile';
+  end if;
+
+  perform public.delete_expense(expense_id);
+  execute 'reset role';
+end;
+$$;
+
+select pass('financial RPCs restore a missing actor profile before creating records');
 
 do $$
 declare

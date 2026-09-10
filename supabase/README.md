@@ -11,7 +11,9 @@ The initial migration versions the boundaries used by the current mobile app:
 
 - `auth.users` is managed by Supabase Auth and is the identity source.
 - `profiles` mirrors the authenticated user's email and display name through an
-  `auth.users` trigger. It is readable only by its owner.
+  `auth.users` trigger. Existing users are backfilled by migration and financial
+  RPCs restore a missing actor profile before creating a record. It is readable
+  only by its owner.
 - `expenses` stores a user's individual expenses.
 - `budgets` stores a user's individual budget periods.
 
