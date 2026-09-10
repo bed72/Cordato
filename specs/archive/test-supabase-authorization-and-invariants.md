@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed
+Archived. The database test suite is implemented, but its execution remains
+pending until a disposable Supabase test environment is available. Do not run
+the reset-and-test workflow against the Coolify instance with real data.
 
 ## Objective
 

@@ -1,8 +1,40 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+val signingProperties = Properties()
+val signingPropertiesFile = rootProject.file("key.properties")
+
+if (signingPropertiesFile.isFile) {
+    signingPropertiesFile.inputStream().use(signingProperties::load)
+}
+
+fun releaseSigningValue(propertyName: String, environmentName: String): String? =
+    System.getenv(environmentName) ?: signingProperties.getProperty(propertyName)
+
+val releaseStoreFile = releaseSigningValue("storeFile", "ANDROID_RELEASE_STORE_FILE")
+val releaseStorePassword = releaseSigningValue("storePassword", "ANDROID_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = releaseSigningValue("keyAlias", "ANDROID_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = releaseSigningValue("keyPassword", "ANDROID_RELEASE_KEY_PASSWORD")
+
+val missingReleaseSigningValues = listOfNotNull(
+    "ANDROID_RELEASE_STORE_FILE or android/key.properties storeFile".takeIf {
+        releaseStoreFile.isNullOrBlank()
+    },
+    "ANDROID_RELEASE_STORE_PASSWORD or android/key.properties storePassword".takeIf {
+        releaseStorePassword.isNullOrBlank()
+    },
+    "ANDROID_RELEASE_KEY_ALIAS or android/key.properties keyAlias".takeIf {
+        releaseKeyAlias.isNullOrBlank()
+    },
+    "ANDROID_RELEASE_KEY_PASSWORD or android/key.properties keyPassword".takeIf {
+        releaseKeyPassword.isNullOrBlank()
+    },
+)
 
 dependencies {
     implementation("androidx.core:core-splashscreen:1.2.0")
@@ -14,32 +46,50 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.bed.cordato"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
-        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
-        // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
-        // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+    signingConfigs {
+        create("release") {
+            if (!releaseStoreFile.isNullOrBlank()) {
+                storeFile = rootProject.file(releaseStoreFile)
+            }
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
         }
     }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+}
+
+val validateReleaseSigning by tasks.registering {
+    doLast {
+        check(missingReleaseSigningValues.isEmpty()) {
+            "Missing Android release signing configuration: " +
+                missingReleaseSigningValues.joinToString()
+        }
+        check(rootProject.file(requireNotNull(releaseStoreFile)).isFile) {
+            "Android release keystore does not exist: $releaseStoreFile"
+        }
+    }
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(validateReleaseSigning)
 }
 
 kotlin {

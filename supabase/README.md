@@ -50,8 +50,23 @@ supabase test db
 timestamp order. Run it after changing any file in `supabase/migrations/`.
 `supabase migration list` confirms the local migration history, and
 `supabase db lint` checks the resulting database for schema issues.
-`supabase test db` runs the structural baseline verification in
-`supabase/tests/`. Use the local Studio URL shown by `supabase status` to
+`supabase test db` runs the structural, authorization, invariant, and
+concurrency verification in `supabase/tests/`. Always run the tests after a
+clean reset so they exercise the tracked migrations rather than a shared or
+remote database:
+
+```bash
+supabase db reset
+supabase test db
+```
+
+The authorization tests create local `auth.users` fixtures and impersonate
+their decoded JWT claims under the database `authenticated` and `anon` roles.
+They never read runtime Flutter configuration, production settings, or remote
+credentials. The budget concurrency test opens two local database sessions with
+the test-only `dblink` extension and verifies that the exclusion constraint
+allows only one conflicting write to commit. Use the local Studio URL shown by
+`supabase status` to
 inspect tables, policies, triggers, extensions, and Storage without dashboard
 edits.
 

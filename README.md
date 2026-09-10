@@ -69,6 +69,11 @@ flutter run \
 `SUPABASE_REDIRECT_URL` é opcional e possui um valor padrão no módulo de
 autenticação.
 
+## Android Release
+
+O processo de configuração segura da chave, build e verificação de artefatos
+Android está documentado em [`android/README.md`](android/README.md).
+
 ## Backend Supabase
 
 A configuração local, migrações ordenadas e documentação do backend vivem em

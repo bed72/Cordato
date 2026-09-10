@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed
+Archived. Release hardening is implemented; generating and inspecting an
+artifact with the authorized release keystore remains an operational step.
 
 ## Objective
 
