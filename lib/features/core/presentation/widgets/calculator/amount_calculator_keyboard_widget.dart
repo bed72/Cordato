@@ -1,8 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/calculator/amount_calculator_key_widget.dart';
 
 final class AmountCalculatorKeyboardWidget extends StatelessWidget {
+  static const _keySpacing = 4.0;
+  static const _keyCount = 4.0;
+
   final VoidCallback onClear;
   final VoidCallback onDelete;
   final VoidCallback onSubmit;
@@ -18,66 +23,79 @@ final class AmountCalculatorKeyboardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 290.0,
-      child: Row(
-        spacing: 4.0,
-        crossAxisAlignment: .stretch,
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              spacing: 4.0,
-              children: [
-                _buildDigitRow(const ['7', '8', '9']),
-                _buildDigitRow(const ['4', '5', '6']),
-                _buildDigitRow(const ['1', '2', '3']),
-                Expanded(
-                  child: AmountCalculatorKeyWidget(
-                    label: '0',
-                    onTap: () => onDigit('0'),
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final spacingSize = _keySpacing * (_keyCount - 1.0);
+        final keySizeByWidth = (constraints.maxWidth - spacingSize) / _keyCount;
+        final keySizeByHeight = constraints.hasBoundedHeight
+            ? (constraints.maxHeight - spacingSize) / _keyCount
+            : keySizeByWidth;
+        final keySize = math.min(keySizeByWidth, keySizeByHeight);
+        final keyboardHeight = (keySize * _keyCount) + spacingSize;
+        final digitColumnWidth = (keySize * 3.0) + (_keySpacing * 2.0);
+
+        return SizedBox(
+          height: keyboardHeight,
+          child: Row(
+            spacing: _keySpacing,
+            crossAxisAlignment: .stretch,
+            children: [
+              SizedBox(
+                width: digitColumnWidth,
+                child: Column(
+                  spacing: _keySpacing,
+                  children: [
+                    _buildDigitRow(const ['7', '8', '9']),
+                    _buildDigitRow(const ['4', '5', '6']),
+                    _buildDigitRow(const ['1', '2', '3']),
+                    Expanded(
+                      child: AmountCalculatorKeyWidget(
+                        label: '0',
+                        onTap: () => onDigit('0'),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              Expanded(
+                child: Column(
+                  spacing: _keySpacing,
+                  children: [
+                    Expanded(
+                      child: AmountCalculatorKeyWidget(
+                        label: 'DEL',
+                        isAction: true,
+                        onTap: onDelete,
+                      ),
+                    ),
+                    Expanded(
+                      child: AmountCalculatorKeyWidget(
+                        label: 'AC',
+                        isAction: true,
+                        onTap: onClear,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: AmountCalculatorKeyWidget(
+                        label: '✓',
+                        isAction: true,
+                        onTap: onSubmit,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: Column(
-              spacing: 4.0,
-              children: [
-                Expanded(
-                  child: AmountCalculatorKeyWidget(
-                    label: 'DEL',
-                    isAction: true,
-                    onTap: onDelete,
-                  ),
-                ),
-                Expanded(
-                  child: AmountCalculatorKeyWidget(
-                    label: 'AC',
-                    isAction: true,
-                    onTap: onClear,
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: AmountCalculatorKeyWidget(
-                    label: '✓',
-                    isAction: true,
-                    onTap: onSubmit,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildDigitRow(List<String> digits) => Expanded(
     child: Row(
-      spacing: 4.0,
+      spacing: _keySpacing,
       children: [
         for (final digit in digits)
           Expanded(
