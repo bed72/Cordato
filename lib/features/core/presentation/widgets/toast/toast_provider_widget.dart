@@ -26,7 +26,13 @@ final class ToastProviderWidget extends StatefulWidget {
 }
 
 final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
+  static const _showDuration = Duration(milliseconds: 420);
+  static const _hideDuration = Duration(milliseconds: 280);
+
   late final ToastNotifier _notifier;
+  final _toastMeasureKey = GlobalKey();
+
+  double _toastHeight = 0.0;
 
   @override
   void initState() {
@@ -38,6 +44,17 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
   void dispose() {
     _notifier.dispose();
     super.dispose();
+  }
+
+  void _updateToastHeight() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final height = _toastMeasureKey.currentContext?.size?.height ?? 0.0;
+      if (height <= 0.0 || (height - _toastHeight).abs() < 0.5) return;
+
+      setState(() => _toastHeight = height);
+    });
   }
 
   @override
@@ -58,6 +75,21 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
             navigationBarBackground.computeLuminance() > .5
             ? Brightness.dark
             : Brightness.light;
+        final animationsDisabled = MediaQuery.disableAnimationsOf(context);
+        final animationDuration = animationsDisabled
+            ? Duration.zero
+            : toast == null
+            ? _hideDuration
+            : _showDuration;
+        final animationCurve = toast == null
+            ? Curves.easeInCubic
+            : Curves.easeOutBack;
+        final screenBorderRadius = toast == null
+            ? BorderRadius.zero
+            : BorderRadius.only(
+                topLeft: context.radius.cornerRadius300.topLeft,
+                topRight: context.radius.cornerRadius300.topRight,
+              );
 
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
@@ -70,37 +102,84 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
                 ? Brightness.light
                 : Brightness.dark,
           ),
-          child: Stack(
-            fit: .expand,
-            children: [
-              child!,
-              Positioned(
-                top: 0.0,
-                left: 0.0,
-                right: 0.0,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  reverseDuration: const Duration(milliseconds: 160),
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.0, -0.15),
-                        end: .zero,
-                      ).animate(animation),
-                      child: child,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenHeight = constraints.maxHeight;
+              final revealOffset = screenHeight <= 0.0
+                  ? 0.0
+                  : _toastHeight / screenHeight;
+
+              return Stack(
+                fit: .expand,
+                clipBehavior: .none,
+                children: [
+                  ColoredBox(color: background),
+                  Positioned(
+                    top: 0.0,
+                    left: 0.0,
+                    right: 0.0,
+                    child: NotificationListener<SizeChangedLayoutNotification>(
+                      onNotification: (_) {
+                        _updateToastHeight();
+                        return true;
+                      },
+                      child: SizeChangedLayoutNotifier(
+                        key: _toastMeasureKey,
+                        child: AnimatedSwitcher(
+                          duration: animationsDisabled
+                              ? Duration.zero
+                              : const Duration(milliseconds: 180),
+                          reverseDuration: animationDuration,
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(
+                                opacity: CurvedAnimation(
+                                  parent: animation,
+                                  curve: const Interval(0.0, 0.25),
+                                ),
+                                child: child,
+                              ),
+                          child: toast == null
+                              ? const SizedBox.shrink(
+                                  key: ValueKey('empty-toast'),
+                                )
+                              : ToastWidget(
+                                  key: ValueKey(toast.id),
+                                  data: toast,
+                                  onDismiss: _notifier.hide,
+                                ),
+                        ),
+                      ),
                     ),
                   ),
-                  child: toast == null
-                      ? const SizedBox.shrink(key: ValueKey('empty-toast'))
-                      : ToastWidget(
-                          key: ValueKey(toast.id),
-                          data: toast,
-                          onDismiss: _notifier.hide,
-                        ),
-                ),
-              ),
-            ],
+                  AnimatedSlide(
+                    offset: Offset(0.0, toast == null ? 0.0 : revealOffset),
+                    duration: animationDuration,
+                    curve: animationCurve,
+                    child: AnimatedContainer(
+                      duration: animationDuration,
+                      curve: animationCurve,
+                      clipBehavior: .antiAlias,
+                      decoration: BoxDecoration(
+                        borderRadius: screenBorderRadius,
+                        boxShadow: toast == null
+                            ? const []
+                            : [
+                                BoxShadow(
+                                  blurRadius: 20.0,
+                                  spreadRadius: 1.0,
+                                  offset: const Offset(0.0, -4.0),
+                                  color: context.colors.shadow.withValues(
+                                    alpha: context.isDark ? 0.4 : 0.2,
+                                  ),
+                                ),
+                              ],
+                      ),
+                      child: child!,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         );
       },
