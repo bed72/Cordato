@@ -4,9 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/app_mixin.dart';
 import 'package:cordato/features/core/domain/entities/auth_session_state.dart';
+
 import 'package:cordato/features/core/presentation/themes/themes.dart';
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/widgets/session_guard_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
 
@@ -26,7 +27,7 @@ class AppWidget extends StatefulWidget {
   State<AppWidget> createState() => _AppWidgetState();
 }
 
-final class _AppWidgetState extends State<AppWidget> with AppMixin {
+final class _AppWidgetState extends State<AppWidget> {
   @override
   void didUpdateWidget(AppWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -40,6 +41,13 @@ final class _AppWidgetState extends State<AppWidget> with AppMixin {
     unawaited(widget.dispose());
     super.dispose();
   }
+
+  void navigateToWelcome() => _navigate(RouteEnum.welcome.path);
+
+  void navigateToDashboard() => _navigate(RouteEnum.dashboard.path);
+
+  void _navigate(String path) =>
+      widget.navigatorKey.currentContext?.navigate(path);
 
   @override
   Widget build(BuildContext context) {

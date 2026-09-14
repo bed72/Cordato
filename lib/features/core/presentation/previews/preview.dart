@@ -4,6 +4,8 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:cordato/features/core/presentation/previews/material_preview_widget.dart';
 
+const cordatoPhonePreviewSize = Size(390.0, 844.0);
+
 Widget cordatoPreviewWrapper(Widget child) =>
     _LocaleReadyWidget(child: MaterialPreviewWidget(child: child));
 

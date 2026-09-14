@@ -198,6 +198,31 @@ relevantes para o layout.
 Assets locais devem ser declarados no `pubspec.yaml`. O asset atual da marca é
 `assets/images/logo.webp`.
 
+## Widget Previews
+
+Telas e widgets visuais podem ter previews usando o Widget Previewer nativo do
+Flutter. Use sempre `@CordatoPreview`, definido em
+`features/core/presentation/previews/preview.dart`, em vez de `@Preview`
+diretamente. O wrapper compartilhado instala o tema real, localização `pt_BR` e
+o provider de toast.
+
+Previews de feature vivem em `presentation/previews/screens/` ou
+`presentation/previews/widgets/`. Fakes exclusivos do catálogo ficam em
+`presentation/previews/fakes/` e devem implementar contratos do domínio sem
+acessar Supabase, storage ou plugins. Previews compartilhados ficam em
+`features/core/presentation/previews/widgets/`.
+
+- Use funções públicas top-level sem parâmetros, como exige o previewer.
+- Informe `group`, `name` e um `size` adequado ao conteúdo.
+- Use `cordatoPhonePreviewSize` para telas completas.
+- Construa a estrutura real da tela ou widget, sem inicializar módulos ou o router.
+- Use `PreviewResourceWidget` quando controllers ou commands precisarem de descarte.
+- Não importe `mocktail` em previews; ele é dependência exclusiva de testes.
+- Não crie dados financeiros com `double`; fixtures monetárias usam centavos inteiros.
+
+Execute os previews com `flutter widget-preview start`. O diretório gerado
+`.widget_preview/` é local e não deve ser versionado.
+
 ## Screens
 
 Screens são pontos de composição e integração da feature. Elas devem:

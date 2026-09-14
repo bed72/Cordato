@@ -64,6 +64,12 @@ flutter analyze
 flutter test
 ```
 
+Para abrir os previews de telas e componentes no Widget Previewer do Flutter:
+
+```bash
+flutter widget-preview start
+```
+
 Para executar o app, forneça as configurações do Supabase:
 
 ```bash
