@@ -6,9 +6,10 @@ import 'package:cordato/features/settings/presentation/widgets/settings_header_w
 import 'package:cordato/features/settings/presentation/widgets/settings_logout_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_app_bar_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_section_widget.dart';
+import 'package:cordato/features/settings/presentation/mixins/settings_screen_state_mixin.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_invite_partner_widget.dart';
 
-final class SettingsScreen extends StatelessWidget {
+final class SettingsScreen extends StatefulWidget {
   final ValueChanged<BuildContext> onBackPressed;
   final VoidCallback? onHelpPressed;
   final VoidCallback? onTermsPressed;
@@ -21,19 +22,25 @@ final class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     super.key,
     required this.onBackPressed,
-    this.onInvitePartnerPressed,
+    this.onHelpPressed,
+    this.onTermsPressed,
+    this.onLogoutPressed,
+    this.onPrivacyPressed,
     this.onPersonalDataPressed,
     this.onSubscriptionPressed,
-    this.onTermsPressed,
-    this.onPrivacyPressed,
-    this.onHelpPressed,
-    this.onLogoutPressed,
+    this.onInvitePartnerPressed,
   });
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+final class _SettingsScreenState extends State<SettingsScreen>
+    with SettingsScreenStateMixin {
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: SettingsAppBarWidget(onBackPressed: onBackPressed),
+      appBar: SettingsAppBarWidget(onBackPressed: widget.onBackPressed),
       body: SafeArea(
         child: Padding(
           padding: const .all(16.0),
@@ -51,7 +58,7 @@ final class SettingsScreen extends StatelessWidget {
                       const SettingsSectionWidget(label: 'Casal'),
                       const SizedBox(height: 8.0),
                       SettingsInvitePartnerWidget(
-                        onInvitePartnerPressed: onInvitePartnerPressed,
+                        onInvitePartnerPressed: widget.onInvitePartnerPressed,
                       ),
                       const SizedBox(height: 24.0),
                       const SettingsSectionWidget(label: 'Conta'),
@@ -61,13 +68,13 @@ final class SettingsScreen extends StatelessWidget {
                           SettingsItemWidget(
                             label: 'Dados pessoais',
                             icon: Icons.person_outline,
-                            onPressed: onPersonalDataPressed,
+                            onPressed: widget.onPersonalDataPressed,
                           ),
                           SettingsItemWidget(
                             isPremium: true,
                             label: 'Subscrição',
                             icon: Icons.star_outline,
-                            onPressed: onSubscriptionPressed,
+                            onPressed: widget.onSubscriptionPressed,
                           ),
                         ],
                       ),
@@ -78,18 +85,18 @@ final class SettingsScreen extends StatelessWidget {
                         children: [
                           SettingsItemWidget(
                             label: 'Termos de uso',
-                            onPressed: onTermsPressed,
+                            onPressed: widget.onTermsPressed,
                             icon: Icons.description_outlined,
                           ),
                           SettingsItemWidget(
                             icon: Icons.shield_outlined,
-                            onPressed: onPrivacyPressed,
+                            onPressed: widget.onPrivacyPressed,
                             label: 'Políticas de privacidade',
                           ),
                           SettingsItemWidget(
                             label: 'Ajuda',
                             icon: Icons.help_outline,
-                            onPressed: onHelpPressed,
+                            onPressed: widget.onHelpPressed,
                           ),
                         ],
                       ),
@@ -97,7 +104,11 @@ final class SettingsScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              SettingsLogoutWidget(onLogoutPressed: onLogoutPressed),
+              SettingsLogoutWidget(
+                onLogoutPressed: widget.onLogoutPressed == null
+                    ? null
+                    : showLogoutConfirmation,
+              ),
             ],
           ),
         ),
