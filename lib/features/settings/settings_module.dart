@@ -6,6 +6,18 @@ import 'package:cordato/features/settings/presentation/screens/settings_screen.d
 final settingsModule = createModule(
   path: RouteEnum.settings.path,
   register: (context) {
-    context.route(RouteEnum.root.path, child: (_, _) => const SettingsScreen());
+    context.route(
+      RouteEnum.root.path,
+      child: (_, _) => SettingsScreen(
+        onBackPressed: (context) => context.pop(),
+        onHelpPressed: () {},
+        onTermsPressed: () {},
+        onLogoutPressed: () {},
+        onPrivacyPressed: () {},
+        onPersonalDataPressed: () {},
+        onSubscriptionPressed: () {},
+        onInvitePartnerPressed: () {},
+      ),
+    );
   },
 );

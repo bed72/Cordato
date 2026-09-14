@@ -24,7 +24,9 @@ Future<void> main() async {
     ModularApp(
       module: appModule,
       navigatorKey: navigatorKey,
-      initialRoute: RouteEnum.welcome.path,
+      initialRoute: client.hasSession
+          ? RouteEnum.dashboard.path
+          : RouteEnum.welcome.path,
       defaultTransition: TransitionType.none,
       child: AppWidget(
         state: client.state,

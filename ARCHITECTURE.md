@@ -94,9 +94,10 @@ restrito ao `State` correspondente e responsável por seu `dispose`.
 ## Inicialização, Módulos E Rotas
 
 `main.dart` inicializa Flutter, exige `SUPABASE_URL` e `SUPABASE_ANON_KEY`,
-inicializa `ExternalClient` e inicia `ModularApp` em `/welcome`. `AppWidget`
-instala temas, router e `SessionGuardWidget`. O guard mostra loading durante a
-restauração e navega para `/dashboard` com sessão autenticada; sessão ausente,
+inicializa `ExternalClient` e escolhe a rota inicial após a restauração do
+Supabase: `/dashboard` com sessão autenticada e `/welcome` sem sessão.
+`AppWidget` instala temas, router e `SessionGuardWidget`. O guard mostra loading
+durante mudanças de estado posteriores; login navega para `/dashboard`, enquanto
 logout ou falha de restauração navegam para `/welcome`.
 
 `app_module.dart` compõe os módulos existentes:

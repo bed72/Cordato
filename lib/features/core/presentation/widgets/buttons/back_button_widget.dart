@@ -23,6 +23,6 @@ final class BackButtonWidget extends StatelessWidget {
     withoutBackground: false,
     iconColor: context.colors.onSurface,
     borderRadius: context.radius.cornerRadius100,
-    backgroundColor: context.colors.onSurface.withValues(alpha: .02),
+    backgroundColor: context.colors.onSurface.withValues(alpha: .04),
   );
 }

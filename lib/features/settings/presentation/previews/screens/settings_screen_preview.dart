@@ -8,4 +8,21 @@ import 'package:cordato/features/settings/presentation/screens/settings_screen.d
   name: 'Configurações',
   size: cordatoPhonePreviewSize,
 )
-Widget previewSettingsScreen() => const SettingsScreen();
+Widget previewSettingsScreen() => SettingsScreen(
+  onBackPressed: (_) {},
+  onHelpPressed: () {},
+  onTermsPressed: () {},
+  onLogoutPressed: () {},
+  onPrivacyPressed: () {},
+  onPersonalDataPressed: () {},
+  onSubscriptionPressed: () {},
+  onInvitePartnerPressed: () {},
+);
+
+@CordatoPreview(
+  group: 'Configurações / Telas',
+  name: 'Configurações compacta e desabilitada',
+  size: Size(280.0, 520.0),
+)
+Widget previewDisabledCompactSettingsScreen() =>
+    SettingsScreen(onBackPressed: (_) {});
