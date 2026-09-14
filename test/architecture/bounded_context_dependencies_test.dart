@@ -94,9 +94,10 @@ void main() {
       }
 
       if (isPresentation &&
-          RegExp(r'''package:cordato/features/[^/'"]+/infrastructure/''')
-              .hasMatch(source)) {
-        violations.add('${file.path}: presentation imports infrastructure');
+          RegExp(
+            r'''package:cordato/features/[^/'"]+/(?:data|infrastructure)/''',
+          ).hasMatch(source)) {
+        violations.add('${file.path}: presentation imports an outer adapter');
       }
 
       if (pathSegments.contains('data') &&
@@ -121,6 +122,30 @@ void main() {
           _forbiddenPresentationImports.any(source.contains)) {
         violations.add(
           '${file.path}: presentation imports an external adapter SDK',
+        );
+      }
+    }
+
+    expect(violations, isEmpty, reason: violations.join('\n'));
+  });
+
+  test('keeps Settings dependencies on Authentication domain contracts', () {
+    final violations = <String>[];
+
+    for (final file in _dartFiles().where(
+      (file) => file.uri.pathSegments.contains('settings'),
+    )) {
+      for (final match in _importPattern.allMatches(file.readAsStringSync())) {
+        final targetContext = match.group(1)!;
+        final targetPath = match.group(2)!;
+        if (targetContext != 'authentication' ||
+            targetPath.startsWith('domain/')) {
+          continue;
+        }
+
+        violations.add(
+          '${file.path}: Settings can only import Authentication domain, '
+          'not $targetPath',
         );
       }
     }

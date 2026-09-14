@@ -1,28 +1,39 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/previews/preview.dart';
+import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
+
+import 'package:cordato/features/settings/presentation/commands/logout_command.dart';
 import 'package:cordato/features/settings/presentation/screens/settings_screen.dart';
+import 'package:cordato/features/settings/presentation/previews/fakes/logout_preview_repository.dart';
 
 @CordatoPreview(
   group: 'Configurações / Telas',
   name: 'Configurações',
   size: cordatoPhonePreviewSize,
 )
-Widget previewSettingsScreen() => SettingsScreen(
-  onBackPressed: (_) {},
-  onHelpPressed: () {},
-  onTermsPressed: () {},
-  onLogoutPressed: () {},
-  onPrivacyPressed: () {},
-  onPersonalDataPressed: () {},
-  onSubscriptionPressed: () {},
-  onInvitePartnerPressed: () {},
+Widget previewSettingsScreen() => PreviewResourceWidget<LogoutCommand>(
+  create: () => LogoutCommand(repository: const LogoutPreviewRepository()),
+  dispose: (command) => command.dispose(),
+  builder: (command) => SettingsScreen(
+    command: command,
+    onBackPressed: (_) {},
+    onHelpPressed: () {},
+    onTermsPressed: () {},
+    onPrivacyPressed: () {},
+    onPersonalDataPressed: () {},
+    onSubscriptionPressed: () {},
+    onInvitePartnerPressed: () {},
+  ),
 );
 
 @CordatoPreview(
   group: 'Configurações / Telas',
-  name: 'Configurações compacta e desabilitada',
+  name: 'Configurações compacta',
   size: Size(280.0, 520.0),
 )
-Widget previewDisabledCompactSettingsScreen() =>
-    SettingsScreen(onBackPressed: (_) {});
+Widget previewCompactSettingsScreen() => PreviewResourceWidget<LogoutCommand>(
+  create: () => LogoutCommand(repository: const LogoutPreviewRepository()),
+  dispose: (command) => command.dispose(),
+  builder: (command) => SettingsScreen(command: command, onBackPressed: (_) {}),
+);

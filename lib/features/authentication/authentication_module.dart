@@ -4,6 +4,11 @@ import 'package:supabase_flutter/supabase_flutter.dart'
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
+import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
+import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
+import 'package:cordato/features/authentication/infrastructure/clients/supabase_authentication_client.dart';
+import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
+
 import 'package:cordato/features/authentication/presentation/screens/magic_link_screen.dart';
 import 'package:cordato/features/authentication/presentation/validators/code_validation.dart';
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
@@ -12,27 +17,16 @@ import 'package:cordato/features/authentication/presentation/screens/confirmatio
 import 'package:cordato/features/authentication/presentation/commands/confirmation_code_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/authentication_callback_screen.dart';
 
-import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
-import 'package:cordato/features/authentication/infrastructure/clients/supabase_authentication_client.dart';
-
-import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
-import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
-
 const _supabaseRedirectUrl = String.fromEnvironment(
   'SUPABASE_REDIRECT_URL',
   defaultValue: 'trocado://authentication/callback',
 );
 
-final authenticationModule = createModule(
-  path: RouteEnum.root.path,
+final _supabaseModule = createModule(
   register: (context) {
     context
-      ..add(CodeValidation.new)
-      ..add(EmailValidation.new)
       ..addInstance<String>(_supabaseRedirectUrl)
       ..addInstance<SupabaseClient>(Supabase.instance.client)
-      ..addLazySingleton<MagicLinkCommand>(MagicLinkCommand.new)
-      ..addLazySingleton<ConfirmationCodeCommand>(ConfirmationCodeCommand.new)
       ..addLazySingleton<IAuthenticationDataSource>(
         AuthenticationDataSource.new,
       )
@@ -41,7 +35,19 @@ final authenticationModule = createModule(
       )
       ..addLazySingleton<IAuthenticationClient>(
         SupabaseAuthenticationClient.new,
-      )
+      );
+  },
+);
+
+final authenticationModule = createModule(
+  path: RouteEnum.root.path,
+  register: (context) {
+    context
+      ..module(_supabaseModule)
+      ..add(CodeValidation.new)
+      ..add(EmailValidation.new)
+      ..addLazySingleton<MagicLinkCommand>(MagicLinkCommand.new)
+      ..addLazySingleton<ConfirmationCodeCommand>(ConfirmationCodeCommand.new)
       ..route(
         RouteEnum.authenticationCallback.path,
         child: (_, _) => const AuthenticationCallbackScreen(),
@@ -49,8 +55,8 @@ final authenticationModule = createModule(
       ..route(
         RouteEnum.authenticationConfirmationCode.path,
         child: (_, _) => ConfirmationCodeScreen(
-          magicLinkcommand: inject<MagicLinkCommand>(),
           validation: inject<CodeValidation>(),
+          magicLinkcommand: inject<MagicLinkCommand>(),
           confirmationCommand: inject<ConfirmationCodeCommand>(),
         ),
       )

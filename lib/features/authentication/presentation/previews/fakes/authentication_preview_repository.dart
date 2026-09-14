@@ -18,7 +18,7 @@ final class AuthenticationPreviewRepository
   }) async => const Right<Failure, void>(null);
 
   @override
-  Future<Either<Failure, void>> logout() async =>
+  Future<Either<Failure, void>> signOut() async =>
       const Right<Failure, void>(null);
 
   @override

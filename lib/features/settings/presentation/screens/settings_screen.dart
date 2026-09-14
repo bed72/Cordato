@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/settings/presentation/commands/logout_command.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_card_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_item_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_header_widget.dart';
@@ -10,10 +11,10 @@ import 'package:cordato/features/settings/presentation/mixins/settings_screen_st
 import 'package:cordato/features/settings/presentation/widgets/settings_invite_partner_widget.dart';
 
 final class SettingsScreen extends StatefulWidget {
+  final LogoutCommand command;
   final ValueChanged<BuildContext> onBackPressed;
   final VoidCallback? onHelpPressed;
   final VoidCallback? onTermsPressed;
-  final VoidCallback? onLogoutPressed;
   final VoidCallback? onPrivacyPressed;
   final VoidCallback? onPersonalDataPressed;
   final VoidCallback? onSubscriptionPressed;
@@ -21,10 +22,10 @@ final class SettingsScreen extends StatefulWidget {
 
   const SettingsScreen({
     super.key,
+    required this.command,
     required this.onBackPressed,
     this.onHelpPressed,
     this.onTermsPressed,
-    this.onLogoutPressed,
     this.onPrivacyPressed,
     this.onPersonalDataPressed,
     this.onSubscriptionPressed,
@@ -105,9 +106,8 @@ final class _SettingsScreenState extends State<SettingsScreen>
                 ),
               ),
               SettingsLogoutWidget(
-                onLogoutPressed: widget.onLogoutPressed == null
-                    ? null
-                    : showLogoutConfirmation,
+                command: widget.command,
+                onLogoutPressed: showLogoutConfirmation,
               ),
             ],
           ),

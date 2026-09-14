@@ -1,7 +1,7 @@
 import 'package:cordato/features/authentication/infrastructure/clients/supabase_authentication_client.dart';
 
 abstract interface class IAuthenticationDataSource {
-  Future<bool> logout();
+  Future<bool> signOut();
 
   Future<bool> checkSession();
 
@@ -16,7 +16,7 @@ final class AuthenticationDataSource implements IAuthenticationDataSource {
   AuthenticationDataSource({required this._client});
 
   @override
-  Future<bool> logout() => _client.logout();
+  Future<bool> signOut() => _client.signOut();
 
   @override
   Future<bool> checkSession() => _client.checkSession();

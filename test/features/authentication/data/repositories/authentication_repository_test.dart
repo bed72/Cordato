@@ -23,20 +23,21 @@ void main() {
 
   group('AuthenticationRepository', () {
     test('returns Right when logout succeeds', () async {
-      when(() => dataSource.logout()).thenAnswer((_) async => true);
+      when(() => dataSource.signOut()).thenAnswer((_) async => true);
 
-      final result = await repository.logout();
+      final result = await repository.signOut();
 
       expect(result, equals(const Right<Failure, void>(null)));
-      verify(() => dataSource.logout()).called(1);
+      verify(() => dataSource.signOut()).called(1);
     });
 
     test('returns LogoutFailure when logout fails', () async {
-      when(() => dataSource.logout()).thenAnswer((_) async => false);
+      when(() => dataSource.signOut()).thenAnswer((_) async => false);
 
-      final result = await repository.logout();
+      final result = await repository.signOut();
 
       expect(result.left, isA<LogoutFailure>());
+      verify(() => dataSource.signOut()).called(1);
     });
 
     test('returns Right when a session exists', () async {

@@ -20,13 +20,22 @@ void main() {
   });
 
   group('AuthenticationDataSource', () {
-    test('delegates logout and returns the client result', () async {
-      when(() => client.logout()).thenAnswer((_) async => false);
+    test('delegates successful logout to the client', () async {
+      when(() => client.signOut()).thenAnswer((_) async => true);
 
-      final result = await dataSource.logout();
+      final result = await dataSource.signOut();
+
+      expect(result, isTrue);
+      verify(() => client.signOut()).called(1);
+    });
+
+    test('delegates logout and returns the client result', () async {
+      when(() => client.signOut()).thenAnswer((_) async => false);
+
+      final result = await dataSource.signOut();
 
       expect(result, isFalse);
-      verify(() => client.logout()).called(1);
+      verify(() => client.signOut()).called(1);
     });
 
     test('delegates session check and returns the client result', () async {

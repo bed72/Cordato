@@ -105,7 +105,9 @@ logout ou falha de restauração navegam para `/welcome`.
 ```text
 coreModule
 budgetModule
+expenseModule
 welcomeModule
+settingsModule
 dashboardModule
 authenticationModule
 ```
@@ -113,8 +115,12 @@ authenticationModule
 Registros importantes:
 
 - `coreModule`: `IMoneyFormatter` com `MoneyFormatter`.
-- `authenticationModule`: cliente Supabase, URL de redirect, validators,
-  data source, repository, client e commands do magic link e confirmação.
+- `authenticationModule`: contém `_supabaseModule`, módulo privado sem `path`
+  que registra no injector raiz o cliente Supabase, URL de redirect, data
+  source, repository e client de Authentication. Validators, commands do magic
+  link e confirmação e rotas permanecem com ciclo de vida da feature. O
+  `IAuthenticationRepository` compartilhado também é consumido pelo command de
+  logout de Settings.
 - `dashboardModule`: acesso ao perfil, `GetUserNameCommand`, destino inicial e
   shell autenticado persistente.
 - `expenseModule` e `budgetModule`: validators, commands, repositories, data
@@ -123,8 +129,24 @@ Registros importantes:
   pertencente a Expense.
 - `insightModule`: somente o placeholder de apresentação Insights; não possui
   caso de uso, consulta ou persistência analítica.
-- `welcomeModule` e `settingsModule`: telas e navegação associada. Settings é
-  composto como destino filho do shell autenticado.
+- `welcomeModule`: tela e navegação de entrada.
+- `settingsModule`: tela de configurações, navegação associada e
+  `LogoutCommand`, que resolve o `IAuthenticationRepository` compartilhado e
+  nunca acessa o Supabase diretamente.
+
+O logout confirmado segue um único fluxo em camadas:
+
+```text
+SettingsScreen -> LogoutCommand.signOut -> IAuthenticationRepository.signOut
+  -> AuthenticationDataSource.signOut -> SupabaseAuthenticationClient.signOut
+  -> Supabase Auth.signOut
+```
+
+No sucesso, Settings não navega. O evento `signedOut` observado por
+`ExternalClient` altera o estado global para `unauthenticated`; então
+`SessionGuardWidget` delega a navegação para `/welcome`. Em falha, o command
+expõe `LogoutFailure`, Settings mostra feedback e mantém a ação disponível para
+nova tentativa.
 
 Rotas registradas:
 

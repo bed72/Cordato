@@ -2,7 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart'
     show OtpType, SupabaseClient;
 
 abstract interface class IAuthenticationClient {
-  Future<bool> logout();
+  Future<bool> signOut();
 
   Future<bool> checkSession();
 
@@ -57,7 +57,7 @@ final class SupabaseAuthenticationClient implements IAuthenticationClient {
   }
 
   @override
-  Future<bool> logout() async {
+  Future<bool> signOut() async {
     try {
       await _client.auth.signOut();
 

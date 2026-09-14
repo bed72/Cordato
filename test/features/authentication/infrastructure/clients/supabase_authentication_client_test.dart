@@ -106,14 +106,15 @@ void main() {
     test('logs out successfully', () async {
       when(() => auth.signOut()).thenAnswer((_) async {});
 
-      expect(await client.logout(), isTrue);
+      expect(await client.signOut(), isTrue);
       verify(() => auth.signOut()).called(1);
     });
 
     test('returns false when logout fails', () async {
       when(() => auth.signOut()).thenThrow(Exception('logout failed'));
 
-      expect(await client.logout(), isFalse);
+      expect(await client.signOut(), isFalse);
+      verify(() => auth.signOut()).called(1);
     });
   });
 }

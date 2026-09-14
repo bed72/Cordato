@@ -15,8 +15,8 @@ final class AuthenticationRepository implements IAuthenticationRepository {
   }
 
   @override
-  Future<Either<Failure, void>> logout() async {
-    final signedOut = await _dataSource.logout();
+  Future<Either<Failure, void>> signOut() async {
+    final signedOut = await _dataSource.signOut();
     return signedOut ? const Right(null) : const Left(LogoutFailure());
   }
 
