@@ -1,0 +1,45 @@
+appId: com.bed.cordato
+name: Boas-vindas e validacao de e-mail
+tags:
+  - smoke
+  - authentication
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+
+- extendedWaitUntil:
+    visible:
+      text: "A maneira mais simples de cuidar do seu dinheiro"
+    timeout: 10000
+
+- assertVisible:
+    text: "Continuar com e-mail"
+
+- tapOn:
+    text: "Continuar com e-mail"
+
+- extendedWaitUntil:
+    visible:
+      text: "Que bom ter você por aqui"
+    timeout: 5000
+
+- assertVisible:
+    text: "email@exemplo.com"
+
+- tapOn:
+    text: "Enviar"
+
+- assertVisible:
+    text: "E-mail obrigatório"
+
+- tapOn:
+    text: "email@exemplo.com"
+
+- inputText: "email-invalido"
+
+- tapOn:
+    text: "Enviar"
+
+- assertVisible:
+    text: "E-mail inválido"

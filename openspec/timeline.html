@@ -1,0 +1,1975 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Linha do tempo das principais implementações e decisões registradas nas especificações OpenSpec do Cordato."
+    />
+    <title>Cordato | Linha do tempo do projeto</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #15211d;
+        --ink-soft: #52615b;
+        --paper: #f4f0e7;
+        --paper-raised: #fffdf7;
+        --paper-deep: #e9e2d5;
+        --line: #cfc7b8;
+        --line-strong: #a69d8d;
+        --green: #194f43;
+        --green-bright: #2d7867;
+        --coral: #e85f3f;
+        --coral-soft: #f6d8cc;
+        --gold: #c99a38;
+        --blue: #447584;
+        --shadow: 0 24px 70px rgba(40, 50, 44, 0.1);
+        --radius-sm: 12px;
+        --radius-md: 22px;
+        --radius-lg: 36px;
+        --page: min(1180px, calc(100vw - 48px));
+      }
+
+      [data-theme="dark"] {
+        color-scheme: dark;
+        --ink: #f4f0e7;
+        --ink-soft: #acb8b2;
+        --paper: #111714;
+        --paper-raised: #18201c;
+        --paper-deep: #222b26;
+        --line: #34423b;
+        --line-strong: #617169;
+        --green: #69b9a4;
+        --green-bright: #8ed0be;
+        --coral: #ff7959;
+        --coral-soft: #5a3026;
+        --gold: #e1b45c;
+        --blue: #77a9b7;
+        --shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        overflow-x: hidden;
+        background:
+          radial-gradient(circle at 8% 2%, color-mix(in srgb, var(--coral) 10%, transparent), transparent 25rem),
+          linear-gradient(90deg, transparent 0 49.85%, color-mix(in srgb, var(--line) 20%, transparent) 49.85% 50.15%, transparent 50.15%),
+          var(--paper);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.6;
+        transition: background-color 180ms ease, color 180ms ease;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+        content: "";
+        pointer-events: none;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      button,
+      summary {
+        font: inherit;
+      }
+
+      button,
+      a,
+      summary {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      :focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--coral) 70%, transparent);
+        outline-offset: 4px;
+      }
+
+      .skip-link {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 100;
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: var(--ink);
+        color: var(--paper);
+        transform: translateY(-160%);
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+        background: color-mix(in srgb, var(--paper) 88%, transparent);
+        backdrop-filter: blur(18px);
+      }
+
+      .header-inner {
+        width: var(--page);
+        min-height: 72px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--ink);
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--green);
+        color: var(--paper-raised);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, white 18%, transparent);
+      }
+
+      .brand-mark svg {
+        width: 19px;
+        height: 19px;
+      }
+
+      .brand-copy {
+        display: grid;
+        line-height: 1.1;
+      }
+
+      .brand-copy strong {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.06rem;
+        letter-spacing: -0.02em;
+      }
+
+      .brand-copy span {
+        margin-top: 4px;
+        color: var(--ink-soft);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .header-actions,
+      .header-nav {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .header-nav a {
+        padding: 8px 11px;
+        border-radius: 999px;
+        color: var(--ink-soft);
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .header-nav a:hover {
+        background: var(--paper-deep);
+        color: var(--ink);
+      }
+
+      .icon-button {
+        width: 40px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        background: var(--paper-raised);
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .icon-button svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .icon-button .moon,
+      [data-theme="dark"] .icon-button .sun {
+        display: none;
+      }
+
+      [data-theme="dark"] .icon-button .moon {
+        display: block;
+      }
+
+      main {
+        overflow: clip;
+      }
+
+      .hero {
+        width: var(--page);
+        min-height: calc(100svh - 72px);
+        margin: 0 auto;
+        padding: 86px 0 62px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+        align-items: center;
+        gap: clamp(54px, 9vw, 120px);
+      }
+
+      .hero-copy,
+      .hero-ledger,
+      .timeline-card,
+      .card-grid > *,
+      .details-content > * {
+        min-width: 0;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        margin: 0 0 20px;
+        color: var(--green);
+        font-size: 0.73rem;
+        font-weight: 800;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 28px;
+        height: 2px;
+        background: currentColor;
+        content: "";
+      }
+
+      .hero h1 {
+        max-width: 850px;
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(3.7rem, 7.2vw, 6.7rem);
+        font-weight: 500;
+        letter-spacing: -0.065em;
+        line-height: 0.87;
+      }
+
+      .hero h1 em {
+        color: var(--coral);
+        font-weight: inherit;
+      }
+
+      .hero-lead {
+        max-width: 660px;
+        margin: 32px 0 0;
+        color: var(--ink-soft);
+        font-size: clamp(1.03rem, 1.6vw, 1.25rem);
+        line-height: 1.65;
+      }
+
+      .hero-meta {
+        margin-top: 34px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 22px;
+      }
+
+      .primary-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 13px 18px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--paper-raised);
+        font-size: 0.86rem;
+        font-weight: 800;
+        text-decoration: none;
+        transition: transform 150ms ease, background-color 150ms ease;
+      }
+
+      .primary-link:hover {
+        background: var(--green);
+        transform: translateY(-2px);
+      }
+
+      .primary-link svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .meta-note {
+        color: var(--ink-soft);
+        font-size: 0.78rem;
+      }
+
+      .hero-ledger {
+        position: relative;
+        padding: 30px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        background: var(--paper-raised);
+        box-shadow: var(--shadow);
+        transform: rotate(1.5deg);
+      }
+
+      .hero-ledger::before {
+        position: absolute;
+        top: -13px;
+        right: 34px;
+        width: 84px;
+        height: 28px;
+        border: 1px solid color-mix(in srgb, var(--gold) 34%, transparent);
+        background: color-mix(in srgb, var(--gold) 25%, transparent);
+        content: "";
+        transform: rotate(4deg);
+      }
+
+      .ledger-heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .ledger-heading strong {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.24rem;
+      }
+
+      .ledger-heading span {
+        color: var(--ink-soft);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.7rem;
+      }
+
+      .ledger-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .metric {
+        min-height: 122px;
+        padding: 23px 18px 18px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .metric:nth-child(odd) {
+        border-right: 1px solid var(--line);
+      }
+
+      .metric:nth-child(even) {
+        padding-left: 22px;
+      }
+
+      .metric:nth-last-child(-n + 2) {
+        border-bottom: 0;
+      }
+
+      .metric strong {
+        display: block;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 2.7rem;
+        font-weight: 500;
+        letter-spacing: -0.06em;
+        line-height: 1;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 10px;
+        color: var(--ink-soft);
+        font-size: 0.74rem;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        line-height: 1.35;
+        text-transform: uppercase;
+      }
+
+      .ledger-status {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        color: var(--green);
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      .status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--green-bright);
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--green) 13%, transparent);
+      }
+
+      .section-shell {
+        width: var(--page);
+        margin: 0 auto;
+        padding: 108px 0;
+      }
+
+      .section-kicker {
+        margin: 0 0 11px;
+        color: var(--coral);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.73rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .section-heading {
+        max-width: 760px;
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(2.5rem, 5vw, 4.7rem);
+        font-weight: 500;
+        letter-spacing: -0.05em;
+        line-height: 1;
+      }
+
+      .section-intro {
+        max-width: 660px;
+        margin: 22px 0 0;
+        color: var(--ink-soft);
+        font-size: 1.02rem;
+      }
+
+      .timeline-section {
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        background: color-mix(in srgb, var(--paper-raised) 62%, transparent);
+      }
+
+      .timeline-tools {
+        margin-top: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .filter-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .filter-button {
+        padding: 9px 14px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: transparent;
+        color: var(--ink-soft);
+        font-size: 0.78rem;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .filter-button:hover,
+      .filter-button[aria-pressed="true"] {
+        border-color: var(--ink);
+        background: var(--ink);
+        color: var(--paper-raised);
+      }
+
+      .filter-count {
+        color: var(--ink-soft);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.75rem;
+      }
+
+      .timeline {
+        position: relative;
+        margin-top: 72px;
+      }
+
+      .timeline::before {
+        position: absolute;
+        top: 13px;
+        bottom: 20px;
+        left: 92px;
+        width: 1px;
+        background: var(--line-strong);
+        content: "";
+      }
+
+      .timeline-item {
+        position: relative;
+        display: grid;
+        grid-template-columns: 184px minmax(0, 1fr);
+        gap: 42px;
+        padding-bottom: 84px;
+      }
+
+      .timeline-item[hidden] {
+        display: none;
+      }
+
+      .timeline-marker {
+        position: sticky;
+        top: 104px;
+        align-self: start;
+        min-height: 84px;
+        display: grid;
+        grid-template-columns: 1fr 36px;
+        align-items: start;
+        gap: 17px;
+        text-align: right;
+      }
+
+      .timeline-marker time {
+        padding-top: 4px;
+        color: var(--ink-soft);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.69rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        line-height: 1.35;
+        text-transform: uppercase;
+      }
+
+      .step-number {
+        position: relative;
+        z-index: 2;
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line-strong);
+        border-radius: 50%;
+        background: var(--paper-raised);
+        color: var(--green);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 0.9rem;
+        font-weight: 700;
+        box-shadow: 0 0 0 8px var(--paper);
+      }
+
+      .timeline-card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        background: var(--paper-raised);
+        box-shadow: 0 14px 50px rgba(40, 50, 44, 0.06);
+      }
+
+      .timeline-card::before {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 7px;
+        height: 100%;
+        background: var(--card-accent, var(--green));
+        content: "";
+      }
+
+      .timeline-card[data-accent="coral"] {
+        --card-accent: var(--coral);
+      }
+
+      .timeline-card[data-accent="blue"] {
+        --card-accent: var(--blue);
+      }
+
+      .card-main {
+        padding: clamp(28px, 5vw, 54px);
+      }
+
+      .card-topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      .chapter {
+        color: var(--card-accent, var(--green));
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.7rem;
+        font-weight: 850;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 10px;
+        border: 1px solid color-mix(in srgb, var(--green) 25%, var(--line));
+        border-radius: 999px;
+        color: var(--green);
+        font-size: 0.67rem;
+        font-weight: 850;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .status-pill::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--green-bright);
+        content: "";
+      }
+
+      .timeline-card h3 {
+        max-width: 760px;
+        margin: 25px 0 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(2rem, 4vw, 3.6rem);
+        font-weight: 500;
+        letter-spacing: -0.045em;
+        line-height: 1.02;
+      }
+
+      .change-slug {
+        margin: 12px 0 0;
+        color: var(--ink-soft);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.72rem;
+        overflow-wrap: anywhere;
+      }
+
+      .card-lead {
+        max-width: 760px;
+        margin: 28px 0 0;
+        color: var(--ink-soft);
+        font-size: 1.02rem;
+      }
+
+      .card-grid {
+        margin-top: 38px;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 42px;
+      }
+
+      .card-grid h4,
+      .detail-column h4 {
+        margin: 0 0 13px;
+        color: var(--ink);
+        font-size: 0.72rem;
+        font-weight: 850;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .check-list,
+      .decision-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .check-list li,
+      .decision-list li {
+        position: relative;
+        margin-top: 11px;
+        padding-left: 23px;
+        color: var(--ink-soft);
+        font-size: 0.9rem;
+      }
+
+      .check-list li::before {
+        position: absolute;
+        top: 0.46em;
+        left: 1px;
+        width: 9px;
+        height: 5px;
+        border-bottom: 2px solid var(--green);
+        border-left: 2px solid var(--green);
+        content: "";
+        transform: rotate(-45deg);
+      }
+
+      .decision-list li::before {
+        position: absolute;
+        top: 0.64em;
+        left: 5px;
+        width: 7px;
+        height: 1px;
+        background: var(--coral);
+        content: "";
+      }
+
+      .impact-note {
+        margin-top: 30px;
+        padding: 18px 20px;
+        border-left: 3px solid var(--card-accent, var(--green));
+        background: color-mix(in srgb, var(--card-accent, var(--green)) 7%, transparent);
+        color: var(--ink-soft);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1rem;
+        font-style: italic;
+      }
+
+      .tag-row {
+        margin-top: 28px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .tag {
+        padding: 5px 9px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--ink-soft);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.65rem;
+      }
+
+      .card-details {
+        border-top: 1px solid var(--line);
+      }
+
+      .card-details summary {
+        padding: 17px clamp(28px, 5vw, 54px);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        color: var(--ink-soft);
+        font-size: 0.76rem;
+        font-weight: 800;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      .card-details summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .card-details summary::after {
+        width: 24px;
+        height: 24px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        color: var(--ink);
+        content: "+";
+        font-size: 1rem;
+        line-height: 1;
+      }
+
+      .card-details[open] summary::after {
+        content: "−";
+      }
+
+      .details-content {
+        padding: 10px clamp(28px, 5vw, 54px) 38px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 36px;
+      }
+
+      .source-links {
+        display: grid;
+        gap: 9px;
+      }
+
+      .source-links a {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        color: var(--ink-soft);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.68rem;
+        text-decoration: none;
+      }
+
+      .source-links a:hover {
+        border-color: var(--green);
+        color: var(--green);
+      }
+
+      .source-links a::after {
+        content: "↗";
+      }
+
+      .task-meter {
+        margin-bottom: 16px;
+      }
+
+      .task-meter-label {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 20px;
+        color: var(--ink-soft);
+        font-size: 0.74rem;
+      }
+
+      .task-meter-label strong {
+        color: var(--green);
+        font-size: 1rem;
+      }
+
+      .task-meter-track {
+        height: 6px;
+        margin-top: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--paper-deep);
+      }
+
+      .task-meter-track span {
+        width: 100%;
+        height: 100%;
+        display: block;
+        border-radius: inherit;
+        background: var(--green-bright);
+      }
+
+      .evolution-note {
+        margin: -24px 0 60px 226px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        color: var(--ink-soft);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 0.9rem;
+        font-style: italic;
+      }
+
+      .evolution-note::before {
+        width: 34px;
+        height: 1px;
+        background: var(--coral);
+        content: "";
+      }
+
+      .architecture {
+        position: relative;
+      }
+
+      .flow-shell {
+        margin-top: 52px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        background: var(--ink);
+        color: var(--paper-raised);
+        box-shadow: var(--shadow);
+      }
+
+      .flow-header {
+        padding: 28px 34px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        border-bottom: 1px solid color-mix(in srgb, var(--paper-raised) 18%, transparent);
+      }
+
+      .flow-header strong {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.2rem;
+        font-weight: 500;
+      }
+
+      .flow-header span {
+        color: color-mix(in srgb, var(--paper-raised) 58%, transparent);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.7rem;
+      }
+
+      .flow-track {
+        padding: 38px 34px 44px;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .flow-step {
+        position: relative;
+        min-height: 154px;
+        padding: 19px;
+        border: 1px solid color-mix(in srgb, var(--paper-raised) 20%, transparent);
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--paper-raised) 6%, transparent);
+      }
+
+      .flow-step:not(:last-child)::after {
+        position: absolute;
+        top: 50%;
+        right: -18px;
+        width: 18px;
+        color: var(--coral);
+        content: "→";
+        text-align: center;
+        transform: translateY(-50%);
+      }
+
+      .flow-step small {
+        color: var(--coral);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.63rem;
+        font-weight: 850;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .flow-step strong {
+        display: block;
+        margin-top: 15px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.08rem;
+        font-weight: 500;
+        line-height: 1.25;
+      }
+
+      .flow-step span {
+        display: block;
+        margin-top: 9px;
+        color: color-mix(in srgb, var(--paper-raised) 62%, transparent);
+        font-size: 0.72rem;
+        line-height: 1.45;
+      }
+
+      .flow-caption {
+        margin: 0;
+        padding: 19px 34px;
+        border-top: 1px solid color-mix(in srgb, var(--paper-raised) 18%, transparent);
+        color: color-mix(in srgb, var(--paper-raised) 68%, transparent);
+        font-size: 0.78rem;
+      }
+
+      .flow-caption strong {
+        color: var(--paper-raised);
+      }
+
+      .decision-section {
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        background: var(--paper-deep);
+      }
+
+      .decision-grid {
+        margin-top: 54px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+
+      .decision-card {
+        min-height: 310px;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-md);
+        background: var(--paper-raised);
+      }
+
+      .decision-card:nth-child(2) {
+        transform: translateY(24px);
+      }
+
+      .decision-index {
+        color: var(--coral);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.68rem;
+        font-weight: 850;
+        letter-spacing: 0.12em;
+      }
+
+      .decision-card h3 {
+        margin: 32px 0 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.75rem;
+        font-weight: 500;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+      }
+
+      .decision-card p {
+        margin: 19px 0 0;
+        color: var(--ink-soft);
+        font-size: 0.88rem;
+      }
+
+      .decision-card footer {
+        margin-top: auto;
+        padding-top: 25px;
+        color: var(--green);
+        font-size: 0.69rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .now-grid {
+        margin-top: 54px;
+        display: grid;
+        grid-template-columns: minmax(250px, 0.65fr) minmax(0, 1.35fr);
+        gap: 44px;
+        align-items: stretch;
+      }
+
+      .completion-card {
+        padding: 34px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        background: var(--paper-raised);
+        text-align: center;
+      }
+
+      .completion-ring {
+        width: 180px;
+        height: 180px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: conic-gradient(var(--green) 0 100%, var(--paper-deep) 100%);
+      }
+
+      .completion-ring::before {
+        width: 146px;
+        height: 146px;
+        grid-area: 1 / 1;
+        border-radius: 50%;
+        background: var(--paper-raised);
+        content: "";
+      }
+
+      .completion-copy {
+        z-index: 1;
+        grid-area: 1 / 1;
+      }
+
+      .completion-copy strong {
+        display: block;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 2.7rem;
+        font-weight: 500;
+        letter-spacing: -0.06em;
+        line-height: 1;
+      }
+
+      .completion-copy span {
+        color: var(--ink-soft);
+        font-size: 0.65rem;
+        font-weight: 850;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .completion-card p {
+        margin: 24px 0 0;
+        color: var(--ink-soft);
+        font-size: 0.82rem;
+      }
+
+      .state-list {
+        margin: 0;
+        padding: 0;
+        border-top: 1px solid var(--line);
+        list-style: none;
+      }
+
+      .state-list li {
+        padding: 24px 0;
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        gap: 28px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .state-list strong {
+        color: var(--ink);
+        font-size: 0.72rem;
+        font-weight: 850;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .state-list span {
+        color: var(--ink-soft);
+        font-size: 0.9rem;
+      }
+
+      .state-list a {
+        color: var(--green);
+        text-underline-offset: 3px;
+      }
+
+      .next-chapter {
+        margin-top: 50px;
+        padding: 25px 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        border: 1px dashed var(--line-strong);
+        border-radius: var(--radius-md);
+      }
+
+      .next-chapter p {
+        margin: 0;
+        color: var(--ink-soft);
+        font-size: 0.9rem;
+      }
+
+      .next-chapter strong {
+        color: var(--ink);
+      }
+
+      .next-chapter span {
+        flex: none;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--paper-deep);
+        color: var(--ink-soft);
+        font-size: 0.67rem;
+        font-weight: 850;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .site-footer {
+        border-top: 1px solid var(--line);
+      }
+
+      .footer-inner {
+        width: var(--page);
+        margin: 0 auto;
+        padding: 36px 0 44px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        color: var(--ink-soft);
+        font-size: 0.75rem;
+      }
+
+      .footer-inner strong {
+        color: var(--ink);
+      }
+
+      .footer-inner a {
+        color: var(--green);
+        font-weight: 750;
+        text-underline-offset: 3px;
+      }
+
+      .js .reveal {
+        opacity: 0;
+        transform: translateY(24px);
+        transition: opacity 620ms ease, transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      .js .reveal.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 980px) {
+        .hero {
+          grid-template-columns: 1fr;
+          padding-top: 70px;
+        }
+
+        .hero-ledger {
+          max-width: 590px;
+          transform: none;
+        }
+
+        .flow-track {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .flow-step:not(:last-child)::after {
+          display: none;
+        }
+
+        .flow-step:last-child {
+          grid-column: 1 / -1;
+        }
+
+        .decision-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .decision-card:nth-child(2) {
+          transform: none;
+        }
+
+        .decision-card:last-child {
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (max-width: 740px) {
+        :root {
+          --page: min(calc(100% - 32px), 1180px);
+        }
+
+        .header-nav {
+          display: none;
+        }
+
+        .hero {
+          min-height: auto;
+          padding: 64px 0 78px;
+          gap: 52px;
+        }
+
+        .hero h1 {
+          font-size: clamp(3.15rem, 14vw, 4.1rem);
+          text-wrap: balance;
+        }
+
+        .section-shell {
+          padding: 80px 0;
+        }
+
+        .timeline-tools {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .timeline {
+          margin-top: 52px;
+        }
+
+        .timeline::before {
+          left: 17px;
+        }
+
+        .timeline-item {
+          grid-template-columns: 36px minmax(0, 1fr);
+          gap: 18px;
+          padding-bottom: 54px;
+        }
+
+        .timeline-marker {
+          top: 92px;
+          min-height: 36px;
+          display: block;
+        }
+
+        .timeline-marker time {
+          display: none;
+        }
+
+        .step-number {
+          box-shadow: 0 0 0 6px var(--paper);
+        }
+
+        .card-topline {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .card-grid,
+        .details-content,
+        .now-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .evolution-note {
+          margin: -9px 0 42px 54px;
+        }
+
+        .flow-track,
+        .decision-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-step:last-child,
+        .decision-card:last-child {
+          grid-column: auto;
+        }
+
+        .state-list li {
+          grid-template-columns: 1fr;
+          gap: 7px;
+        }
+
+        .next-chapter,
+        .footer-inner {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .meta-note,
+        .ledger-heading strong,
+        .ledger-heading span {
+          overflow-wrap: anywhere;
+        }
+      }
+
+      @media (max-width: 430px) {
+        .brand-copy span {
+          display: none;
+        }
+
+        .hero-ledger,
+        .completion-card {
+          padding: 24px;
+        }
+
+        .metric strong {
+          font-size: 2.25rem;
+        }
+
+        .timeline-item {
+          grid-template-columns: 28px minmax(0, 1fr);
+          gap: 12px;
+        }
+
+        .timeline::before {
+          left: 13px;
+        }
+
+        .step-number {
+          width: 28px;
+          height: 28px;
+          font-size: 0.75rem;
+        }
+
+        .card-main,
+        .card-details summary {
+          padding-right: 22px;
+          padding-left: 26px;
+        }
+
+        .details-content {
+          padding-right: 22px;
+          padding-left: 26px;
+        }
+
+        .evolution-note {
+          margin-left: 40px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+
+      @media print {
+        :root {
+          --page: 100%;
+        }
+
+        body {
+          background: white;
+          color: #111;
+        }
+
+        .site-header,
+        .timeline-tools,
+        .primary-link {
+          display: none;
+        }
+
+        .hero {
+          min-height: auto;
+          padding-top: 30px;
+        }
+
+        .section-shell {
+          padding: 44px 0;
+        }
+
+        .timeline-card,
+        .flow-shell,
+        .decision-card,
+        .completion-card {
+          break-inside: avoid;
+          box-shadow: none;
+        }
+
+        .card-details {
+          display: block;
+        }
+      }
+    </style>
+    <script>
+      document.documentElement.classList.add("js");
+      try {
+        const savedTheme = localStorage.getItem("cordato-timeline-theme");
+        const darkPreference = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (savedTheme === "dark" || (!savedTheme && darkPreference)) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      } catch (_) {}
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#inicio" aria-label="Cordato OpenSpec, voltar ao início">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 8.25 12 4l7 4.25v7.5L12 20l-7-4.25v-7.5Z" stroke="currentColor" stroke-width="1.7" />
+              <path d="m8.4 10.1 3.6 2.2 3.6-2.2M12 12.3v4.3" stroke="currentColor" stroke-width="1.7" />
+            </svg>
+          </span>
+          <span class="brand-copy">
+            <strong>Cordato</strong>
+            <span>OpenSpec Journal</span>
+          </span>
+        </a>
+
+        <div class="header-actions">
+          <nav class="header-nav" aria-label="Navegação principal">
+            <a href="#linha-do-tempo">Linha do tempo</a>
+            <a href="#arquitetura">Arquitetura</a>
+            <a href="#agora">Estado atual</a>
+          </nav>
+          <button class="icon-button" id="theme-toggle" type="button" aria-label="Alternar tema">
+            <svg class="sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+            <svg class="moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="conteudo">
+      <section class="hero" id="inicio">
+        <div class="hero-copy reveal">
+          <p class="eyebrow">Decisões que viraram produto</p>
+          <h1>Uma história de <em>intenção</em> e execução.</h1>
+          <p class="hero-lead">
+            Das primeiras peças visuais de Configurações ao logout reativo com Supabase: uma leitura das mudanças, escolhas e limites que moldaram o Cordato.
+          </p>
+          <div class="hero-meta">
+            <a class="primary-link" href="#linha-do-tempo">
+              Explorar a jornada
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </a>
+            <span class="meta-note">Base documental: OpenSpec • 14 set 2026</span>
+          </div>
+        </div>
+
+        <aside class="hero-ledger reveal" aria-label="Resumo das especificações">
+          <div class="ledger-heading">
+            <strong>Livro de mudanças</strong>
+            <span>SPEC-DRIVEN</span>
+          </div>
+          <div class="ledger-grid">
+            <div class="metric">
+              <strong>03</strong>
+              <span>Mudanças arquivadas</span>
+            </div>
+            <div class="metric">
+              <strong>52</strong>
+              <span>Tarefas concluídas</span>
+            </div>
+            <div class="metric">
+              <strong>02</strong>
+              <span>Capabilities atuais</span>
+            </div>
+            <div class="metric">
+              <strong>100%</strong>
+              <span>Checklist registrado</span>
+            </div>
+          </div>
+          <div class="ledger-status">
+            <span class="status-dot" aria-hidden="true"></span>
+            Nenhuma mudança ativa no momento
+          </div>
+        </aside>
+      </section>
+
+      <section class="timeline-section" id="linha-do-tempo">
+        <div class="section-shell">
+          <header class="reveal">
+            <p class="section-kicker">01 / A jornada</p>
+            <h2 class="section-heading">Três mudanças. Um fluxo que amadurece.</h2>
+            <p class="section-intro">
+              As três specs nasceram no mesmo dia. A ordem abaixo representa a dependência funcional registrada nos artefatos: primeiro a superfície, depois a intenção protegida e, por fim, o efeito real.
+            </p>
+          </header>
+
+          <div class="timeline-tools reveal">
+            <div class="filter-group" role="group" aria-label="Filtrar marcos por tema">
+              <button class="filter-button" type="button" data-filter="all" aria-pressed="true">Tudo</button>
+              <button class="filter-button" type="button" data-filter="ui" aria-pressed="false">UI</button>
+              <button class="filter-button" type="button" data-filter="architecture" aria-pressed="false">Arquitetura</button>
+              <button class="filter-button" type="button" data-filter="security" aria-pressed="false">Segurança</button>
+            </div>
+            <span class="filter-count" aria-live="polite">3 marcos visíveis</span>
+          </div>
+
+          <div class="timeline">
+            <article class="timeline-item reveal" data-categories="ui architecture">
+              <div class="timeline-marker">
+                <time datetime="2026-09-14">14 set<br />2026</time>
+                <span class="step-number">01</span>
+              </div>
+              <div class="timeline-card">
+                <div class="card-main">
+                  <div class="card-topline">
+                    <span class="chapter">Fundação visual</span>
+                    <span class="status-pill">Arquivada</span>
+                  </div>
+                  <h3>Configurações deixa de ser um espaço vazio.</h3>
+                  <p class="change-slug">create-settings-screen-ui</p>
+                  <p class="card-lead">
+                    A rota já existia, mas entregava apenas um <code>Scaffold</code>. A primeira mudança construiu a hierarquia completa da tela e estabeleceu contratos de interação sem antecipar domínios ainda não validados.
+                  </p>
+
+                  <div class="card-grid">
+                    <div>
+                      <h4>O que entrou</h4>
+                      <ul class="check-list">
+                        <li>App bar, cabeçalho e seções Casal, Conta e Informações.</li>
+                        <li>Oito widgets públicos, finais e específicos de Settings.</li>
+                        <li>Cards agrupados, badge Premium, press-bounce e layout rolável.</li>
+                        <li>Preview completo usando o tema real da aplicação.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4>O que ficou de fora, por decisão</h4>
+                      <ul class="decision-list">
+                        <li>Nenhum estado fictício de casal.</li>
+                        <li>Nenhum acesso a sessão ou Supabase.</li>
+                        <li>Nenhum novo gerenciador de estado.</li>
+                        <li>Callbacks nulos representam ações indisponíveis.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <blockquote class="impact-note">
+                    “Representar somente o que o produto já validou.” A seção Casal mostra o convite, mas não finge um bounded context ainda planejado.
+                  </blockquote>
+
+                  <div class="tag-row" aria-label="Temas desta mudança">
+                    <span class="tag">material_ui</span>
+                    <span class="tag">widgets</span>
+                    <span class="tag">callbacks</span>
+                    <span class="tag">preview</span>
+                  </div>
+                </div>
+
+                <details class="card-details">
+                  <summary>Ver evidências e progresso</summary>
+                  <div class="details-content">
+                    <div class="detail-column">
+                      <h4>Checklist da mudança</h4>
+                      <div class="task-meter">
+                        <div class="task-meter-label"><span>15 de 15 tarefas</span><strong>100%</strong></div>
+                        <div class="task-meter-track"><span></span></div>
+                      </div>
+                      <p class="card-lead">A validação registrada inclui formatação, preview, <code>flutter analyze</code> e <code>flutter test</code>.</p>
+                    </div>
+                    <div class="detail-column">
+                      <h4>Documentos-fonte</h4>
+                      <nav class="source-links" aria-label="Fontes da mudança create-settings-screen-ui">
+                        <a href="changes/archive/2026-09-14-create-settings-screen-ui/proposal.md">proposal.md</a>
+                        <a href="changes/archive/2026-09-14-create-settings-screen-ui/design.md">design.md</a>
+                        <a href="changes/archive/2026-09-14-create-settings-screen-ui/tasks.md">tasks.md</a>
+                      </nav>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </article>
+
+            <p class="evolution-note reveal">A ação existia. Faltava proteger a intenção.</p>
+
+            <article class="timeline-item reveal" data-categories="ui security">
+              <div class="timeline-marker">
+                <time datetime="2026-09-14">14 set<br />2026</time>
+                <span class="step-number">02</span>
+              </div>
+              <div class="timeline-card" data-accent="coral">
+                <div class="card-main">
+                  <div class="card-topline">
+                    <span class="chapter">Intenção explícita</span>
+                    <span class="status-pill">Arquivada</span>
+                  </div>
+                  <h3>Sair passa a exigir uma escolha consciente.</h3>
+                  <p class="change-slug">add-logout-confirmation-ui</p>
+                  <p class="card-lead">
+                    O toque acidental deixa de ser suficiente. Um bottom sheet tipado separa a decisão visual do efeito externo: confirmar retorna <code>true</code>; voltar ou dispensar não produz ação.
+                  </p>
+
+                  <div class="card-grid">
+                    <div>
+                      <h4>O que entrou</h4>
+                      <ul class="check-list">
+                        <li>Bottom sheet com título, contexto e duas ações claras.</li>
+                        <li>Cancelamento por botão, gesto, barreira ou back do sistema.</li>
+                        <li><code>SettingsScreenStateMixin</code> para a orquestração assíncrona.</li>
+                        <li>SafeArea inferior específica e preview isolado do conteúdo.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4>Decisões que importam</h4>
+                      <ul class="decision-list">
+                        <li>O widget devolve uma decisão, nunca executa logout.</li>
+                        <li>Somente <code>true</code> confirma; <code>false</code> e <code>null</code> cancelam.</li>
+                        <li>O helper compartilhado mantém SafeArea ativa por padrão.</li>
+                        <li>Sem command, toast ou navegação nesta etapa.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <blockquote class="impact-note">
+                    A apresentação decide “a pessoa confirmou?”. A integração futura decide “como encerrar a sessão?”. As duas responsabilidades não se misturam.
+                  </blockquote>
+
+                  <div class="tag-row" aria-label="Temas desta mudança">
+                    <span class="tag">bottom sheet</span>
+                    <span class="tag">safe area</span>
+                    <span class="tag">mixin</span>
+                    <span class="tag">confirmação</span>
+                  </div>
+                </div>
+
+                <details class="card-details">
+                  <summary>Ver evidências e progresso</summary>
+                  <div class="details-content">
+                    <div class="detail-column">
+                      <h4>Checklist da mudança</h4>
+                      <div class="task-meter">
+                        <div class="task-meter-label"><span>17 de 17 tarefas</span><strong>100%</strong></div>
+                        <div class="task-meter-track"><span></span></div>
+                      </div>
+                      <p class="card-lead">A tela tornou-se stateful apenas para acomodar ciclo de vida e interação local, mantendo o build declarativo.</p>
+                    </div>
+                    <div class="detail-column">
+                      <h4>Documentos-fonte</h4>
+                      <nav class="source-links" aria-label="Fontes da mudança add-logout-confirmation-ui">
+                        <a href="changes/archive/2026-09-14-add-logout-confirmation-ui/proposal.md">proposal.md</a>
+                        <a href="changes/archive/2026-09-14-add-logout-confirmation-ui/design.md">design.md</a>
+                        <a href="changes/archive/2026-09-14-add-logout-confirmation-ui/tasks.md">tasks.md</a>
+                      </nav>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </article>
+
+            <p class="evolution-note reveal">A intenção estava protegida. Faltava fazê-la atravessar as camadas.</p>
+
+            <article class="timeline-item reveal" data-categories="architecture security">
+              <div class="timeline-marker">
+                <time datetime="2026-09-14">14 set<br />2026</time>
+                <span class="step-number">03</span>
+              </div>
+              <div class="timeline-card" data-accent="blue">
+                <div class="card-main">
+                  <div class="card-topline">
+                    <span class="chapter">Efeito real</span>
+                    <span class="status-pill">Arquivada</span>
+                  </div>
+                  <h3>Settings chega ao Supabase sem quebrar fronteiras.</h3>
+                  <p class="change-slug">connect-settings-logout-to-supabase</p>
+                  <p class="card-lead">
+                    A confirmação ganha consequência real. <code>LogoutCommand</code> reutiliza toda a cadeia de Authentication, expõe loading e falha, e deixa a navegação para a única autoridade global de sessão.
+                  </p>
+
+                  <div class="card-grid">
+                    <div>
+                      <h4>O que entrou</h4>
+                      <ul class="check-list">
+                        <li>Command observável e descartável, baseado em <code>command_it</code>.</li>
+                        <li>Loading, bloqueio de concorrência, erro localizado e retry.</li>
+                        <li>Bindings compartilhados no módulo privado <code>_supabaseModule</code>.</li>
+                        <li>Testes de command, regressão de camadas e limites arquiteturais.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4>Decisões que importam</h4>
+                      <ul class="decision-list">
+                        <li>Settings importa somente o domínio de Authentication.</li>
+                        <li>Nenhum repository, datasource ou client foi duplicado.</li>
+                        <li>O estado do command é a única fonte de loading.</li>
+                        <li>O evento <code>signedOut</code>, não a tela, conduz à welcome.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <blockquote class="impact-note">
+                    “Uma única autoridade para login, logout e restauração.” Settings inicia a operação; o observador global confirma a mudança de sessão e navega.
+                  </blockquote>
+
+                  <div class="tag-row" aria-label="Temas desta mudança">
+                    <span class="tag">LogoutCommand</span>
+                    <span class="tag">Supabase Auth</span>
+                    <span class="tag">DI</span>
+                    <span class="tag">testes</span>
+                    <span class="tag">session guard</span>
+                  </div>
+                </div>
+
+                <details class="card-details">
+                  <summary>Ver evidências e progresso</summary>
+                  <div class="details-content">
+                    <div class="detail-column">
+                      <h4>Checklist da mudança</h4>
+                      <div class="task-meter">
+                        <div class="task-meter-label"><span>20 de 20 tarefas</span><strong>100%</strong></div>
+                        <div class="task-meter-track"><span></span></div>
+                      </div>
+                      <p class="card-lead">A verificação registrada cobre testes direcionados, suíte completa, análise, previews, arquitetura e validação OpenSpec.</p>
+                    </div>
+                    <div class="detail-column">
+                      <h4>Documentos-fonte</h4>
+                      <nav class="source-links" aria-label="Fontes da mudança connect-settings-logout-to-supabase">
+                        <a href="changes/archive/2026-09-14-connect-settings-logout-to-supabase/proposal.md">proposal.md</a>
+                        <a href="changes/archive/2026-09-14-connect-settings-logout-to-supabase/design.md">design.md</a>
+                        <a href="changes/archive/2026-09-14-connect-settings-logout-to-supabase/tasks.md">tasks.md</a>
+                      </nav>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="architecture" id="arquitetura">
+        <div class="section-shell">
+          <header class="reveal">
+            <p class="section-kicker">02 / O caminho do efeito</p>
+            <h2 class="section-heading">A tela pede. As camadas executam. A sessão decide.</h2>
+            <p class="section-intro">
+              A implementação final preserva o sentido das dependências: apresentação conhece contratos; infraestrutura conhece SDKs; navegação reage ao estado autenticado.
+            </p>
+          </header>
+
+          <figure class="flow-shell reveal">
+            <div class="flow-header">
+              <strong>Fluxo final de logout</strong>
+              <span>1 intenção → 1 efeito → 1 autoridade</span>
+            </div>
+            <div class="flow-track">
+              <div class="flow-step">
+                <small>01 / Intenção</small>
+                <strong>SettingsScreen</strong>
+                <span>Confirma a escolha e inicia a operação.</span>
+              </div>
+              <div class="flow-step">
+                <small>02 / Operação</small>
+                <strong>LogoutCommand</strong>
+                <span>Expõe execução e falha observáveis.</span>
+              </div>
+              <div class="flow-step">
+                <small>03 / Contrato</small>
+                <strong>Authentication Repository</strong>
+                <span>Preserva a fronteira de erro tipado.</span>
+              </div>
+              <div class="flow-step">
+                <small>04 / Efeito</small>
+                <strong>Supabase Auth</strong>
+                <span>Executa <code>signOut</code> exatamente uma vez.</span>
+              </div>
+              <div class="flow-step">
+                <small>05 / Reação</small>
+                <strong>SessionGuardWidget</strong>
+                <span>Observa <code>signedOut</code> e conduz à welcome.</span>
+              </div>
+            </div>
+            <figcaption class="flow-caption">
+              <strong>Fronteira preservada:</strong> Settings não acessa data, infrastructure, storage, Supabase ou router global diretamente.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="decision-section" id="decisoes">
+        <div class="section-shell">
+          <header class="reveal">
+            <p class="section-kicker">03 / Princípios em ação</p>
+            <h2 class="section-heading">As decisões por trás do código.</h2>
+          </header>
+
+          <div class="decision-grid">
+            <article class="decision-card reveal">
+              <span class="decision-index">DECISÃO 01</span>
+              <h3>Não inventar o domínio.</h3>
+              <p>Couple permanece um convite visual. Sem estado conectado, loading ou falha até que o bounded context seja realmente implementado.</p>
+              <footer>Produto antes da abstração</footer>
+            </article>
+            <article class="decision-card reveal">
+              <span class="decision-index">DECISÃO 02</span>
+              <h3>Separar escolha de efeito.</h3>
+              <p>O bottom sheet retorna uma decisão tipada. O widget visual nunca acessa sessão, repository ou serviço externo.</p>
+              <footer>UI previsível e testável</footer>
+            </article>
+            <article class="decision-card reveal">
+              <span class="decision-index">DECISÃO 03</span>
+              <h3>Uma autoridade para a sessão.</h3>
+              <p>Settings não navega no sucesso local. O evento global do Supabase altera a sessão, e o guard conduz a experiência.</p>
+              <footer>Reatividade sem competição</footer>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="agora">
+        <div class="section-shell">
+          <header class="reveal">
+            <p class="section-kicker">04 / Estado atual</p>
+            <h2 class="section-heading">O que as specs dizem hoje.</h2>
+            <p class="section-intro">
+              Os deltas arquivados contam como chegamos aqui. As duas capabilities abaixo são a fonte normativa corrente.
+            </p>
+          </header>
+
+          <div class="now-grid">
+            <div class="completion-card reveal">
+              <div class="completion-ring" aria-label="100 por cento das tarefas registradas como concluídas">
+                <div class="completion-copy">
+                  <strong>52/52</strong>
+                  <span>tarefas</span>
+                </div>
+              </div>
+              <p>Todos os checkboxes das três mudanças estão concluídos.</p>
+            </div>
+
+            <ul class="state-list reveal">
+              <li>
+                <strong>Capabilities</strong>
+                <span><a href="specs/settings-screen-ui/spec.md">settings-screen-ui</a> e <a href="specs/authentication-session-logout/spec.md">authentication-session-logout</a>.</span>
+              </li>
+              <li>
+                <strong>Mudanças ativas</strong>
+                <span>Nenhuma. A pasta <code>changes/</code> contém somente o arquivo histórico.</span>
+              </li>
+              <li>
+                <strong>Logout</strong>
+                <span>Confirmado na UI, executado em camadas, observável e concluído pela reação global de sessão.</span>
+              </li>
+              <li>
+                <strong>Couple</strong>
+                <span>Ainda planejado. Settings não infere nem simula um estado de casal.</span>
+              </li>
+              <li>
+                <strong>Nota documental</strong>
+                <span>A capability <code>settings-screen-ui</code> ainda possui o propósito marcado como <code>TBD</code>.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="next-chapter reveal">
+            <p><strong>Próximo capítulo ainda não escrito.</strong> Esta linha do tempo deve crescer junto com novas mudanças OpenSpec arquivadas.</p>
+            <span>Sem change ativo</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <span><strong>Cordato OpenSpec Journal</strong> • uma leitura visual da documentação do projeto</span>
+        <a href="config.yaml">Ver configuração OpenSpec</a>
+      </div>
+    </footer>
+
+    <script>
+      const root = document.documentElement;
+      const themeToggle = document.querySelector("#theme-toggle");
+      const filterButtons = [...document.querySelectorAll("[data-filter]")];
+      const timelineItems = [...document.querySelectorAll(".timeline-item")];
+      const filterCount = document.querySelector(".filter-count");
+
+      themeToggle.addEventListener("click", () => {
+        const nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
+        root.dataset.theme = nextTheme;
+        try {
+          localStorage.setItem("cordato-timeline-theme", nextTheme);
+        } catch (_) {}
+      });
+
+      filterButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const filter = button.dataset.filter;
+          let visibleCount = 0;
+
+          filterButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+          timelineItems.forEach((item) => {
+            const isVisible = filter === "all" || item.dataset.categories.split(" ").includes(filter);
+            item.hidden = !isVisible;
+            if (isVisible) visibleCount += 1;
+          });
+
+          document.querySelectorAll(".evolution-note").forEach((note) => {
+            note.hidden = filter !== "all";
+          });
+          filterCount.textContent = `${visibleCount} ${visibleCount === 1 ? "marco visível" : "marcos visíveis"}`;
+        });
+      });
+
+      const revealItems = document.querySelectorAll(".reveal");
+      if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("is-visible");
+                observer.unobserve(entry.target);
+              }
+            });
+          },
+          { rootMargin: "0px 0px -8%", threshold: 0.08 },
+        );
+        revealItems.forEach((item) => observer.observe(item));
+      } else {
+        revealItems.forEach((item) => item.classList.add("is-visible"));
+      }
+    </script>
+  </body>
+</html>
