@@ -14,7 +14,7 @@
     },
     "supabase": {
       "type": "remote",
-      "url": "http://127.0.0.1:18080/mcp",
+      "url": "http://127.0.0.1:18080/mcp?features=docs%2Cdatabase%2Cdebugging%2Cdevelopment",
       "enabled": true,
       "oauth": false,
       "timeout": 30000
