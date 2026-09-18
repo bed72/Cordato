@@ -5,17 +5,11 @@ import 'package:cordato/features/budget/presentation/validators/budget_value_val
 import 'package:cordato/features/budget/presentation/validators/budget_date_range_validation.dart';
 import 'package:cordato/features/budget/presentation/validators/budget_description_validation.dart';
 
-final class BudgetFormValidator {
-  final BudgetValueValidation valueValidation;
-  final BudgetDateRangeValidation dateRangeValidation;
-  final BudgetDescriptionValidation descriptionValidation;
-
-  const BudgetFormValidator({
-    required this.valueValidation,
-    required this.dateRangeValidation,
-    required this.descriptionValidation,
-  });
-
+final class const BudgetFormValidator({
+  required final BudgetValueValidation valueValidation,
+  required final BudgetDateRangeValidation dateRangeValidation,
+  required final BudgetDescriptionValidation descriptionValidation,
+}) {
   ({BudgetFormState state, bool isValid}) call(BudgetFormState state) {
     final value = valueValidation(state.value);
     final period = dateRangeValidation(state.period);

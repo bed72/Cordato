@@ -3,18 +3,12 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class AmountCalculatorKeyWidget extends StatelessWidget {
-  final String label;
-  final bool isAction;
-  final VoidCallback onTap;
-
-  const AmountCalculatorKeyWidget({
-    super.key,
-    required this.label,
-    required this.onTap,
-    this.isAction = false,
-  });
-
+final class const AmountCalculatorKeyWidget({
+  super.key,
+  required final String label,
+  required final VoidCallback onTap,
+  final bool isAction = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(

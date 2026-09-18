@@ -9,18 +9,12 @@ import 'package:cordato/features/authentication/presentation/widgets/app_bar_mag
 import 'package:cordato/features/authentication/presentation/mixins/magic_link_screen_state_mixin.dart';
 import 'package:cordato/features/authentication/presentation/widgets/button_magic_link_builder_widget.dart';
 
-final class MagicLinkScreen extends StatefulWidget {
-  final MagicLinkCommand command;
-  final EmailValidation validation;
-  final ValueChanged<BuildContext> onConfirmationCode;
-
-  const MagicLinkScreen({
-    super.key,
-    required this.command,
-    required this.validation,
-    required this.onConfirmationCode,
-  });
-
+final class const MagicLinkScreen({
+  super.key,
+  required final MagicLinkCommand command,
+  required final EmailValidation validation,
+  required final ValueChanged<BuildContext> onConfirmationCode,
+}) extends StatefulWidget {
   @override
   State<MagicLinkScreen> createState() => _MagicLinkScreenState();
 }

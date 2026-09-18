@@ -1,23 +1,14 @@
 import 'package:material_ui/material_ui.dart';
 
 @immutable
-class CornerRadiusToken extends ThemeExtension<CornerRadiusToken> {
-  const CornerRadiusToken({
-    required this.cornerRadius050,
-    required this.cornerRadius100,
-    required this.cornerRadius300,
-    required this.cornerRadius500,
-    required this.cornerRadius700,
-    required this.cornerRadiusFull,
-  });
-
-  final BorderRadius cornerRadius050;
-  final BorderRadius cornerRadius100;
-  final BorderRadius cornerRadius300;
-  final BorderRadius cornerRadius500;
-  final BorderRadius cornerRadius700;
-  final BorderRadius cornerRadiusFull;
-
+class const CornerRadiusToken({
+  required final BorderRadius cornerRadius050,
+  required final BorderRadius cornerRadius100,
+  required final BorderRadius cornerRadius300,
+  required final BorderRadius cornerRadius500,
+  required final BorderRadius cornerRadius700,
+  required final BorderRadius cornerRadiusFull,
+}) extends ThemeExtension<CornerRadiusToken> {
   @override
   CornerRadiusToken copyWith({
     BorderRadius? cornerRadius050,

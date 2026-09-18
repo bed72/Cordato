@@ -2,20 +2,13 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
 
-final class ExpenseDescriptionFieldWidget extends StatelessWidget {
-  final TextEditingController controller;
-  final String? failure;
-  final ValueChanged<String>? onChanged;
-  final ValueChanged<String>? onSubmitted;
-
-  const ExpenseDescriptionFieldWidget({
-    super.key,
-    required this.controller,
-    this.failure,
-    this.onChanged,
-    this.onSubmitted,
-  });
-
+final class const ExpenseDescriptionFieldWidget({
+  super.key,
+  required final TextEditingController controller,
+  final String? failure,
+  final ValueChanged<String>? onChanged,
+  final ValueChanged<String>? onSubmitted,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => TextFieldWidget(
     label: 'Descrição',

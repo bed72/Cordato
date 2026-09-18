@@ -1,13 +1,10 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-final class ColoredTextSelectionControls extends TextSelectionControls
-    with TextSelectionHandleControls {
-  final TextSelectionControls delegate;
-  final Color color;
-
-  ColoredTextSelectionControls({required this.delegate, required this.color});
-
+final class ColoredTextSelectionControls({
+  required final TextSelectionControls delegate,
+  required final Color color,
+}) extends TextSelectionControls with TextSelectionHandleControls {
   @override
   Widget buildHandle(
     BuildContext context,

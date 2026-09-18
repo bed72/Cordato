@@ -10,11 +10,8 @@ abstract interface class IStorageClient {
   Future<void> write({required String key, required String value});
 }
 
-final class StorageClient implements IStorageClient {
-  final FlutterSecureStorage storage;
-
-  StorageClient({required this.storage});
-
+final class StorageClient({required final FlutterSecureStorage storage})
+    implements IStorageClient {
   @override
   Future<void> clear() => storage.deleteAll();
 

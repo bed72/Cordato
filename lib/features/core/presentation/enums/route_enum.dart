@@ -1,4 +1,4 @@
-enum RouteEnum {
+enum RouteEnum(final String path) {
   root('/'),
   budget('/budget'),
   expense('/expense'),
@@ -7,9 +7,5 @@ enum RouteEnum {
   dashboard('/dashboard'),
   authenticationCallback('/callback'),
   authenticationMagicLink('/authentication/magic-link'),
-  authenticationConfirmationCode('/authentication/confirmation-code');
-
-  final String path;
-
-  const RouteEnum(this.path);
+  authenticationConfirmationCode('/authentication/confirmation-code'),
 }

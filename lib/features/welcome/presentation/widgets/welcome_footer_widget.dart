@@ -4,11 +4,10 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/buttons/link_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
-final class WelcomeFooterWidget extends StatelessWidget {
-  final ValueChanged<BuildContext> onContinueWithEmail;
-
-  const WelcomeFooterWidget({super.key, required this.onContinueWithEmail});
-
+final class const WelcomeFooterWidget({
+  super.key,
+  required final ValueChanged<BuildContext> onContinueWithEmail,
+}) extends StatelessWidget {
   void _showToast(
     BuildContext context, {
     required String title,

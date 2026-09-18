@@ -1,14 +1,8 @@
-sealed class ExpenseFailure {
-  final String message;
-
-  const ExpenseFailure(this.message);
-
+sealed class const ExpenseFailure(final String message) {
   @override
   String toString() => message;
 }
 
-final class ExpenseCreationFailure extends ExpenseFailure {
-  const ExpenseCreationFailure([
-    super.message = 'Não foi possível cadastrar o gasto.',
-  ]);
-}
+final class const ExpenseCreationFailure([
+  super.message = 'Não foi possível cadastrar o gasto.',
+]) extends ExpenseFailure {}

@@ -6,7 +6,7 @@ final _importPattern = RegExp(
   r'''(?:import|export)\s+['"]package:cordato/features/([^/'"]+)/([^'"]+)['"]''',
 );
 
-const _financialContexts = {'expense', 'budget', 'couple', 'insight'};
+const _financialContexts = {'expense', 'budget', 'family', 'insight'};
 const _forbiddenDomainImports = {
   'package:flutter/',
   'package:material_ui/',
@@ -59,7 +59,7 @@ void main() {
           'infrastructure',
         );
         final allowed = switch (sourceContext) {
-          'couple' => targetContext != 'insight' && isInfrastructure,
+          'family' => targetContext != 'insight' && isInfrastructure,
           'insight' => isInfrastructure,
           _ => false,
         };

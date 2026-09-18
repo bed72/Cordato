@@ -6,22 +6,14 @@ import 'package:cordato/features/expense/presentation/commands/create_expense_co
 import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
-final class ExpenseScreen extends StatelessWidget {
-  final IMoneyFormatter formatter;
-  final VoidCallback onBackPressed;
-  final CreateExpenseCommand command;
-  final ExpenseFormValidator validator;
-  final ValueChanged<BuildContext> onExpenseCreated;
-
-  const ExpenseScreen({
-    super.key,
-    required this.command,
-    required this.formatter,
-    required this.validator,
-    required this.onBackPressed,
-    required this.onExpenseCreated,
-  });
-
+final class const ExpenseScreen({
+  super.key,
+  required final CreateExpenseCommand command,
+  required final IMoneyFormatter formatter,
+  required final ExpenseFormValidator validator,
+  required final VoidCallback onBackPressed,
+  required final ValueChanged<BuildContext> onExpenseCreated,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

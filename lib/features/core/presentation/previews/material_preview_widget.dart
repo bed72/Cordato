@@ -3,12 +3,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/themes/themes.dart';
 import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
 
-final class MaterialPreviewWidget extends StatelessWidget {
-  final Widget child;
-  final ThemeMode? themeMode;
-
-  const MaterialPreviewWidget({super.key, required this.child, this.themeMode});
-
+final class const MaterialPreviewWidget({
+  super.key,
+  required final Widget child,
+  final ThemeMode? themeMode,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

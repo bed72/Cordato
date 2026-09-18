@@ -2,12 +2,10 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
 
-final class BudgetAppBarWidget extends StatelessWidget
-    implements PreferredSizeWidget {
-  final VoidCallback onBackPressed;
-
-  const BudgetAppBarWidget({super.key, required this.onBackPressed});
-
+final class const BudgetAppBarWidget({
+  super.key,
+  required final VoidCallback onBackPressed,
+}) extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 

@@ -13,8 +13,8 @@ tree. Keep the tests independent of Supabase and avoid runtime setup.
 - Scan only `lib/`, never test fixtures or generated files.
 - Detect `package:cordato/features/<context>/...` imports and report the source file and target context.
 - Reject sibling imports from `expense` and `budget`.
-- Reject `couple` imports of `insight` and allow its `budget`/`expense` imports only from infrastructure.
-- Allow `insight` imports of `budget`, `expense`, and `couple` only from infrastructure.
+- Reject `family` imports of `insight` and allow its `budget`/`expense` imports only from infrastructure.
+- Allow `insight` imports of `budget`, `expense`, and `family` only from infrastructure.
 - Reject imports of `data`, `infrastructure`, or `presentation` from a feature's `domain`.
 - Reject Supabase and storage SDK imports from `domain` and `presentation`.
 

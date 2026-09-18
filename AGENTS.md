@@ -14,19 +14,19 @@ não substitua uma convenção existente por uma abstração nova sem necessidad
 
 ## Contexto Do Produto
 
-Cordato é um aplicativo de finanças pessoais. Cada pessoa é dona dos próprios
-dados financeiros; um casal é somente uma lente de leitura compartilhada, não
-um dono de dinheiro.
+Cordato é um aplicativo de finanças pessoais e familiares. Cada pessoa é dona
+dos próprios dados financeiros; uma família é somente uma lente de leitura
+compartilhada entre seus membros, não uma dona de dinheiro.
 
 O modelo de domínio validado possui estes bounded contexts:
 
 - `expense`: fatos atômicos de gastos, pertencentes a uma pessoa.
 - `budget`: tetos planejados por intervalo de datas; gasto e saldo são derivados.
-- `couple`: pareamento entre duas pessoas, com leitura combinada e sem escrita nos dados do outro.
+- `family`: organização entre membros de uma família, com leitura combinada e sem escrita nos dados de outra pessoa.
 - `insight`: análises derivadas, somente leitura e sem persistência própria.
 
 O backend ativo está versionado em `supabase/`; o Kotlin legado é somente
-referência de domínio. `expense` e `budget` estão implementados. `couple` e
+referência de domínio. `expense` e `budget` estão implementados. `family` e
 `insight` são planejados e não devem ser descritos ou tratados como código
 existente. A autenticação atual usa Supabase Auth com magic link; não crie um
 contexto `identity` no app para reproduzir o backend antigo. O contexto `chat`
@@ -37,8 +37,8 @@ Regras de domínio que devem ser preservadas nas features financeiras:
 - valores monetários são representados em centavos inteiros e somente em BRL;
 - um gasto não referencia um orçamento; o pertencimento é derivado pela data;
 - orçamentos vivos da mesma pessoa não podem se sobrepor;
-- dissolver um casal não altera os dados individuais;
-- parear nunca concede permissão de escrita sobre os dados da outra pessoa;
+- sair ou encerrar uma família não altera os dados individuais;
+- participar de uma família nunca concede permissão de escrita sobre os dados de outro membro;
 - visões combinadas e insights são recalculados a partir dos dados proprietários.
 
 ## Princípios De Trabalho
@@ -136,6 +136,77 @@ files ou exports globais sem uma necessidade clara.
 Imports internos do projeto devem sempre usar o caminho completo com o prefixo
 `package:cordato/`. Não use imports relativos como `import 'data/...';` ou
 `import '../...';`.
+
+## Primary Constructors
+
+O projeto exige Dart 3.13 ou superior e usa primary constructors sem experiment
+flag ou dependência adicional. Essa é a forma padrão daqui para frente para todo
+tipo novo que tenha um único construtor generativo principal e apenas armazene
+parâmetros, derive campos a partir deles ou os encaminhe para `super`.
+
+A migração base do projeto já foi concluída. Portanto, uma nova declaração
+elegível deve nascer com primary constructor, e um construtor tradicional novo
+ou mantido em código alterado precisa ter uma razão concreta de semântica,
+lifecycle ou legibilidade. Não deixe boilerplate de campo mais atribuição para
+uma conversão futura.
+
+Estado imutável induzido pelo construtor deve usar tipo explícito e `final`.
+Preserve `const` quando todos os campos permitirem construção constante e use
+super parameters para encaminhamento direto:
+
+```dart
+final class const ExampleWidget({
+  super.key,
+  required final String label,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Text(label);
+}
+```
+
+Parâmetros usados somente durante a inicialização devem manter o tipo explícito
+sem `final` ou `var`, para não induzirem um campo:
+
+```dart
+final class NormalizedAmount(int amountInCents) {
+  final int absoluteAmountInCents = amountInCents.abs();
+}
+```
+
+Use esta matriz ao revisar uma declaração:
+
+| Categoria | Exemplos | Decisão |
+|---|---|---|
+| Padrão obrigatório | Campos finais atribuídos diretamente, `super.key`, super parameters simples, payloads de enum, estado imutável e dependências apenas armazenadas | Use primary constructor |
+| Revisão manual | Commands, initializer lists, asserts, corpos de construtor, construtores privados nomeados, campos `late`, subscriptions | Converta somente se semântica e legibilidade forem preservadas |
+| Exceção sem benefício | Interfaces, mixins comuns, extensões, classes `State`, mocks e construtores explícitos ou implícitos vazios sem estado | Mantenha sem primary constructor explícito |
+
+Factories e redirecting constructors permanecem no corpo da classe. Tipos com
+múltiplos caminhos generativos não redirecionados e inicializações cuja ordem ou
+lifecycle fique mais claro na forma tradicional devem manter o construtor
+tradicional.
+
+Widgets que apenas encaminham `super.key` também usam primary constructor. Em
+commands, parâmetros usados somente para criar um `Command` devem continuar
+transitórios, sem `final` ou `var`; não induza um campo de repository sem
+necessidade. Construtores privados de entidades podem ser primary desde que nome,
+visibilidade e factories validadoras permaneçam intactos.
+
+Uma conversão deve preservar integralmente nome e visibilidade do construtor,
+parâmetros nomeados e posicionais, ordem, tipos, nulabilidade, `required`, valores
+padrão, constância, encaminhamento para `super`, factories, redirects, tear-offs
+`Type.new` e comportamento observável. Não aproveite uma conversão sintática
+para expor parâmetros, reescrever corpos ou alterar contratos.
+
+Daqui para frente:
+
+- use primary constructor em toda declaração nova elegível;
+- preserve a sintaxe primary ao alterar declarações já migradas;
+- converta qualquer construtor elegível que reapareça por merge ou código legado
+  no arquivo já tocado;
+- mantenha a forma tradicional somente com justificativa verificável pelas
+  categorias acima;
+- não combine a conversão sintática com mudanças de API ou comportamento.
 
 ## Widgets
 
@@ -419,7 +490,7 @@ financeiras.
 
 Para uma feature financeira, identifique o contexto proprietário e altere a
 migration/RPC e os testes de autorização ou invariantes aplicáveis. Não adicione
-tabelas, políticas ou RPCs de `couple` ou `insight` antes de essas features
+tabelas, políticas ou RPCs de `family` ou `insight` antes de essas features
 existirem. Consulte `supabase/README.md` para os artefatos e comandos de banco;
 não replique SQL em documentação geral.
 

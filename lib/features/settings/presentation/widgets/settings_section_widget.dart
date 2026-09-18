@@ -2,11 +2,10 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class SettingsSectionWidget extends StatelessWidget {
-  final String label;
-
-  const SettingsSectionWidget({super.key, required this.label});
-
+final class const SettingsSectionWidget({
+  super.key,
+  required final String label,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(

@@ -2,20 +2,13 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-final class RedirectWidget extends StatefulWidget {
-  final Widget child;
-  final Stream<void> events;
-  final VoidCallback onAuthenticated;
-  final ValueChanged<BuildContext> onAuthenticationFailure;
-
-  const RedirectWidget({
-    super.key,
-    required this.child,
-    required this.events,
-    required this.onAuthenticated,
-    required this.onAuthenticationFailure,
-  });
-
+final class const RedirectWidget({
+  super.key,
+  required final Widget child,
+  required final Stream<void> events,
+  required final VoidCallback onAuthenticated,
+  required final ValueChanged<BuildContext> onAuthenticationFailure,
+}) extends StatefulWidget {
   @override
   State<RedirectWidget> createState() => _RedirectWidgetState();
 }

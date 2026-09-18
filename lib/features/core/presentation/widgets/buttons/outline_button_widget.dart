@@ -5,20 +5,13 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/circular_progress_indicator_widget.dart';
 
-final class OutlineButtonWidget extends StatelessWidget {
-  final String? label;
-  final Widget? child;
-  final bool? isLoading;
-  final VoidCallback? onTap;
-
-  const OutlineButtonWidget({
-    super.key,
-    required this.onTap,
-    this.child,
-    this.label,
-    this.isLoading,
-  });
-
+final class const OutlineButtonWidget({
+  super.key,
+  required final VoidCallback? onTap,
+  final Widget? child,
+  final String? label,
+  final bool? isLoading,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BounceWidget.withOnPress(
     onPress: onTap,

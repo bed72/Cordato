@@ -3,9 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/outline_button_widget.dart';
 
-final class LogoutBottomSheetWidget extends StatelessWidget {
-  const LogoutBottomSheetWidget({super.key});
-
+final class const LogoutBottomSheetWidget({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(

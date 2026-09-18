@@ -1,13 +1,12 @@
+import 'package:cordato/features/core/domain/either.dart';
+
 import 'package:cordato/features/authentication/domain/failures/authentication_failure.dart';
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
-import 'package:cordato/features/core/domain/either.dart';
 
-final class AuthenticationRepository implements IAuthenticationRepository {
-  final IAuthenticationDataSource _dataSource;
-
-  AuthenticationRepository({required this._dataSource});
-
+final class AuthenticationRepository({
+  required final IAuthenticationDataSource _dataSource,
+}) implements IAuthenticationRepository {
   @override
   Future<Either<Failure, void>> checkSession() async {
     final hasSession = await _dataSource.checkSession();

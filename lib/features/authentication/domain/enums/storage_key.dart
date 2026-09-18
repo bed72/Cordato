@@ -1,7 +1,3 @@
-enum StorageKey {
-  supabaseSession('supabase_session');
-
-  final String value;
-
-  const StorageKey(this.value);
+enum StorageKey(final String value) {
+  supabaseSession('supabase_session'),
 }

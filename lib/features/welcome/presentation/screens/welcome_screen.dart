@@ -4,11 +4,10 @@ import 'package:cordato/features/welcome/presentation/widgets/welcome_icon_widge
 import 'package:cordato/features/welcome/presentation/widgets/welcome_slogan_widget.dart';
 import 'package:cordato/features/welcome/presentation/widgets/welcome_footer_widget.dart';
 
-class WelcomeScreen extends StatelessWidget {
-  final ValueChanged<BuildContext> onContinueWithEmail;
-
-  const WelcomeScreen({super.key, required this.onContinueWithEmail});
-
+class const WelcomeScreen({
+  super.key,
+  required final ValueChanged<BuildContext> onContinueWithEmail,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -87,21 +87,13 @@ sealed class Either<L, R> {
 }
 
 /// Failure.
-final class Left<L, R> extends Either<L, R> {
-  final L value;
-
-  const Left(this.value);
-
+final class const Left<L, R>(final L value) extends Either<L, R> {
   @override
   T fold<T>(T Function(L l) fnL, T Function(R r) fnR) => fnL(value);
 }
 
 /// Success.
-final class Right<L, R> extends Either<L, R> {
-  final R value;
-
-  const Right(this.value);
-
+final class const Right<L, R>(final R value) extends Either<L, R> {
   @override
   T fold<T>(T Function(L l) fnL, T Function(R r) fnR) => fnR(value);
 }

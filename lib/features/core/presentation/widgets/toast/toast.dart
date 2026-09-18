@@ -5,37 +5,24 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 
 enum ToastVariant { error, info, success, warning }
 
-final class ToastAction {
-  final String label;
-  final VoidCallback onPressed;
+final class const ToastAction({
+  required final String label,
+  required final VoidCallback onPressed,
+}) {}
 
-  const ToastAction({required this.label, required this.onPressed});
-}
+final class const ToastPalette({
+  required final Color background,
+  required final Color foreground,
+}) {}
 
-final class ToastPalette {
-  final Color background;
-  final Color foreground;
-
-  const ToastPalette({required this.background, required this.foreground});
-}
-
-final class ToastData {
-  final int id;
-  final String title;
-  final ToastVariant variant;
-  final Duration? duration;
-  final String? description;
-  final ToastAction? action;
-
-  const ToastData({
-    required this.id,
-    required this.title,
-    this.action,
-    this.duration,
-    this.description,
-    this.variant = .info,
-  });
-}
+final class const ToastData({
+  required final int id,
+  required final String title,
+  final ToastAction? action,
+  final Duration? duration,
+  final String? description,
+  final ToastVariant variant = .info,
+}) {}
 
 IconData getToastIcon(ToastVariant variant) => switch (variant) {
   .info => Icons.info_outline,

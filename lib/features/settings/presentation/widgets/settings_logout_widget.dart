@@ -4,16 +4,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/settings/presentation/commands/logout_command.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/danger_button_widget.dart';
 
-final class SettingsLogoutWidget extends StatelessWidget {
-  final LogoutCommand command;
-  final VoidCallback onLogoutPressed;
-
-  const SettingsLogoutWidget({
-    super.key,
-    required this.command,
-    required this.onLogoutPressed,
-  });
-
+final class const SettingsLogoutWidget({
+  super.key,
+  required final LogoutCommand command,
+  required final VoidCallback onLogoutPressed,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(

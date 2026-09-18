@@ -2,18 +2,12 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-class CircularProgressIndicatorWidget extends StatelessWidget {
-  const CircularProgressIndicatorWidget({
-    super.key,
-    this.color,
-    this.width,
-    this.height,
-  });
-
-  final Color? color;
-  final double? width;
-  final double? height;
-
+class const CircularProgressIndicatorWidget({
+  super.key,
+  final Color? color,
+  final double? width,
+  final double? height,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: SizedBox(

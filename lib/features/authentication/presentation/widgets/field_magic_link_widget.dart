@@ -2,20 +2,13 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
 
-final class FieldMagicLinkWidget extends StatelessWidget {
-  final String? failure;
-  final ValueChanged<String>? onChanged;
-  final ValueChanged<String> onSubmitted;
-  final TextEditingController controller;
-
-  const FieldMagicLinkWidget({
-    super.key,
-    required this.controller,
-    required this.onSubmitted,
-    this.failure,
-    this.onChanged,
-  });
-
+final class const FieldMagicLinkWidget({
+  super.key,
+  required final TextEditingController controller,
+  required final ValueChanged<String> onSubmitted,
+  final String? failure,
+  final ValueChanged<String>? onChanged,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextFieldWidget(

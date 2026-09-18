@@ -1,17 +1,10 @@
-final class BudgetEntity {
+final class const BudgetEntity._({
+  required final int amount,
+  required final DateTime endDate,
+  required final DateTime startDate,
+  required final String? description,
+}) {
   static const maxAmount = 9999999999999;
-
-  final int amount;
-  final DateTime endDate;
-  final DateTime startDate;
-  final String? description;
-
-  const BudgetEntity._({
-    required this.amount,
-    required this.endDate,
-    required this.startDate,
-    required this.description,
-  });
 
   static BudgetEntity? create({
     required int amount,

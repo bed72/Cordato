@@ -5,14 +5,10 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 
-final class SettingsInvitePartnerWidget extends StatelessWidget {
-  final VoidCallback? onInvitePartnerPressed;
-
-  const SettingsInvitePartnerWidget({
-    super.key,
-    required this.onInvitePartnerPressed,
-  });
-
+final class const SettingsInvitePartnerWidget({
+  super.key,
+  required final VoidCallback? onInvitePartnerPressed,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = Card(

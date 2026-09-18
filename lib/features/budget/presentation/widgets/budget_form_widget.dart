@@ -13,20 +13,13 @@ import 'package:cordato/features/budget/presentation/validators/budget_form_vali
 import 'package:cordato/features/budget/presentation/mixins/budget_form_widget_state_mixin.dart';
 import 'package:cordato/features/budget/presentation/widgets/fields/budget_description_field_widget.dart';
 
-final class BudgetFormWidget extends StatefulWidget {
-  final IMoneyFormatter formatter;
-  final CreateBudgetCommand command;
-  final BudgetFormValidator validator;
-  final ValueChanged<BuildContext> onBudgetCreated;
-
-  const BudgetFormWidget({
-    super.key,
-    required this.command,
-    required this.formatter,
-    required this.validator,
-    required this.onBudgetCreated,
-  });
-
+final class const BudgetFormWidget({
+  super.key,
+  required final CreateBudgetCommand command,
+  required final IMoneyFormatter formatter,
+  required final BudgetFormValidator validator,
+  required final ValueChanged<BuildContext> onBudgetCreated,
+}) extends StatefulWidget {
   @override
   State<BudgetFormWidget> createState() => _BudgetFormWidgetState();
 }

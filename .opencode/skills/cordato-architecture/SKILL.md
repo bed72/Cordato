@@ -23,7 +23,7 @@ domain reference only. Do not copy its package structure into Flutter.
 
 - `expense` owns individual spending facts.
 - `budget` owns individual planned ceilings by inclusive date range.
-- `couple` is a read-only lens over two people and owns no financial data.
+- `family` is a read-only lens over its members and owns no financial data.
 - `insight` is a read-only projection with no persistence of its own.
 - `authentication` owns the Supabase Auth magic-link flow, not a recreated `identity` context.
 - `dashboard` is presentation/composition, not a business bounded context.
@@ -34,18 +34,18 @@ Preserve these invariants:
 - money is positive integer cents in BRL;
 - expenses never reference budgets; budget membership is derived from dates;
 - live budgets of one person cannot overlap;
-- pairing never grants write access to another person's data;
-- dissolving a couple does not alter individual data;
-- couple views and insights are recomputed and not persisted as source data.
+- family membership never grants write access to another member's data;
+- leaving or ending a family does not alter individual data;
+- family views and insights are recomputed and not persisted as source data.
 
 ## Dependency Rules
 
 - Keep dependencies inward: presentation -> domain contracts -> data -> infrastructure.
 - Keep Supabase, storage, and plugins out of domain and presentation.
 - `expense` and `budget` do not import sibling business contexts.
-- `couple` may read `budget` and `expense` only through its own contracts, with concrete adapters at the infrastructure edge.
-- `insight` may read `budget`, `expense`, and `couple` only through its own contracts, with concrete adapters at the infrastructure edge.
-- Owner contexts must never depend on `couple` or `insight`.
+- `family` may read `budget` and `expense` only through its own contracts, with concrete adapters at the infrastructure edge.
+- `insight` may read `budget`, `expense`, and `family` only through its own contracts, with concrete adapters at the infrastructure edge.
+- Owner contexts must never depend on `family` or `insight`.
 - Do not add direct imports of another context's implementation to bypass its contract.
 
 ## Workflow

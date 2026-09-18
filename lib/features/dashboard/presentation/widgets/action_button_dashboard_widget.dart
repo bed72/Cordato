@@ -5,12 +5,11 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
 
-final class ActionButtonDashboardWidget extends StatelessWidget {
-  final VoidCallback? onBudget;
-  final VoidCallback? onExpense;
-
-  const ActionButtonDashboardWidget({super.key, this.onBudget, this.onExpense});
-
+final class const ActionButtonDashboardWidget({
+  super.key,
+  final VoidCallback? onBudget,
+  final VoidCallback? onExpense,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ExpandableFab(
     distance: 56.0,

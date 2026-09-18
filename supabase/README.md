@@ -19,7 +19,7 @@ The initial migration versions the boundaries used by the current mobile app:
 
 `push_tokens` appears in a legacy Flutter enum but has no current reader or
 writer, so it is intentionally not provisioned. Storage is enabled locally, but
-the app currently has no bucket requirement. Couple views, insights, and Edge
+the app currently has no bucket requirement. Family views, insights, and Edge
 Functions are outside this baseline.
 
 All financial ownership is derived from `auth.uid()` in authenticated RPCs. The
@@ -33,8 +33,8 @@ have no budget foreign key.
 The financial mutation RPCs are `create_expense`, `update_expense`,
 `delete_expense`, `create_budget`, `update_budget`, and `delete_budget`.
 Their parameters describe only the record being changed; ownership always comes
-from the authenticated actor. Couple RPCs are intentionally absent until the
-couple context exists.
+from the authenticated actor. Family RPCs are intentionally absent until the
+family context exists.
 
 ## Local Setup
 

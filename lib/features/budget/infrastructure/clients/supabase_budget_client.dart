@@ -11,11 +11,8 @@ abstract interface class IBudgetClient {
   Future<BudgetCreateOutcomeEnum> create(BudgetEntity budget);
 }
 
-final class SupabaseBudgetClient implements IBudgetClient {
-  final SupabaseClient client;
-
-  const SupabaseBudgetClient({required this.client});
-
+final class const SupabaseBudgetClient({required final SupabaseClient client})
+    implements IBudgetClient {
   @override
   Future<BudgetCreateOutcomeEnum> create(BudgetEntity budget) async {
     try {

@@ -5,22 +5,14 @@ import 'package:cordato/features/dashboard/presentation/commands/get_user_name_c
 import 'package:cordato/features/dashboard/presentation/widgets/app_bar_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/action_button_dashboard_widget.dart';
 
-final class DashboardScreen extends StatefulWidget {
-  final GetUserNameCommand command;
-  final VoidCallback? onBudgetPressed;
-  final VoidCallback? onExpensePressed;
-  final VoidCallback? onMenuPressed;
-  final VoidCallback? onNotificationsPressed;
-
-  const DashboardScreen({
-    super.key,
-    required this.command,
-    this.onBudgetPressed,
-    this.onExpensePressed,
-    this.onNotificationsPressed,
-    this.onMenuPressed,
-  });
-
+final class const DashboardScreen({
+  super.key,
+  required final GetUserNameCommand command,
+  final VoidCallback? onBudgetPressed,
+  final VoidCallback? onExpensePressed,
+  final VoidCallback? onNotificationsPressed,
+  final VoidCallback? onMenuPressed,
+}) extends StatefulWidget {
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }

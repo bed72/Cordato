@@ -4,28 +4,17 @@ import 'package:cordato/features/core/presentation/widgets/images/strategy/image
 import 'package:cordato/features/core/presentation/widgets/images/strategy/network_image_strategy.dart';
 import 'package:flutter/material.dart';
 
-class ImageWidget extends StatelessWidget {
-  final BoxFit? fit;
-  final String? alt;
-  final Color? color;
-  final double? width;
-  final double? height;
-  final String? source;
-  final String? fallback;
-  final bool showLoading;
-
-  const ImageWidget({
-    super.key,
-    required this.source,
-    this.alt,
-    this.fit,
-    this.width,
-    this.color,
-    this.height,
-    this.fallback,
-    this.showLoading = false,
-  });
-
+class const ImageWidget({
+  super.key,
+  required final String? source,
+  final String? alt,
+  final BoxFit? fit,
+  final double? width,
+  final Color? color,
+  final double? height,
+  final String? fallback,
+  final bool showLoading = false,
+}) extends StatelessWidget {
   ImageStrategy _resolve() => switch (source) {
     null => const EmptyImageStrategy(),
     final data when !data.startsWith('http') => const AssetImageStrategy(),

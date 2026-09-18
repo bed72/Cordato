@@ -5,11 +5,8 @@ const _jumpDuration = Duration(milliseconds: 360);
 const _cycleDuration = Duration(milliseconds: 920);
 const _staggerDuration = Duration(milliseconds: 280);
 
-final class AnimatedEllipsisWidget extends StatefulWidget {
-  final TextStyle? style;
-
-  const AnimatedEllipsisWidget({super.key, this.style});
-
+final class const AnimatedEllipsisWidget({super.key, final TextStyle? style})
+    extends StatefulWidget {
   @override
   State<AnimatedEllipsisWidget> createState() => _AnimatedEllipsisWidgetState();
 }

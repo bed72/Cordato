@@ -3,22 +3,18 @@ import 'package:command_it/command_it.dart';
 import 'package:cordato/features/core/presentation/commands/interface_command.dart';
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 
-final class MagicLinkCommand implements ICommand {
+final class MagicLinkCommand({
+  required IAuthenticationRepository repository,
+  DateTime Function()? now,
+}) implements ICommand {
   String? _email;
   DateTime? _resendAvailableAt;
 
-  final DateTime Function() _now;
-  final Command<String, void> send;
-  final Command<String, void> resend;
+  final DateTime Function() _now = now ?? DateTime.now;
+  final Command<String, void> send = _request(repository);
+  final Command<String, void> resend = _request(repository);
 
   static const cooldown = Duration(minutes: 1);
-
-  MagicLinkCommand({
-    required IAuthenticationRepository repository,
-    DateTime Function()? now,
-  }) : _now = now ?? DateTime.now,
-       send = _request(repository),
-       resend = _request(repository);
 
   String? get email => _email;
 

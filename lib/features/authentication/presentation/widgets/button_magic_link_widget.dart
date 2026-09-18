@@ -2,16 +2,11 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
-final class ButtonMagicLinkWidget extends StatelessWidget {
-  final bool isLoading;
-  final VoidCallback? onPressed;
-
-  const ButtonMagicLinkWidget({
-    super.key,
-    required this.isLoading,
-    required this.onPressed,
-  });
-
+final class const ButtonMagicLinkWidget({
+  super.key,
+  required final bool isLoading,
+  required final VoidCallback? onPressed,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ElevatedButtonWidget(
     label: 'Enviar',

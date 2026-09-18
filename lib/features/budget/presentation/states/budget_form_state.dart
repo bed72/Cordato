@@ -1,22 +1,13 @@
 import 'package:material_ui/material_ui.dart';
 
-final class BudgetFormState {
-  final int value;
-  final String description;
-  final String? valueFailure;
-  final String? periodFailure;
-  final DateTimeRange? period;
-  final String? descriptionFailure;
-
-  const BudgetFormState({
-    this.value = 0,
-    this.period,
-    this.valueFailure,
-    this.periodFailure,
-    this.description = '',
-    this.descriptionFailure,
-  });
-
+final class const BudgetFormState({
+  final int value = 0,
+  final DateTimeRange? period,
+  final String? valueFailure,
+  final String? periodFailure,
+  final String description = '',
+  final String? descriptionFailure,
+}) {
   BudgetFormState copyWith({
     int? value,
     String? description,

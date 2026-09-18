@@ -3,30 +3,18 @@ import 'package:flutter/widgets.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-class BackgroundIconWidget extends StatelessWidget {
-  final Color backgroundColor;
-  final IconData icon;
-  final double? width;
-  final double? height;
-  final double? iconSize;
-  final Color? iconColor;
-  final Gradient? gradient;
-  final bool? withoutBackground;
-  final BorderRadiusGeometry? borderRadius;
-
-  const BackgroundIconWidget({
-    super.key,
-    required this.icon,
-    required this.backgroundColor,
-    this.width,
-    this.height,
-    this.iconSize,
-    this.gradient,
-    this.iconColor,
-    this.borderRadius,
-    this.withoutBackground,
-  });
-
+class const BackgroundIconWidget({
+  super.key,
+  required final IconData icon,
+  required final Color backgroundColor,
+  final double? width,
+  final double? height,
+  final double? iconSize,
+  final Gradient? gradient,
+  final Color? iconColor,
+  final BorderRadiusGeometry? borderRadius,
+  final bool? withoutBackground,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasBackground = !(withoutBackground ?? false);

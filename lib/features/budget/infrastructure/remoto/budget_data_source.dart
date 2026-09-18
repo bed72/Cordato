@@ -6,11 +6,8 @@ abstract interface class IBudgetDataSource {
   Future<BudgetCreateOutcomeEnum> create(BudgetEntity budget);
 }
 
-final class BudgetDataSource implements IBudgetDataSource {
-  final IBudgetClient client;
-
-  const BudgetDataSource({required this.client});
-
+final class const BudgetDataSource({required final IBudgetClient client})
+    implements IBudgetDataSource {
   @override
   Future<BudgetCreateOutcomeEnum> create(BudgetEntity budget) =>
       client.create(budget);

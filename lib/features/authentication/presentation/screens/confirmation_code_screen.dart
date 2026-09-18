@@ -12,18 +12,12 @@ import 'package:cordato/features/authentication/presentation/widgets/resend_cool
 import 'package:cordato/features/authentication/presentation/widgets/header_confirmation_code_widget.dart';
 import 'package:cordato/features/authentication/presentation/mixins/confirmation_code_screen_state_mixin.dart';
 
-final class ConfirmationCodeScreen extends StatefulWidget {
-  final CodeValidation validation;
-  final MagicLinkCommand magicLinkcommand;
-  final ConfirmationCodeCommand confirmationCommand;
-
-  const ConfirmationCodeScreen({
-    super.key,
-    required this.validation,
-    required this.magicLinkcommand,
-    required this.confirmationCommand,
-  });
-
+final class const ConfirmationCodeScreen({
+  super.key,
+  required final CodeValidation validation,
+  required final MagicLinkCommand magicLinkcommand,
+  required final ConfirmationCodeCommand confirmationCommand,
+}) extends StatefulWidget {
   @override
   State<ConfirmationCodeScreen> createState() => _ConfirmationCodeScreenState();
 }

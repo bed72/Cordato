@@ -3,15 +3,12 @@ import 'dart:async';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:material_ui/material_ui.dart';
 
-final class WelcomeTypewriterWidget extends StatefulWidget {
-  final Color color;
-  final List<String> phrases;
-
-  const WelcomeTypewriterWidget({
-    super.key,
-    required this.color,
-    required this.phrases,
-  }) : assert(phrases.length > 0);
+final class const WelcomeTypewriterWidget({
+  super.key,
+  required final Color color,
+  required final List<String> phrases,
+}) extends StatefulWidget {
+  this : assert(phrases.length > 0);
 
   @override
   State<WelcomeTypewriterWidget> createState() =>

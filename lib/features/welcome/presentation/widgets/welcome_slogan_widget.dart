@@ -9,9 +9,7 @@ const _supportingPhrases = [
   'junto com quem importa.',
 ];
 
-final class WelcomeSloganWidget extends StatelessWidget {
-  const WelcomeSloganWidget({super.key});
-
+final class const WelcomeSloganWidget({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(

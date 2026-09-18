@@ -2,17 +2,10 @@ sealed class ValidationResult<T> {
   const ValidationResult();
 }
 
-final class Valid<T> extends ValidationResult<T> {
-  final T value;
+final class const Valid<T>(final T value) extends ValidationResult<T> {}
 
-  const Valid(this.value);
-}
-
-final class Invalid<T> extends ValidationResult<T> {
-  final String message;
-
-  const Invalid(this.message);
-}
+final class const Invalid<T>(final String message)
+    extends ValidationResult<T> {}
 
 abstract interface class Validation<T> {
   ValidationResult<T> call(T value);

@@ -9,11 +9,8 @@ const _pressInStiffness = 320.0;
 const _pressOutDamping = 14.0;
 const _pressOutStiffness = 280.0;
 
-abstract base class BounceWidget extends StatefulWidget {
-  const BounceWidget({super.key, required this.child});
-
-  final Widget child;
-
+abstract base class const BounceWidget({super.key, required final Widget child})
+    extends StatefulWidget {
   factory BounceWidget.withOnPress({
     Key? key,
     required Widget child,
@@ -24,15 +21,11 @@ abstract base class BounceWidget extends StatefulWidget {
       _BounceWithoutPressWidget(key: key, child: child);
 }
 
-final class _BounceWithOnPressWidget extends BounceWidget {
-  const _BounceWithOnPressWidget({
-    super.key,
-    required super.child,
-    required this.onPress,
-  });
-
-  final VoidCallback? onPress;
-
+final class const _BounceWithOnPressWidget({
+  super.key,
+  required super.child,
+  required final VoidCallback? onPress,
+}) extends BounceWidget {
   @override
   State<_BounceWithOnPressWidget> createState() =>
       _BounceWithOnPressWidgetState();
@@ -53,9 +46,8 @@ final class _BounceWithOnPressWidgetState
   );
 }
 
-final class _BounceWithoutPressWidget extends BounceWidget {
-  const _BounceWithoutPressWidget({super.key, required super.child});
-
+final class const _BounceWithoutPressWidget({super.key, required super.child})
+    extends BounceWidget {
   @override
   State<_BounceWithoutPressWidget> createState() =>
       _BounceWithoutPressWidgetState();

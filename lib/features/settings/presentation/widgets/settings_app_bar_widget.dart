@@ -2,12 +2,10 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
 
-final class SettingsAppBarWidget extends StatelessWidget
-    implements PreferredSizeWidget {
-  final ValueChanged<BuildContext> onBackPressed;
-
-  const SettingsAppBarWidget({super.key, required this.onBackPressed});
-
+final class const SettingsAppBarWidget({
+  super.key,
+  required final ValueChanged<BuildContext> onBackPressed,
+}) extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 

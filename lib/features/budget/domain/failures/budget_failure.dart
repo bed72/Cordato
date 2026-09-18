@@ -1,20 +1,12 @@
-sealed class BudgetFailure {
-  final String message;
-
-  const BudgetFailure(this.message);
-
+sealed class const BudgetFailure(final String message) {
   @override
   String toString() => message;
 }
 
-final class BudgetCreationFailure extends BudgetFailure {
-  const BudgetCreationFailure([
-    super.message = 'Não foi possível cadastrar o orçamento.',
-  ]);
-}
+final class const BudgetCreationFailure([
+  super.message = 'Não foi possível cadastrar o orçamento.',
+]) extends BudgetFailure {}
 
-final class BudgetOverlappingFailure extends BudgetFailure {
-  const BudgetOverlappingFailure([
-    super.message = 'Já existe um orçamento para esse período.',
-  ]);
-}
+final class const BudgetOverlappingFailure([
+  super.message = 'Já existe um orçamento para esse período.',
+]) extends BudgetFailure {}

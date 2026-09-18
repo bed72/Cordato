@@ -5,16 +5,11 @@ import 'package:cordato/features/core/presentation/mixins/amount_calculator_widg
 import 'package:cordato/features/core/presentation/widgets/calculator/amount_calculator_field_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/calculator/amount_calculator_keyboard_widget.dart';
 
-final class AmountCalculatorWidget extends StatefulWidget {
-  final int value;
-  final IMoneyFormatter formatter;
-
-  const AmountCalculatorWidget({
-    super.key,
-    required this.value,
-    required this.formatter,
-  });
-
+final class const AmountCalculatorWidget({
+  super.key,
+  required final int value,
+  required final IMoneyFormatter formatter,
+}) extends StatefulWidget {
   @override
   State<AmountCalculatorWidget> createState() => _AmountCalculatorWidgetState();
 }

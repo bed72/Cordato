@@ -3,11 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart' show LocalStorage;
 import 'package:cordato/features/authentication/domain/enums/storage_key.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage_client.dart';
 
-final class SupabaseStorageClient extends LocalStorage {
-  final IStorageClient client;
-
-  const SupabaseStorageClient({required this.client});
-
+final class const SupabaseStorageClient({required final IStorageClient client})
+    extends LocalStorage {
   @override
   Future<void> initialize() async {}
 

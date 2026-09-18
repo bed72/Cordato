@@ -6,12 +6,11 @@ import 'package:cordato/features/core/presentation/widgets/toast/toast.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/text_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 
-final class ToastWidget extends StatelessWidget {
-  final ToastData data;
-  final VoidCallback onDismiss;
-
-  const ToastWidget({super.key, required this.data, required this.onDismiss});
-
+final class const ToastWidget({
+  super.key,
+  required final ToastData data,
+  required final VoidCallback onDismiss,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = getToastPalette(context, data.variant);

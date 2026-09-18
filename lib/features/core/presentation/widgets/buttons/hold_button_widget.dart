@@ -5,22 +5,14 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/circular_progress_indicator_widget.dart';
 
-class HoldButtonWidget extends StatefulWidget {
-  final String label;
-  final bool isLoading;
-  final Duration holdDuration;
-  final VoidCallback? onTap;
-  final VoidCallback? onHoldComplete;
-
-  const HoldButtonWidget({
-    super.key,
-    required this.label,
-    required this.onTap,
-    this.onHoldComplete,
-    this.isLoading = false,
-    this.holdDuration = const Duration(milliseconds: 1500),
-  });
-
+class const HoldButtonWidget({
+  super.key,
+  required final String label,
+  required final VoidCallback? onTap,
+  final VoidCallback? onHoldComplete,
+  final bool isLoading = false,
+  final Duration holdDuration = const Duration(milliseconds: 1500),
+}) extends StatefulWidget {
   @override
   State<HoldButtonWidget> createState() => HoldButtonWidgetState();
 }

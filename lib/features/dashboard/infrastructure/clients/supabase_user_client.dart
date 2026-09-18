@@ -6,11 +6,8 @@ abstract interface class IUserClient {
   Future<UserEntity?> getUser();
 }
 
-final class SupabaseUserClient implements IUserClient {
-  final SupabaseClient _client;
-
-  const SupabaseUserClient({required this._client});
-
+final class const SupabaseUserClient({required final SupabaseClient _client})
+    implements IUserClient {
   @override
   Future<UserEntity?> getUser() async {
     final user = _client.auth.currentUser;

@@ -9,16 +9,17 @@ const cordatoPhonePreviewSize = Size(390.0, 844.0);
 Widget cordatoPreviewWrapper(Widget child) =>
     _LocaleReadyWidget(child: MaterialPreviewWidget(child: child));
 
-final class CordatoPreview extends Preview {
-  const CordatoPreview({super.name, super.size, super.group, super.brightness})
-    : super(wrapper: cordatoPreviewWrapper);
+final class const CordatoPreview({
+  super.name,
+  super.size,
+  super.group,
+  super.brightness,
+}) extends Preview {
+  this : super(wrapper: cordatoPreviewWrapper);
 }
 
-class _LocaleReadyWidget extends StatefulWidget {
-  final Widget child;
-
-  const _LocaleReadyWidget({required this.child});
-
+class const _LocaleReadyWidget({required final Widget child})
+    extends StatefulWidget {
   @override
   State<_LocaleReadyWidget> createState() => _LocaleReadyWidgetState();
 }

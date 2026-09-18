@@ -4,11 +4,10 @@ import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
-final class ExpenseDatePickerWidget extends StatefulWidget {
-  final DateTime date;
-
-  const ExpenseDatePickerWidget({super.key, required this.date});
-
+final class const ExpenseDatePickerWidget({
+  super.key,
+  required final DateTime date,
+}) extends StatefulWidget {
   @override
   State<ExpenseDatePickerWidget> createState() =>
       _ExpenseDatePickerWidgetState();

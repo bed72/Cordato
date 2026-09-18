@@ -2,22 +2,14 @@ import 'package:material_ui/material_ui.dart';
 
 enum ShakeAnimationConstant { horizontal, vertical }
 
-class ShakeAnimation extends StatefulWidget {
-  final Widget child;
-  final bool shake;
-  final int seconds;
-  final double offset;
-  final ShakeAnimationConstant direction;
-
-  const ShakeAnimation({
-    super.key,
-    required this.child,
-    required this.shake,
-    this.offset = 6,
-    this.seconds = 2,
-    this.direction = .horizontal,
-  });
-
+class const ShakeAnimation({
+  super.key,
+  required final Widget child,
+  required final bool shake,
+  final double offset = 6,
+  final int seconds = 2,
+  final ShakeAnimationConstant direction = .horizontal,
+}) extends StatefulWidget {
   @override
   State<ShakeAnimation> createState() => _ShakeAnimationState();
 }

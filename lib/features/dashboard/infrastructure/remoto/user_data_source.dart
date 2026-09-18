@@ -5,11 +5,8 @@ abstract interface class IUserDataSource {
   Future<UserEntity?> getUser();
 }
 
-final class UserDataSource implements IUserDataSource {
-  final IUserClient _client;
-
-  const UserDataSource({required this._client});
-
+final class const UserDataSource({required final IUserClient _client})
+    implements IUserDataSource {
   @override
   Future<UserEntity?> getUser() => _client.getUser();
 }

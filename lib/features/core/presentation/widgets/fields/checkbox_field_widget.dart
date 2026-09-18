@@ -2,20 +2,13 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-class CheckboxFieldWidget extends StatelessWidget {
-  final bool checked;
-  final String label;
-  final String? failure;
-  final ValueChanged<bool> onChanged;
-
-  const CheckboxFieldWidget({
-    super.key,
-    required this.checked,
-    required this.label,
-    required this.onChanged,
-    this.failure,
-  });
-
+class const CheckboxFieldWidget({
+  super.key,
+  required final bool checked,
+  required final String label,
+  required final ValueChanged<bool> onChanged,
+  final String? failure,
+}) extends StatelessWidget {
   bool get _isFailure => failure != null;
 
   @override

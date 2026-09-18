@@ -4,20 +4,13 @@ import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
-final class AmountFieldWidget extends StatelessWidget {
-  final int value;
-  final IMoneyFormatter formatter;
-  final String? failure;
-  final VoidCallback? onTap;
-
-  const AmountFieldWidget({
-    super.key,
-    required this.value,
-    required this.onTap,
-    required this.formatter,
-    this.failure,
-  });
-
+final class const AmountFieldWidget({
+  super.key,
+  required final int value,
+  required final VoidCallback? onTap,
+  required final IMoneyFormatter formatter,
+  final String? failure,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BounceWidget.withOnPress(

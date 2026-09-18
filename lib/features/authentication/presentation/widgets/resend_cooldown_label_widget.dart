@@ -2,11 +2,10 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class ResendCooldownLabelWidget extends StatelessWidget {
-  final Duration remaining;
-
-  const ResendCooldownLabelWidget({super.key, required this.remaining});
-
+final class const ResendCooldownLabelWidget({
+  super.key,
+  required final Duration remaining,
+}) extends StatelessWidget {
   String? get _label {
     final seconds = (remaining.inMilliseconds / 1000).ceil();
     if (seconds == 0) return null;

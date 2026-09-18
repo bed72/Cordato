@@ -2,11 +2,10 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class AvatarDashboardWidget extends StatelessWidget {
-  final String initial;
-
-  const AvatarDashboardWidget({super.key, required this.initial});
-
+final class const AvatarDashboardWidget({
+  super.key,
+  required final String initial,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(

@@ -1,7 +1,3 @@
-enum PostgresErrorCodeEnum {
-  exclusionViolation('23P01');
-
-  final String value;
-
-  const PostgresErrorCodeEnum(this.value);
+enum PostgresErrorCodeEnum(final String value) {
+  exclusionViolation('23P01'),
 }

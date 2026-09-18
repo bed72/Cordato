@@ -1,19 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
-class ShimmerAnimation extends StatefulWidget {
-  final Widget child;
-  final Duration pause;
-  final Duration duration;
-  final BorderRadiusGeometry radius;
-
-  const ShimmerAnimation({
-    super.key,
-    required this.child,
-    this.radius = .zero,
-    this.pause = const Duration(milliseconds: 5000),
-    this.duration = const Duration(milliseconds: 2000),
-  });
-
+class const ShimmerAnimation({
+  super.key,
+  required final Widget child,
+  final BorderRadiusGeometry radius = .zero,
+  final Duration pause = const Duration(milliseconds: 5000),
+  final Duration duration = const Duration(milliseconds: 2000),
+}) extends StatefulWidget {
   @override
   State<ShimmerAnimation> createState() => _ShimmerAnimationState();
 }

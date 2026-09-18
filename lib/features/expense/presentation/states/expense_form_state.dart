@@ -1,20 +1,11 @@
-final class ExpenseFormState {
-  final int value;
-  final DateTime? date;
-  final String description;
-  final String? valueFailure;
-  final String? dateFailure;
-  final String? descriptionFailure;
-
-  const ExpenseFormState({
-    this.value = 0,
-    this.date,
-    this.description = '',
-    this.valueFailure,
-    this.dateFailure,
-    this.descriptionFailure,
-  });
-
+final class const ExpenseFormState({
+  final int value = 0,
+  final DateTime? date,
+  final String description = '',
+  final String? valueFailure,
+  final String? dateFailure,
+  final String? descriptionFailure,
+}) {
   ExpenseFormState copyWith({
     int? value,
     DateTime? date,

@@ -5,20 +5,13 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 
 import 'package:cordato/features/settings/presentation/widgets/settings_premium_badge_widget.dart';
 
-final class SettingsItemWidget extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isPremium;
-  final VoidCallback? onPressed;
-
-  const SettingsItemWidget({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-    this.isPremium = false,
-  });
-
+final class const SettingsItemWidget({
+  super.key,
+  required final IconData icon,
+  required final String label,
+  required final VoidCallback? onPressed,
+  final bool isPremium = false,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = SizedBox(

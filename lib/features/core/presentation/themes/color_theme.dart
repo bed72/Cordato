@@ -1,55 +1,30 @@
 import 'package:material_ui/material_ui.dart';
 
 @immutable
-class AppColors extends ThemeExtension<AppColors> {
-  const AppColors({
-    required this.background,
-    required this.surface,
-    required this.surfaceSubtle,
-    required this.field,
-    required this.text,
-    required this.textMuted,
-    required this.textOnPrimary,
-    required this.primary,
-    required this.primarySoft,
-    required this.selection,
-    required this.border,
-    required this.borderSubtle,
-    required this.success,
-    required this.textOnSuccess,
-    required this.error,
-    required this.textOnError,
-    required this.errorSoft,
-    required this.textOnErrorSoft,
-    required this.info,
-    required this.textOnInfo,
-    required this.warning,
-    required this.textOnWarning,
-  });
-
-  final Color background;
-  final Color surface;
-  final Color surfaceSubtle;
-  final Color field;
-  final Color text;
-  final Color textMuted;
-  final Color textOnPrimary;
-  final Color primary;
-  final Color primarySoft;
-  final Color selection;
-  final Color border;
-  final Color borderSubtle;
-  final Color success;
-  final Color textOnSuccess;
-  final Color error;
-  final Color textOnError;
-  final Color errorSoft;
-  final Color textOnErrorSoft;
-  final Color info;
-  final Color textOnInfo;
-  final Color warning;
-  final Color textOnWarning;
-
+class const AppColors({
+  required final Color background,
+  required final Color surface,
+  required final Color surfaceSubtle,
+  required final Color field,
+  required final Color text,
+  required final Color textMuted,
+  required final Color textOnPrimary,
+  required final Color primary,
+  required final Color primarySoft,
+  required final Color selection,
+  required final Color border,
+  required final Color borderSubtle,
+  required final Color success,
+  required final Color textOnSuccess,
+  required final Color error,
+  required final Color textOnError,
+  required final Color errorSoft,
+  required final Color textOnErrorSoft,
+  required final Color info,
+  required final Color textOnInfo,
+  required final Color warning,
+  required final Color textOnWarning,
+}) extends ThemeExtension<AppColors> {
   @override
   AppColors copyWith({
     Color? background,

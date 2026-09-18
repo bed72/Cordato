@@ -5,19 +5,12 @@ import 'package:cordato/features/dashboard/presentation/commands/get_user_name_c
 import 'package:cordato/features/dashboard/presentation/widgets/menu_button_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/notification_button_dashboard_widget.dart';
 
-final class AppBarDashboardWidget extends StatelessWidget
-    implements PreferredSizeWidget {
-  final GetUserNameCommand command;
-  final VoidCallback? onMenuPressed;
-  final VoidCallback? onNotificationsPressed;
-
-  const AppBarDashboardWidget({
-    super.key,
-    required this.command,
-    this.onMenuPressed,
-    this.onNotificationsPressed,
-  });
-
+final class const AppBarDashboardWidget({
+  super.key,
+  required final GetUserNameCommand command,
+  final VoidCallback? onMenuPressed,
+  final VoidCallback? onNotificationsPressed,
+}) extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(90.0);
 

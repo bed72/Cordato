@@ -1,10 +1,6 @@
-enum SupabaseTableEnum {
+enum SupabaseTableEnum(final String value) {
   budgets('budgets'),
   expenses('expenses'),
   profiles('profiles'),
-  pushTokens('push_tokens');
-
-  final String value;
-
-  const SupabaseTableEnum(this.value);
+  pushTokens('push_tokens'),
 }

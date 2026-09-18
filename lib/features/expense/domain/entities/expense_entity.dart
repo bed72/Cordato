@@ -1,15 +1,9 @@
-final class ExpenseEntity {
+final class const ExpenseEntity._({
+  required final DateTime date,
+  required final int amount,
+  required final String description,
+}) {
   static const maxAmount = 9999999999999;
-
-  final int amount;
-  final DateTime date;
-  final String description;
-
-  const ExpenseEntity._({
-    required this.date,
-    required this.amount,
-    required this.description,
-  });
 
   static ExpenseEntity? create({
     required int amount,

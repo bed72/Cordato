@@ -2,20 +2,13 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class BottomSheetScaffoldWidget extends StatelessWidget {
-  final Widget child;
-  final String? title;
-  final String? subtitle;
-  final EdgeInsetsGeometry? contentPadding;
-
-  const BottomSheetScaffoldWidget({
-    super.key,
-    required this.child,
-    this.title,
-    this.subtitle,
-    this.contentPadding,
-  });
-
+final class const BottomSheetScaffoldWidget({
+  super.key,
+  required final Widget child,
+  final String? title,
+  final String? subtitle,
+  final EdgeInsetsGeometry? contentPadding,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = context.radius.cornerRadius300;

@@ -2,18 +2,12 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-class LoopAnimation extends StatefulWidget {
-  final List<Widget> items;
-  final Duration pauseDuration;
-  final Duration animationDuration;
-
-  const LoopAnimation({
-    super.key,
-    required this.items,
-    this.pauseDuration = const Duration(milliseconds: 1400),
-    this.animationDuration = const Duration(milliseconds: 1000),
-  });
-
+class const LoopAnimation({
+  super.key,
+  required final List<Widget> items,
+  final Duration pauseDuration = const Duration(milliseconds: 1400),
+  final Duration animationDuration = const Duration(milliseconds: 1000),
+}) extends StatefulWidget {
   @override
   State<LoopAnimation> createState() => _LoopAnimationState();
 }

@@ -10,11 +10,9 @@ abstract interface class IAuthenticationDataSource {
   Future<bool> confirmCode({required String email, required String code});
 }
 
-final class AuthenticationDataSource implements IAuthenticationDataSource {
-  final IAuthenticationClient _client;
-
-  AuthenticationDataSource({required this._client});
-
+final class AuthenticationDataSource({
+  required final IAuthenticationClient _client,
+}) implements IAuthenticationDataSource {
   @override
   Future<bool> signOut() => _client.signOut();
 

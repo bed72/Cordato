@@ -6,11 +6,10 @@ import 'package:cordato/features/dashboard/presentation/commands/get_user_name_c
 import 'package:cordato/features/dashboard/presentation/widgets/avatar_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/user/user_name_skeleton_widget.dart';
 
-final class UserNameWidget extends StatelessWidget {
-  final GetUserNameCommand command;
-
-  const UserNameWidget({super.key, required this.command});
-
+final class const UserNameWidget({
+  super.key,
+  required final GetUserNameCommand command,
+}) extends StatelessWidget {
   String _initial(String name) =>
       name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
 

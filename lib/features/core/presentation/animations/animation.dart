@@ -2,11 +2,8 @@ import 'package:flutter/widgets.dart';
 
 const _duration = Duration(milliseconds: 300);
 
-class SwitcherAnimation extends StatelessWidget {
-  final Widget child;
-
-  const SwitcherAnimation({super.key, required this.child});
-
+class const SwitcherAnimation({super.key, required final Widget child})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
@@ -18,11 +15,8 @@ class SwitcherAnimation extends StatelessWidget {
   }
 }
 
-class SwitcherSizeAnimation extends StatelessWidget {
-  final Widget child;
-
-  const SwitcherSizeAnimation({super.key, required this.child});
-
+class const SwitcherSizeAnimation({super.key, required final Widget child})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
@@ -39,16 +33,11 @@ class SwitcherSizeAnimation extends StatelessWidget {
   }
 }
 
-class SlideAnimation extends StatelessWidget {
-  final Widget child;
-  final bool condition;
-
-  const SlideAnimation({
-    super.key,
-    required this.child,
-    required this.condition,
-  });
-
+class const SlideAnimation({
+  super.key,
+  required final Widget child,
+  required final bool condition,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSlide(

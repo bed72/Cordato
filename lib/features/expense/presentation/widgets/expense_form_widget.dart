@@ -13,20 +13,13 @@ import 'package:cordato/features/expense/presentation/validators/expense_form_va
 import 'package:cordato/features/expense/presentation/mixins/expense_form_widget_state_mixin.dart';
 import 'package:cordato/features/expense/presentation/widgets/fields/expense_description_field_widget.dart';
 
-final class ExpenseFormWidget extends StatefulWidget {
-  final IMoneyFormatter formatter;
-  final CreateExpenseCommand command;
-  final ExpenseFormValidator validator;
-  final ValueChanged<BuildContext> onExpenseCreated;
-
-  const ExpenseFormWidget({
-    super.key,
-    required this.command,
-    required this.formatter,
-    required this.validator,
-    required this.onExpenseCreated,
-  });
-
+final class const ExpenseFormWidget({
+  super.key,
+  required final CreateExpenseCommand command,
+  required final IMoneyFormatter formatter,
+  required final ExpenseFormValidator validator,
+  required final ValueChanged<BuildContext> onExpenseCreated,
+}) extends StatefulWidget {
   @override
   State<ExpenseFormWidget> createState() => _ExpenseFormWidgetState();
 }

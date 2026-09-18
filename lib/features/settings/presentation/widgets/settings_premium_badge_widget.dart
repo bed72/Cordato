@@ -2,9 +2,8 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class SettingsPremiumBadgeWidget extends StatelessWidget {
-  const SettingsPremiumBadgeWidget({super.key});
-
+final class const SettingsPremiumBadgeWidget({super.key})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const .symmetric(horizontal: 8.0, vertical: 2.0),

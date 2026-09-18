@@ -1,21 +1,13 @@
 import 'package:flutter/material.dart';
 
-class IconWidget extends StatelessWidget {
-  final IconData icon;
-  final Color? color;
-  final double? size;
-  final String? semanticsLabel;
-  final FontWeight? fontWeight;
-
-  const IconWidget({
-    super.key,
-    required this.icon,
-    this.size,
-    this.color,
-    this.fontWeight,
-    this.semanticsLabel,
-  });
-
+class const IconWidget({
+  super.key,
+  required final IconData icon,
+  final double? size,
+  final Color? color,
+  final FontWeight? fontWeight,
+  final String? semanticsLabel,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Icon(
     icon,

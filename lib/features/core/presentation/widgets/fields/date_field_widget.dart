@@ -4,22 +4,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
 
-final class DateFieldWidget extends StatelessWidget {
-  final String label;
-  final String hint;
-  final String? failure;
-  final VoidCallback? onTap;
-  final DateTimeRange? value;
-
-  const DateFieldWidget({
-    super.key,
-    required this.label,
-    required this.hint,
-    required this.value,
-    required this.onTap,
-    this.failure,
-  });
-
+final class const DateFieldWidget({
+  super.key,
+  required final String label,
+  required final String hint,
+  required final DateTimeRange? value,
+  required final VoidCallback? onTap,
+  final String? failure,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BounceWidget.withOnPress(

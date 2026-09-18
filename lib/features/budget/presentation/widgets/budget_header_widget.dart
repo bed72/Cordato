@@ -2,9 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class BudgetHeaderWidget extends StatelessWidget {
-  const BudgetHeaderWidget({super.key});
-
+final class const BudgetHeaderWidget({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
     spacing: 6.0,

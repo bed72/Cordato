@@ -6,11 +6,10 @@ import 'package:cordato/features/core/presentation/widgets/buttons/elevated_butt
 
 import 'package:cordato/features/budget/presentation/mixins/budget_date_range_picker_widget_state_mixin.dart';
 
-final class BudgetDateRangePickerWidget extends StatefulWidget {
-  final DateTimeRange? range;
-
-  const BudgetDateRangePickerWidget({super.key, this.range});
-
+final class const BudgetDateRangePickerWidget({
+  super.key,
+  final DateTimeRange? range,
+}) extends StatefulWidget {
   @override
   State<BudgetDateRangePickerWidget> createState() =>
       _BudgetDateRangePickerWidgetState();

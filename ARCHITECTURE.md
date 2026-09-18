@@ -2,9 +2,9 @@
 
 ## Visão Geral
 
-Cordato é um aplicativo Flutter de finanças pessoais organizado por feature e
-por camadas. Cada pessoa é dona dos próprios dados financeiros; o casal é uma
-lente de leitura compartilhada, nunca um dono de dinheiro.
+Cordato é um aplicativo Flutter de finanças pessoais e familiares organizado
+por feature e por camadas. Cada pessoa é dona dos próprios dados financeiros;
+a família é uma lente de leitura compartilhada, nunca uma dona de dinheiro.
 
 O backend Kotlin legado é uma referência de domínio. A implementação de banco,
 autorização e mutações atual está versionada em `supabase/`; não há um backend
@@ -24,7 +24,7 @@ Os contextos financeiros e seu estado atual são:
 
 - `expense`: implementado. Registra gastos individuais por RPC Supabase.
 - `budget`: implementado. Registra tetos individuais por intervalo de datas por RPC Supabase.
-- `couple`: planejado. Será somente uma leitura combinada autorizada.
+- `family`: planejado. Será uma organização de membros com leitura combinada autorizada.
 - `insight`: placeholder de apresentação visível. As análises derivadas e
   somente leitura continuam planejadas e não possuem dados ou consultas.
 
@@ -37,11 +37,11 @@ Invariantes do produto:
 - dinheiro é BRL em centavos inteiros positivos;
 - gastos não referenciam orçamentos; o pertencimento é derivado pela data;
 - orçamentos do mesmo dono não podem sobrepor dias;
-- pareamento nunca concede escrita nos dados financeiros da outra pessoa;
-- dissolver um casal preserva os dados individuais;
-- visões de casal e insights são recalculados, não persistidos como dados-fonte.
+- participar de uma família nunca concede escrita nos dados financeiros de outro membro;
+- sair ou encerrar uma família preserva os dados individuais;
+- visões de família e insights são recalculados, não persistidos como dados-fonte.
 
-Contextos proprietários não dependem de lentes. Quando implementados, `couple`
+Contextos proprietários não dependem de lentes. Quando implementados, `family`
 e `insight` só poderão ler contextos financeiros por contratos próprios, com
 adapters concretos na borda de infrastructure. O teste
 `test/architecture/bounded_context_dependencies_test.dart` protege essas
@@ -90,6 +90,40 @@ Commands usam `command_it`; convertem um `Left` em erro observável por
 efêmero pertence à screen ou widget. Quando lifecycle, controllers e handlers
 prejudicarem a leitura, use um mixin específico em `presentation/mixins/`,
 restrito ao `State` correspondente e responsável por seu `dispose`.
+
+## Padrão Dart De Construção
+
+O baseline do projeto usa Dart 3.13 ou superior e primary constructors como
+padrão para declarações elegíveis em todas as camadas. A sintaxe é uma decisão
+estrutural do código e não altera a direção das dependências: presentation
+continua dependendo de contratos do domínio, e SDKs continuam restritos à borda
+de infrastructure.
+
+Use primary constructor quando houver um único caminho generativo principal e
+os parâmetros declararem estado, derivarem campos ou forem encaminhados para
+`super`. Isso inclui widgets que recebem somente `super.key`, enums com payload,
+failures, entidades com construção controlada, estados imutáveis, repositories,
+data sources, clients e commands cuja inicialização permaneça clara.
+
+Campos imutáveis induzidos usam tipo explícito e `final`. Parâmetros transitórios,
+como um repository usado apenas para criar um `Command`, mantêm o tipo explícito
+sem `final` ou `var`. Preserve `const`, nomes e visibilidade de construtores,
+parâmetros, defaults, nulabilidade, `required`, super parameters, factories,
+redirects e tear-offs `Type.new`.
+
+Construtores tradicionais permanecem somente quando primary syntax não remove
+boilerplate ou torna construção e lifecycle menos claros. Os casos esperados são
+construtores vazios sem estado, múltiplos caminhos generativos, bodies com ordem
+de inicialização relevante e redirects que centralizam lifecycle. Interfaces,
+mixins comuns, extensões, classes `State` e mocks não recebem construtor explícito
+apenas por uniformidade.
+
+Daqui para frente, tipos novos elegíveis devem nascer com primary constructor.
+Uma exceção nova precisa ser justificável na revisão pelo comportamento de
+construção, não por preferência de estilo. Conversões permanecem estritamente
+sintáticas e não podem alterar contratos, responsabilidades, regras de domínio
+ou acesso entre camadas. A matriz operacional e os exemplos canônicos estão em
+[`AGENTS.md`](AGENTS.md#primary-constructors).
 
 ## Inicialização, Módulos E Rotas
 
@@ -195,7 +229,7 @@ não a UI Flutter, são a fronteira que aplica propriedade individual.
 Toda mudança de schema, RLS, grants, triggers ou funções deve entrar em uma nova
 migration. Uma feature financeira deve definir seu contexto proprietário,
 atualizar a migration/RPC correspondente e cobrir autorização e invariantes nos
-testes de banco. Couple e insight só ganham tabelas, RPCs ou políticas quando
+testes de banco. `family` e `insight` só ganham tabelas, RPCs ou políticas quando
 forem implementados como features.
 
 ## Interface E Tema

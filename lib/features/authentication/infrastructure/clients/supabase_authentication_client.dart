@@ -11,15 +11,10 @@ abstract interface class IAuthenticationClient {
   Future<bool> confirmCode({required String email, required String code});
 }
 
-final class SupabaseAuthenticationClient implements IAuthenticationClient {
-  final String _redirectUrl;
-  final SupabaseClient _client;
-
-  SupabaseAuthenticationClient({
-    required this._client,
-    required this._redirectUrl,
-  });
-
+final class SupabaseAuthenticationClient({
+  required final String _redirectUrl,
+  required final SupabaseClient _client,
+}) implements IAuthenticationClient {
   @override
   Future<bool> checkSession() async => _client.auth.currentSession != null;
 
@@ -40,8 +35,8 @@ final class SupabaseAuthenticationClient implements IAuthenticationClient {
 
   @override
   Future<bool> confirmCode({
-    required String email,
     required String code,
+    required String email,
   }) async {
     try {
       await _client.auth.verifyOTP(

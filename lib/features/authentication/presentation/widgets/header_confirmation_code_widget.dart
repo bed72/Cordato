@@ -2,9 +2,8 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class HeaderConfirmationCodeWidget extends StatelessWidget {
-  const HeaderConfirmationCodeWidget({super.key});
-
+final class const HeaderConfirmationCodeWidget({super.key})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(

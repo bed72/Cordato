@@ -3,11 +3,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
 
-final class NotificationButtonDashboardWidget extends StatelessWidget {
-  final VoidCallback? onPress;
-
-  const NotificationButtonDashboardWidget({super.key, required this.onPress});
-
+final class const NotificationButtonDashboardWidget({
+  super.key,
+  required final VoidCallback? onPress,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,

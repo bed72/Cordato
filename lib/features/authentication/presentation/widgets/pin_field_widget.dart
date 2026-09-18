@@ -8,20 +8,13 @@ import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class PinFieldWidget extends StatefulWidget {
-  final Validation<String> validation;
-  final TextEditingController controller;
-  final ValueChanged<String>? onChanged;
-  final ValueChanged<String>? onCompleted;
-
-  const PinFieldWidget({
-    super.key,
-    required this.controller,
-    required this.validation,
-    this.onChanged,
-    this.onCompleted,
-  });
-
+final class const PinFieldWidget({
+  super.key,
+  required final TextEditingController controller,
+  required final Validation<String> validation,
+  final ValueChanged<String>? onChanged,
+  final ValueChanged<String>? onCompleted,
+}) extends StatefulWidget {
   @override
   State<PinFieldWidget> createState() => _PinFieldWidgetState();
 }

@@ -1,9 +1,4 @@
-final class UserEntity {
-  final String? name;
-  final String? email;
-
-  const UserEntity({this.name, this.email});
-
+final class const UserEntity({final String? name, final String? email}) {
   String get nickname {
     final userName = name?.trim();
     if (userName != null && userName.isNotEmpty) return userName;

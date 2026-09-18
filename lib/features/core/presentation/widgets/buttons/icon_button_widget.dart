@@ -5,32 +5,19 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 
-final class IconButtonWidget extends StatelessWidget {
-  final IconData icon;
-  final Color backgroundColor;
-  final double? width;
-  final double? height;
-  final Color? iconColor;
-  final double? iconSize;
-  final VoidCallback? onPress;
-  final bool? withoutBackground;
-  final Gradient? backgroundGradient;
-  final BorderRadiusGeometry? borderRadius;
-
-  const IconButtonWidget({
-    super.key,
-    required this.icon,
-    required this.onPress,
-    required this.backgroundColor,
-    this.width,
-    this.height,
-    this.iconSize,
-    this.iconColor,
-    this.borderRadius,
-    this.withoutBackground,
-    this.backgroundGradient,
-  });
-
+final class const IconButtonWidget({
+  super.key,
+  required final IconData icon,
+  required final VoidCallback? onPress,
+  required final Color backgroundColor,
+  final double? width,
+  final double? height,
+  final double? iconSize,
+  final Color? iconColor,
+  final BorderRadiusGeometry? borderRadius,
+  final bool? withoutBackground,
+  final Gradient? backgroundGradient,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BounceWidget.withOnPress(

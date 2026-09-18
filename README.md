@@ -1,21 +1,21 @@
 # Cordato
 
-Aplicativo Flutter de finanças pessoais. O objetivo é ajudar cada pessoa a
-cuidar do próprio dinheiro com clareza e, quando houver pareamento, oferecer
-uma visão compartilhada das finanças do casal.
+Aplicativo Flutter de finanças pessoais e familiares. O objetivo é ajudar cada
+pessoa a cuidar do próprio dinheiro com clareza e, quando fizer parte de uma
+família, oferecer uma visão compartilhada das finanças de seus membros.
 
 ## Produto
 
 O modelo de negócio foi definido no backend legado em Kotlin. O backend ativo
 do aplicativo é o Supabase versionado neste repositório. A regra central é:
 
-> A pessoa é dona dos próprios dados. O casal é apenas uma lente de leitura.
+> A pessoa é dona dos próprios dados. A família é apenas uma lente de leitura.
 
 Os bounded contexts do produto são:
 
 - `expense`: implementado. Fatos atômicos de gastos de uma pessoa.
 - `budget`: implementado. Tetos planejados por intervalo de datas; gasto e saldo são derivados.
-- `couple`: planejado. Pareamento com acesso compartilhado somente de leitura.
+- `family`: planejado. Organização familiar com acesso combinado somente de leitura.
 - `insight`: placeholder de apresentação visível. Análises financeiras derivadas,
   somente leitura e sem persistência própria continuam planejadas.
 
@@ -37,8 +37,8 @@ O app já possui:
   Configurações, com Transações e Insights ainda como placeholders;
 - tema claro/escuro e componentes de apresentação reutilizáveis.
 
-As próximas features devem priorizar pareamento e insights, sem transformar o
-casal em dono de dados financeiros.
+As próximas features devem priorizar família e insights, sem transformar o
+grupo familiar em dono dos dados financeiros de seus membros.
 
 ## Arquitetura
 

@@ -7,11 +7,8 @@ import 'package:cordato/features/core/presentation/widgets/toast/toast_widget.da
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/toast/toast_notifier.dart';
 
-final class ToastProviderWidget extends StatefulWidget {
-  final Widget child;
-
-  const ToastProviderWidget({super.key, required this.child});
-
+final class const ToastProviderWidget({super.key, required final Widget child})
+    extends StatefulWidget {
   static ToastNotifier of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<ToastScope>();
     if (scope == null) {

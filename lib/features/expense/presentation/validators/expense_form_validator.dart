@@ -5,17 +5,11 @@ import 'package:cordato/features/expense/presentation/validators/expense_date_va
 import 'package:cordato/features/expense/presentation/validators/expense_value_validation.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_description_validation.dart';
 
-final class ExpenseFormValidator {
-  final ExpenseDateValidation dateValidation;
-  final ExpenseValueValidation valueValidation;
-  final ExpenseDescriptionValidation descriptionValidation;
-
-  const ExpenseFormValidator({
-    required this.valueValidation,
-    required this.dateValidation,
-    required this.descriptionValidation,
-  });
-
+final class const ExpenseFormValidator({
+  required final ExpenseValueValidation valueValidation,
+  required final ExpenseDateValidation dateValidation,
+  required final ExpenseDescriptionValidation descriptionValidation,
+}) {
   ({ExpenseFormState state, bool isValid}) call(ExpenseFormState state) {
     final value = valueValidation(state.value);
     final date = dateValidation(state.date);

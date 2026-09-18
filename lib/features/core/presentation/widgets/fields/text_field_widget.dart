@@ -6,56 +6,31 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/colored_text_selection_controls.dart';
 
-class TextFieldWidget extends StatefulWidget {
-  final String hint;
-  final int maxLines;
-  final bool enabled;
-  final String label;
-  final bool readOnly;
-  final bool absorbing;
-  final bool autofocus;
-  final String? failure;
-  final bool obscureText;
-  final String? initialValue;
-  final IconData? trailingIcon;
-  final TextInputType? keyboardType;
-  final TextInputAction? inputAction;
-  final bool hideTrailingIconWhenEmpty;
-  final Iterable<String>? autofillHints;
-  final ValueChanged<String>? onChanged;
-  final VoidCallback? onTrailingIconTap;
-  final ValueChanged<String>? onSubmitted;
-  final TextEditingController? controller;
-  final ValueChanged<bool>? onFocusChanged;
-  final TextCapitalization textCapitalization;
-  final List<TextInputFormatter>? inputFormatters;
-
-  const TextFieldWidget({
-    super.key,
-    required this.hint,
-    required this.label,
-    this.failure,
-    this.onChanged,
-    this.controller,
-    this.inputAction,
-    this.initialValue,
-    this.trailingIcon,
-    this.keyboardType,
-    this.onSubmitted,
-    this.maxLines = 1,
-    this.autofillHints,
-    this.onFocusChanged,
-    this.enabled = true,
-    this.inputFormatters,
-    this.readOnly = false,
-    this.absorbing = false,
-    this.autofocus = false,
-    this.onTrailingIconTap,
-    this.obscureText = false,
-    this.textCapitalization = .none,
-    this.hideTrailingIconWhenEmpty = false,
-  });
-
+class const TextFieldWidget({
+  super.key,
+  required final String hint,
+  required final String label,
+  final String? failure,
+  final ValueChanged<String>? onChanged,
+  final TextEditingController? controller,
+  final TextInputAction? inputAction,
+  final String? initialValue,
+  final IconData? trailingIcon,
+  final TextInputType? keyboardType,
+  final ValueChanged<String>? onSubmitted,
+  final int maxLines = 1,
+  final Iterable<String>? autofillHints,
+  final ValueChanged<bool>? onFocusChanged,
+  final bool enabled = true,
+  final List<TextInputFormatter>? inputFormatters,
+  final bool readOnly = false,
+  final bool absorbing = false,
+  final bool autofocus = false,
+  final VoidCallback? onTrailingIconTap,
+  final bool obscureText = false,
+  final TextCapitalization textCapitalization = .none,
+  final bool hideTrailingIconWhenEmpty = false,
+}) extends StatefulWidget {
   @override
   State<TextFieldWidget> createState() => _TextFieldWidgetState();
 }

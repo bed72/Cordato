@@ -3,9 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/core/presentation/widgets/images/image_widget.dart';
 
-final class WelcomeIconWidget extends StatelessWidget {
-  const WelcomeIconWidget({super.key});
-
+final class const WelcomeIconWidget({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     width: 254.0,

@@ -2,9 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class HeaderMagicLinkWidget extends StatelessWidget {
-  const HeaderMagicLinkWidget({super.key});
-
+final class const HeaderMagicLinkWidget({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(

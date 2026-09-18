@@ -4,22 +4,15 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/calculator/amount_calculator_key_widget.dart';
 
-final class AmountCalculatorKeyboardWidget extends StatelessWidget {
+final class const AmountCalculatorKeyboardWidget({
+  super.key,
+  required final ValueChanged<String> onDigit,
+  required final VoidCallback onClear,
+  required final VoidCallback onDelete,
+  required final VoidCallback onSubmit,
+}) extends StatelessWidget {
   static const _keySpacing = 4.0;
   static const _keyCount = 4.0;
-
-  final VoidCallback onClear;
-  final VoidCallback onDelete;
-  final VoidCallback onSubmit;
-  final ValueChanged<String> onDigit;
-
-  const AmountCalculatorKeyboardWidget({
-    super.key,
-    required this.onDigit,
-    required this.onClear,
-    required this.onDelete,
-    required this.onSubmit,
-  });
 
   @override
   Widget build(BuildContext context) {

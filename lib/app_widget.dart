@@ -11,18 +11,12 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/widgets/session_guard_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
 
-class AppWidget extends StatefulWidget {
-  final Future<void> Function() dispose;
-  final GlobalKey<NavigatorState> navigatorKey;
-  final ValueListenable<AuthSessionStateEnum> state;
-
-  const AppWidget({
-    super.key,
-    required this.state,
-    required this.dispose,
-    required this.navigatorKey,
-  });
-
+class const AppWidget({
+  super.key,
+  required final Future<void> Function() dispose,
+  required final GlobalKey<NavigatorState> navigatorKey,
+  required final ValueListenable<AuthSessionStateEnum> state,
+}) extends StatefulWidget {
   @override
   State<AppWidget> createState() => _AppWidgetState();
 }

@@ -2,11 +2,10 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class SettingsCardWidget extends StatelessWidget {
-  final List<Widget> children;
-
-  const SettingsCardWidget({super.key, required this.children});
-
+final class const SettingsCardWidget({
+  super.key,
+  required final List<Widget> children,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     clipBehavior: .antiAlias,

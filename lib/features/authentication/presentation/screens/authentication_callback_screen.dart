@@ -5,9 +5,8 @@ import 'package:cordato/features/core/presentation/widgets/images/image_widget.d
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/authentication/presentation/widgets/animated_ellipsis_widget.dart';
 
-final class AuthenticationCallbackScreen extends StatelessWidget {
-  const AuthenticationCallbackScreen({super.key});
-
+final class const AuthenticationCallbackScreen({super.key})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

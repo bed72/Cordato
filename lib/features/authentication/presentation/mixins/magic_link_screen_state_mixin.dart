@@ -41,11 +41,6 @@ mixin MagicLinkScreenStateMixin on State<MagicLinkScreen> {
 
       widget.command.beginConfirmation(email);
       controller.clear();
-      context.showToast(
-        variant: .success,
-        title: 'E-mail enviado',
-        description: 'Enviamos um link de acesso para o seu e-mail.',
-      );
       widget.onConfirmationCode(context);
     }
   }
