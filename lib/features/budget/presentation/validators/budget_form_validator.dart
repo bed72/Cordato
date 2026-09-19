@@ -3,18 +3,15 @@ import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/budget/presentation/states/budget_form_state.dart';
 import 'package:cordato/features/budget/presentation/validators/budget_value_validation.dart';
 import 'package:cordato/features/budget/presentation/validators/budget_date_range_validation.dart';
-import 'package:cordato/features/budget/presentation/validators/budget_description_validation.dart';
 
 final class const BudgetFormValidator({
   required final BudgetValueValidation valueValidation,
   required final BudgetDateRangeValidation dateRangeValidation,
-  required final BudgetDescriptionValidation descriptionValidation,
 }) {
   ({BudgetFormState state, bool isValid}) call(BudgetFormState state) {
     final value = valueValidation(state.value);
     final period = dateRangeValidation(state.period);
-    final description = descriptionValidation(state.description);
-    final isValid = value is Valid && period is Valid && description is Valid;
+    final isValid = value is Valid && period is Valid;
 
     return (
       isValid: isValid,
@@ -27,13 +24,8 @@ final class const BudgetFormValidator({
           Valid() => null,
           Invalid(:final message) => message,
         },
-        descriptionFailure: switch (description) {
-          Valid() => null,
-          Invalid(:final message) => message,
-        },
         clearValueFailure: value is Valid,
         clearPeriodFailure: period is Valid,
-        clearDescriptionFailure: description is Valid,
       ),
     );
   }

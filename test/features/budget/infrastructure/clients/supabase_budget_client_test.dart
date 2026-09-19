@@ -12,7 +12,6 @@ import 'package:cordato/features/budget/infrastructure/enums/budget_create_outco
 void main() {
   final budget = BudgetEntity.create(
     amount: 100000,
-    description: 'Viagem',
     endDate: DateTime(2026, 9, 30),
     startDate: DateTime(2026, 9, 1),
   )!;
@@ -36,7 +35,6 @@ void main() {
     expect(request?.url.path, '/rest/v1/rpc/create_budget');
     expect(jsonDecode(request!.body), {
       'p_amount': 100000,
-      'p_description': 'Viagem',
       'p_end_date': '2026-09-30',
       'p_start_date': '2026-09-01',
     });

@@ -20,7 +20,6 @@ final class const SupabaseBudgetClient({required final SupabaseClient client})
         'create_budget',
         params: {
           'p_amount': budget.amount,
-          'p_description': budget.description,
           'p_end_date': budget.endDate.toIsoDateString(),
           'p_start_date': budget.startDate.toIsoDateString(),
         },

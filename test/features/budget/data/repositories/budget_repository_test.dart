@@ -20,7 +20,6 @@ void main() {
       amount: 100000,
       startDate: DateTime(2026, 9, 1),
       endDate: DateTime(2026, 9, 30),
-      description: 'Viagem',
     )!;
     dataSource = _BudgetDataSourceMock();
     repository = BudgetRepository(dataSource: dataSource);

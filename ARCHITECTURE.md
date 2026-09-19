@@ -168,6 +168,14 @@ Registros importantes:
   `LogoutCommand`, que resolve o `IAuthenticationRepository` compartilhado e
   nunca acessa o Supabase diretamente.
 
+Na criação de Budget, a apresentação oferece períodos semanal, mensal e
+personalizado. A opção de repetição automática é, neste estágio,
+estado local da tela: o fluxo persiste somente o Budget corrente e não cria nem
+agenda períodos futuros.
+
+O contrato de domínio de Budget e o adapter Supabase contêm somente valor e
+intervalo de datas, sem descrição.
+
 O logout confirmado segue um único fluxo em camadas:
 
 ```text

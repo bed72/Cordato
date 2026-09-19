@@ -10,13 +10,7 @@
           "red" : "0.965"
         }
       },
-      "idiom" : "universal",
-      "appearances" : [
-        {
-          "appearance" : "luminosity",
-          "value" : "light"
-        }
-      ]
+      "idiom" : "universal"
     },
     {
       "color" : {

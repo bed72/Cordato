@@ -1,33 +1,40 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/budget/presentation/enums/budget_period_option_enum.dart';
+
 final class const BudgetFormState({
   final int value = 0,
-  final DateTimeRange? period,
   final String? valueFailure,
   final String? periodFailure,
-  final String description = '',
-  final String? descriptionFailure,
+  final DateTimeRange? period,
+  final bool isRecurring = false,
+  final BudgetPeriodOptionEnum periodOption = .monthly,
 }) {
+  factory BudgetFormState.initial(DateTime date) {
+    const option = BudgetPeriodOptionEnum.monthly;
+    return BudgetFormState(
+      periodOption: option,
+      period: option.periodStartingAt(date),
+    );
+  }
+
   BudgetFormState copyWith({
     int? value,
-    String? description,
+    bool? isRecurring,
     String? valueFailure,
     String? periodFailure,
     DateTimeRange? period,
-    String? descriptionFailure,
     bool clearValueFailure = false,
     bool clearPeriodFailure = false,
-    bool clearDescriptionFailure = false,
+    BudgetPeriodOptionEnum? periodOption,
   }) => BudgetFormState(
     value: value ?? this.value,
     period: period ?? this.period,
-    description: description ?? this.description,
+    isRecurring: isRecurring ?? this.isRecurring,
+    periodOption: periodOption ?? this.periodOption,
     valueFailure: clearValueFailure ? null : valueFailure ?? this.valueFailure,
     periodFailure: clearPeriodFailure
         ? null
         : periodFailure ?? this.periodFailure,
-    descriptionFailure: clearDescriptionFailure
-        ? null
-        : descriptionFailure ?? this.descriptionFailure,
   );
 }

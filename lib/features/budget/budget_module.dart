@@ -14,7 +14,6 @@ import 'package:cordato/features/budget/presentation/commands/create_budget_comm
 import 'package:cordato/features/budget/presentation/validators/budget_form_validator.dart';
 import 'package:cordato/features/budget/presentation/validators/budget_value_validation.dart';
 import 'package:cordato/features/budget/presentation/validators/budget_date_range_validation.dart';
-import 'package:cordato/features/budget/presentation/validators/budget_description_validation.dart';
 
 final budgetModule = createModule(
   path: RouteEnum.budget.path,
@@ -23,7 +22,6 @@ final budgetModule = createModule(
       ..add(BudgetFormValidator.new)
       ..add(BudgetValueValidation.new)
       ..add(BudgetDateRangeValidation.new)
-      ..add(BudgetDescriptionValidation.new)
       ..addLazySingleton<IBudgetDataSource>(BudgetDataSource.new)
       ..addLazySingleton<IBudgetRepository>(BudgetRepository.new)
       ..addLazySingleton<CreateBudgetCommand>(CreateBudgetCommand.new)

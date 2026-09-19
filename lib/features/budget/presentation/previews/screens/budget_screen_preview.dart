@@ -11,10 +11,9 @@ import 'package:cordato/features/budget/presentation/previews/fakes/budget_previ
 import 'package:cordato/features/budget/presentation/validators/budget_form_validator.dart';
 import 'package:cordato/features/budget/presentation/validators/budget_value_validation.dart';
 import 'package:cordato/features/budget/presentation/validators/budget_date_range_validation.dart';
-import 'package:cordato/features/budget/presentation/validators/budget_description_validation.dart';
 
 @CordatoPreview(
-  name: 'Novo orçamento',
+  name: 'Quanto você quer gastar?',
   group: 'Orçamentos / Telas',
   size: cordatoPhonePreviewSize,
 )
@@ -28,7 +27,6 @@ Widget previewBudgetScreen() => PreviewResourceWidget<CreateBudgetCommand>(
     validator: const BudgetFormValidator(
       valueValidation: BudgetValueValidation(),
       dateRangeValidation: BudgetDateRangeValidation(),
-      descriptionValidation: BudgetDescriptionValidation(),
     ),
     onBackPressed: () {},
     onBudgetCreated: (_) {},

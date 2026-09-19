@@ -56,7 +56,7 @@ final class const ActionButtonDashboardWidget({
       Semantics(
         button: true,
         enabled: onBudget != null,
-        label: 'Adicionar orçamento',
+        label: 'Definir quanto gastar',
         child: ExcludeSemantics(
           child: BounceWidget.withOnPress(
             onPress: onBudget,

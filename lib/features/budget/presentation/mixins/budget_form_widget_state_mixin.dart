@@ -5,13 +5,14 @@ import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_
 import 'package:cordato/features/core/presentation/widgets/calculator/amount_calculator_widget.dart';
 
 import 'package:cordato/features/budget/domain/entities/budget_entity.dart';
+
 import 'package:cordato/features/budget/presentation/states/budget_form_state.dart';
 import 'package:cordato/features/budget/presentation/widgets/budget_form_widget.dart';
+import 'package:cordato/features/budget/presentation/enums/budget_period_option_enum.dart';
 import 'package:cordato/features/budget/presentation/widgets/budget_date_range_picker_widget.dart';
 
 mixin BudgetFormWidgetStateMixin on State<BudgetFormWidget> {
-  BudgetFormState formState = const BudgetFormState();
-  final descriptionController = TextEditingController();
+  BudgetFormState form = .initial(.now());
 
   @override
   void initState() {
@@ -22,7 +23,6 @@ mixin BudgetFormWidgetStateMixin on State<BudgetFormWidget> {
   @override
   void dispose() {
     widget.command.create.results.removeListener(_handleCreate);
-    descriptionController.dispose();
     super.dispose();
   }
 
@@ -30,51 +30,59 @@ mixin BudgetFormWidgetStateMixin on State<BudgetFormWidget> {
     final cents = await showBottomSheetWidget<int>(
       context: context,
       title: 'Qual o valor?',
-      subtitle: 'Informe o valor do orçamento.',
+      subtitle: 'Informe quanto você quer gastar.',
       child: AmountCalculatorWidget(
-        value: formState.value,
+        value: form.value,
         formatter: widget.formatter,
       ),
     );
 
     if (!mounted || cents == null) return;
 
-    setState(
-      () =>
-          formState = formState.copyWith(value: cents, clearValueFailure: true),
-    );
+    setState(() => form = form.copyWith(value: cents, clearValueFailure: true));
   }
 
-  Future<void> selectPeriod() async {
+  Future<void> selectPeriod(BudgetPeriodOptionEnum option) async {
+    if (option != .custom) {
+      final period = option.periodStartingAt(.now());
+      if (period == null) return;
+
+      setState(
+        () => form = form.copyWith(
+          period: period,
+          periodOption: option,
+          clearPeriodFailure: true,
+        ),
+      );
+      return;
+    }
+
     final selectedPeriod = await showBottomSheetWidget<DateTimeRange>(
       context: context,
       title: 'Período',
-      subtitle: 'Selecione o período do orçamento.',
-      child: BudgetDateRangePickerWidget(range: formState.period),
+      subtitle: 'Selecione as datas deste período.',
+      child: BudgetDateRangePickerWidget(range: form.period),
     );
 
     if (!mounted || selectedPeriod == null) return;
 
     setState(
-      () => formState = formState.copyWith(
+      () => form = form.copyWith(
         period: selectedPeriod,
+        periodOption: .custom,
         clearPeriodFailure: true,
       ),
     );
   }
 
-  void updateDescription(String description) => setState(
-    () => formState = formState.copyWith(
-      description: description,
-      clearDescriptionFailure: true,
-    ),
-  );
+  void updateRecurrence(bool isRecurring) =>
+      setState(() => form = form.copyWith(isRecurring: isRecurring));
 
   void submit() {
     context.dismissKeyboard();
-    final validation = widget.validator(formState);
+    final validation = widget.validator(form);
 
-    setState(() => formState = validation.state);
+    setState(() => form = validation.state);
     if (!validation.isValid) return;
 
     final period = validation.state.period;
@@ -84,7 +92,6 @@ mixin BudgetFormWidgetStateMixin on State<BudgetFormWidget> {
       endDate: period.end,
       startDate: period.start,
       amount: validation.state.value,
-      description: validation.state.description,
     );
 
     if (budget != null) widget.command.create.run(budget);
@@ -98,7 +105,7 @@ mixin BudgetFormWidgetStateMixin on State<BudgetFormWidget> {
       context.showToast(
         variant: .error,
         description: data.error.toString(),
-        title: 'Não foi possível cadastrar o orçamento',
+        title: 'Não foi possível cadastrar o valor',
       );
 
       return;
@@ -107,8 +114,8 @@ mixin BudgetFormWidgetStateMixin on State<BudgetFormWidget> {
     if (data.isSuccess) {
       context.showToast(
         variant: .success,
-        title: 'Orçamento cadastrado',
-        description: 'Seu orçamento foi salvo com sucesso.',
+        title: 'Valor cadastrado',
+        description: 'Seu valor foi salvo com sucesso.',
       );
 
       widget.onBudgetCreated(context);

@@ -11,7 +11,7 @@ final class const BudgetHeaderWidget({super.key}) extends StatelessWidget {
       Semantics(
         header: true,
         child: Text(
-          'Novo orçamento',
+          'Quanto você quer gastar?',
           style: context.typography.headlineMedium?.copyWith(
             fontWeight: .w700,
             letterSpacing: -1.0,
@@ -20,7 +20,7 @@ final class const BudgetHeaderWidget({super.key}) extends StatelessWidget {
         ),
       ),
       Text(
-        'Preencha as informações abaixo para criar um novo orçamento.',
+        'Defina um valor e por quanto tempo você pretende usá-lo.',
         style: context.typography.bodyLarge?.copyWith(
           color: context.colors.onSurfaceVariant.withValues(alpha: 0.8),
         ),

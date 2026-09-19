@@ -53,7 +53,10 @@ final class _AppWidgetState extends State<AppWidget> {
       theme: Themes.light,
       darkTheme: Themes.dark,
       routerConfig: routerConfig,
+      locale: const Locale('pt', 'BR'),
       debugShowCheckedModeBanner: kDebugMode,
+      supportedLocales: const [Locale('pt', 'BR')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       builder: (_, child) => ToastProviderWidget(
         child: SessionGuardWidget(
           state: widget.state,

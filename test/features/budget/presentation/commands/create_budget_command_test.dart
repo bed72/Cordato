@@ -17,7 +17,6 @@ void main() {
   setUp(() {
     budget = BudgetEntity.create(
       amount: 100000,
-      description: 'Viagem',
       endDate: DateTime(2026, 9, 30),
       startDate: DateTime(2026, 9, 1),
     )!;

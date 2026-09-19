@@ -1,7 +1,6 @@
 import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/fields/date_field_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/amount_field_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
@@ -11,7 +10,8 @@ import 'package:cordato/features/budget/presentation/widgets/budget_header_widge
 import 'package:cordato/features/budget/presentation/commands/create_budget_command.dart';
 import 'package:cordato/features/budget/presentation/validators/budget_form_validator.dart';
 import 'package:cordato/features/budget/presentation/mixins/budget_form_widget_state_mixin.dart';
-import 'package:cordato/features/budget/presentation/widgets/fields/budget_description_field_widget.dart';
+import 'package:cordato/features/budget/presentation/widgets/budget_period_selector_widget.dart';
+import 'package:cordato/features/budget/presentation/widgets/budget_recurrence_field_widget.dart';
 
 final class const BudgetFormWidget({
   super.key,
@@ -43,22 +43,19 @@ final class _BudgetFormWidgetState extends State<BudgetFormWidget>
                   const BudgetHeaderWidget(),
                   AmountFieldWidget(
                     onTap: selectAmount,
-                    value: formState.value,
+                    value: form.value,
+                    failure: form.valueFailure,
                     formatter: widget.formatter,
-                    failure: formState.valueFailure,
                   ),
-                  DateFieldWidget(
-                    label: 'Período',
-                    onTap: selectPeriod,
-                    value: formState.period,
-                    hint: 'Data de início e término',
-                    failure: formState.periodFailure,
+                  BudgetPeriodSelectorWidget(
+                    period: form.period,
+                    onSelected: selectPeriod,
+                    failure: form.periodFailure,
+                    selectedOption: form.periodOption,
                   ),
-                  BudgetDescriptionFieldWidget(
-                    onChanged: updateDescription,
-                    onSubmitted: (_) => submit(),
-                    controller: descriptionController,
-                    failure: formState.descriptionFailure,
+                  BudgetRecurrenceFieldWidget(
+                    value: form.isRecurring,
+                    onChanged: updateRecurrence,
                   ),
                 ],
               ),
