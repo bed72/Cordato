@@ -28,5 +28,12 @@ class SceneDelegate: FlutterSceneDelegate {
     }
     window?.backgroundColor = backgroundColor
     window?.rootViewController?.view.backgroundColor = backgroundColor
+
+    if let flutterViewController = window?.rootViewController as? FlutterViewController {
+      flutterViewController.isViewOpaque = false
+      flutterViewController.setFlutterViewDidRenderCallback { [weak flutterViewController] in
+        flutterViewController?.isViewOpaque = true
+      }
+    }
   }
 }
