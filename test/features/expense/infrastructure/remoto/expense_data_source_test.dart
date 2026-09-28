@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/infrastructure/remoto/expense_data_source.dart';
-import 'package:cordato/features/expense/infrastructure/clients/supabase_expense_client.dart';
+import 'package:cordato/features/expense/infrastructure/clients/expense_client.dart';
 import 'package:cordato/features/expense/infrastructure/enums/expense_create_outcome_enum.dart';
 
 class _ExpenseClientMock extends Mock implements IExpenseClient {}

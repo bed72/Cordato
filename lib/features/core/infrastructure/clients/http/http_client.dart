@@ -47,9 +47,12 @@ final class HttpClient({required String baseUrl, Dio? dio})
         options: Options(
           method: method,
           headers: parameter.headers,
-          contentType: parameter.body == null ? null : Headers.jsonContentType,
-          responseType: ResponseType.plain,
           validateStatus: (_) => true,
+          responseType: ResponseType.plain,
+          contentType: parameter.body == null
+              ? null
+              : parameter.headers?['Content-Type'] as String? ??
+                    Headers.jsonContentType,
         ),
       );
       final data = _decode(response.data ?? '');
@@ -57,9 +60,9 @@ final class HttpClient({required String baseUrl, Dio? dio})
       return (response.statusCode ?? 0) >= 200 &&
               (response.statusCode ?? 0) < 300
           ? Right(data is Map<String, dynamic> ? data : {})
-          : Left(data is Map<String, dynamic> ? data : _networkFailure());
-    } on DioException catch (exception) {
-      return Left(_networkFailure(exception.message));
+          : Left(data is Map<String, dynamic> ? data : _unknownFailure());
+    } on DioException catch (_) {
+      return Left(_unknownFailure());
     } catch (_) {
       return Left(_unknownFailure());
     }
@@ -87,19 +90,8 @@ final class HttpClient({required String baseUrl, Dio? dio})
   Map<String, dynamic> _unknownFailure() => {
     'errors': [
       {
-        'code': 'unknown',
-        'message': 'Unknown error',
-        'source': {'field': 'non_field_errors'},
-      },
-    ],
-  };
-
-  Map<String, dynamic> _networkFailure([String? message]) => {
-    'errors': [
-      {
-        'code': 'network_error',
-        'source': {'field': 'non_field_errors'},
-        'message': message ?? 'Network error',
+        'title': 'Erro desconhecido',
+        'detail': 'Não foi possível processar a resposta.',
       },
     ],
   };

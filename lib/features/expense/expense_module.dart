@@ -7,7 +7,7 @@ import 'package:cordato/features/expense/data/repositories/expense_repository.da
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/expense/infrastructure/remoto/expense_data_source.dart';
-import 'package:cordato/features/expense/infrastructure/clients/supabase_expense_client.dart';
+import 'package:cordato/features/expense/infrastructure/clients/expense_client.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense_screen.dart';
 import 'package:cordato/features/expense/presentation/commands/create_expense_command.dart';
@@ -27,7 +27,7 @@ final expenseModule = createModule(
       ..addLazySingleton<IExpenseDataSource>(ExpenseDataSource.new)
       ..addLazySingleton<IExpenseRepository>(ExpenseRepository.new)
       ..addLazySingleton<CreateExpenseCommand>(CreateExpenseCommand.new)
-      ..addLazySingleton<IExpenseClient>(() => SupabaseExpenseClient())
+      ..addLazySingleton<IExpenseClient>(() => ExpenseClient())
       ..route(
         RouteEnum.root.path,
         child: (context, _) => ExpenseScreen(

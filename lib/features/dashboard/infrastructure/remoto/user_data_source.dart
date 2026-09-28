@@ -1,5 +1,5 @@
 import 'package:cordato/features/dashboard/domain/entities/user_entity.dart';
-import 'package:cordato/features/dashboard/infrastructure/clients/supabase_user_client.dart';
+import 'package:cordato/features/dashboard/infrastructure/clients/user_client.dart';
 
 abstract interface class IUserDataSource {
   Future<UserEntity?> getUser();

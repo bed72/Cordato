@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/outline_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
-import 'package:cordato/features/authentication/presentation/widgets/pin_field_widget.dart';
 import 'package:cordato/features/authentication/presentation/validators/code_validation.dart';
 import 'package:cordato/features/authentication/presentation/commands/magic_link_command.dart';
 import 'package:cordato/features/authentication/presentation/widgets/app_bar_magic_link_widget.dart';
@@ -44,14 +43,7 @@ final class _ConfirmationCodeScreenState extends State<ConfirmationCodeScreen>
                       child: Column(
                         spacing: 24.0,
                         crossAxisAlignment: .stretch,
-                        children: [
-                          HeaderConfirmationCodeWidget(),
-                          PinFieldWidget(
-                            controller: controller,
-                            validation: widget.validation,
-                            onCompleted: (_) => confirm(),
-                          ),
-                        ],
+                        children: [HeaderConfirmationCodeWidget()],
                       ),
                     ),
                   ),

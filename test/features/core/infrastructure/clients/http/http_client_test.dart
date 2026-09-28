@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/responses/error_response.dart';
 
 void main() {
   late Dio dio;
@@ -116,8 +117,37 @@ void main() {
 
     final result = await client.get(parameter: const Requests('items'));
 
-    expect(result.left['errors'][0]['code'], 'network_error');
-    expect(result.left['errors'][0]['message'], 'offline');
+    final error = ErrorsResponse.fromJson(result.left).errors.single;
+    expect(error.title, 'Erro de rede');
+    expect(error.detail, 'offline');
+    expect(error.status, isNull);
+    expect(error.pointer, isNull);
+  });
+
+  test(
+    'uses a default detail when the transport provides no message',
+    () async {
+      failure = DioException(
+        requestOptions: RequestOptions(path: 'items'),
+        type: DioExceptionType.connectionError,
+      );
+
+      final result = await client.get(parameter: const Requests('items'));
+
+      final error = ErrorsResponse.fromJson(result.left).errors.single;
+      expect(error.title, 'Erro de rede');
+      expect(error.detail, isNotEmpty);
+    },
+  );
+
+  test('uses the error envelope for a non-object server response', () async {
+    status = 500;
+    body = '[]';
+
+    final result = await client.get(parameter: const Requests('items'));
+
+    final error = ErrorsResponse.fromJson(result.left).errors.single;
+    expect(error.title, 'Erro de rede');
   });
 
   test('returns an unknown failure for malformed JSON', () async {
@@ -125,7 +155,11 @@ void main() {
 
     final result = await client.get(parameter: const Requests('items'));
 
-    expect(result.left['errors'][0]['code'], 'unknown');
+    final error = ErrorsResponse.fromJson(result.left).errors.single;
+    expect(error.title, 'Erro desconhecido');
+    expect(error.detail, 'Não foi possível processar a resposta.');
+    expect(error.status, isNull);
+    expect(error.pointer, isNull);
   });
 
   test('keeps unchanged request fields when copying', () {

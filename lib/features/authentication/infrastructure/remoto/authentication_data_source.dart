@@ -1,29 +1,23 @@
-import 'package:cordato/features/authentication/infrastructure/clients/supabase_authentication_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+
+import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
 
 abstract interface class IAuthenticationDataSource {
-  Future<bool> signOut();
+  Future<Responses> signIn({required String email, required String password});
 
-  Future<bool> checkSession();
-
-  Future<bool> requestMagicLink({required String email});
-
-  Future<bool> confirmCode({required String email, required String code});
+  Future<Responses> signUp({required String email, required String password});
 }
 
 final class AuthenticationDataSource({
   required final IAuthenticationClient _client,
 }) implements IAuthenticationDataSource {
   @override
-  Future<bool> signOut() => _client.signOut();
+  Future<Responses> signIn({required String email, required String password}) {
+    return _client.signIn(email: email, password: password);
+  }
 
   @override
-  Future<bool> checkSession() => _client.checkSession();
-
-  @override
-  Future<bool> requestMagicLink({required String email}) =>
-      _client.requestMagicLink(email: email);
-
-  @override
-  Future<bool> confirmCode({required String email, required String code}) =>
-      _client.confirmCode(email: email, code: code);
+  Future<Responses> signUp({required String email, required String password}) {
+    return _client.signUp(email: email, password: password);
+  }
 }

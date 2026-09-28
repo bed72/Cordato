@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:cordato/features/authentication/infrastructure/clients/supabase_authentication_client.dart';
+import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
 
 class _SupabaseAuthenticationClientMock extends Mock
     implements IAuthenticationClient {}
 
 void main() {
-  const email = 'person@example.com';
   const code = 'magic-link-code';
+  const email = 'person@example.com';
 
   late IAuthenticationClient client;
   late IAuthenticationDataSource dataSource;

@@ -79,6 +79,10 @@ feature.
 - `infrastructure` chama SDKs, RPCs, storage ou plugins.
 - `core/infrastructure/clients/http` oferece um cliente Dio reutilizável com
   `Requests` e `Responses` (`Either` de mapas), para integrações HTTP futuras.
+- `authentication/infrastructure/clients/AuthenticationClient` usa esse cliente
+  para enviar sign-in e sign-up em JSON:API. O módulo registra `IHttpClient` com
+  `API_BASE_URL` (padrão `https://api.cordato.cloud/api/`) e instala o
+  `JsonApiHeadersInterceptor` do core para os headers da API.
 - `presentation` contém screens, widgets, validators, estado local e commands.
 
 O fluxo de uma mutação é:

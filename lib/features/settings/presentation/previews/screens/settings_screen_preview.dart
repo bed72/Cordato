@@ -5,7 +5,6 @@ import 'package:cordato/features/core/presentation/previews/preview_resource_wid
 
 import 'package:cordato/features/settings/presentation/commands/logout_command.dart';
 import 'package:cordato/features/settings/presentation/screens/settings_screen.dart';
-import 'package:cordato/features/settings/presentation/previews/fakes/logout_preview_repository.dart';
 
 @CordatoPreview(
   group: 'Configurações / Telas',

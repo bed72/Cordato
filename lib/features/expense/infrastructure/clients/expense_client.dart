@@ -5,7 +5,7 @@ abstract interface class IExpenseClient {
   Future<ExpenseCreateOutcomeEnum> create(ExpenseEntity expense);
 }
 
-final class const SupabaseExpenseClient() implements IExpenseClient {
+final class const ExpenseClient() implements IExpenseClient {
   @override
   Future<ExpenseCreateOutcomeEnum> create(ExpenseEntity expense) async {
     return .failed;
