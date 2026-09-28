@@ -1,13 +1,11 @@
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'
-    show Supabase, SupabaseClient;
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
-import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
-import 'package:cordato/features/authentication/infrastructure/clients/supabase_authentication_client.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
+import 'package:cordato/features/authentication/infrastructure/clients/supabase_authentication_client.dart';
+import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/magic_link_screen.dart';
 import 'package:cordato/features/authentication/presentation/validators/code_validation.dart';
@@ -26,7 +24,6 @@ final _supabaseModule = createModule(
   register: (context) {
     context
       ..addInstance<String>(_supabaseRedirectUrl)
-      ..addInstance<SupabaseClient>(Supabase.instance.client)
       ..addLazySingleton<IAuthenticationDataSource>(
         AuthenticationDataSource.new,
       )

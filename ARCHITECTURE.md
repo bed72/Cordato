@@ -77,6 +77,8 @@ feature.
 - `domain` define entidades, failures e contratos sem Flutter ou SDKs.
 - `data` implementa contratos e converte respostas em `Either<Failure, R>`.
 - `infrastructure` chama SDKs, RPCs, storage ou plugins.
+- `core/infrastructure/clients/http` oferece um cliente Dio reutilizável com
+  `Requests` e `Responses` (`Either` de mapas), para integrações HTTP futuras.
 - `presentation` contém screens, widgets, validators, estado local e commands.
 
 O fluxo de uma mutação é:
@@ -167,14 +169,6 @@ Registros importantes:
 - `settingsModule`: tela de configurações, navegação associada e
   `LogoutCommand`, que resolve o `IAuthenticationRepository` compartilhado e
   nunca acessa o Supabase diretamente.
-
-Na criação de Budget, a apresentação oferece períodos semanal, mensal e
-personalizado. A opção de repetição automática é, neste estágio,
-estado local da tela: o fluxo persiste somente o Budget corrente e não cria nem
-agenda períodos futuros.
-
-O contrato de domínio de Budget e o adapter Supabase contêm somente valor e
-intervalo de datas, sem descrição.
 
 O logout confirmado segue um único fluxo em camadas:
 

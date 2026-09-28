@@ -33,11 +33,11 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  dio: ^5.11.1
   intl: ^0.20.3
   listen_it: ^5.3.5
   command_it: ^9.5.1
   flutter_modular: ^7.1.0
-  supabase_flutter: ^2.17.2
   flutter_secure_storage: ^11.1.0
 
   pinput: ^6.0.2

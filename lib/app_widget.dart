@@ -13,7 +13,6 @@ import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_
 
 class const AppWidget({
   super.key,
-  required final Future<void> Function() dispose,
   required final GlobalKey<NavigatorState> navigatorKey,
   required final ValueListenable<AuthSessionStateEnum> state,
 }) extends StatefulWidget {
@@ -22,22 +21,7 @@ class const AppWidget({
 }
 
 final class _AppWidgetState extends State<AppWidget> {
-  @override
-  void didUpdateWidget(AppWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.state, widget.state)) {
-      unawaited(oldWidget.dispose());
-    }
-  }
-
-  @override
-  void dispose() {
-    unawaited(widget.dispose());
-    super.dispose();
-  }
-
   void navigateToWelcome() => _navigate(RouteEnum.welcome.path);
-
   void navigateToDashboard() => _navigate(RouteEnum.dashboard.path);
 
   void _navigate(String path) =>

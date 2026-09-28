@@ -1,5 +1,4 @@
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
@@ -28,9 +27,7 @@ final expenseModule = createModule(
       ..addLazySingleton<IExpenseDataSource>(ExpenseDataSource.new)
       ..addLazySingleton<IExpenseRepository>(ExpenseRepository.new)
       ..addLazySingleton<CreateExpenseCommand>(CreateExpenseCommand.new)
-      ..addLazySingleton<IExpenseClient>(
-        () => SupabaseExpenseClient(client: Supabase.instance.client),
-      )
+      ..addLazySingleton<IExpenseClient>(() => SupabaseExpenseClient())
       ..route(
         RouteEnum.root.path,
         child: (context, _) => ExpenseScreen(
