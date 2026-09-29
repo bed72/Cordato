@@ -172,7 +172,9 @@ Registros importantes:
   registra `SignInCommand` e `SignUpCommand` para os fluxos da API. A rota de
   sign-in usa `SignInScreen` e `FormSignInWidget`: o mixin do formulário valida
   e-mail e senha (6 a 12 caracteres, com maiúscula e número). A screen apresenta
-  erros do command sem navegar após o sucesso nesta etapa da migração.
+   erros do command sem navegar após o sucesso nesta etapa da migração. A rota
+   de sign-up usa a mesma composição visual e validação para criar a conta,
+   exibindo o resultado por toast, sem navegação automática após o cadastro.
 - `dashboardModule`: `GetUserNameCommand`, tela inicial de dashboard e client
   que retorna um usuário fixo; a ação de gasto abre `/expense`.
 - `expenseModule`: validators, command, repository, data source e client para o
@@ -187,6 +189,7 @@ Rotas registradas:
 ```text
 /welcome
 /authentication/sign-in
+/authentication/sign-up
 /dashboard
 /settings
 /expense
@@ -195,7 +198,11 @@ Rotas registradas:
 `/dashboard` é uma tela de apresentação, sem shell de navegação autenticada.
 Dashboard abre Settings e Expense como rotas próprias; a ação de orçamento ainda
 não tem destino. A tela de entrada abre `/authentication/sign-in`, e o sign-in
-bem-sucedido ainda não muda a rota.
+   bem-sucedido ainda não muda a rota. A rota de cadastro está disponível em
+   `/authentication/sign-up`. O link de cadastro abaixo do botão de sign-in
+   substitui a rota de entrada, mantendo `/welcome` na pilha para o botão voltar.
+   O link de entrada abaixo do botão de sign-up faz a substituição inversa,
+   também preservando `/welcome` na pilha.
 
 Os módulos financeiros, dashboard e welcome registram suas rotas dentro de seu
 escopo de composição. A navegação usa extensões de `BuildContext` do Modular 7,
@@ -210,8 +217,8 @@ não use `Modular.to`.
 base. `HttpClient` decodifica JSON e devolve mapas em `Either`; o data source
 converte esses mapas em respostas tipadas e erros JSON:API. O repository expõe
 `Either<ErrorsEntity, SessionEntity>` no sign-in e
-`Either<ErrorsEntity, bool>` no sign-up. O command de sign-up está registrado,
-mas ainda não possui rota de cadastro.
+ `Either<ErrorsEntity, bool>` no sign-up. O cadastro usa a rota de sign-up e
+ apresenta o resultado na tela.
 
 O fluxo financeiro ainda não usa a API: `ExpenseClient.create` retorna
 `failed`, `UserClient.getUser` retorna um usuário fixo e não existe feature

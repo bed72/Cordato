@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
@@ -13,6 +14,7 @@ import 'package:cordato/features/authentication/domain/repositories/interface_au
 import 'package:cordato/features/authentication/presentation/screens/sign_in/commands/sign_in_command.dart';
 import 'package:cordato/features/authentication/presentation/commands/sign_up_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
 
@@ -56,6 +58,18 @@ final authenticationModule = createModule(
           command: inject<SignInCommand>(),
           emailValidation: inject<EmailValidation>(),
           passwordValidation: inject<PasswordValidation>(),
+          onCreateAccount: (BuildContext context) =>
+              context.replace(RouteEnum.authenticationSignUp.path),
+        ),
+      )
+      ..route(
+        RouteEnum.authenticationSignUp.path,
+        child: (_, _) => SignUpScreen(
+          command: inject<SignUpCommand>(),
+          emailValidation: inject<EmailValidation>(),
+          passwordValidation: inject<PasswordValidation>(),
+          onSignIn: (BuildContext context) =>
+              context.replace(RouteEnum.authenticationSignIn.path),
         ),
       );
   },

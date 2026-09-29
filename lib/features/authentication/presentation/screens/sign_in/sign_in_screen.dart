@@ -2,11 +2,12 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
-import 'package:cordato/features/authentication/presentation/screens/sign_in/mixins/sign_in_screen_state_mixin.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/commands/sign_in_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/form_sign_in_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/header_sign_in_widget.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/sign_up_footer_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/app_bar_sign_in_widget.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_in/mixins/sign_in_screen_state_mixin.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/button_sign_in_builder_widget.dart';
 
 final class const SignInScreen({
@@ -14,6 +15,7 @@ final class const SignInScreen({
   required final SignInCommand command,
   required final EmailValidation emailValidation,
   required final PasswordValidation passwordValidation,
+  required final ValueChanged<BuildContext> onCreateAccount,
 }) extends StatefulWidget {
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -56,6 +58,7 @@ final class _SignInScreenState extends State<SignInScreen>
                 command: widget.command,
                 onPressed: signIn,
               ),
+              SignUpFooterWidget(onCreateAccount: widget.onCreateAccount),
             ],
           ),
         ),

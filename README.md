@@ -20,8 +20,8 @@ Os bounded contexts do produto são:
 - `insight`: planejado. Análises derivadas, somente leitura e sem persistência própria.
 
 O contexto `identity` do backend não será reproduzido no app neste momento. A
-autenticação por e-mail e senha usa a API JSON:API; há tela de sign-in e command
-de sign-up, mas ainda não há tela de cadastro ou gestão de sessão.
+ autenticação por e-mail e senha usa a API JSON:API; há telas de sign-in e
+ sign-up, mas ainda não há gestão de sessão.
 O contexto `chat` está fora do escopo atual.
 
 ## Estado atual
@@ -31,10 +31,12 @@ O app já possui:
 - tela de boas-vindas;
 - tela de sign-in com validação e feedback de erro, ainda sem navegação pós-login
   nem persistência do token;
+- tela de sign-up com validação e feedback do cadastro;
 - dashboard inicial com usuário de exemplo fornecido por um client local;
 - formulário de gasto, cuja operação de criação ainda retorna falha;
 - tela de configurações, com botão de saída ainda sem logout integrado;
-- navegação de Welcome para Sign In e de Dashboard para Settings e Expense;
+- navegação de Welcome para Sign In, de Sign In para Sign Up por substituição
+  de rota e de Dashboard para Settings e Expense;
 - tema claro/escuro e componentes de apresentação reutilizáveis.
 
 `budget`, `family` e `insight` seguem planejados. Ao implementá-los, o grupo
