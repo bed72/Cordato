@@ -8,21 +8,23 @@ final class const SignUpFooterWidget({
   required final ValueChanged<BuildContext> onCreateAccount,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 6.0,
-    alignment: .center,
-    crossAxisAlignment: .center,
-    children: [
-      Text(
-        'Não possui conta?',
-        style: context.typography.bodySmall?.copyWith(
-          color: context.colors.onSurfaceVariant,
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6.0,
+      alignment: .center,
+      crossAxisAlignment: .center,
+      children: [
+        Text(
+          'Não possui conta?',
+          style: context.typography.bodySmall?.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
         ),
-      ),
-      LinkButtonWidget(
-        label: 'Crie agora',
-        onTap: () => onCreateAccount(context),
-      ),
-    ],
-  );
+        LinkButtonWidget(
+          label: 'Crie agora',
+          onTap: () => onCreateAccount(context),
+        ),
+      ],
+    );
+  }
 }

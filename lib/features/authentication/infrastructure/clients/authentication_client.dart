@@ -35,8 +35,8 @@ final class AuthenticationClient({required final IHttpClient _client})
               'type': 'sign-ups',
               'attributes': {
                 'email': email,
+                'name': 'Trocado',
                 'password': password,
-                'name': email.split('@').first,
                 'password_confirmation': password,
               },
             },
