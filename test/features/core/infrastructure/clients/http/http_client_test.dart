@@ -1,43 +1,57 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/responses/error_response.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+
+final class _TestAdapter({
+  required final ResponseBody Function(RequestOptions) respond,
+}) implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => respond(options);
+
+  @override
+  void close({bool force = false}) {}
+}
 
 void main() {
   late Dio dio;
-  late HttpClient client;
-  late RequestOptions? captured;
-  late String? body;
   late int status;
+  late String? body;
+  late HttpClient client;
   late DioException? failure;
+  late RequestOptions? captured;
 
   setUp(() {
-    captured = null;
     body = '{}';
     status = 200;
     failure = null;
-    dio = Dio();
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          captured = options;
-          if (failure case final error?) {
-            handler.reject(error);
-          } else {
-            handler.resolve(
-              Response<String>(
-                requestOptions: options,
-                statusCode: status,
-                data: body,
-              ),
-            );
-          }
-        },
-      ),
+    captured = null;
+    dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'));
+
+    dio.httpClientAdapter = _TestAdapter(
+      respond: (options) {
+        captured = options;
+        if (failure case final error?) throw error;
+
+        return ResponseBody.fromString(
+          body ?? '',
+          status,
+          headers: {
+            Headers.contentTypeHeader: ['application/vnd.api+json'],
+          },
+        );
+      },
     );
-    client = HttpClient(baseUrl: 'https://example.com/api/', dio: dio);
+
+    client = HttpClient(dio: dio);
   });
 
   test('sends every HTTP method with its request body', () async {
@@ -68,7 +82,7 @@ void main() {
     () async {
       body = '{"id":1}';
 
-      final result = await client.get(
+      final response = await client.get(
         parameter: const Requests(
           'items?existing=1',
           query: {'search': 'a & b'},
@@ -76,12 +90,12 @@ void main() {
         ),
       );
 
-      expect(result.right, {'id': 1});
+      expect(response.right, {'id': 1});
+      expect(captured!.headers['X-Request-Id'], '123');
       expect(captured!.uri.queryParameters, {
         'existing': '1',
         'search': 'a & b',
       });
-      expect(captured!.headers['X-Request-Id'], '123');
     },
   );
 
@@ -89,9 +103,9 @@ void main() {
     status = 422;
     body = '{"errors":[{"code":"invalid"}]}';
 
-    final result = await client.post(parameter: const Requests('items'));
+    final response = await client.post(parameter: const Requests('items'));
 
-    expect(result.left, {
+    expect(response.left, {
       'errors': [
         {'code': 'invalid'},
       ],
@@ -99,8 +113,8 @@ void main() {
   });
 
   test('returns an empty map for an empty successful response', () async {
-    status = 204;
     body = '';
+    status = 204;
 
     expect(
       (await client.delete(parameter: const Requests('items'))).right,
@@ -108,58 +122,70 @@ void main() {
     );
   });
 
-  test('returns a network failure for a Dio transport exception', () async {
+  test('rejects a successful response that is not a JSON object', () async {
+    body = '[]';
+
+    final response = await client.get(parameter: const Requests('items'));
+
+    expect(response.isLeft, isTrue);
+  });
+
+  test('returns an unknown failure for a Dio transport exception', () async {
     failure = DioException(
-      requestOptions: RequestOptions(path: 'items'),
-      type: DioExceptionType.connectionError,
       message: 'offline',
+      type: .connectionError,
+      requestOptions: RequestOptions(path: 'items'),
     );
 
-    final result = await client.get(parameter: const Requests('items'));
+    final response = await client.get(parameter: const Requests('items'));
 
-    final error = ErrorsResponse.fromJson(result.left).errors.single;
-    expect(error.title, 'Erro de rede');
-    expect(error.detail, 'offline');
+    final error = ErrorsResponse.fromJson(response.left).errors.single;
+
     expect(error.status, isNull);
     expect(error.pointer, isNull);
+    expect(error.title, 'Erro desconhecido');
+    expect(error.detail, 'Não foi possível processar a resposta.');
   });
 
   test(
     'uses a default detail when the transport provides no message',
     () async {
       failure = DioException(
+        type: .connectionError,
         requestOptions: RequestOptions(path: 'items'),
-        type: DioExceptionType.connectionError,
       );
 
-      final result = await client.get(parameter: const Requests('items'));
+      final response = await client.get(parameter: const Requests('items'));
 
-      final error = ErrorsResponse.fromJson(result.left).errors.single;
-      expect(error.title, 'Erro de rede');
+      final error = ErrorsResponse.fromJson(response.left).errors.single;
+
       expect(error.detail, isNotEmpty);
+      expect(error.title, 'Erro desconhecido');
     },
   );
 
   test('uses the error envelope for a non-object server response', () async {
-    status = 500;
     body = '[]';
+    status = 500;
 
-    final result = await client.get(parameter: const Requests('items'));
+    final response = await client.get(parameter: const Requests('items'));
 
-    final error = ErrorsResponse.fromJson(result.left).errors.single;
-    expect(error.title, 'Erro de rede');
+    final error = ErrorsResponse.fromJson(response.left).errors.single;
+
+    expect(error.title, 'Erro desconhecido');
   });
 
   test('returns an unknown failure for malformed JSON', () async {
     body = '{invalid';
 
-    final result = await client.get(parameter: const Requests('items'));
+    final response = await client.get(parameter: const Requests('items'));
 
-    final error = ErrorsResponse.fromJson(result.left).errors.single;
-    expect(error.title, 'Erro desconhecido');
-    expect(error.detail, 'Não foi possível processar a resposta.');
+    final error = ErrorsResponse.fromJson(response.left).errors.single;
+
     expect(error.status, isNull);
     expect(error.pointer, isNull);
+    expect(error.title, 'Erro desconhecido');
+    expect(error.detail, 'Não foi possível processar a resposta.');
   });
 
   test('keeps unchanged request fields when copying', () {
@@ -169,7 +195,7 @@ void main() {
 
     expect(copy.path, 'items');
     expect(copy.body, {'a': 1});
-    expect(copy.headers, {'x': 'y'});
     expect(copy.query, {'page': 2});
+    expect(copy.headers, {'x': 'y'});
   });
 }

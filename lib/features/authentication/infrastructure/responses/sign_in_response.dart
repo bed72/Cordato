@@ -1,7 +1,8 @@
+import 'package:cordato/features/authentication/domain/entities/session_entity.dart';
+
 final class const SignInResponse({
   required final String token,
   required final String userId,
-  required final String tokenType,
   required final DateTime expiresAt,
 }) {
   factory SignInResponse.fromJson(Map<String, dynamic> json) {
@@ -11,8 +12,12 @@ final class const SignInResponse({
     return SignInResponse(
       userId: data['id'] as String,
       token: attributes['token'] as String,
-      tokenType: attributes['token_type'] as String,
       expiresAt: .parse(attributes['expires_at'] as String),
     );
   }
+}
+
+extension SignInResponseToEntity on SignInResponse {
+  SessionEntity toEntity() =>
+      SessionEntity(token: token, userId: userId, expiresAt: expiresAt);
 }

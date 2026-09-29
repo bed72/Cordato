@@ -37,7 +37,7 @@ dependencies:
   intl: ^0.20.3
   listen_it: ^5.3.5
   command_it: ^9.5.1
-  flutter_modular: ^7.1.0
+  flutter_modular: ^7.1.1
   flutter_secure_storage: ^11.1.0
 
   material_ui: ^1.1.0

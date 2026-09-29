@@ -14,10 +14,10 @@ tags:
     timeout: 10000
 
 - assertVisible:
-    text: "Continuar com e-mail"
+    text: "Crie sua conta"
 
 - tapOn:
-    text: "Continuar com e-mail"
+    text: "Crie sua conta"
 
 - extendedWaitUntil:
     visible:

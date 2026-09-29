@@ -1,70 +1,141 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:cordato/features/core/domain/either.dart';
 
 import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
 
-class _SupabaseAuthenticationClientMock extends Mock
-    implements IAuthenticationClient {}
+class _AuthenticationClientMock extends Mock implements IAuthenticationClient {}
 
 void main() {
-  const code = 'magic-link-code';
+  const password = 'secret';
   const email = 'person@example.com';
 
   late IAuthenticationClient client;
   late IAuthenticationDataSource dataSource;
 
   setUp(() {
-    client = _SupabaseAuthenticationClientMock();
+    client = _AuthenticationClientMock();
     dataSource = AuthenticationDataSource(client: client);
   });
 
   group('AuthenticationDataSource', () {
-    test('delegates successful logout to the client', () async {
-      when(() => client.signOut()).thenAnswer((_) async => true);
+    test('sign-in returns the parsed access token response', () async {
+      when(() => client.signIn(email: email, password: password)).thenAnswer(
+        (_) async => Right({
+          'data': {
+            'id': '2',
+            'attributes': {
+              'token_type': 'Bearer',
+              'token': 'example-token',
+              'expires_at': '2026-09-28T18:30:06+00:00',
+            },
+          },
+        }),
+      );
 
-      final result = await dataSource.signOut();
+      final data = await dataSource.signIn(email: email, password: password);
 
-      expect(result, isTrue);
-      verify(() => client.signOut()).called(1);
+      expect(data.isRight, isTrue);
+      expect(data.right.userId, '2');
+      expect(data.right.token, 'example-token');
+      expect(data.right.expiresAt, DateTime.utc(2026, 9, 28, 18, 30, 6));
+      verify(() => client.signIn(email: email, password: password)).called(1);
     });
 
-    test('delegates logout and returns the client result', () async {
-      when(() => client.signOut()).thenAnswer((_) async => false);
+    test('sign-up returns the parsed registration response', () async {
+      when(() => client.signUp(email: email, password: password)).thenAnswer(
+        (_) async => Right({
+          'data': {'id': '3'},
+        }),
+      );
 
-      final result = await dataSource.signOut();
+      final data = await dataSource.signUp(email: email, password: password);
 
-      expect(result, isFalse);
-      verify(() => client.signOut()).called(1);
+      expect(data.isRight, isTrue);
+      expect(data.right.userId, '3');
+      verify(() => client.signUp(email: email, password: password)).called(1);
     });
 
-    test('delegates session check and returns the client result', () async {
-      when(() => client.checkSession()).thenAnswer((_) async => true);
+    test('preserves all API errors from a failed sign-in', () async {
+      when(() => client.signIn(email: email, password: password)).thenAnswer(
+        (_) async => Left({
+          'errors': [
+            {
+              'status': '401',
+              'detail': 'Confira o e-mail.',
+              'title': 'Credenciais inválidas',
+              'source': {'pointer': '/data/attributes/email'},
+            },
+            {'detail': 'Confira a senha.', 'status': '401'},
+          ],
+        }),
+      );
 
-      final result = await dataSource.checkSession();
+      final data = await dataSource.signIn(email: email, password: password);
 
-      expect(result, isTrue);
-      verify(() => client.checkSession()).called(1);
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors, hasLength(2));
+      expect(data.left.errors.first.status, '401');
+      expect(data.left.errors.last.detail, 'Confira a senha.');
+      expect(data.left.errors.first.title, 'Credenciais inválidas');
+      expect(data.left.errors.first.pointer, '/data/attributes/email');
     });
 
-    test('delegates magic link requests with the email', () async {
-      when(() => client.requestMagicLink(email: email))
-          .thenAnswer((_) async => true);
+    test('preserves API errors from a failed sign-up', () async {
+      when(() => client.signUp(email: email, password: password)).thenAnswer(
+        (_) async => Left({
+          'errors': [
+            {'detail': 'E-mail já cadastrado.', 'status': '422'},
+          ],
+        }),
+      );
 
-      final result = await dataSource.requestMagicLink(email: email);
+      final data = await dataSource.signUp(email: email, password: password);
 
-      expect(result, isTrue);
-      verify(() => client.requestMagicLink(email: email)).called(1);
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.detail, 'E-mail já cadastrado.');
     });
 
-    test('delegates code confirmation with the email and code', () async {
-      when(() => client.confirmCode(email: email, code: code))
-          .thenAnswer((_) async => false);
+    test('returns an error for a malformed success response', () async {
+      when(() => client.signIn(email: email, password: password))
+          .thenAnswer((_) async => const Right({}));
 
-      final result = await dataSource.confirmCode(email: email, code: code);
+      final data = await dataSource.signIn(email: email, password: password);
 
-      expect(result, isFalse);
-      verify(() => client.confirmCode(email: email, code: code)).called(1);
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.detail, isNotEmpty);
+    });
+
+    test('returns an error for a malformed API error response', () async {
+      when(() => client.signUp(email: email, password: password))
+          .thenAnswer((_) async => const Left({}));
+
+      final data = await dataSource.signUp(email: email, password: password);
+
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.detail, isNotEmpty);
+    });
+
+    test('returns an error when the API error list is empty', () async {
+      when(() => client.signUp(email: email, password: password))
+          .thenAnswer((_) async => const Left({'errors': []}));
+
+      final data = await dataSource.signUp(email: email, password: password);
+
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.detail, isNotEmpty);
+    });
+
+    test('returns an error when the client throws asynchronously', () async {
+      when(() => client.signIn(email: email, password: password))
+          .thenAnswer((_) async => throw Exception('network unavailable'));
+
+      final data = await dataSource.signIn(email: email, password: password);
+
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.detail, isNotEmpty);
     });
   });
 }

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
@@ -14,11 +12,7 @@ abstract interface class IHttpClient {
   Future<Responses> delete({required Requests parameter});
 }
 
-final class HttpClient({required String baseUrl, Dio? dio})
-    implements IHttpClient {
-  final Dio _client = dio ?? Dio();
-  final Uri _baseUri = Uri.parse(baseUrl);
-
+final class HttpClient({required final Dio _dio}) implements IHttpClient {
   @override
   Future<Responses> get({required Requests parameter}) =>
       _execute('GET', parameter);
@@ -41,51 +35,35 @@ final class HttpClient({required String baseUrl, Dio? dio})
 
   Future<Responses> _execute(String method, Requests parameter) async {
     try {
-      final response = await _client.request<String>(
-        _uri(parameter).toString(),
+      final response = await _dio.request<dynamic>(
+        parameter.path,
         data: parameter.body,
+        queryParameters: parameter.query,
         options: Options(
           method: method,
+          responseType: .json,
           headers: parameter.headers,
           validateStatus: (_) => true,
-          responseType: ResponseType.plain,
           contentType: parameter.body == null
               ? null
               : parameter.headers?['Content-Type'] as String? ??
                     Headers.jsonContentType,
         ),
       );
-      final data = _decode(response.data ?? '');
+      final data = response.data;
+      final statusCode = response.statusCode ?? 0;
+      final isSuccess = statusCode >= 200 && statusCode < 300;
 
-      return (response.statusCode ?? 0) >= 200 &&
-              (response.statusCode ?? 0) < 300
-          ? Right(data is Map<String, dynamic> ? data : {})
-          : Left(data is Map<String, dynamic> ? data : _unknownFailure());
+      if (data == null && isSuccess) return const Right({});
+      if (data is! Map<String, dynamic>) return Left(_unknownFailure());
+
+      return isSuccess ? Right(data) : Left(data);
     } on DioException catch (_) {
       return Left(_unknownFailure());
     } catch (_) {
       return Left(_unknownFailure());
     }
   }
-
-  Uri _uri(Requests parameter) {
-    final uri = _baseUri.resolve(parameter.path);
-    final query = parameter.query;
-
-    if (query == null || query.isEmpty) return uri;
-
-    final queryString = query.entries
-        .map(
-          (entry) =>
-              '${Uri.encodeQueryComponent(entry.key)}=${Uri.encodeQueryComponent(entry.value.toString())}',
-        )
-        .join('&');
-    final separator = uri.hasQuery ? '&' : '?';
-
-    return Uri.parse('${uri.toString()}$separator$queryString');
-  }
-
-  Object? _decode(String body) => body.trim().isEmpty ? {} : jsonDecode(body);
 
   Map<String, dynamic> _unknownFailure() => {
     'errors': [

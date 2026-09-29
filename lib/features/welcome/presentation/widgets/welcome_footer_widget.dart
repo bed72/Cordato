@@ -26,7 +26,7 @@ final class const WelcomeFooterWidget({
             height: 56.0,
             width: .infinity,
             child: ElevatedButtonWidget(
-              label: 'Continuar com e-mail',
+              label: 'Crie sua conta',
               onTap: () => onContinueWithEmail(context),
             ),
           ),

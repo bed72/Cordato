@@ -10,7 +10,7 @@ final welcomeModule = createModule(
     RouteEnum.root.path,
     child: (_, _) => WelcomeScreen(
       onContinueWithEmail: (BuildContext context) =>
-          context.pushNamed(RouteEnum.authenticationMagicLink.path),
+          context.pushNamed(RouteEnum.authenticationSignIn.path),
     ),
   ),
 );

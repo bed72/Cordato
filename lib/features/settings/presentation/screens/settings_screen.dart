@@ -1,18 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/settings/presentation/commands/logout_command.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_card_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_item_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_header_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_logout_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_app_bar_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_section_widget.dart';
-import 'package:cordato/features/settings/presentation/mixins/settings_screen_state_mixin.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_invite_partner_widget.dart';
 
 final class const SettingsScreen({
   super.key,
-  required final LogoutCommand command,
   required final ValueChanged<BuildContext> onBackPressed,
   final VoidCallback? onHelpPressed,
   final VoidCallback? onTermsPressed,
@@ -25,8 +22,7 @@ final class const SettingsScreen({
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-final class _SettingsScreenState extends State<SettingsScreen>
-    with SettingsScreenStateMixin {
+final class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,10 +90,7 @@ final class _SettingsScreenState extends State<SettingsScreen>
                   ),
                 ),
               ),
-              SettingsLogoutWidget(
-                command: widget.command,
-                onLogoutPressed: showLogoutConfirmation,
-              ),
+              SettingsLogoutWidget(onLogoutPressed: () {}),
             ],
           ),
         ),

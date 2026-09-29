@@ -6,12 +6,11 @@ instalado em um dispositivo ou emulador.
 ## Pre-requisitos
 
 1. Inicie um dispositivo Android ou simulador iOS.
-2. Instale ou execute o app com as configuracoes obrigatorias:
+2. Instale ou execute o app (`BASE_URL` e opcional; o padrao e
+   `https://api.cordato.cloud/api/`):
 
 ```bash
-flutter run \
-  --dart-define=SUPABASE_URL=... \
-  --dart-define=SUPABASE_ANON_KEY=...
+flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
 ```
 
 O identificador esperado pelo fluxo e `com.bed.cordato`.
@@ -37,5 +36,5 @@ maestro test --include-tags smoke maestro/
 ```
 
 O fluxo `welcome_authentication.yaml` limpa o estado local antes de iniciar e
-nao chama o backend. Ele cobre a tela de boas-vindas, a navegacao para o login e
-as validacoes de e-mail obrigatorio e invalido.
+nao chama a API. Ele ainda usa textos e botoes do fluxo anterior e precisa ser
+atualizado antes de validar a tela de sign-in atual.

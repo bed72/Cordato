@@ -167,10 +167,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_modular
-      sha256: "04b924a79e17ec897aa40886a46f27954ee0194e4601a006bdba3cb2be65e180"
+      sha256: "4b617cd1f2a4248c5bbad75a1e3a0dc4f2196668bbdb86b33d22dfb614d9112d"
       url: "https://pub.dev"
     source: hosted
-    version: "7.1.0"
+    version: "7.1.1"
   flutter_secure_storage:
     dependency: "direct main"
     description:

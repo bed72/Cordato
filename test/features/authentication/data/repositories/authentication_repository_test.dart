@@ -1,20 +1,24 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
-import 'package:cordato/features/authentication/domain/failures/authentication_failure.dart';
+
+import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
+import 'package:cordato/features/authentication/infrastructure/responses/sign_up_response.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
-import 'package:cordato/features/core/domain/either.dart';
 
 class _AuthenticationDataSourceMock extends Mock
     implements IAuthenticationDataSource {}
 
 void main() {
+  const password = 'secret';
   const email = 'person@example.com';
-  const code = 'magic-link-code';
 
-  late IAuthenticationDataSource dataSource;
   late AuthenticationRepository repository;
+  late IAuthenticationDataSource dataSource;
 
   setUp(() {
     dataSource = _AuthenticationDataSourceMock();
@@ -22,80 +26,117 @@ void main() {
   });
 
   group('AuthenticationRepository', () {
-    test('returns Right when logout succeeds', () async {
-      when(() => dataSource.signOut()).thenAnswer((_) async => true);
+    test('sign-in returns a session with the response data', () async {
+      final expiresAt = DateTime.utc(2026, 9, 28, 18, 30);
+      when(() => dataSource.signIn(email: email, password: password))
+          .thenAnswer(
+            (_) async => Right(
+              SignInResponse(
+                userId: 'user-1',
+                expiresAt: expiresAt,
+                token: 'example-token',
+              ),
+            ),
+          );
 
-      final result = await repository.signOut();
+      final data = await repository.signIn(email: email, password: password);
 
-      expect(result, equals(const Right<Failure, void>(null)));
-      verify(() => dataSource.signOut()).called(1);
+      expect(data.isRight, isTrue);
+      expect(data.right.userId, 'user-1');
+      expect(data.right.expiresAt, expiresAt);
+      expect(data.right.token, 'example-token');
+      verify(() => dataSource.signIn(email: email, password: password))
+          .called(1);
     });
 
-    test('returns LogoutFailure when logout fails', () async {
-      when(() => dataSource.signOut()).thenAnswer((_) async => false);
+    test('sign-in preserves every API error and its metadata', () async {
+      when(() => dataSource.signIn(email: email, password: password))
+          .thenAnswer(
+            (_) async => const Left(
+              ErrorsResponse(
+                errors: [
+                  ErrorResponse(
+                    status: '422',
+                    title: 'Não autorizado',
+                    detail: 'E-mail inválido.',
+                    pointer: '/data/attributes/email',
+                  ),
+                  ErrorResponse(
+                    status: '422',
+                    detail: 'Senha inválida.',
+                    pointer: '/data/attributes/password',
+                  ),
+                ],
+              ),
+            ),
+          );
 
-      final result = await repository.signOut();
+      final data = await repository.signIn(email: email, password: password);
 
-      expect(result.left, isA<LogoutFailure>());
-      verify(() => dataSource.signOut()).called(1);
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors, hasLength(2));
+      expect(data.left.errors.first.status, '422');
+      expect(data.left.errors.first.title, 'Não autorizado');
+      expect(data.left.errors.last.detail, 'Senha inválida.');
+      expect(data.left.errors.first.detail, 'E-mail inválido.');
+      expect(data.left.errors.first.pointer, '/data/attributes/email');
+      expect(data.left.errors.last.pointer, '/data/attributes/password');
     });
 
-    test('returns Right when a session exists', () async {
-      when(() => dataSource.checkSession()).thenAnswer((_) async => true);
+    test('sign-up returns true when registration succeeds', () async {
+      when(
+        () => dataSource.signUp(email: email, password: password),
+      ).thenAnswer((_) async => const Right(SignUpResponse(userId: 'user-1')));
 
-      final result = await repository.checkSession();
+      final data = await repository.signUp(email: email, password: password);
 
-      expect(result, equals(const Right<Failure, void>(null)));
-      verify(() => dataSource.checkSession()).called(1);
+      expect(data.right, isTrue);
+      verify(() => dataSource.signUp(email: email, password: password))
+          .called(1);
     });
 
-    test('returns UnknownFailure when no session exists', () async {
-      when(() => dataSource.checkSession()).thenAnswer((_) async => false);
+    test('sign-up returns the API errors as domain data', () async {
+      when(() => dataSource.signUp(email: email, password: password))
+          .thenAnswer(
+            (_) async => const Left(
+              ErrorsResponse(
+                errors: [ErrorResponse(detail: 'E-mail já cadastrado.')],
+              ),
+            ),
+          );
 
-      final result = await repository.checkSession();
+      final data = await repository.signUp(email: email, password: password);
 
-      expect(result.left, isA<UnknownFailure>());
-    });
-
-    test('returns Right when magic link request succeeds', () async {
-      when(() => dataSource.requestMagicLink(email: email))
-          .thenAnswer((_) async => true);
-
-      final result = await repository.requestMagicLink(email: email);
-
-      expect(result, equals(const Right<Failure, void>(null)));
-      verify(() => dataSource.requestMagicLink(email: email)).called(1);
-    });
-
-    test('returns MagicLinkRequestFailure when request fails', () async {
-      when(() => dataSource.requestMagicLink(email: email))
-          .thenAnswer((_) async => false);
-
-      final result = await repository.requestMagicLink(email: email);
-
-      expect(result.left, isA<MagicLinkRequestFailure>());
-    });
-
-    test('returns Right when code confirmation succeeds', () async {
-      when(() => dataSource.confirmCode(email: email, code: code))
-          .thenAnswer((_) async => true);
-
-      final result = await repository.confirmCode(email: email, code: code);
-
-      expect(result, equals(const Right<Failure, void>(null)));
-      verify(() => dataSource.confirmCode(email: email, code: code)).called(1);
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.detail, 'E-mail já cadastrado.');
     });
 
     test(
-      'returns MagicLinkConfirmationFailure when completion fails',
+      'sign-up returns an unknown error when the API error list is empty',
       () async {
-        when(() => dataSource.confirmCode(email: email, code: code))
-            .thenAnswer((_) async => false);
+        when(() => dataSource.signUp(email: email, password: password))
+            .thenAnswer((_) async => const Left(ErrorsResponse(errors: [])));
 
-        final result = await repository.confirmCode(email: email, code: code);
+        final data = await repository.signUp(email: email, password: password);
 
-        expect(result.left, isA<MagicLinkConfirmationFailure>());
+        expect(data.left.errors, hasLength(1));
+        expect(
+          data.left.errors.single.detail,
+          'Não foi possível processar a resposta.',
+        );
       },
     );
+
+    test('unexpected data source errors return a domain error', () async {
+      when(() => dataSource.signIn(email: email, password: password))
+          .thenThrow(StateError('transport error'));
+
+      final data = await repository.signIn(email: email, password: password);
+
+      expect(
+        data.left.errors.single.detail,
+        'Não foi possível processar a resposta.',
+      );
+    });
   });
 }

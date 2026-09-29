@@ -7,7 +7,8 @@ import 'package:cordato/features/core/infrastructure/clients/http/requests/reque
 
 void main() {
   test('adds JSON:API headers to requests with a body', () async {
-    final dio = Dio()..interceptors.add(HeadersInterceptor());
+    final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
+      ..interceptors.add(HeadersInterceptor());
     RequestOptions? captured;
     dio.interceptors.add(
       InterceptorsWrapper(
@@ -23,7 +24,7 @@ void main() {
         },
       ),
     );
-    final client = HttpClient(baseUrl: 'https://example.com/api/', dio: dio);
+    final client = HttpClient(dio: dio);
 
     await client.post(
       parameter: const Requests(
@@ -42,7 +43,8 @@ void main() {
   });
 
   test('adds Accept without inventing a Content-Type for GET', () async {
-    final dio = Dio()..interceptors.add(HeadersInterceptor());
+    final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
+      ..interceptors.add(HeadersInterceptor());
     RequestOptions? captured;
     dio.interceptors.add(
       InterceptorsWrapper(
@@ -58,7 +60,7 @@ void main() {
         },
       ),
     );
-    final client = HttpClient(baseUrl: 'https://example.com/api/', dio: dio);
+    final client = HttpClient(dio: dio);
 
     await client.get(parameter: const Requests('items'));
 

@@ -6,31 +6,33 @@ Cordato é um aplicativo Flutter de finanças pessoais e familiares organizado
 por feature e por camadas. Cada pessoa é dona dos próprios dados financeiros;
 a família é uma lente de leitura compartilhada, nunca uma dona de dinheiro.
 
-O backend Kotlin legado é uma referência de domínio. A implementação de banco,
-autorização e mutações atual está versionada em `supabase/`; não há um backend
-Kotlin em execução para o aplicativo. A apresentação permanece independente de
-Supabase, storage e plugins.
+O aplicativo integra o fluxo de autenticação à API HTTP JSON:API configurada em
+`authenticationModule` (padrão `https://api.cordato.cloud/api/`). Não há schema
+ou backend financeiro ativo versionado neste repositório. O Kotlin legado é
+referência de domínio, não uma dependência de execução. A apresentação permanece
+independente de clientes HTTP, storage e plugins.
 
 ```text
-Flutter UI -> presentation -> domain -> data -> infrastructure -> Supabase
+Flutter UI -> presentation -> domain -> data -> infrastructure -> API HTTP
 ```
 
-Uma screen conhece commands e contratos de repositório, nunca
-`SupabaseClient`, `FlutterSecureStorage` ou clientes de rede diretamente.
+Uma screen conhece commands e contratos de repositório, nunca `Dio`,
+`FlutterSecureStorage` ou clientes de rede diretamente.
 
 ## Produto E Contextos
 
 Os contextos financeiros e seu estado atual são:
 
-- `expense`: implementado. Registra gastos individuais por RPC Supabase.
-- `budget`: implementado. Registra tetos individuais por intervalo de datas por RPC Supabase.
+- `expense`: formulário, domínio e camadas de criação presentes; o client ainda
+  retorna falha, sem persistência financeira conectada.
+- `budget`: planejado; não há feature Flutter de orçamento nesta versão.
 - `family`: planejado. Será uma organização de membros com leitura combinada autorizada.
-- `insight`: placeholder de apresentação visível. As análises derivadas e
-  somente leitura continuam planejadas e não possuem dados ou consultas.
+- `insight`: planejado; não há feature Flutter, dados ou consultas analíticas.
 
 `dashboard` é uma feature de apresentação e composição. `settings` é uma tela
-de apresentação. `authentication` encapsula Supabase Auth e magic link; não
-recria o contexto `identity`. `chat` permanece fora de escopo.
+de apresentação. `authentication` encapsula sign-in e sign-up por e-mail e
+senha via API JSON:API; não recria o contexto `identity`. `chat` permanece fora
+de escopo.
 
 Invariantes do produto:
 
@@ -45,7 +47,8 @@ Contextos proprietários não dependem de lentes. Quando implementados, `family`
 e `insight` só poderão ler contextos financeiros por contratos próprios, com
 adapters concretos na borda de infrastructure. O teste
 `test/architecture/bounded_context_dependencies_test.dart` protege essas
-direções e proíbe escrita direta nas tabelas financeiras pelo Flutter.
+direções e restringe dependências de SDKs externos nas camadas internas. As
+invariantes financeiras dependem da implementação futura da persistência.
 
 ## Estrutura E Camadas
 
@@ -60,42 +63,54 @@ lib/
     welcome/
     dashboard/
     expense/
-    budget/
     settings/
-    insight/
-
-supabase/
-  migrations/
-  tests/
 ```
 
 Cada feature pode conter `domain`, `data`, `infrastructure` e `presentation`.
 `core` contém capacidades compartilhadas, como tema, formatação monetária,
-widgets, animações, imagens e estado de sessão; não deve receber regras de uma
+widgets, animações, imagens e storage; não deve receber regras de uma
 feature.
 
 - `domain` define entidades, failures e contratos sem Flutter ou SDKs.
 - `data` implementa contratos e converte respostas em `Either<Failure, R>`.
-- `infrastructure` chama SDKs, RPCs, storage ou plugins.
+- `infrastructure` chama clientes HTTP, storage ou plugins.
 - `core/infrastructure/clients/http` oferece um cliente Dio reutilizável com
-  `Requests` e `Responses` (`Either` de mapas), para integrações HTTP futuras.
+  `Requests` e `Responses` (`Either` de mapas), usado pela autenticação.
 - `authentication/infrastructure/clients/AuthenticationClient` usa esse cliente
   para enviar sign-in e sign-up em JSON:API. O módulo registra `IHttpClient` com
-  `API_BASE_URL` (padrão `https://api.cordato.cloud/api/`) e instala o
-  `JsonApiHeadersInterceptor` do core para os headers da API.
+  `BASE_URL` (padrão `https://api.cordato.cloud/api/`) e instala o
+  `HeadersInterceptor` do core para os headers da API. Os caminhos de autenticação
+  são relativos à base para preservar o prefixo `/api/`.
+- `authentication/infrastructure/remoto/AuthenticationDataSource` converte os
+  mapas JSON do client em `SignInResponse` ou `SignUpResponse` e preserva a lista
+  de erros JSON:API em `ErrorsResponse`. `ErrorsResponse.fromJson` transforma
+  listas de erros vazias em erro genérico; respostas inválidas e exceções do
+  client também retornam erro genérico, sem propagar exceções de transporte.
+- `core/domain/entities/errors_entity.dart` representa uma lista de erros com
+  título, detalhe, status e apontamento de campo sem depender do cliente HTTP.
+  A extensão `ErrorsResponse.toEntity()` no core infrastructure converte a lista
+  completa, com erro genérico quando a resposta não contém itens.
+- `AuthenticationRepository.signIn` converte `SignInResponse` em `SessionEntity`
+  com `toEntity()`; `signUp` retorna sucesso após a resposta de cadastro. Ambos
+  retornam `Either<ErrorsEntity, R>`: todos os erros JSON:API são preservados
+  no `Left`; respostas sem erros e falhas inesperadas usam um erro genérico.
+  `SignInCommand` e `SignUpCommand` entregam esse `Either` como resultado ao
+  `command_it`, para a apresentação decidir como exibir os erros.
 - `presentation` contém screens, widgets, validators, estado local e commands.
 
 O fluxo de uma mutação é:
 
 ```text
-Screen/widget -> Command -> repository do domínio -> data source -> client/RPC
+Screen/widget -> Command -> repository do domínio -> data source -> client HTTP
 ```
 
-Commands usam `command_it`; convertem um `Left` em erro observável por
-`CommandBuilder` e implementam `ICommand` quando precisam de descarte. Estado
+Commands usam `command_it` e implementam `ICommand` quando precisam de descarte.
+O sign-in entrega `Either` à apresentação para tratar os erros da API; commands
+de outras features podem expor falhas como erros observáveis. Estado
 efêmero pertence à screen ou widget. Quando lifecycle, controllers e handlers
-prejudicarem a leitura, use um mixin específico em `presentation/mixins/`,
-restrito ao `State` correspondente e responsável por seu `dispose`.
+prejudicarem a leitura, use um mixin específico em `presentation/mixins/` ou
+no diretório da própria tela, restrito ao `State` correspondente e responsável
+por seu `dispose`.
 
 ## Padrão Dart De Construção
 
@@ -133,18 +148,15 @@ ou acesso entre camadas. A matriz operacional e os exemplos canônicos estão em
 
 ## Inicialização, Módulos E Rotas
 
-`main.dart` inicializa Flutter, exige `SUPABASE_URL` e `SUPABASE_ANON_KEY`,
-inicializa `ExternalClient` e escolhe a rota inicial após a restauração do
-Supabase: `/dashboard` com sessão autenticada e `/welcome` sem sessão.
-`AppWidget` instala temas, router e `SessionGuardWidget`. O guard mostra loading
-durante mudanças de estado posteriores; login navega para `/dashboard`, enquanto
-logout ou falha de restauração navegam para `/welcome`.
+`main.dart` inicializa Flutter e Modular com `/welcome` como rota inicial.
+`AppWidget` instala temas, localização `pt_BR`, router e provider de toast. Não
+há restauração de sessão nem guard de autenticação no fluxo atual; o sign-in
+ainda não navega após sucesso ou persiste o token retornado pela API.
 
 `app_module.dart` compõe os módulos existentes:
 
 ```text
 coreModule
-budgetModule
 expenseModule
 welcomeModule
 settingsModule
@@ -155,88 +167,57 @@ authenticationModule
 Registros importantes:
 
 - `coreModule`: `IMoneyFormatter` com `MoneyFormatter`.
-- `authenticationModule`: contém `_supabaseModule`, módulo privado sem `path`
-  que registra no injector raiz o cliente Supabase, URL de redirect, data
-  source, repository e client de Authentication. Validators, commands do magic
-  link e confirmação e rotas permanecem com ciclo de vida da feature. O
-  `IAuthenticationRepository` compartilhado também é consumido pelo command de
-  logout de Settings.
-- `dashboardModule`: acesso ao perfil, `GetUserNameCommand`, destino inicial e
-  shell autenticado persistente.
-- `expenseModule` e `budgetModule`: validators, commands, repositories, data
-  sources e clientes Supabase para criar registros financeiros. `expenseModule`
-  também contém o placeholder de Transactions, uma leitura de apresentação
-  pertencente a Expense.
-- `insightModule`: somente o placeholder de apresentação Insights; não possui
-  caso de uso, consulta ou persistência analítica.
+- `authenticationModule`: contém `_httpModule`, módulo privado sem `path` que
+  registra cliente HTTP, data source e repository de Authentication. A feature
+  registra `SignInCommand` e `SignUpCommand` para os fluxos da API. A rota de
+  sign-in usa `SignInScreen` e `FormSignInWidget`: o mixin do formulário valida
+  e-mail e senha (6 a 12 caracteres, com maiúscula e número). A screen apresenta
+  erros do command sem navegar após o sucesso nesta etapa da migração.
+- `dashboardModule`: `GetUserNameCommand`, tela inicial de dashboard e client
+  que retorna um usuário fixo; a ação de gasto abre `/expense`.
+- `expenseModule`: validators, command, repository, data source e client para o
+  formulário de criação. O client atual retorna falha e ainda não persiste gastos.
 - `welcomeModule`: tela e navegação de entrada.
-- `settingsModule`: tela de configurações, navegação associada e
-  `LogoutCommand`, que resolve o `IAuthenticationRepository` compartilhado e
-  nunca acessa o Supabase diretamente.
-
-O logout confirmado segue um único fluxo em camadas:
-
-```text
-SettingsScreen -> LogoutCommand.signOut -> IAuthenticationRepository.signOut
-  -> AuthenticationDataSource.signOut -> SupabaseAuthenticationClient.signOut
-  -> Supabase Auth.signOut
-```
-
-No sucesso, Settings não navega. O evento `signedOut` observado por
-`ExternalClient` altera o estado global para `unauthenticated`; então
-`SessionGuardWidget` delega a navegação para `/welcome`. Em falha, o command
-expõe `LogoutFailure`, Settings mostra feedback e mantém a ação disponível para
-nova tentativa.
+- `settingsModule`: tela de configurações com retorno à tela anterior. A ação
+  visual “Sair” ainda não executa logout; os demais itens sem destino têm
+  callbacks de apresentação sem integração.
 
 Rotas registradas:
 
 ```text
 /welcome
-/authentication/magic-link
-/authentication/confirmation-code
-/callback
+/authentication/sign-in
 /dashboard
-/dashboard/transactions
-/dashboard/insights
-/dashboard/settings
-/dashboard/expense
-/budget
+/settings
+/expense
 ```
 
-`/dashboard` é um shell autenticado persistente de `dashboard/presentation`,
-renderizado abaixo de `SessionGuardWidget`. Seu `RouterOutlet` compõe Dashboard,
-Transactions (Expense), Insights (Insight) e Settings. A seleção da barra inferior
-é derivada da rota ativa; as trocas de destino usam `navigate` no outlet e não
-acumulam histórico. `/dashboard/expense` é uma ação distinta, empilhada sobre o
-destino ativo com `pushNamed`, e não é uma aba selecionável.
+`/dashboard` é uma tela de apresentação, sem shell de navegação autenticada.
+Dashboard abre Settings e Expense como rotas próprias; a ação de orçamento ainda
+não tem destino. A tela de entrada abre `/authentication/sign-in`, e o sign-in
+bem-sucedido ainda não muda a rota.
 
 Os módulos financeiros, dashboard e welcome registram suas rotas dentro de seu
 escopo de composição. A navegação usa extensões de `BuildContext` do Modular 7,
 como `context.pushNamed`, `context.navigate`, `context.replace` e `context.pop`;
 não use `Modular.to`.
 
-O redirect de autenticação pode ser configurado com `SUPABASE_REDIRECT_URL`.
-Na ausência dele, o valor de compatibilidade é
-`trocado://authentication/callback`. Não altere esse esquema apenas para
-uniformizar o nome do produto.
+## API HTTP E Persistência
 
-## Supabase
+`authenticationModule` configura `Dio` com `BASE_URL` (padrão
+`https://api.cordato.cloud/api/`) e `HeadersInterceptor`, que usa o media type
+`application/vnd.api+json`. Os endpoints de sign-in e sign-up são relativos à
+base. `HttpClient` decodifica JSON e devolve mapas em `Either`; o data source
+converte esses mapas em respostas tipadas e erros JSON:API. O repository expõe
+`Either<ErrorsEntity, SessionEntity>` no sign-in e
+`Either<ErrorsEntity, bool>` no sign-up. O command de sign-up está registrado,
+mas ainda não possui rota de cadastro.
 
-`supabase/` é a fonte de verdade para configuração local, migrations, schema,
-RLS, grants, RPCs e testes de banco. Consulte
-[`supabase/README.md`](supabase/README.md) para o inventário e os comandos;
-não replique detalhes de SQL neste documento.
-
-Hoje as migrations versionam `profiles`, `expenses` e `budgets`. As mutações
-financeiras usam RPCs transacionais que derivam o dono de `auth.uid()`; clientes
-autenticados não possuem grants de escrita direta nas tabelas. RLS e as RPCs,
-não a UI Flutter, são a fronteira que aplica propriedade individual.
-
-Toda mudança de schema, RLS, grants, triggers ou funções deve entrar em uma nova
-migration. Uma feature financeira deve definir seu contexto proprietário,
-atualizar a migration/RPC correspondente e cobrir autorização e invariantes nos
-testes de banco. `family` e `insight` só ganham tabelas, RPCs ou políticas quando
-forem implementados como features.
+O fluxo financeiro ainda não usa a API: `ExpenseClient.create` retorna
+`failed`, `UserClient.getUser` retorna um usuário fixo e não existe feature
+Flutter de orçamento. Ao conectar persistência financeira, preserve propriedade
+individual e invariantes no serviço responsável, com testes de autorização e
+regras de domínio; a UI não é fronteira de autorização.
 
 ## Interface E Tema
 
@@ -244,10 +225,8 @@ Código novo de UI importa `package:material_ui/material_ui.dart`. Reutilize os
 widgets compartilhados de `core`, especialmente os botões e `BounceWidget`, em
 vez de estilizar botões Material diretamente.
 
-A barra inferior autenticada é um componente específico de
-`dashboard/presentation`. Ela usa `BounceWidget`, `ColorScheme`, os raios do tema
-e um `AnnotatedRegion<SystemUiOverlayStyle>` para estender sua superfície pela
-área de navegação do Android. Não a promova para `core` sem reutilização real.
+O dashboard usa um botão de ação expansível para acessar o formulário de gasto;
+não há barra inferior de navegação ou shell autenticado na composição atual.
 
 Use os acessos de tema existentes:
 
@@ -284,42 +263,25 @@ Para uma verificação rápida de limites:
 flutter test test/architecture
 ```
 
-As verificações de banco/RLS são testes de integração locais do Supabase, não
-testes unitários Flutter. Com Docker Desktop e Supabase CLI instalados, execute
-após um reset limpo:
+Para executar o app com a API padrão, use `flutter run`. Para apontar a
+autenticação a outra API, configure a URL base (incluindo o prefixo `/api/`):
 
 ```bash
-supabase start
-supabase db reset
-supabase migration list --local
-supabase db lint --local
-supabase test db
+flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
 ```
 
-Para executar o app contra qualquer projeto Supabase, forneça somente nomes de
-configuração não secretos no comando:
-
-```bash
-flutter run \
-  --dart-define=SUPABASE_URL=... \
-  --dart-define=SUPABASE_ANON_KEY=...
-```
-
-`SUPABASE_REDIRECT_URL` é opcional. Para build, assinatura e verificação de
-release Android, consulte [`android/README.md`](android/README.md).
+Para build, assinatura e verificação de release Android, consulte
+[`android/README.md`](android/README.md).
 
 ## Revisão De Documentação
 
-Uma mudança que adicionar, remover ou mover módulo, rota, contrato, migration,
-RPC, política RLS, comando de validação ou configuração de release deve atualizar
+Uma mudança que adicionar, remover ou mover módulo, rota, contrato, integração
+HTTP, comando de validação ou configuração de release deve atualizar
 na mesma alteração o documento canônico afetado:
 
 - `ARCHITECTURE.md` para camadas, módulos, rotas e fronteiras.
-- `supabase/README.md` para artefatos e comandos do backend.
 - `android/README.md` para release Android.
 - `README.md` para estado do produto e início rápido.
 - `AGENTS.md` para convenções de contribuição e checklist.
 
-Revise esses documentos juntos quando uma mudança estrutural os afetar. Retenha
-nomes legados, como o deep link `trocado`, somente enquanto forem requisitos de
-compatibilidade ativos.
+Revise esses documentos juntos quando uma mudança estrutural os afetar.

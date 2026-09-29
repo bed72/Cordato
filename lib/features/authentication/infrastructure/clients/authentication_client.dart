@@ -1,7 +1,7 @@
+import 'package:cordato/features/core/infrastructure/clients/http/http_path.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/http_path.dart';
 
 abstract interface class IAuthenticationClient {
   Future<Responses> signIn({required String email, required String password});

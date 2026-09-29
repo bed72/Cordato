@@ -1,20 +1,14 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/features/core/domain/entities/auth_session_state.dart';
-
 import 'package:cordato/features/core/presentation/themes/themes.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
-import 'package:cordato/features/core/presentation/widgets/session_guard_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
 
 class const AppWidget({
   super.key,
   required final GlobalKey<NavigatorState> navigatorKey,
-  required final ValueListenable<AuthSessionStateEnum> state,
 }) extends StatefulWidget {
   @override
   State<AppWidget> createState() => _AppWidgetState();
@@ -41,14 +35,8 @@ final class _AppWidgetState extends State<AppWidget> {
       debugShowCheckedModeBanner: kDebugMode,
       supportedLocales: const [Locale('pt', 'BR')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      builder: (_, child) => ToastProviderWidget(
-        child: SessionGuardWidget(
-          state: widget.state,
-          onAuthenticated: navigateToDashboard,
-          onUnauthenticated: navigateToWelcome,
-          child: child ?? const SizedBox.shrink(),
-        ),
-      ),
+      builder: (_, child) =>
+          ToastProviderWidget(child: child ?? const SizedBox.shrink()),
     );
   }
 }

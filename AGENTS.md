@@ -25,12 +25,12 @@ O modelo de domínio validado possui estes bounded contexts:
 - `family`: organização entre membros de uma família, com leitura combinada e sem escrita nos dados de outra pessoa.
 - `insight`: análises derivadas, somente leitura e sem persistência própria.
 
-O backend ativo está versionado em `supabase/`; o Kotlin legado é somente
-referência de domínio. `expense` e `budget` estão implementados. `family` e
-`insight` são planejados e não devem ser descritos ou tratados como código
-existente. A autenticação atual usa Supabase Auth com magic link; não crie um
-contexto `identity` no app para reproduzir o backend antigo. O contexto `chat`
-não faz parte do escopo atual.
+O aplicativo integra sign-in e sign-up por e-mail e senha à API HTTP JSON:API;
+o Kotlin legado é somente referência de domínio. `expense` possui formulário e
+camadas de criação, mas seu client ainda não persiste dados. `budget`, `family`
+e `insight` não têm feature Flutter implementada. Não descreva recursos
+planejados como código existente nem crie um contexto `identity` para reproduzir
+o backend antigo. O contexto `chat` não faz parte do escopo atual.
 
 Regras de domínio que devem ser preservadas nas features financeiras:
 
@@ -62,7 +62,7 @@ Regras de domínio que devem ser preservadas nas features financeiras:
 - `flutter_modular` 7 para módulos, injeção de dependências e rotas.
 - `command_it` para operações assíncronas observáveis pela apresentação.
 - `listen_it` está declarado, mas não é usado diretamente no código atual.
-- Supabase Auth e dados através de `supabase_flutter`.
+- `dio` para integração HTTP JSON:API de autenticação.
 - `flutter_secure_storage` para armazenamento seguro.
 - `mocktail` e `flutter_test` para testes.
 - Fonte de aplicação: `Inter-Variable.ttf`.
@@ -102,9 +102,9 @@ imagens, storage e `Either`.
 
 Os bounded contexts do produto devem ser refletidos em features próprias,
 quando implementados. `dashboard` é uma feature de apresentação e composição,
-não um bounded context de negócio. `authentication` encapsula o fluxo de
-Supabase Auth e magic link; não deve assumir a responsabilidade de modelar
-todo o ciclo de vida de `identity` do backend antigo.
+não um bounded context de negócio. `authentication` encapsula sign-in e
+sign-up por e-mail e senha via API; não deve assumir a responsabilidade de
+modelar todo o ciclo de vida de `identity` do backend antigo.
 
 ## Imports
 
@@ -228,7 +228,7 @@ Daqui para frente:
   com nome e arquivo próprios, seguindo o sufixo `Widget`.
 - Prefira `build` curto e extraia métodos privados quando uma parte tiver uma
   responsabilidade visual ou comportamental própria.
-- Não coloque acesso a Supabase, storage ou regras de negócio dentro de um
+- Não coloque acesso a clientes HTTP, storage ou regras de negócio dentro de um
   widget.
 
 ### Widgets compartilhados
@@ -280,7 +280,7 @@ o provider de toast.
 Previews de feature vivem em `presentation/previews/screens/` ou
 `presentation/previews/widgets/`. Fakes exclusivos do catálogo ficam em
 `presentation/previews/fakes/` e devem implementar contratos do domínio sem
-acessar Supabase, storage ou plugins. Previews compartilhados ficam em
+acessar rede, storage ou plugins. Previews compartilhados ficam em
 `features/core/presentation/previews/widgets/`.
 
 - Use funções públicas top-level sem parâmetros, como exige o previewer.
@@ -303,14 +303,15 @@ Screens são pontos de composição e integração da feature. Elas devem:
 - Manter estado estritamente local quando ele pertence àquela tela.
 - Criar e descartar controllers e subscriptions corretamente.
 - Delegar operações assíncronas para commands.
-- Não conhecer detalhes de clientes Supabase ou implementações de storage.
+- Não conhecer detalhes de clientes HTTP ou implementações de storage.
 
 ### Mixins De Estado De UI
 
-Quando uma screen `StatefulWidget` acumular estado efêmero, lifecycle e handlers
-de UI suficientes para prejudicar a leitura do `build`, extraia-os para um mixin
-restrito à própria screen em `presentation/mixins/`. O mixin deve declarar
-`on State<Screen>` para tornar seu acoplamento explícito.
+Quando uma screen ou formulário `StatefulWidget` acumular estado efêmero,
+lifecycle e handlers de UI suficientes para prejudicar a leitura do `build`,
+extraia-os para um mixin restrito ao widget em `presentation/mixins/` ou no
+diretório da tela. O mixin deve declarar `on State<Widget>` para tornar seu
+acoplamento explícito.
 
 O mixin pode possuir controllers, timers, listeners de commands, validação de
 entrada, loading local, feedback visual e os métodos `initState` e `dispose`.
@@ -419,25 +420,34 @@ Operações assíncronas da apresentação devem ser encapsuladas em commands us
 `command_it`. Commands implementam `ICommand` quando precisam ser descartados
 pelo ciclo de vida do módulo.
 
-O padrão atual é:
+O sign-in mantém `Either` no resultado do command para a apresentação decidir
+como exibir erros da API:
 
 ```dart
-final class ExampleCommand implements ICommand {
-  final Command<String, void> execute;
-
-  ExampleCommand({required IRepository repository})
-      : execute = Command.createAsyncNoResult<String>((value) async {
-          final result = await repository.run(value);
-          result.fold((failure) => throw failure, (_) {});
-        });
+final class SignInCommand({required IAuthenticationRepository repository})
+    implements ICommand {
+  final Command<
+    ({String email, String password}),
+    Either<ErrorsEntity, SessionEntity>?
+  > execute = Command.createAsync<
+    ({String email, String password}),
+    Either<ErrorsEntity, SessionEntity>?
+  >(
+    initialValue: null,
+    (credentials) => repository.signIn(
+      email: credentials.email,
+      password: credentials.password,
+    ),
+  );
 
   @override
   void dispose() => execute.dispose();
 }
 ```
 
-Na screen, use `CommandBuilder` para renderizar estados de execução, sucesso e
-erro. Não faça `try/catch` da operação diretamente no `build`.
+Na screen, use `CommandBuilder` para renderizar estados de execução e resultado;
+trate `Left` como resultado quando o command retornar `Either`. Não faça
+`try/catch` da operação diretamente no `build`.
 
 ### Gerenciamento global
 
@@ -461,7 +471,7 @@ Regras de dependência:
 
 - `domain` define contratos, failures e regras independentes de framework.
 - `data` implementa contratos do domínio e traduz dados vindos de data sources.
-- `infrastructure` acessa Supabase, storage, rede, plugins e APIs externas.
+- `infrastructure` acessa rede, storage, plugins e APIs externas.
 - `presentation` contém screens, widgets e commands; não acessa clientes
   externos diretamente.
 - Dependências devem apontar para dentro: presentation usa interfaces de
@@ -480,19 +490,21 @@ Screen/Widget
     -> External service
 ```
 
-## Supabase
+## API HTTP E Persistência
 
-`supabase/` é a fonte de verdade para schema, migrations, RLS, grants, RPCs e
-testes de banco. A UI Flutter não concede autoridade: a propriedade financeira
-é aplicada por RLS e pelas RPCs transacionais, que derivam o ator de
-`auth.uid()`. Clientes autenticados não devem escrever diretamente nas tabelas
-financeiras.
+`authenticationModule` configura `Dio` com `BASE_URL` (padrão
+`https://api.cordato.cloud/api/`) e `HeadersInterceptor` para JSON:API. O
+`HttpClient` do core devolve `Either` de mapas; `AuthenticationDataSource`
+converte as respostas em objetos tipados e erros JSON:API. Endpoints relativos
+à base preservam o prefixo `/api/`.
 
-Para uma feature financeira, identifique o contexto proprietário e altere a
-migration/RPC e os testes de autorização ou invariantes aplicáveis. Não adicione
-tabelas, políticas ou RPCs de `family` ou `insight` antes de essas features
-existirem. Consulte `supabase/README.md` para os artefatos e comandos de banco;
-não replique SQL em documentação geral.
+O sign-in usa e-mail e senha; o token recebido ainda não é salvo e o sucesso
+não navega automaticamente. Há command para sign-up, mas ainda não há tela de
+cadastro. `ExpenseClient.create` ainda retorna falha e não persiste gastos;
+`budget`, `family` e `insight` não possuem integração Flutter. Não descreva
+regras de autorização do backend como já aplicadas pelo aplicativo. Ao conectar
+uma feature financeira, defina seu contexto proprietário, preserve as
+invariantes no serviço responsável e adicione testes de autorização e domínio.
 
 ## Módulos, DI E Rotas
 
@@ -527,10 +539,11 @@ Regras:
 
 Rotas atuais:
 
-- `/welcome/` para a tela de boas-vindas.
-- `/authentication/magic-link` para o magic link.
-- `/callback` para o retorno do magic link.
-- `/dashboard/` para a área autenticada inicial.
+- `/welcome` para a tela de boas-vindas e rota inicial.
+- `/authentication/sign-in` para entrada por e-mail e senha.
+- `/dashboard` para a tela inicial de dashboard, ainda sem guard de sessão.
+- `/settings` para configurações.
+- `/expense` para o formulário de gasto.
 
 ## Erros E Falhas
 
@@ -538,8 +551,9 @@ O padrão atual separa resultado de negócio de exceção:
 
 - infraestrutura retorna resultado simples ou captura exceções externas;
 - repository converte o resultado em `Either<Failure, R>`;
-- presentation transforma `Left` em erro de command quando necessário;
-- `CommandBuilder` renderiza o estado de erro.
+- presentation trata `Left` como resultado ou o transforma em erro observável
+  quando necessário;
+- `CommandBuilder` renderiza estados de execução e erro do command.
 
 Use failures tipadas e mensagens localizadas no domínio. Não exponha exceções
 de SDK diretamente na UI.
@@ -581,31 +595,15 @@ Para validar rapidamente os limites arquiteturais:
 flutter test test/architecture
 ```
 
-Para executar o app, forneça as configurações obrigatórias:
+Para executar o app, use `flutter run`. A URL base da API de autenticação pode
+ser substituída quando necessário:
 
 ```bash
-flutter run \
-  --dart-define=SUPABASE_URL=... \
-  --dart-define=SUPABASE_ANON_KEY=...
+flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
 ```
 
-`SUPABASE_REDIRECT_URL` é opcional e possui valor padrão no módulo de
-autenticação.
-
-Para alterações de banco, com Docker Desktop e Supabase CLI instalados, execute
-depois de um reset local limpo:
-
-```bash
-supabase start
-supabase db reset
-supabase migration list --local
-supabase db lint --local
-supabase test db
-```
-
-Esses são testes de integração locais de schema, RPC, RLS e invariantes, não
-substitutos da suíte Flutter. A configuração e verificação de release Android
-estão em `android/README.md`.
+O padrão de `BASE_URL` é `https://api.cordato.cloud/api/`. A configuração e
+verificação de release Android estão em `android/README.md`.
 
 ## Checklist De Pull Request
 
@@ -619,7 +617,7 @@ estão em `android/README.md`.
 - `flutter test` foi executado e qualquer falha não relacionada foi registrada.
 - Nenhuma extensão, token ou abstração duplicada foi criada.
 - Mudanças em módulos, rotas, contratos ou comandos atualizaram `ARCHITECTURE.md`.
-- Mudanças em migrations, RPCs, RLS ou testes de banco atualizaram `supabase/README.md`.
+- Mudanças de integração HTTP ou contratos de autenticação atualizaram `ARCHITECTURE.md`.
 - Mudanças de release Android atualizaram `android/README.md`.
 - O `README.md` foi revisado quando o estado do produto, configuração ou início rápido mudou.
 
@@ -632,5 +630,3 @@ como padrão novo:
   infraestrutura de apresentação; código novo deve usar `material_ui`.
 - `listen_it` está declarado sem uso direto na aplicação.
 - Não existe suíte `integration_test`.
-- Há referências legadas a “Trocado” em um projeto chamado `cordato`; não
-  normalize nomes sem uma decisão explícita de produto.

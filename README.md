@@ -6,21 +6,22 @@ família, oferecer uma visão compartilhada das finanças de seus membros.
 
 ## Produto
 
-O modelo de negócio foi definido no backend legado em Kotlin. O backend ativo
-do aplicativo é o Supabase versionado neste repositório. A regra central é:
+O modelo de negócio tem como referência o backend legado em Kotlin. O app usa
+uma API HTTP JSON:API para autenticação; a persistência das features financeiras
+ainda não está conectada. A regra central é:
 
 > A pessoa é dona dos próprios dados. A família é apenas uma lente de leitura.
 
 Os bounded contexts do produto são:
 
-- `expense`: implementado. Fatos atômicos de gastos de uma pessoa.
-- `budget`: implementado. Tetos planejados por intervalo de datas; gasto e saldo são derivados.
+- `expense`: formulário e camadas de criação presentes, ainda sem persistência.
+- `budget`: planejado. Tetos por intervalo de datas, com gasto e saldo derivados.
 - `family`: planejado. Organização familiar com acesso combinado somente de leitura.
-- `insight`: placeholder de apresentação visível. Análises financeiras derivadas,
-  somente leitura e sem persistência própria continuam planejadas.
+- `insight`: planejado. Análises derivadas, somente leitura e sem persistência própria.
 
 O contexto `identity` do backend não será reproduzido no app neste momento. A
-autenticação e a sessão são fornecidas pelo Supabase Auth através de magic link.
+autenticação por e-mail e senha usa a API JSON:API; há tela de sign-in e command
+de sign-up, mas ainda não há tela de cadastro ou gestão de sessão.
 O contexto `chat` está fora do escopo atual.
 
 ## Estado atual
@@ -28,29 +29,29 @@ O contexto `chat` está fora do escopo atual.
 O app já possui:
 
 - tela de boas-vindas;
-- autenticação por e-mail com magic link;
-- callback de autenticação e restauração de sessão;
-- dashboard inicial com dados do usuário;
-- criação de gastos e orçamentos individuais;
-- tela de configurações;
-- navegação autenticada persistente entre Dashboard, Transações, Insights e
-  Configurações, com Transações e Insights ainda como placeholders;
+- tela de sign-in com validação e feedback de erro, ainda sem navegação pós-login
+  nem persistência do token;
+- dashboard inicial com usuário de exemplo fornecido por um client local;
+- formulário de gasto, cuja operação de criação ainda retorna falha;
+- tela de configurações, com botão de saída ainda sem logout integrado;
+- navegação de Welcome para Sign In e de Dashboard para Settings e Expense;
 - tema claro/escuro e componentes de apresentação reutilizáveis.
 
-As próximas features devem priorizar família e insights, sem transformar o
-grupo familiar em dono dos dados financeiros de seus membros.
+`budget`, `family` e `insight` seguem planejados. Ao implementá-los, o grupo
+familiar não deve se tornar dono dos dados financeiros de seus membros.
 
 ## Arquitetura
 
 O código é organizado por feature e por camadas:
 
 ```text
-presentation -> domain -> data -> infrastructure -> Supabase
+presentation -> domain -> data -> infrastructure -> API HTTP
 ```
 
 `presentation` não conhece SDKs externos. `domain` contém contratos e regras
 independentes de framework, `data` implementa os repositórios e
-`infrastructure` encapsula Supabase, storage e plugins.
+`infrastructure` encapsula clientes HTTP, storage e plugins. A integração HTTP
+atual atende à autenticação; a criação de gastos ainda não persiste dados.
 
 Consulte [`ARCHITECTURE.md`](ARCHITECTURE.md) para módulos, rotas, limites
 técnicos e validação, e [`AGENTS.md`](AGENTS.md) para as convenções de
@@ -70,44 +71,32 @@ Para abrir os previews de telas e componentes no Widget Previewer do Flutter:
 flutter widget-preview start
 ```
 
-Para executar o app, forneça as configurações do Supabase:
+Para executar o app, use `flutter run`. A autenticação usa por padrão
+`https://api.cordato.cloud/api/`. Para apontá-la a outra API:
 
 ```bash
-flutter run \
-  --dart-define=SUPABASE_URL=https://example.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=...
+flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
 ```
 
-`SUPABASE_REDIRECT_URL` é opcional e possui um valor padrão no módulo de
-autenticação.
+O valor de `BASE_URL` deve incluir o prefixo `/api/`.
 
 ## Android Release
 
 O processo de configuração segura da chave, build e verificação de artefatos
 Android está documentado em [`android/README.md`](android/README.md).
 
-## Backend Supabase
+## API E Persistência
 
-A configuração local, migrações ordenadas e documentação do backend vivem em
-[`supabase/`](supabase/README.md). Para provisionar e validar um banco local
-limpo, com Docker e a Supabase CLI instalados:
-
-```bash
-supabase start
-supabase db reset
-supabase migration list --local
-supabase db lint --local
-supabase test db
-```
-
-Não edite o schema pelo dashboard. Toda mudança de banco, RLS, grants,
-triggers ou funções deve ser adicionada como uma nova migration em
-`supabase/migrations/`. `supabase test db` executa testes locais de schema, RPC,
-autorização, invariantes e concorrência; eles são distintos dos testes Flutter.
+`authenticationModule` configura `Dio` e o media type JSON:API. O fluxo de
+sign-in e sign-up passa por command, contrato de repository, data source e
+client HTTP. A API é externa a este repositório; não há schema ou migrations do
+backend financeiro versionados aqui. Ao conectar as features financeiras,
+preserve propriedade individual, autorização e invariantes no serviço
+responsável, com testes próprios.
 
 ## Revisão De Mudanças
 
-Mudanças em módulos, rotas, contratos, migrations, RPCs, RLS, comandos de
-validação ou configuração de release devem atualizar, na mesma alteração, a
+Mudanças em módulos, rotas, contratos, integração HTTP, comandos de validação
+ou configuração de release devem atualizar, na mesma alteração, a
 documentação canônica correspondente. Consulte a seção de revisão em
 [`ARCHITECTURE.md`](ARCHITECTURE.md#revisão-de-documentação).

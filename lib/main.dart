@@ -17,10 +17,7 @@ Future<void> main() async {
       navigatorKey: navigatorKey,
       initialRoute: RouteEnum.welcome.path,
       defaultTransition: TransitionType.none,
-      child: AppWidget(
-        navigatorKey: navigatorKey,
-        state: ValueNotifier(.unauthenticated),
-      ),
+      child: AppWidget(navigatorKey: navigatorKey),
     ),
   );
 }

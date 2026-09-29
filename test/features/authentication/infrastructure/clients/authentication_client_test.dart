@@ -1,10 +1,11 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
+
+import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
 
 class _HttpClientMock extends Mock implements IHttpClient {}
 
@@ -25,9 +26,9 @@ void main() {
     when(() => http.post(parameter: any(named: 'parameter')))
         .thenAnswer((_) async => Right(payload));
 
-    final result = await client.signIn(
-      email: 'person@example.com',
+    final response = await client.signIn(
       password: 'secret',
+      email: 'person@example.com',
     );
     final request =
         verify(() => http.post(parameter: captureAny(named: 'parameter')))
@@ -35,15 +36,15 @@ void main() {
                 .single
             as Requests;
 
-    expect(request.path, '/api/authentication/sign-in');
     expect(request.headers, isNull);
+    expect(response.right, same(payload));
+    expect(request.path, 'authentication/sign-in');
     expect(request.body, {
       'data': {
         'type': 'access-tokens',
         'attributes': {'email': 'person@example.com', 'password': 'secret'},
       },
     });
-    expect(result.right, same(payload));
   });
 
   test(
@@ -57,30 +58,31 @@ void main() {
       when(() => http.post(parameter: any(named: 'parameter')))
           .thenAnswer((_) async => Left(error));
 
-      final result = await client.signUp(
-        email: 'gabriel@example.com',
+      final response = await client.signUp(
         password: 'secret',
+        email: 'gabriel@example.com',
       );
+
       final request =
           verify(() => http.post(parameter: captureAny(named: 'parameter')))
                   .captured
                   .single
               as Requests;
 
-      expect(request.path, '/api/authentication/sign-up');
       expect(request.headers, isNull);
+      expect(response.left, same(error));
+      expect(request.path, 'authentication/sign-up');
       expect(request.body, {
         'data': {
           'type': 'sign-ups',
           'attributes': {
             'name': 'gabriel',
-            'email': 'gabriel@example.com',
             'password': 'secret',
+            'email': 'gabriel@example.com',
             'password_confirmation': 'secret',
           },
         },
       });
-      expect(result.left, same(error));
     },
   );
 }

@@ -7,10 +7,6 @@ void main() {
     expect(RouteEnum.root.path, '/');
     expect(RouteEnum.welcome.path, '/welcome');
     expect(RouteEnum.dashboard.path, '/dashboard');
-    expect(
-      RouteEnum.authenticationMagicLink.path,
-      '/authentication/magic-link',
-    );
-    expect(RouteEnum.authenticationCallback.path, '/callback');
+    expect(RouteEnum.authenticationSignIn.path, '/authentication/sign-in');
   });
 }
