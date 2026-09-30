@@ -17,19 +17,19 @@ void main() {
         },
         'relationships': {
           'user': {
-            'data': {'type': 'users', 'id': '3'},
+            'data': {'type': 'users', 'id': '5'},
           },
         },
       },
     });
 
-    expect(response.userId, '2');
+    expect(response.userId, '5');
     expect(response.token, 'example-token');
     expect(response.expiresAt, DateTime.utc(2026, 9, 28, 18, 30, 6));
 
     final entity = response.toEntity();
 
-    expect(entity.userId, '2');
+    expect(entity.userId, '5');
     expect(entity.token, 'example-token');
     expect(entity.expiresAt, DateTime.utc(2026, 9, 28, 18, 30, 6));
   });
@@ -71,6 +71,68 @@ void main() {
       expect(response.errors.single.detail, 'O campo data.type é obrigatório.');
     },
   );
+
+  test('parses multiple validation errors with their field pointers', () {
+    final response = ErrorsResponse.fromJson({
+      'errors': [
+        {
+          'title': 'Erro de validação',
+          'detail': 'E-mail inválido.',
+          'status': '422',
+          'source': {'pointer': '/data/attributes/email'},
+        },
+        {
+          'title': 'Erro de validação',
+          'detail': 'Senha curta.',
+          'status': '422',
+          'source': {'pointer': '/data/attributes/password'},
+        },
+      ],
+    });
+
+    final entity = response.toEntity();
+    expect(entity.errors, hasLength(2));
+    expect(entity.errors.first.pointer, '/data/attributes/email');
+    expect(entity.errors.last.pointer, '/data/attributes/password');
+    expect(entity.errors.last.detail, 'Senha curta.');
+  });
+
+  for (final status in ['401', '403', '429', '500']) {
+    test('preserves a $status error without source', () {
+      final response = ErrorsResponse.fromJson({
+        'errors': [
+          {
+            'title': 'Erro da API',
+            'detail': 'Não foi possível concluir a solicitação.',
+            'status': status,
+          },
+        ],
+      });
+
+      final error = response.toEntity().errors.single;
+      expect(error.status, status);
+      expect(error.title, 'Erro da API');
+      expect(error.detail, 'Não foi possível concluir a solicitação.');
+      expect(error.pointer, isNull);
+    });
+  }
+
+  test('preserves sign-up conflict source pointer', () {
+    final response = ErrorsResponse.fromJson({
+      'errors': [
+        {
+          'title': 'E-mail já utilizado',
+          'detail': 'Não foi possível utilizar o e-mail informado.',
+          'status': '409',
+          'source': {'pointer': '/data/attributes/email'},
+        },
+      ],
+    });
+
+    final error = response.toEntity().errors.single;
+    expect(error.status, '409');
+    expect(error.pointer, '/data/attributes/email');
+  });
 
   test('empty error list becomes an unknown error during parsing', () {
     final response = ErrorsResponse.fromJson({'errors': []});

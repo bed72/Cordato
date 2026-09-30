@@ -1,9 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
-import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/form_sign_up_widget.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+
+import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/form_sign_up_widget.dart';
 
 mixin SignUpScreenStateMixin on State<SignUpScreen> {
   final formKey = GlobalKey<FormSignUpWidgetState>();
@@ -34,20 +35,23 @@ mixin SignUpScreenStateMixin on State<SignUpScreen> {
     }
 
     if (data.data case Left(:final value)) {
-      final error = value.errors.firstOrNull;
-      context.showToast(
-        variant: .error,
-        title: error?.title ?? 'Erro ao criar conta',
-        description:
-            error?.detail ??
-            'Não foi possível criar sua conta. Tente novamente.',
-      );
+      final remaining =
+          formKey.currentState?.showErrors(value.errors) ?? value.errors;
+      if (remaining.isNotEmpty) {
+        context.showToast(
+          variant: .error,
+          title: remaining.first.title ?? 'Erro ao criar conta',
+          description: remaining
+              .map(
+                (error) =>
+                    error.detail ??
+                    'Não foi possível criar sua conta. Tente novamente.',
+              )
+              .join('\n'),
+        );
+      }
     } else if (data.data case Right(value: true)) {
-      context.showToast(
-        variant: .success,
-        title: 'Conta criada',
-        description: 'Sua conta foi criada com sucesso.',
-      );
+      widget.onConfirm(context, data.paramData!.email);
     }
   }
 

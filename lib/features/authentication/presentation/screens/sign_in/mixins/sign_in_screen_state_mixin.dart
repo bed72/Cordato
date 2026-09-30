@@ -34,13 +34,20 @@ mixin SignInScreenStateMixin on State<SignInScreen> {
     }
 
     if (data.data case Left(:final value)) {
-      final error = value.errors.firstOrNull;
-      context.showToast(
-        variant: .error,
-        title: error?.title ?? 'Erro ao entrar',
-        description:
-            error?.detail ?? 'Não foi possível entrar. Tente novamente.',
-      );
+      final remaining =
+          formKey.currentState?.showErrors(value.errors) ?? value.errors;
+      if (remaining.isNotEmpty) {
+        context.showToast(
+          variant: .error,
+          title: remaining.first.title ?? 'Erro ao entrar',
+          description: remaining
+              .map(
+                (error) =>
+                    error.detail ?? 'Não foi possível entrar. Tente novamente.',
+              )
+              .join('\n'),
+        );
+      }
     }
   }
 

@@ -1,6 +1,14 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
+    "lerd": {
+      "command": [
+        "lerd",
+        "mcp"
+      ],
+      "enabled": true,
+      "type": "local"
+    },
     "maestro": {
       "type": "local",
       "command": [

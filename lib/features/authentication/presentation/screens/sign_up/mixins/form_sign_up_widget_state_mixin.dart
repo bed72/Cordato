@@ -1,14 +1,66 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/form_sign_up_widget.dart';
 
 mixin FormSignUpWidgetStateMixin on State<FormSignUpWidget> {
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
   String email = '';
   String? emailFailure;
 
   String password = '';
   String? passwordFailure;
+
+  List<ErrorEntity> showErrors(List<ErrorEntity> errors) {
+    final remaining = <ErrorEntity>[];
+    final emailMessages = <String>[];
+    final passwordMessages = <String>[];
+
+    for (final error in errors) {
+      if (error.detail != null) {
+        if ((error.status == '422' || error.status == '409') &&
+            error.pointer == '/data/attributes/email') {
+          emailMessages.add(error.detail!);
+          continue;
+        }
+        if (error.status == '422' &&
+            error.pointer == '/data/attributes/password') {
+          passwordMessages.add(error.detail!);
+          continue;
+        }
+      }
+      remaining.add(error);
+    }
+
+    setState(() {
+      emailFailure = emailMessages.isEmpty ? null : emailMessages.join('\n');
+      passwordFailure = passwordMessages.isEmpty
+          ? null
+          : passwordMessages.join('\n');
+    });
+    return remaining;
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  void clear() {
+    emailController.clear();
+    passwordController.clear();
+    setState(() {
+      email = '';
+      password = '';
+      emailFailure = null;
+      passwordFailure = null;
+    });
+  }
 
   void submit() {
     final validatedEmail = widget.emailValidation(email);

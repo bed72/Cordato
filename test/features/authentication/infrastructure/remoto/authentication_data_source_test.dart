@@ -31,6 +31,11 @@ void main() {
               'token': 'example-token',
               'expires_at': '2026-09-28T18:30:06+00:00',
             },
+            'relationships': {
+              'user': {
+                'data': {'type': 'users', 'id': '5'},
+              },
+            },
           },
         }),
       );
@@ -38,7 +43,7 @@ void main() {
       final data = await dataSource.signIn(email: email, password: password);
 
       expect(data.isRight, isTrue);
-      expect(data.right.userId, '2');
+      expect(data.right.userId, '5');
       expect(data.right.token, 'example-token');
       expect(data.right.expiresAt, DateTime.utc(2026, 9, 28, 18, 30, 6));
       verify(() => client.signIn(email: email, password: password)).called(1);
@@ -101,6 +106,25 @@ void main() {
     test('returns an error for a malformed success response', () async {
       when(() => client.signIn(email: email, password: password))
           .thenAnswer((_) async => const Right({}));
+
+      final data = await dataSource.signIn(email: email, password: password);
+
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.detail, isNotEmpty);
+    });
+
+    test('rejects a sign-in response without a user relationship', () async {
+      when(() => client.signIn(email: email, password: password)).thenAnswer(
+        (_) async => const Right({
+          'data': {
+            'id': '2',
+            'attributes': {
+              'token': 'example-token',
+              'expires_at': '2026-09-28T18:30:06+00:00',
+            },
+          },
+        }),
+      );
 
       final data = await dataSource.signIn(email: email, password: password);
 

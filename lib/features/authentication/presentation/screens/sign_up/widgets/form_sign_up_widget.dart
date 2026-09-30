@@ -27,12 +27,14 @@ class FormSignUpWidgetState extends State<FormSignUpWidget>
       children: [
         EmailFieldWidget(
           label: 'E-mail',
+          controller: emailController,
           failure: emailFailure,
           hint: 'Digite seu e-mail',
           onChanged: onEmailChanged,
         ),
         PasswordFieldWidget(
           label: 'Senha',
+          controller: passwordController,
           inputAction: .done,
           hint: 'Crie uma senha',
           failure: passwordFailure,

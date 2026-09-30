@@ -31,7 +31,8 @@ O app já possui:
 - tela de boas-vindas;
 - tela de sign-in com validação e feedback de erro, ainda sem navegação pós-login
   nem persistência do token;
-- tela de sign-up com validação e feedback do cadastro;
+- tela de sign-up com validação e tela de confirmação que mostra o e-mail
+  cadastrado em um campo desabilitado após o sucesso, com acesso ao sign-in;
 - dashboard inicial com usuário de exemplo fornecido por um client local;
 - formulário de gasto, cuja operação de criação ainda retorna falha;
 - tela de configurações, com botão de saída ainda sem logout integrado;
@@ -81,6 +82,14 @@ flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
 ```
 
 O valor de `BASE_URL` deve incluir o prefixo `/api/`.
+
+Para usar o backend local do Lerd em um Android na mesma rede, execute
+`make android-lan` antes de iniciar **Cordato (debug)** no VS Code. O comando
+compartilha o site pelo IP da rede e atualiza a URL de debug em
+`.vscode/launch.json`; reinicie o app para aplicar o novo `--dart-define`.
+O backend é procurado em `../../../BackEnd/PHP/Trocado` a partir deste projeto;
+use `make android-lan LERD_SITE_PATH=/caminho/do/backend` se estiver em outro
+local. O HTTP da rede local é permitido apenas no build Android de debug.
 
 ## Android Release
 

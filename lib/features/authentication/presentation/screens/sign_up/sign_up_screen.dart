@@ -19,6 +19,7 @@ final class const SignUpScreen({
   required final EmailValidation emailValidation,
   required final PasswordValidation passwordValidation,
   required final ValueChanged<BuildContext> onSignIn,
+  required final void Function(BuildContext context, String email) onConfirm,
 }) extends StatefulWidget {
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();

@@ -6,4 +6,5 @@ enum RouteEnum(final String path) {
   dashboard('/dashboard'),
   authenticationSignIn('/authentication/sign-in'),
   authenticationSignUp('/authentication/sign-up'),
+  authenticationConfirm('/authentication/confirm'),
 }

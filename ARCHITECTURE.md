@@ -86,6 +86,8 @@ feature.
   de erros JSON:API em `ErrorsResponse`. `ErrorsResponse.fromJson` transforma
   listas de erros vazias em erro genérico; respostas inválidas e exceções do
   client também retornam erro genérico, sem propagar exceções de transporte.
+  No sign-in, `SessionEntity.userId` vem de `data.relationships.user.data.id`;
+  `data.id` identifica o token de acesso.
 - `core/domain/entities/errors_entity.dart` representa uma lista de erros com
   título, detalhe, status e apontamento de campo sem depender do cliente HTTP.
   A extensão `ErrorsResponse.toEntity()` no core infrastructure converte a lista
@@ -96,6 +98,11 @@ feature.
   no `Left`; respostas sem erros e falhas inesperadas usam um erro genérico.
   `SignInCommand` e `SignUpCommand` entregam esse `Either` como resultado ao
   `command_it`, para a apresentação decidir como exibir os erros.
+  As duas rotas retornam o envelope JSON:API `errors` com itens contendo
+  `title`, `detail`, `status` e, para erros de campo, `source.pointer`.
+  A apresentação usa `status` e `source.pointer` para mostrar erros de e-mail
+  e senha nos respectivos campos (422, além do 409 de e-mail no cadastro);
+  os demais erros são apresentados em toast, incluindo múltiplos itens.
 - `presentation` contém screens, widgets, validators, estado local e commands.
 
 O fluxo de uma mutação é:
@@ -173,8 +180,9 @@ Registros importantes:
   sign-in usa `SignInScreen` e `FormSignInWidget`: o mixin do formulário valida
   e-mail e senha (6 a 12 caracteres, com maiúscula e número). A screen apresenta
    erros do command sem navegar após o sucesso nesta etapa da migração. A rota
-   de sign-up usa a mesma composição visual e validação para criar a conta,
-   exibindo o resultado por toast, sem navegação automática após o cadastro.
+   de sign-up usa a mesma composição visual e validação para criar a conta.
+   Após sucesso, substitui a rota pela tela de confirmação e passa o e-mail
+   cadastrado como argumento de navegação para exibir em um campo desabilitado.
 - `dashboardModule`: `GetUserNameCommand`, tela inicial de dashboard e client
   que retorna um usuário fixo; a ação de gasto abre `/expense`.
 - `expenseModule`: validators, command, repository, data source e client para o
@@ -190,6 +198,7 @@ Rotas registradas:
 /welcome
 /authentication/sign-in
 /authentication/sign-up
+/authentication/confirm
 /dashboard
 /settings
 /expense
@@ -201,8 +210,11 @@ não tem destino. A tela de entrada abre `/authentication/sign-in`, e o sign-in
    bem-sucedido ainda não muda a rota. A rota de cadastro está disponível em
    `/authentication/sign-up`. O link de cadastro abaixo do botão de sign-in
    substitui a rota de entrada, mantendo `/welcome` na pilha para o botão voltar.
-   O link de entrada abaixo do botão de sign-up faz a substituição inversa,
-   também preservando `/welcome` na pilha.
+    O link de entrada abaixo do botão de sign-up faz a substituição inversa.
+    O cadastro bem-sucedido substitui sign-up por `/authentication/confirm`,
+    que mostra o e-mail enviado em um campo desabilitado e oferece a ação de
+    entrar. Essa ação substitui a confirmação por sign-in; `/welcome` permanece
+    na pilha.
 
 Os módulos financeiros, dashboard e welcome registram suas rotas dentro de seu
 escopo de composição. A navegação usa extensões de `BuildContext` do Modular 7,
@@ -217,8 +229,9 @@ não use `Modular.to`.
 base. `HttpClient` decodifica JSON e devolve mapas em `Either`; o data source
 converte esses mapas em respostas tipadas e erros JSON:API. O repository expõe
 `Either<ErrorsEntity, SessionEntity>` no sign-in e
- `Either<ErrorsEntity, bool>` no sign-up. O cadastro usa a rota de sign-up e
- apresenta o resultado na tela.
+  `Either<ErrorsEntity, bool>` no sign-up. No sucesso do cadastro, a tela abre
+  a confirmação com o e-mail usado no envio em um campo desabilitado e orienta
+  a pessoa a verificar o link recebido.
 
 O fluxo financeiro ainda não usa a API: `ExpenseClient.create` retorna
 `failed`, `UserClient.getUser` retorna um usuário fixo e não existe feature
