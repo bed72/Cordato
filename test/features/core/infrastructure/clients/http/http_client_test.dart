@@ -122,6 +122,21 @@ void main() {
     );
   });
 
+  test('accepts a 202 response without a body for email resend', () async {
+    body = '';
+    status = 202;
+
+    final response = await client.post(
+      parameter: const Requests('authentication/email-verification/resend'),
+    );
+
+    expect(response.right, isEmpty);
+    expect(
+      captured!.uri.toString(),
+      'https://example.com/api/authentication/email-verification/resend',
+    );
+  });
+
   test('rejects a successful response that is not a JSON object', () async {
     body = '[]';
 

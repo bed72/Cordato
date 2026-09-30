@@ -4,6 +4,8 @@ import 'package:cordato/features/core/infrastructure/clients/http/requests/reque
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
 abstract interface class IAuthenticationClient {
+  Future<Responses> resendEmailVerification({required String email});
+
   Future<Responses> signIn({required String email, required String password});
 
   Future<Responses> signUp({required String email, required String password});
@@ -39,6 +41,20 @@ final class AuthenticationClient({required final IHttpClient _client})
                 'password': password,
                 'password_confirmation': password,
               },
+            },
+          },
+        ),
+      );
+
+  @override
+  Future<Responses> resendEmailVerification({required String email}) =>
+      _client.post(
+        parameter: Requests(
+          HttpPath.resendEmailVerification.path,
+          body: {
+            'data': {
+              'type': 'email-verifications',
+              'attributes': {'email': email},
             },
           },
         ),

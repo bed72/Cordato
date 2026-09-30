@@ -77,7 +77,7 @@ feature.
 - `core/infrastructure/clients/http` oferece um cliente Dio reutilizável com
   `Requests` e `Responses` (`Either` de mapas), usado pela autenticação.
 - `authentication/infrastructure/clients/AuthenticationClient` usa esse cliente
-  para enviar sign-in e sign-up em JSON:API. O módulo registra `IHttpClient` com
+  para enviar sign-in, sign-up e reenvio de verificação em JSON:API. O módulo registra `IHttpClient` com
   `BASE_URL` (padrão `https://api.cordato.cloud/api/`) e instala o
   `HeadersInterceptor` do core para os headers da API. Os caminhos de autenticação
   são relativos à base para preservar o prefixo `/api/`.
@@ -103,6 +103,10 @@ feature.
   A apresentação usa `status` e `source.pointer` para mostrar erros de e-mail
   e senha nos respectivos campos (422, além do 409 de e-mail no cadastro);
   os demais erros são apresentados em toast, incluindo múltiplos itens.
+  `resendEmailVerification` envia o e-mail cadastrado para
+  `authentication/email-verification/resend` com tipo `email-verifications`;
+  a resposta 202 sem corpo é sucesso. O data source e repository preservam
+  erros JSON:API em `Either<ErrorsEntity, bool>`.
 - `presentation` contém screens, widgets, validators, estado local e commands.
 
 O fluxo de uma mutação é:
@@ -176,7 +180,8 @@ Registros importantes:
 - `coreModule`: `IMoneyFormatter` com `MoneyFormatter`.
 - `authenticationModule`: contém `_httpModule`, módulo privado sem `path` que
   registra cliente HTTP, data source e repository de Authentication. A feature
-  registra `SignInCommand` e `SignUpCommand` para os fluxos da API. A rota de
+   registra `SignInCommand`, `SignUpCommand` e `ResendEmailVerificationCommand`
+   para os fluxos da API. A rota de
   sign-in usa `SignInScreen` e `FormSignInWidget`: o mixin do formulário valida
   e-mail e senha (6 a 12 caracteres, com maiúscula e número). A screen apresenta
    erros do command sem navegar após o sucesso nesta etapa da migração. A rota
@@ -212,9 +217,11 @@ não tem destino. A tela de entrada abre `/authentication/sign-in`, e o sign-in
    substitui a rota de entrada, mantendo `/welcome` na pilha para o botão voltar.
     O link de entrada abaixo do botão de sign-up faz a substituição inversa.
     O cadastro bem-sucedido substitui sign-up por `/authentication/confirm`,
-    que mostra o e-mail enviado em um campo desabilitado e oferece a ação de
-    entrar. Essa ação substitui a confirmação por sign-in; `/welcome` permanece
-    na pilha.
+     que mostra o e-mail enviado em um campo desabilitado e permite reenviar
+     o link para esse endereço, com feedback de sucesso ou erro e botão
+     desabilitado durante a requisição. Um cooldown local de 60 segundos
+     começa ao abrir a tela e reinicia após cada reenvio aceito; o tempo
+     restante aparece no `ResendCooldownLabelWidget`.
 
 Os módulos financeiros, dashboard e welcome registram suas rotas dentro de seu
 escopo de composição. A navegação usa extensões de `BuildContext` do Modular 7,
@@ -229,7 +236,7 @@ não use `Modular.to`.
 base. `HttpClient` decodifica JSON e devolve mapas em `Either`; o data source
 converte esses mapas em respostas tipadas e erros JSON:API. O repository expõe
 `Either<ErrorsEntity, SessionEntity>` no sign-in e
-  `Either<ErrorsEntity, bool>` no sign-up. No sucesso do cadastro, a tela abre
+ `Either<ErrorsEntity, bool>` no sign-up e no reenvio. No sucesso do cadastro, a tela abre
   a confirmação com o e-mail usado no envio em um campo desabilitado e orienta
   a pessoa a verificar o link recebido.
 

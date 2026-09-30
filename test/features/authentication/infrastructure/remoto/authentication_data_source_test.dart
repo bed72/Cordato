@@ -63,6 +63,41 @@ void main() {
       verify(() => client.signUp(email: email, password: password)).called(1);
     });
 
+    test('resend accepts a successful response without a body', () async {
+      when(() => client.resendEmailVerification(email: email))
+          .thenAnswer((_) async => const Right({}));
+
+      final data = await dataSource.resendEmailVerification(email: email);
+
+      expect(data.right, isTrue);
+      verify(() => client.resendEmailVerification(email: email)).called(1);
+    });
+
+    test('resend preserves API errors', () async {
+      when(() => client.resendEmailVerification(email: email)).thenAnswer(
+        (_) async => const Left({
+          'errors': [
+            {'status': '429', 'detail': 'Aguarde antes de reenviar.'},
+          ],
+        }),
+      );
+
+      final data = await dataSource.resendEmailVerification(email: email);
+
+      expect(data.left.errors.single.status, '429');
+      expect(data.left.errors.single.detail, 'Aguarde antes de reenviar.');
+    });
+
+    test('resend handles transport exceptions', () async {
+      when(() => client.resendEmailVerification(email: email))
+          .thenThrow(StateError('network unavailable'));
+
+      final data = await dataSource.resendEmailVerification(email: email);
+
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.detail, isNotEmpty);
+    });
+
     test('preserves all API errors from a failed sign-in', () async {
       when(() => client.signIn(email: email, password: password)).thenAnswer(
         (_) async => Left({

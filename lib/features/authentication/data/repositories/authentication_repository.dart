@@ -41,4 +41,16 @@ final class AuthenticationRepository({
       return Left(.unknown());
     }
   }
+
+  @override
+  Future<Either<ErrorsEntity, bool>> resendEmailVerification({
+    required String email,
+  }) async {
+    try {
+      final data = await _dataSource.resendEmailVerification(email: email);
+      return data.either((errors) => errors.toEntity(), (success) => success);
+    } catch (_) {
+      return Left(.unknown());
+    }
+  }
 }

@@ -7,6 +7,8 @@ import 'package:cordato/features/authentication/infrastructure/clients/authentic
 
 typedef SignInDataSourceResponse = Either<ErrorsResponse, SignInResponse>;
 typedef SignUpDataSourceResponse = Either<ErrorsResponse, SignUpResponse>;
+typedef ResendEmailVerificationDataSourceResponse =
+    Either<ErrorsResponse, bool>;
 
 abstract interface class IAuthenticationDataSource {
   Future<SignInDataSourceResponse> signIn({
@@ -17,6 +19,10 @@ abstract interface class IAuthenticationDataSource {
   Future<SignUpDataSourceResponse> signUp({
     required String email,
     required String password,
+  });
+
+  Future<ResendEmailVerificationDataSourceResponse> resendEmailVerification({
+    required String email,
   });
 }
 
@@ -39,6 +45,14 @@ final class AuthenticationDataSource({
   }) => _response(
     fromJson: SignUpResponse.fromJson,
     execute: () => _client.signUp(email: email, password: password),
+  );
+
+  @override
+  Future<ResendEmailVerificationDataSourceResponse> resendEmailVerification({
+    required String email,
+  }) => _response(
+    fromJson: (_) => true,
+    execute: () => _client.resendEmailVerification(email: email),
   );
 
   Future<Either<ErrorsResponse, T>> _response<T>({

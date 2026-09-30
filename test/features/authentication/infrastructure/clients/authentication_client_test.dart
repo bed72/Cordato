@@ -85,4 +85,27 @@ void main() {
       });
     },
   );
+
+  test('resend posts the email-verifications JSON:API resource', () async {
+    when(() => http.post(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right({}));
+
+    final response = await client.resendEmailVerification(
+      email: 'person@example.com',
+    );
+    final request =
+        verify(() => http.post(parameter: captureAny(named: 'parameter')))
+                .captured
+                .single
+            as Requests;
+
+    expect(response.isRight, isTrue);
+    expect(request.path, 'authentication/email-verification/resend');
+    expect(request.body, {
+      'data': {
+        'type': 'email-verifications',
+        'attributes': {'email': 'person@example.com'},
+      },
+    });
+  });
 }

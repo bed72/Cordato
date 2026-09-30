@@ -32,7 +32,8 @@ O app já possui:
 - tela de sign-in com validação e feedback de erro, ainda sem navegação pós-login
   nem persistência do token;
 - tela de sign-up com validação e tela de confirmação que mostra o e-mail
-  cadastrado em um campo desabilitado após o sucesso, com acesso ao sign-in;
+  cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
+  verificação após uma espera de 60 segundos e feedback da API;
 - dashboard inicial com usuário de exemplo fornecido por um client local;
 - formulário de gasto, cuja operação de criação ainda retorna falha;
 - tela de configurações, com botão de saída ainda sem logout integrado;
@@ -99,7 +100,7 @@ Android está documentado em [`android/README.md`](android/README.md).
 ## API E Persistência
 
 `authenticationModule` configura `Dio` e o media type JSON:API. O fluxo de
-sign-in e sign-up passa por command, contrato de repository, data source e
+ sign-in, sign-up e reenvio de verificação passa por command, contrato de repository, data source e
 client HTTP. A API é externa a este repositório; não há schema ou migrations do
 backend financeiro versionados aqui. Ao conectar as features financeiras,
 preserve propriedade individual, autorização e invariantes no serviço

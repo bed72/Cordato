@@ -95,6 +95,36 @@ void main() {
           .called(1);
     });
 
+    test('resend returns success after acceptance', () async {
+      when(() => dataSource.resendEmailVerification(email: email))
+          .thenAnswer((_) async => const Right(true));
+
+      final data = await repository.resendEmailVerification(email: email);
+
+      expect(data.right, isTrue);
+      verify(() => dataSource.resendEmailVerification(email: email)).called(1);
+    });
+
+    test('resend preserves API errors as domain errors', () async {
+      when(() => dataSource.resendEmailVerification(email: email)).thenAnswer(
+        (_) async => const Left(
+          ErrorsResponse(
+            errors: [
+              ErrorResponse(
+                status: '429',
+                detail: 'Aguarde antes de reenviar.',
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final data = await repository.resendEmailVerification(email: email);
+
+      expect(data.left.errors.single.status, '429');
+      expect(data.left.errors.single.detail, 'Aguarde antes de reenviar.');
+    });
+
     test('sign-up returns the API errors as domain data', () async {
       when(() => dataSource.signUp(email: email, password: password))
           .thenAnswer(

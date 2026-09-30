@@ -15,6 +15,7 @@ import 'package:cordato/features/authentication/presentation/screens/confirm/con
 import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/commands/sign_in_command.dart';
+import 'package:cordato/features/authentication/presentation/commands/resend_email_verification_command.dart';
 
 final authenticationModule = createModule(
   path: RouteEnum.root.path,
@@ -31,6 +32,9 @@ final authenticationModule = createModule(
       ..add(PasswordValidation.new)
       ..addLazySingleton<SignInCommand>(SignInCommand.new)
       ..addLazySingleton<SignUpCommand>(SignUpCommand.new)
+      ..addLazySingleton<ResendEmailVerificationCommand>(
+        ResendEmailVerificationCommand.new,
+      )
       ..route(
         RouteEnum.authenticationSignIn.path,
         child: (_, _) => SignInScreen(
@@ -59,8 +63,7 @@ final authenticationModule = createModule(
         RouteEnum.authenticationConfirm.path,
         child: (_, state) => ConfirmScreen(
           email: state.arguments as String? ?? '',
-          onSignIn: (BuildContext context) =>
-              context.replace(RouteEnum.authenticationSignIn.path),
+          command: inject<ResendEmailVerificationCommand>(),
         ),
       );
   },
