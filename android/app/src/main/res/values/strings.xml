@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="confirm_email_scheme">https</string>
+    <string name="confirm_email_host">app.cordato.cloud</string>
+    <string name="confirm_email_path">/authentication/confirm-email</string>
+</resources>

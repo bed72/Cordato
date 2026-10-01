@@ -5,6 +5,8 @@ import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
+import 'package:cordato/features/authentication/domain/enums/email_verification_status_enum.dart';
+import 'package:cordato/features/authentication/infrastructure/clients/email_verification_client.dart';
 
 import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
 import 'package:cordato/features/authentication/infrastructure/responses/sign_up_response.dart';
@@ -13,19 +15,58 @@ import 'package:cordato/features/authentication/infrastructure/remoto/authentica
 class _AuthenticationDataSourceMock extends Mock
     implements IAuthenticationDataSource {}
 
+class _VerificationClientMock extends Mock
+    implements IEmailVerificationClient {}
+
 void main() {
   const password = 'secret';
   const email = 'person@example.com';
 
   late AuthenticationRepository repository;
   late IAuthenticationDataSource dataSource;
+  late _VerificationClientMock verificationClient;
 
   setUp(() {
     dataSource = _AuthenticationDataSourceMock();
-    repository = AuthenticationRepository(dataSource: dataSource);
+    verificationClient = _VerificationClientMock();
+    repository = AuthenticationRepository(
+      dataSource: dataSource,
+      verificationClient: verificationClient,
+      apiBaseUrl: 'https://api.cordato.cloud/api/',
+    );
   });
 
   group('AuthenticationRepository', () {
+    const signed =
+        'https://api.cordato.cloud/api/email-verification/12/abc123?signature=abcdef012345&expires=123456';
+
+    test('rejects malformed or foreign links without any request', () async {
+      expect(
+        await repository.confirm(null),
+        EmailVerificationStatusEnum.invalidLink,
+      );
+      expect(
+        await repository.confirm(
+          signed.replaceFirst('api.cordato.cloud', 'evil.test'),
+        ),
+        EmailVerificationStatusEnum.invalidLink,
+      );
+      verifyZeroInteractions(verificationClient);
+    });
+
+    test('sends the original URL and maps 204, 403 and connectivity', () async {
+      for (final (status, expected) in [
+        (204, EmailVerificationStatusEnum.success),
+        (403, EmailVerificationStatusEnum.invalidLink),
+        (null, EmailVerificationStatusEnum.connectionFailure),
+      ]) {
+        when(() => verificationClient.confirm(signed))
+            .thenAnswer((_) async => status);
+        expect(await repository.confirm(signed), expected);
+      }
+      verify(() => verificationClient.confirm(signed)).called(3);
+    });
+
     test('sign-in returns a session with the response data', () async {
       final expiresAt = DateTime.utc(2026, 9, 28, 18, 30);
       when(() => dataSource.signIn(email: email, password: password))

@@ -40,6 +40,8 @@ O app já possui:
 - navegação de Welcome para Sign In, de Sign In para Sign Up por substituição
   de rota e de Dashboard para Settings e Expense;
 - tema claro/escuro e componentes de apresentação reutilizáveis.
+- confirmação automática de e-mail ao abrir o link HTTPS, com feedback por toast
+  e retorno ao sign-in após sucesso, expiração ou erro de conexão, sem criar sessão.
 
 `budget`, `family` e `insight` seguem planejados. Ao implementá-los, o grupo
 familiar não deve se tornar dono dos dados financeiros de seus membros.
@@ -83,6 +85,10 @@ flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
 ```
 
 O valor de `BASE_URL` deve incluir o prefixo `/api/`.
+O domínio de entrada de produção confirmado para `APP_URL` é
+`https://app.cordato.cloud`. Esse servidor precisa oferecer a página
+`/authentication/confirm-email` e os arquivos de associação Android e iOS
+em `/.well-known/`.
 
 Para usar o backend local do Lerd em um Android na mesma rede, execute
 `make android-lan` antes de iniciar **Cordato (debug)** no VS Code. O comando

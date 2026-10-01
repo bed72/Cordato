@@ -75,6 +75,12 @@ grep -F 'android.permission.INTERNET' \
 The exact merged-manifest directory is Android Gradle Plugin-version specific;
 use the generated `build/app/intermediates/` path if this location changes.
 
+## App Links
+
+Para App Links, publique o SHA-256 do certificado efetivo de distribuição em
+`https://app.cordato.cloud/.well-known/assetlinks.json`, associado ao pacote
+`com.bed.cordato` pela relação `delegate_permission/common.handle_all_urls`.
+
 ## Key Rotation
 
 Keep the release keystore in the approved secret store and restrict access to

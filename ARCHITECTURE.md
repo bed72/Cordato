@@ -108,6 +108,17 @@ feature.
   a resposta 202 sem corpo é sucesso. O data source e repository preservam
   erros JSON:API em `Either<ErrorsEntity, bool>`.
 - `presentation` contém screens, widgets, validators, estado local e commands.
+- A confirmação de e-mail por link tem rota própria `/authentication/confirm-email`:
+  `ConfirmEmailScreen` exibe um callback de espera e inicia automaticamente uma
+  única confirmação por link recebido. `ConfirmEmailCommand` chama o
+  contrato `IAuthenticationRepository`, que constrói o value object
+  `EmailVerificationUrlValueObject` para validar origem HTTPS, caminho e
+  parâmetros da URL assinada antes de chamar `EmailVerificationClient`. Este usa um
+  Dio isolado sem logger, headers de sessão ou redirecionamentos, preservando
+  a URL assinada original. O resultado 204, 403 ou falha de conexão aparece em
+  toast e a tela reconstrói a pilha como Welcome → Sign In, sem manter o
+  callback nela; Voltar no sign-in retorna a Welcome mesmo após um deep link
+  com o app fechado. A API não cria sessão nesse fluxo.
 
 O fluxo de uma mutação é:
 
@@ -180,7 +191,8 @@ Registros importantes:
 - `coreModule`: `IMoneyFormatter` com `MoneyFormatter`.
 - `authenticationModule`: contém `_httpModule`, módulo privado sem `path` que
   registra cliente HTTP, data source e repository de Authentication. A feature
-   registra `SignInCommand`, `SignUpCommand` e `ResendEmailVerificationCommand`
+    registra `SignInCommand`, `SignUpCommand`, `ResendEmailVerificationCommand`
+    e `ConfirmEmailCommand`
    para os fluxos da API. A rota de
   sign-in usa `SignInScreen` e `FormSignInWidget`: o mixin do formulário valida
   e-mail e senha (6 a 12 caracteres, com maiúscula e número). A screen apresenta
@@ -204,6 +216,7 @@ Rotas registradas:
 /authentication/sign-in
 /authentication/sign-up
 /authentication/confirm
+/authentication/confirm-email
 /dashboard
 /settings
 /expense
@@ -239,6 +252,12 @@ converte esses mapas em respostas tipadas e erros JSON:API. O repository expõe
  `Either<ErrorsEntity, bool>` no sign-up e no reenvio. No sucesso do cadastro, a tela abre
   a confirmação com o e-mail usado no envio em um campo desabilitado e orienta
   a pessoa a verificar o link recebido.
+  O link da API usa o `APP_URL` de produção `https://app.cordato.cloud` para a
+  página de entrada e a URL assinada da API em `verification_url`; o servidor
+  deste domínio precisa servir uma página web e os arquivos de associação
+  `/.well-known/assetlinks.json` e `/.well-known/apple-app-site-association`.
+  Android e iOS usam o deep linking nativo do
+  Flutter/Modular, incluindo inicialização e entrega com o app já aberto.
 
 O fluxo financeiro ainda não usa a API: `ExpenseClient.create` retorna
 `failed`, `UserClient.getUser` retorna um usuário fixo e não existe feature

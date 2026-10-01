@@ -22,22 +22,21 @@
               android:name="io.flutter.embedding.android.NormalTheme"  />
 
             <meta-data
-              android:value="false"
-              android:name="flutter_deeplinking_enabled" />
+                android:value="true"
+                android:name="flutter_deeplinking_enabled" />
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <intent-filter>
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="trocado"
-                    android:host="authentication"
-                    android:path="/callback" />
+                <data android:scheme="@string/confirm_email_scheme"
+                    android:host="@string/confirm_email_host"
+                    android:path="@string/confirm_email_path" />
             </intent-filter>
 
         </activity>

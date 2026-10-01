@@ -31,7 +31,7 @@ final class ToastNotifier extends ChangeNotifier {
     );
     notifyListeners();
 
-    final hideAfter = duration ?? Duration(seconds: 4);
+    final hideAfter = duration ?? Duration(seconds: 6);
     if (hideAfter != Duration.zero) {
       _timer = Timer(hideAfter, hide);
     }

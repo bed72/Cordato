@@ -1,7 +1,11 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:dio/dio.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/authentication/infrastructure/clients/email_verification_client.dart';
+import 'package:cordato/features/authentication/presentation/commands/confirm_email_command.dart';
+import 'package:cordato/features/authentication/presentation/screens/confirm_email/confirm_email_screen.dart';
 
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
 import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
@@ -28,6 +32,9 @@ final authenticationModule = createModule(
         AuthenticationRepository.new,
       )
       ..addLazySingleton<IAuthenticationClient>(AuthenticationClient.new)
+      ..addLazySingleton<IEmailVerificationClient>(
+        () => EmailVerificationClient(dio: Dio()),
+      )
       ..add(EmailValidation.new)
       ..add(PasswordValidation.new)
       ..addLazySingleton<SignInCommand>(SignInCommand.new)
@@ -35,6 +42,7 @@ final authenticationModule = createModule(
       ..addLazySingleton<ResendEmailVerificationCommand>(
         ResendEmailVerificationCommand.new,
       )
+      ..addLazySingleton<ConfirmEmailCommand>(ConfirmEmailCommand.new)
       ..route(
         RouteEnum.authenticationSignIn.path,
         child: (_, _) => SignInScreen(
@@ -64,6 +72,20 @@ final authenticationModule = createModule(
         child: (_, state) => ConfirmScreen(
           email: state.arguments as String? ?? '',
           command: inject<ResendEmailVerificationCommand>(),
+        ),
+      )
+      ..route(
+        RouteEnum.authenticationConfirmEmail.path,
+        child: (_, state) => ConfirmEmailScreen(
+          verificationUrl:
+              switch (state.uri.queryParametersAll['verification_url']) {
+                [final String url] => url,
+                _ => null,
+              },
+          command: inject<ConfirmEmailCommand>(),
+          onSignIn: (BuildContext context) => context
+            ..navigate(RouteEnum.welcome.path)
+            ..pushNamed(RouteEnum.authenticationSignIn.path),
         ),
       );
   },
