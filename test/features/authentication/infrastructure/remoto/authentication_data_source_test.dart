@@ -2,9 +2,10 @@ import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
 import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
-import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
+import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
 
 class _AuthenticationClientMock extends Mock implements IAuthenticationClient {}
 
@@ -13,31 +14,64 @@ void main() {
   const email = 'person@example.com';
 
   late IAuthenticationClient client;
-  late IAuthenticationDataSource dataSource;
+  late IAuthenticationRemoteDataSource dataSource;
 
   setUp(() {
     client = _AuthenticationClientMock();
-    dataSource = AuthenticationDataSource(client: client);
+    dataSource = AuthenticationRemoteDataSource(client: client);
   });
 
   group('AuthenticationDataSource', () {
+    test('confirmation passes the original URL and status', () async {
+      const url =
+          'https://other.example/api/email-verification/12/abc?signature=123&expires=456';
+      when(() => client.confirmEmail(url)).thenAnswer(
+        (_) async => const Right(HttpResponse(statusCode: 204, body: {})),
+      );
+
+      expect(await dataSource.confirmEmail(url), 204);
+      verify(() => client.confirmEmail(url)).called(1);
+    });
+
+    test('confirmation returns null when the client fails', () async {
+      when(() => client.confirmEmail('signed'))
+          .thenThrow(StateError('offline'));
+
+      expect(await dataSource.confirmEmail('signed'), isNull);
+    });
+    test('confirmation maps 403 and transport failure by status', () async {
+      when(() => client.confirmEmail('signed')).thenAnswer(
+        (_) async => const Left(HttpResponse(statusCode: 403, body: {})),
+      );
+      expect(await dataSource.confirmEmail('signed'), 403);
+
+      when(() => client.confirmEmail('signed')).thenAnswer(
+        (_) async => const Left(HttpResponse(statusCode: 0, body: {})),
+      );
+      expect(await dataSource.confirmEmail('signed'), isNull);
+    });
     test('sign-in returns the parsed access token response', () async {
       when(() => client.signIn(email: email, password: password)).thenAnswer(
-        (_) async => Right({
-          'data': {
-            'id': '2',
-            'attributes': {
-              'token_type': 'Bearer',
-              'token': 'example-token',
-              'expires_at': '2026-09-28T18:30:06+00:00',
-            },
-            'relationships': {
-              'user': {
-                'data': {'type': 'users', 'id': '5'},
+        (_) async => Right(
+          HttpResponse(
+            statusCode: 200,
+            body: {
+              'data': {
+                'id': '2',
+                'attributes': {
+                  'token_type': 'Bearer',
+                  'token': 'example-token',
+                  'expires_at': '2026-09-28T18:30:06+00:00',
+                },
+                'relationships': {
+                  'user': {
+                    'data': {'type': 'users', 'id': '5'},
+                  },
+                },
               },
             },
-          },
-        }),
+          ),
+        ),
       );
 
       final data = await dataSource.signIn(email: email, password: password);
@@ -51,9 +85,14 @@ void main() {
 
     test('sign-up returns the parsed registration response', () async {
       when(() => client.signUp(email: email, password: password)).thenAnswer(
-        (_) async => Right({
-          'data': {'id': '3'},
-        }),
+        (_) async => Right(
+          HttpResponse(
+            statusCode: 201,
+            body: {
+              'data': {'id': '3'},
+            },
+          ),
+        ),
       );
 
       final data = await dataSource.signUp(email: email, password: password);
@@ -64,8 +103,9 @@ void main() {
     });
 
     test('resend accepts a successful response without a body', () async {
-      when(() => client.resendEmailVerification(email: email))
-          .thenAnswer((_) async => const Right({}));
+      when(() => client.resendEmailVerification(email: email)).thenAnswer(
+        (_) async => const Right(HttpResponse(statusCode: 202, body: {})),
+      );
 
       final data = await dataSource.resendEmailVerification(email: email);
 
@@ -75,11 +115,16 @@ void main() {
 
     test('resend preserves API errors', () async {
       when(() => client.resendEmailVerification(email: email)).thenAnswer(
-        (_) async => const Left({
-          'errors': [
-            {'status': '429', 'detail': 'Aguarde antes de reenviar.'},
-          ],
-        }),
+        (_) async => const Left(
+          HttpResponse(
+            statusCode: 429,
+            body: {
+              'errors': [
+                {'status': '429', 'detail': 'Aguarde antes de reenviar.'},
+              ],
+            },
+          ),
+        ),
       );
 
       final data = await dataSource.resendEmailVerification(email: email);
@@ -100,17 +145,22 @@ void main() {
 
     test('preserves all API errors from a failed sign-in', () async {
       when(() => client.signIn(email: email, password: password)).thenAnswer(
-        (_) async => Left({
-          'errors': [
-            {
-              'status': '401',
-              'detail': 'Confira o e-mail.',
-              'title': 'Credenciais inválidas',
-              'source': {'pointer': '/data/attributes/email'},
+        (_) async => Left(
+          HttpResponse(
+            statusCode: 401,
+            body: {
+              'errors': [
+                {
+                  'status': '401',
+                  'detail': 'Confira o e-mail.',
+                  'title': 'Credenciais inválidas',
+                  'source': {'pointer': '/data/attributes/email'},
+                },
+                {'detail': 'Confira a senha.', 'status': '401'},
+              ],
             },
-            {'detail': 'Confira a senha.', 'status': '401'},
-          ],
-        }),
+          ),
+        ),
       );
 
       final data = await dataSource.signIn(email: email, password: password);
@@ -125,11 +175,16 @@ void main() {
 
     test('preserves API errors from a failed sign-up', () async {
       when(() => client.signUp(email: email, password: password)).thenAnswer(
-        (_) async => Left({
-          'errors': [
-            {'detail': 'E-mail já cadastrado.', 'status': '422'},
-          ],
-        }),
+        (_) async => Left(
+          HttpResponse(
+            statusCode: 422,
+            body: {
+              'errors': [
+                {'detail': 'E-mail já cadastrado.', 'status': '422'},
+              ],
+            },
+          ),
+        ),
       );
 
       final data = await dataSource.signUp(email: email, password: password);
@@ -139,8 +194,9 @@ void main() {
     });
 
     test('returns an error for a malformed success response', () async {
-      when(() => client.signIn(email: email, password: password))
-          .thenAnswer((_) async => const Right({}));
+      when(() => client.signIn(email: email, password: password)).thenAnswer(
+        (_) async => const Right(HttpResponse(statusCode: 200, body: {})),
+      );
 
       final data = await dataSource.signIn(email: email, password: password);
 
@@ -150,15 +206,20 @@ void main() {
 
     test('rejects a sign-in response without a user relationship', () async {
       when(() => client.signIn(email: email, password: password)).thenAnswer(
-        (_) async => const Right({
-          'data': {
-            'id': '2',
-            'attributes': {
-              'token': 'example-token',
-              'expires_at': '2026-09-28T18:30:06+00:00',
+        (_) async => const Right(
+          HttpResponse(
+            statusCode: 200,
+            body: {
+              'data': {
+                'id': '2',
+                'attributes': {
+                  'token': 'example-token',
+                  'expires_at': '2026-09-28T18:30:06+00:00',
+                },
+              },
             },
-          },
-        }),
+          ),
+        ),
       );
 
       final data = await dataSource.signIn(email: email, password: password);
@@ -168,8 +229,9 @@ void main() {
     });
 
     test('returns an error for a malformed API error response', () async {
-      when(() => client.signUp(email: email, password: password))
-          .thenAnswer((_) async => const Left({}));
+      when(() => client.signUp(email: email, password: password)).thenAnswer(
+        (_) async => const Left(HttpResponse(statusCode: 422, body: {})),
+      );
 
       final data = await dataSource.signUp(email: email, password: password);
 
@@ -178,8 +240,10 @@ void main() {
     });
 
     test('returns an error when the API error list is empty', () async {
-      when(() => client.signUp(email: email, password: password))
-          .thenAnswer((_) async => const Left({'errors': []}));
+      when(() => client.signUp(email: email, password: password)).thenAnswer(
+        (_) async =>
+            const Left(HttpResponse(statusCode: 422, body: {'errors': []})),
+      );
 
       final data = await dataSource.signUp(email: email, password: password);
 

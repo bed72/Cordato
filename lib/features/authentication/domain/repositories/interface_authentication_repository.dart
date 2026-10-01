@@ -4,19 +4,24 @@ import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/authentication/domain/entities/session_entity.dart';
 import 'package:cordato/features/authentication/domain/enums/email_verification_status_enum.dart';
 
+typedef SignUpRepositoryType = Either<ErrorsEntity, bool>;
+typedef SignInRepositoryType = Either<ErrorsEntity, SessionEntity>;
+typedef ResendEmailVerificationRepositoryType = Either<ErrorsEntity, bool>;
+
 abstract interface class IAuthenticationRepository {
-  Future<EmailVerificationStatusEnum> confirm(String? verificationUrl);
+  Future<EmailVerificationStatusEnum> confirmEmail(String url);
 
-  Future<Either<ErrorsEntity, SessionEntity>> signIn({
+  Future<ResendEmailVerificationRepositoryType> resendEmailVerification({
+    required String email,
+  });
+
+  Future<SignUpRepositoryType> signUp({
     required String email,
     required String password,
   });
-  Future<Either<ErrorsEntity, bool>> signUp({
+
+  Future<SignInRepositoryType> signIn({
     required String email,
     required String password,
-  });
-
-  Future<Either<ErrorsEntity, bool>> resendEmailVerification({
-    required String email,
   });
 }

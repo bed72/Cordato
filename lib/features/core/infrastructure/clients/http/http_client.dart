@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
 
 abstract interface class IHttpClient {
   Future<Responses> get({required Requests parameter});
@@ -44,24 +45,35 @@ final class HttpClient({required final Dio _dio}) implements IHttpClient {
           responseType: .json,
           headers: parameter.headers,
           validateStatus: (_) => true,
+          followRedirects: parameter.followRedirects,
+          extra: {
+            HttpExtraKeyEnum.route.key: parameter.route,
+            HttpExtraKeyEnum.skipLogging.key: !parameter.logRequest,
+          },
           contentType: parameter.body == null
               ? null
               : parameter.headers?['Content-Type'] as String? ??
                     Headers.jsonContentType,
         ),
       );
+
       final data = response.data;
       final statusCode = response.statusCode ?? 0;
       final isSuccess = statusCode >= 200 && statusCode < 300;
+      final body = data == null || data == '' ? <String, dynamic>{} : data;
 
-      if (data == null && isSuccess) return const Right({});
-      if (data is! Map<String, dynamic>) return Left(_unknownFailure());
+      if (body is! Map<String, dynamic>) {
+        return Left(
+          HttpResponse(statusCode: statusCode, body: _unknownFailure()),
+        );
+      }
 
-      return isSuccess ? Right(data) : Left(data);
+      final value = HttpResponse(statusCode: statusCode, body: body);
+      return isSuccess ? Right(value) : Left(value);
     } on DioException catch (_) {
-      return Left(_unknownFailure());
+      return Left(HttpResponse(statusCode: 0, body: _unknownFailure()));
     } catch (_) {
-      return Left(_unknownFailure());
+      return Left(HttpResponse(statusCode: 0, body: _unknownFailure()));
     }
   }
 

@@ -6,33 +6,33 @@ import 'package:cordato/features/core/infrastructure/clients/http/responses/resp
 
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
 import 'package:cordato/features/authentication/domain/enums/email_verification_status_enum.dart';
-import 'package:cordato/features/authentication/infrastructure/clients/email_verification_client.dart';
 
 import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
 import 'package:cordato/features/authentication/infrastructure/responses/sign_up_response.dart';
-import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
+import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
+import 'package:cordato/features/authentication/infrastructure/local/authentication_local_data_source.dart';
 
 class _AuthenticationDataSourceMock extends Mock
-    implements IAuthenticationDataSource {}
+    implements IAuthenticationRemoteDataSource {}
 
-class _VerificationClientMock extends Mock
-    implements IEmailVerificationClient {}
+class _AuthenticationLocalDataSourceMock extends Mock
+    implements IAuthenticationLocalDataSource {}
 
 void main() {
   const password = 'secret';
   const email = 'person@example.com';
 
   late AuthenticationRepository repository;
-  late IAuthenticationDataSource dataSource;
-  late _VerificationClientMock verificationClient;
+  late IAuthenticationRemoteDataSource dataSource;
+  late _AuthenticationLocalDataSourceMock localDataSource;
 
   setUp(() {
     dataSource = _AuthenticationDataSourceMock();
-    verificationClient = _VerificationClientMock();
+    localDataSource = _AuthenticationLocalDataSourceMock();
+    when(() => localDataSource.saveToken(any())).thenAnswer((_) async {});
     repository = AuthenticationRepository(
-      dataSource: dataSource,
-      verificationClient: verificationClient,
-      apiBaseUrl: 'https://api.cordato.cloud/api/',
+      remoteDataSource: dataSource,
+      localDataSource: localDataSource,
     );
   });
 
@@ -40,18 +40,27 @@ void main() {
     const signed =
         'https://api.cordato.cloud/api/email-verification/12/abc123?signature=abcdef012345&expires=123456';
 
-    test('rejects malformed or foreign links without any request', () async {
+    test('rejects empty links without any request', () async {
       expect(
-        await repository.confirm(null),
+        await repository.confirmEmail(''),
         EmailVerificationStatusEnum.invalidLink,
       );
-      expect(
-        await repository.confirm(
-          signed.replaceFirst('api.cordato.cloud', 'evil.test'),
-        ),
-        EmailVerificationStatusEnum.invalidLink,
+      verifyZeroInteractions(dataSource);
+    });
+
+    test('forwards the URL without validating its contents', () async {
+      final otherHost = signed.replaceFirst(
+        'api.cordato.cloud',
+        'other.example',
       );
-      verifyZeroInteractions(verificationClient);
+      when(() => dataSource.confirmEmail(otherHost))
+          .thenAnswer((_) async => 204);
+
+      expect(
+        await repository.confirmEmail(otherHost),
+        EmailVerificationStatusEnum.success,
+      );
+      verify(() => dataSource.confirmEmail(otherHost)).called(1);
     });
 
     test('sends the original URL and maps 204, 403 and connectivity', () async {
@@ -60,11 +69,11 @@ void main() {
         (403, EmailVerificationStatusEnum.invalidLink),
         (null, EmailVerificationStatusEnum.connectionFailure),
       ]) {
-        when(() => verificationClient.confirm(signed))
+        when(() => dataSource.confirmEmail(signed))
             .thenAnswer((_) async => status);
-        expect(await repository.confirm(signed), expected);
+        expect(await repository.confirmEmail(signed), expected);
       }
-      verify(() => verificationClient.confirm(signed)).called(3);
+      verify(() => dataSource.confirmEmail(signed)).called(3);
     });
 
     test('sign-in returns a session with the response data', () async {
@@ -86,6 +95,7 @@ void main() {
       expect(data.right.userId, 'user-1');
       expect(data.right.expiresAt, expiresAt);
       expect(data.right.token, 'example-token');
+      verify(() => localDataSource.saveToken('example-token')).called(1);
       verify(() => dataSource.signIn(email: email, password: password))
           .called(1);
     });
@@ -122,6 +132,27 @@ void main() {
       expect(data.left.errors.first.detail, 'E-mail inválido.');
       expect(data.left.errors.first.pointer, '/data/attributes/email');
       expect(data.left.errors.last.pointer, '/data/attributes/password');
+      verifyNever(() => localDataSource.saveToken(any()));
+    });
+
+    test('sign-in fails if the token cannot be saved', () async {
+      when(() => dataSource.signIn(email: email, password: password))
+          .thenAnswer(
+            (_) async => Right(
+              SignInResponse(
+                userId: 'user-1',
+                token: 'example-token',
+                expiresAt: DateTime.utc(2026, 11),
+              ),
+            ),
+          );
+      when(() => localDataSource.saveToken('example-token'))
+          .thenThrow(StateError('storage unavailable'));
+
+      final data = await repository.signIn(email: email, password: password);
+
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.title, 'Erro desconhecido');
     });
 
     test('sign-up returns true when registration succeeds', () async {

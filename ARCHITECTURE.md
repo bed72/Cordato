@@ -75,12 +75,14 @@ feature.
 - `data` implementa contratos e converte respostas em `Either<Failure, R>`.
 - `infrastructure` chama clientes HTTP, storage ou plugins.
 - `core/infrastructure/clients/http` oferece um cliente Dio reutilizável com
-  `Requests` e `Responses` (`Either` de mapas), usado pela autenticação.
+  `Requests` e `Responses` (`Either` de `HttpResponse`, com status HTTP e corpo),
+  usado pela autenticação.
 - `authentication/infrastructure/clients/AuthenticationClient` usa esse cliente
-  para enviar sign-in, sign-up e reenvio de verificação em JSON:API. O módulo registra `IHttpClient` com
-  `BASE_URL` (padrão `https://api.cordato.cloud/api/`) e instala o
-  `HeadersInterceptor` do core para os headers da API. Os caminhos de autenticação
-  são relativos à base para preservar o prefixo `/api/`.
+  para enviar sign-in, sign-up e reenvio de verificação em JSON:API. O
+  `coreModule` registra `IHttpClient` com `BASE_URL` (padrão
+  `https://api.cordato.cloud/api/`) e instala o `HeadersInterceptor` para os
+  headers da API. Os caminhos de autenticação são relativos à base para
+  preservar o prefixo `/api/`.
 - `authentication/infrastructure/remoto/AuthenticationDataSource` converte os
   mapas JSON do client em `SignInResponse` ou `SignUpResponse` e preserva a lista
   de erros JSON:API em `ErrorsResponse`. `ErrorsResponse.fromJson` transforma
@@ -93,8 +95,13 @@ feature.
   A extensão `ErrorsResponse.toEntity()` no core infrastructure converte a lista
   completa, com erro genérico quando a resposta não contém itens.
 - `AuthenticationRepository.signIn` converte `SignInResponse` em `SessionEntity`
-  com `toEntity()`; `signUp` retorna sucesso após a resposta de cadastro. Ambos
-  retornam `Either<ErrorsEntity, R>`: todos os erros JSON:API são preservados
+  com `toEntity()` e solicita ao `IAuthenticationLocalDataSource` a gravação do
+  token opaco antes de retornar sucesso. Falhas de gravação retornam erro
+  genérico; erros da API não gravam token. `AuthenticationLocalDataSource` usa
+  `IStorageClient` e `StorageKeyEnum.accessToken`, compartilhado com o
+  `OpaqueTokenInterceptor`. `signUp` retorna sucesso após a
+  resposta de cadastro. Ambos retornam `Either<ErrorsEntity, R>`: todos os erros
+  JSON:API são preservados
   no `Left`; respostas sem erros e falhas inesperadas usam um erro genérico.
   `SignInCommand` e `SignUpCommand` entregam esse `Either` como resultado ao
   `command_it`, para a apresentação decidir como exibir os erros.
@@ -110,13 +117,16 @@ feature.
 - `presentation` contém screens, widgets, validators, estado local e commands.
 - A confirmação de e-mail por link tem rota própria `/authentication/confirm-email`:
   `ConfirmEmailScreen` exibe um callback de espera e inicia automaticamente uma
-  única confirmação por link recebido. `ConfirmEmailCommand` chama o
-  contrato `IAuthenticationRepository`, que constrói o value object
-  `EmailVerificationUrlValueObject` para validar origem HTTPS, caminho e
-  parâmetros da URL assinada antes de chamar `EmailVerificationClient`. Este usa um
-  Dio isolado sem logger, headers de sessão ou redirecionamentos, preservando
-  a URL assinada original. O resultado 204, 403 ou falha de conexão aparece em
-  toast e a tela reconstrói a pilha como Welcome → Sign In, sem manter o
+  única confirmação por link recebido. Se a URL não vier na rota, a screen
+  apresenta link inválido sem executar o command; `ConfirmEmailCommand` recebe
+  uma `String` não nula e chama o
+  contrato `IAuthenticationRepository`, que encaminha a URL recebida ao
+  `IAuthenticationDataSource` sem validar host, caminho ou assinatura. O data
+  source usa `AuthenticationClient` e `IHttpClient.get` com a URL original;
+  a chamada compartilhada
+  não envia Bearer, não segue redirecionamentos e omite a URL dos logs. O
+  resultado 204, 403 ou falha de conexão aparece em toast e a tela reconstrói
+  a pilha como Welcome → Sign In, sem manter o
   callback nela; Voltar no sign-in retorna a Welcome mesmo após um deep link
   com o app fechado. A API não cria sessão nesse fluxo.
 
@@ -173,7 +183,7 @@ ou acesso entre camadas. A matriz operacional e os exemplos canônicos estão em
 `main.dart` inicializa Flutter e Modular com `/welcome` como rota inicial.
 `AppWidget` instala temas, localização `pt_BR`, router e provider de toast. Não
 há restauração de sessão nem guard de autenticação no fluxo atual; o sign-in
-ainda não navega após sucesso ou persiste o token retornado pela API.
+ainda não navega após sucesso; o token retornado pela API é persistido.
 
 `app_module.dart` compõe os módulos existentes:
 
@@ -188,18 +198,22 @@ authenticationModule
 
 Registros importantes:
 
-- `coreModule`: `IMoneyFormatter` com `MoneyFormatter`.
-- `authenticationModule`: contém `_httpModule`, módulo privado sem `path` que
-  registra cliente HTTP, data source e repository de Authentication. A feature
-    registra `SignInCommand`, `SignUpCommand`, `ResendEmailVerificationCommand`
-    e `ConfirmEmailCommand`
-   para os fluxos da API. A rota de
-  sign-in usa `SignInScreen` e `FormSignInWidget`: o mixin do formulário valida
-  e-mail e senha (6 a 12 caracteres, com maiúscula e número). A screen apresenta
-   erros do command sem navegar após o sucesso nesta etapa da migração. A rota
-   de sign-up usa a mesma composição visual e validação para criar a conta.
-   Após sucesso, substitui a rota pela tela de confirmação e passa o e-mail
-   cadastrado como argumento de navegação para exibir em um campo desabilitado.
+- `coreModule`: registra `IMoneyFormatter` com `MoneyFormatter` e
+  `IStorageClient` com `FlutterSecureStorage`; também
+  instala `OpaqueTokenInterceptor` no Dio compartilhado. Ele só lê o token
+  quando o `HttpPathEnum` associado à requisição exige autenticação e o destino
+  coincide com a rota na base da API; requisições públicas ficam sem Bearer.
+- `authenticationModule`: registra client HTTP de autenticação, data sources
+  remoto e local,
+  repository e os commands `SignInCommand`, `SignUpCommand`,
+  `ResendEmailVerificationCommand` e `ConfirmEmailCommand`. A rota de sign-in
+  usa `SignInScreen` e `FormSignInWidget`: o mixin do formulário valida e-mail
+  e senha (6 a 12 caracteres, com maiúscula e número). A screen apresenta erros
+  do command sem navegar após o sucesso; o repository solicita ao data source
+  local a gravação do token em storage seguro. A rota de sign-up usa a mesma composição visual e validação para criar
+  a conta. Após sucesso, substitui a rota pela tela de confirmação e passa o
+  e-mail cadastrado como argumento de navegação para exibi-lo em um campo
+  desabilitado.
 - `dashboardModule`: `GetUserNameCommand`, tela inicial de dashboard e client
   que retorna um usuário fixo; a ação de gasto abre `/expense`.
 - `expenseModule`: validators, command, repository, data source e client para o
@@ -243,11 +257,12 @@ não use `Modular.to`.
 
 ## API HTTP E Persistência
 
-`authenticationModule` configura `Dio` com `BASE_URL` (padrão
+`coreModule` configura `Dio` com `BASE_URL` (padrão
 `https://api.cordato.cloud/api/`) e `HeadersInterceptor`, que usa o media type
 `application/vnd.api+json`. Os endpoints de sign-in e sign-up são relativos à
-base. `HttpClient` decodifica JSON e devolve mapas em `Either`; o data source
-converte esses mapas em respostas tipadas e erros JSON:API. O repository expõe
+base. `HttpClient` decodifica JSON e preserva status e corpo em `HttpResponse`,
+seja no sucesso, seja na falha; o data source converte os corpos em respostas
+tipadas e erros JSON:API. O repository expõe
 `Either<ErrorsEntity, SessionEntity>` no sign-in e
  `Either<ErrorsEntity, bool>` no sign-up e no reenvio. No sucesso do cadastro, a tela abre
   a confirmação com o e-mail usado no envio em um campo desabilitado e orienta
@@ -258,6 +273,23 @@ converte esses mapas em respostas tipadas e erros JSON:API. O repository expõe
   `/.well-known/assetlinks.json` e `/.well-known/apple-app-site-association`.
   Android e iOS usam o deep linking nativo do
   Flutter/Modular, incluindo inicialização e entrega com o app já aberto.
+
+O `coreModule` mantém o Dio compartilhado e o storage seguro. `HttpPathEnum` marca
+as rotas protegidas (`expenses` está no catálogo, mas ainda não é consumida pela
+feature Flutter); `Requests.forPath` carrega essa informação até o interceptor,
+que lê `authentication.access_token` do storage e envia
+`Authorization: Bearer <token>` apenas à rota correspondente na base da API.
+O token é opaco; `Bearer` é o esquema HTTP exigido pelo backend. Sign-in,
+sign-up e reenvio são públicos. A confirmação de e-mail usa `IHttpClient.get`
+no mesmo Dio com a URL original, sem autenticação, redirecionamento ou registro
+da URL assinada; o status 204, 403 ou uma falha de transporte permanece acessível.
+As chaves internas em `RequestOptions.extra` são definidas por
+`HttpExtraKeyEnum` em `core/infrastructure/clients/http/enums/`.
+O logger de debug não registra headers nem payloads de requests/responses, que
+podem conter senha ou token. A API decide a validade e renovação do token:
+`expiresAt` do login não é usado para bloquear chamadas, pois pode ficar
+desatualizado quando o backend estende o mesmo token. Não há nesta etapa
+restauração de navegação, logout ou tratamento global de 401.
 
 O fluxo financeiro ainda não usa a API: `ExpenseClient.create` retorna
 `failed`, `UserClient.getUser` retorna um usuário fixo e não existe feature

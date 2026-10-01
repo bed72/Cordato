@@ -21,7 +21,7 @@ Os bounded contexts do produto são:
 
 O contexto `identity` do backend não será reproduzido no app neste momento. A
  autenticação por e-mail e senha usa a API JSON:API; há telas de sign-in e
- sign-up, mas ainda não há gestão de sessão.
+ sign-up e persistência segura do token, mas ainda não há gestão completa de sessão.
 O contexto `chat` está fora do escopo atual.
 
 ## Estado atual
@@ -29,8 +29,8 @@ O contexto `chat` está fora do escopo atual.
 O app já possui:
 
 - tela de boas-vindas;
-- tela de sign-in com validação e feedback de erro, ainda sem navegação pós-login
-  nem persistência do token;
+- tela de sign-in com validação, feedback de erro e persistência segura do token
+  no sucesso, ainda sem navegação pós-login;
 - tela de sign-up com validação e tela de confirmação que mostra o e-mail
   cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
   verificação após uma espera de 60 segundos e feedback da API;
@@ -105,12 +105,19 @@ Android está documentado em [`android/README.md`](android/README.md).
 
 ## API E Persistência
 
-`authenticationModule` configura `Dio` e o media type JSON:API. O fluxo de
+`coreModule` configura `Dio` e o media type JSON:API. O fluxo de
  sign-in, sign-up e reenvio de verificação passa por command, contrato de repository, data source e
 client HTTP. A API é externa a este repositório; não há schema ou migrations do
 backend financeiro versionados aqui. Ao conectar as features financeiras,
 preserve propriedade individual, autorização e invariantes no serviço
 responsável, com testes próprios.
+
+O token opaco do sign-in é armazenado com `FlutterSecureStorage`. Chamadas
+protegidas são identificadas por `HttpPathEnum` e enviam o token opaco com o
+esquema HTTP `Bearer`;
+requisições públicas não enviam o token. A validade e a renovação continuam
+sendo responsabilidade do backend. Restauração de rota, logout e tratamento
+global de sessão expirada ainda não foram integrados.
 
 ## Revisão De Mudanças
 

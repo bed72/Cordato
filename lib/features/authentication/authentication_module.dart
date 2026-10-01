@@ -1,15 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:dio/dio.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
-import 'package:cordato/features/authentication/infrastructure/clients/email_verification_client.dart';
-import 'package:cordato/features/authentication/presentation/commands/confirm_email_command.dart';
-import 'package:cordato/features/authentication/presentation/screens/confirm_email/confirm_email_screen.dart';
 
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
 import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
-import 'package:cordato/features/authentication/infrastructure/remoto/authentication_data_source.dart';
+import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
+import 'package:cordato/features/authentication/infrastructure/local/authentication_local_data_source.dart';
+
+import 'package:cordato/features/authentication/presentation/commands/confirm_email_command.dart';
+import 'package:cordato/features/authentication/presentation/screens/confirm_email/confirm_email_screen.dart';
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 
 import 'package:cordato/features/authentication/presentation/commands/sign_up_command.dart';
@@ -25,15 +25,15 @@ final authenticationModule = createModule(
   path: RouteEnum.root.path,
   register: (context) {
     context
-      ..addLazySingleton<IAuthenticationDataSource>(
-        AuthenticationDataSource.new,
+      ..addLazySingleton<IAuthenticationClient>(AuthenticationClient.new)
+      ..addLazySingleton<IAuthenticationRemoteDataSource>(
+        AuthenticationRemoteDataSource.new,
+      )
+      ..addLazySingleton<IAuthenticationLocalDataSource>(
+        AuthenticationLocalDataSource.new,
       )
       ..addLazySingleton<IAuthenticationRepository>(
         AuthenticationRepository.new,
-      )
-      ..addLazySingleton<IAuthenticationClient>(AuthenticationClient.new)
-      ..addLazySingleton<IEmailVerificationClient>(
-        () => EmailVerificationClient(dio: Dio()),
       )
       ..add(EmailValidation.new)
       ..add(PasswordValidation.new)
@@ -43,6 +43,13 @@ final authenticationModule = createModule(
         ResendEmailVerificationCommand.new,
       )
       ..addLazySingleton<ConfirmEmailCommand>(ConfirmEmailCommand.new)
+      ..route(
+        RouteEnum.authenticationConfirm.path,
+        child: (_, state) => ConfirmScreen(
+          email: state.arguments as String? ?? '',
+          command: inject<ResendEmailVerificationCommand>(),
+        ),
+      )
       ..route(
         RouteEnum.authenticationSignIn.path,
         child: (_, _) => SignInScreen(
@@ -65,13 +72,6 @@ final authenticationModule = createModule(
             RouteEnum.authenticationConfirm.path,
             arguments: email,
           ),
-        ),
-      )
-      ..route(
-        RouteEnum.authenticationConfirm.path,
-        child: (_, state) => ConfirmScreen(
-          email: state.arguments as String? ?? '',
-          command: inject<ResendEmailVerificationCommand>(),
         ),
       )
       ..route(

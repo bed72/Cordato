@@ -498,9 +498,10 @@ Screen/Widget
 converte as respostas em objetos tipados e erros JSON:API. Endpoints relativos
 à base preservam o prefixo `/api/`.
 
-O sign-in usa e-mail e senha; o token recebido ainda não é salvo e o sucesso
-não navega automaticamente. Há command para sign-up, mas ainda não há tela de
-cadastro. `ExpenseClient.create` ainda retorna falha e não persiste gastos;
+O sign-in usa e-mail e senha; o token recebido é salvo em storage seguro, mas
+o sucesso não navega automaticamente. Chamadas protegidas optam pelo Bearer em
+`HttpPathEnum.requiresAuth` e `Requests.forPath`; o backend controla a validade do token. Há command
+para sign-up e tela de cadastro. `ExpenseClient.create` ainda retorna falha e não persiste gastos;
 `budget`, `family` e `insight` não possuem integração Flutter. Não descreva
 regras de autorização do backend como já aplicadas pelo aplicativo. Ao conectar
 uma feature financeira, defina seu contexto proprietário, preserve as

@@ -5,32 +5,47 @@ import 'package:cordato/features/authentication/infrastructure/responses/sign_in
 import 'package:cordato/features/authentication/infrastructure/responses/sign_up_response.dart';
 import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
 
-typedef SignInDataSourceResponse = Either<ErrorsResponse, SignInResponse>;
-typedef SignUpDataSourceResponse = Either<ErrorsResponse, SignUpResponse>;
-typedef ResendEmailVerificationDataSourceResponse =
-    Either<ErrorsResponse, bool>;
+typedef SignInDataSourceType = Either<ErrorsResponse, SignInResponse>;
+typedef SignUpDataSourceType = Either<ErrorsResponse, SignUpResponse>;
+typedef ResendEmailVerificationDataSourceType = Either<ErrorsResponse, bool>;
 
-abstract interface class IAuthenticationDataSource {
-  Future<SignInDataSourceResponse> signIn({
+abstract interface class IAuthenticationRemoteDataSource {
+  Future<int?> confirmEmail(String url);
+
+  Future<ResendEmailVerificationDataSourceType> resendEmailVerification({
+    required String email,
+  });
+
+  Future<SignUpDataSourceType> signUp({
     required String email,
     required String password,
   });
 
-  Future<SignUpDataSourceResponse> signUp({
+  Future<SignInDataSourceType> signIn({
     required String email,
     required String password,
-  });
-
-  Future<ResendEmailVerificationDataSourceResponse> resendEmailVerification({
-    required String email,
   });
 }
 
-final class AuthenticationDataSource({
+final class AuthenticationRemoteDataSource({
   required final IAuthenticationClient _client,
-}) implements IAuthenticationDataSource {
+}) implements IAuthenticationRemoteDataSource {
   @override
-  Future<SignInDataSourceResponse> signIn({
+  Future<int?> confirmEmail(String url) async {
+    try {
+      final response = await _client.confirmEmail(url);
+      final status = response.fold(
+        (failure) => failure.statusCode,
+        (success) => success.statusCode,
+      );
+      return status == 0 ? null : status;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<SignInDataSourceType> signIn({
     required String email,
     required String password,
   }) => _response(
@@ -39,7 +54,7 @@ final class AuthenticationDataSource({
   );
 
   @override
-  Future<SignUpDataSourceResponse> signUp({
+  Future<SignUpDataSourceType> signUp({
     required String email,
     required String password,
   }) => _response(
@@ -48,7 +63,7 @@ final class AuthenticationDataSource({
   );
 
   @override
-  Future<ResendEmailVerificationDataSourceResponse> resendEmailVerification({
+  Future<ResendEmailVerificationDataSourceType> resendEmailVerification({
     required String email,
   }) => _response(
     fromJson: (_) => true,
@@ -65,8 +80,8 @@ final class AuthenticationDataSource({
       final response = await execute();
 
       data = response.fold(
-        (error) => Left(.fromJson(error)),
-        (success) => Right(fromJson(success)),
+        (error) => Left(.fromJson(error.body)),
+        (success) => Right(fromJson(success.body)),
       );
     } catch (_) {
       return Left(.unknown());

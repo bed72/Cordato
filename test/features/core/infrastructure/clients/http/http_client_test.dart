@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
@@ -90,7 +92,8 @@ void main() {
         ),
       );
 
-      expect(response.right, {'id': 1});
+      expect(response.right.body, {'id': 1});
+      expect(response.right.statusCode, 200);
       expect(captured!.headers['X-Request-Id'], '123');
       expect(captured!.uri.queryParameters, {
         'existing': '1',
@@ -105,7 +108,8 @@ void main() {
 
     final response = await client.post(parameter: const Requests('items'));
 
-    expect(response.left, {
+    expect(response.left.statusCode, 422);
+    expect(response.left.body, {
       'errors': [
         {'code': 'invalid'},
       ],
@@ -117,7 +121,7 @@ void main() {
     status = 204;
 
     expect(
-      (await client.delete(parameter: const Requests('items'))).right,
+      (await client.delete(parameter: const Requests('items'))).right.body,
       isEmpty,
     );
   });
@@ -130,7 +134,8 @@ void main() {
       parameter: const Requests('authentication/email-verification/resend'),
     );
 
-    expect(response.right, isEmpty);
+    expect(response.right.body, isEmpty);
+    expect(response.right.statusCode, 202);
     expect(
       captured!.uri.toString(),
       'https://example.com/api/authentication/email-verification/resend',
@@ -154,7 +159,8 @@ void main() {
 
     final response = await client.get(parameter: const Requests('items'));
 
-    final error = ErrorsResponse.fromJson(response.left).errors.single;
+    expect(response.left.statusCode, 0);
+    final error = ErrorsResponse.fromJson(response.left.body).errors.single;
 
     expect(error.status, isNull);
     expect(error.pointer, isNull);
@@ -172,7 +178,7 @@ void main() {
 
       final response = await client.get(parameter: const Requests('items'));
 
-      final error = ErrorsResponse.fromJson(response.left).errors.single;
+      final error = ErrorsResponse.fromJson(response.left.body).errors.single;
 
       expect(error.detail, isNotEmpty);
       expect(error.title, 'Erro desconhecido');
@@ -185,7 +191,7 @@ void main() {
 
     final response = await client.get(parameter: const Requests('items'));
 
-    final error = ErrorsResponse.fromJson(response.left).errors.single;
+    final error = ErrorsResponse.fromJson(response.left.body).errors.single;
 
     expect(error.title, 'Erro desconhecido');
   });
@@ -195,7 +201,7 @@ void main() {
 
     final response = await client.get(parameter: const Requests('items'));
 
-    final error = ErrorsResponse.fromJson(response.left).errors.single;
+    final error = ErrorsResponse.fromJson(response.left.body).errors.single;
 
     expect(error.status, isNull);
     expect(error.pointer, isNull);
@@ -204,7 +210,14 @@ void main() {
   });
 
   test('keeps unchanged request fields when copying', () {
-    const request = Requests('items', body: {'a': 1}, headers: {'x': 'y'});
+    const request = Requests(
+      'items',
+      body: {'a': 1},
+      headers: {'x': 'y'},
+      route: HttpPathEnum.expenses,
+      followRedirects: false,
+      logRequest: false,
+    );
 
     final copy = request.copyWith(query: {'page': 2});
 
@@ -212,5 +225,25 @@ void main() {
     expect(copy.body, {'a': 1});
     expect(copy.query, {'page': 2});
     expect(copy.headers, {'x': 'y'});
+    expect(copy.route, HttpPathEnum.expenses);
+    expect(copy.followRedirects, isFalse);
+    expect(copy.logRequest, isFalse);
+
+    expect(copy.copyWith(path: 'other').route, isNull);
+  });
+
+  test('takes path and auth metadata from HttpPathEnum', () {
+    final protected = Requests.forPath(HttpPathEnum.expenses);
+    final public = Requests.forPath(HttpPathEnum.signIn);
+
+    expect(protected.path, 'expenses');
+    expect(protected.route!.requiresAuth, isTrue);
+    expect(public.route!.requiresAuth, isFalse);
+  });
+
+  test('passes protected-request intent to Dio', () async {
+    await client.get(parameter: Requests.forPath(HttpPathEnum.expenses));
+
+    expect(captured!.extra[HttpExtraKeyEnum.route.key], HttpPathEnum.expenses);
   });
 }

@@ -43,17 +43,21 @@ mixin ConfirmEmailScreenStateMixin on State<ConfirmEmailScreen> {
     _startedRevision = revision;
 
     try {
-      final command = widget.command.execute;
-      bool joinedSameLink = false;
+      if (url == null || url.isEmpty) {
+        status = .invalidLink;
+      } else {
+        final command = widget.command.execute;
+        bool joinedSameLink = false;
 
-      if (command.isRunning.value) {
-        joinedSameLink = command.results.value.paramData == url;
-        final pendingResult = await command.runAsync();
-        if (joinedSameLink) status = pendingResult;
+        if (command.isRunning.value) {
+          joinedSameLink = command.results.value.paramData == url;
+          final pendingResult = await command.runAsync();
+          if (joinedSameLink) status = pendingResult;
+        }
+
+        if (!mounted || revision != _revision) return;
+        if (!joinedSameLink) status = await command.runAsync(url);
       }
-
-      if (!mounted || revision != _revision) return;
-      if (!joinedSameLink) status = await command.runAsync(url);
     } catch (_) {
       status = .connectionFailure;
     } finally {

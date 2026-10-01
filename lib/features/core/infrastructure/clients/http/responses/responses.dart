@@ -1,7 +1,12 @@
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
-typedef Responses = Either<Map<String, dynamic>, Map<String, dynamic>>;
+final class const HttpResponse({
+  required final int statusCode,
+  required final Map<String, dynamic> body,
+});
+
+typedef Responses = Either<HttpResponse, HttpResponse>;
 
 final class const ErrorsResponse({required final List<ErrorResponse> errors}) {
   factory ErrorsResponse.fromJson(Map<String, dynamic> json) {
