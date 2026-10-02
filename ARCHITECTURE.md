@@ -81,7 +81,13 @@ feature.
   `Requests` e `Responses` (`Either<HttpResponse, HttpResponse>`). Cada
   `HttpResponse` contém status HTTP e corpo em mapa; falhas de transporte
   retornam `Left` com status `0` e erro genérico. O `coreModule` registra o
-  Dio com `BASE_URL` e os interceptors compartilhados.
+   Dio com `BASE_URL` e os interceptors compartilhados.
+- `IStorageClient.watch(key: ...)` adapta `FlutterSecureStorage.registerListener`
+  para uma stream por chave; cancela o registro em `unregisterListener` quando
+  a subscription termina. Escrita emite o novo valor, remoção e limpeza emitem
+  `null`. A stream não emite o valor inicial; use `read` para obtê-lo. O plugin
+  notifica alterações feitas por suas instâncias no mesmo isolate, não mudanças
+  externas no storage nativo.
 - `AuthenticationRemoteDataSource` em `infrastructure/remoto/` monta as
   requisições JSON:API e usa `IHttpClient` do core diretamente, sem client de
   autenticação intermediário. Sign-in, sign-up e reenvio usam endpoints
@@ -96,6 +102,14 @@ feature.
   usando `IStorageClient` e `StorageKeyEnum.accessToken`, sem expor o plugin
   ao repository. No sign-in, `SignInResponse.userId` vem de
   `data.relationships.user.data.id`; `data.id` identifica o token de acesso.
+  `IAuthenticationLocalDataSource.hasSession()` transforma a observação dessa
+  chave em `Stream<bool>` (`null` indica ausência de sessão). A stream emite
+  somente alterações posteriores à inscrição, sem consultar o estado inicial.
+  `IAuthenticationRepository.hasSession()` expõe a mesma stream por delegação
+  ao data source local, sem consultar a API remota.
+  `SessionCommand` observa essa stream e atualiza seu `execute` com `true` ou
+  `false`, começando em `null` até a primeira mudança. Cancela a inscrição no
+  `dispose`, sem fazer restauração de sessão ou navegação por conta própria.
 - `core/domain/entities/errors_entity.dart` representa uma lista de erros com
   título, detalhe, status e apontamento de campo sem depender do cliente HTTP.
   A extensão `ErrorsResponse.toEntity()` no core infrastructure converte a lista
@@ -119,9 +133,9 @@ feature.
   erros JSON:API em `Either<ErrorsEntity, bool>`.
 - `presentation` contém screens, widgets, validators, estado local e commands.
 - A confirmação de e-mail por link tem rota própria `/authentication/confirm-email`:
-  `ConfirmEmailScreen` exibe o estado de espera e inicia automaticamente uma
+  `CallbackScreen` exibe o estado de espera e inicia automaticamente uma
   confirmação por link recebido. Se a URL estiver ausente, a screen apresenta
-  link inválido sem executar o command. `ConfirmEmailCommand` recebe uma
+  link inválido sem executar o command. `CallbackCommand` recebe uma
   `String` não nula e chama `IAuthenticationRepository.confirmEmail`, que
   encaminha a URL ao `IAuthenticationRemoteDataSource` sem validar host,
   caminho ou assinatura. A requisição não envia Bearer, não segue
@@ -141,6 +155,14 @@ Screen/widget -> Command -> IAuthenticationRepository -> AuthenticationRepositor
 ```
 
 Commands usam `command_it` e implementam `ICommand` quando precisam de descarte.
+Commands específicos de uma tela ficam em `presentation/screens/<tela>/commands/`,
+junto da screen, com testes no caminho espelhado. O command do fluxo principal
+usa o nome-base da tela (`CallbackScreen` → `CallbackCommand`); operações
+específicas podem manter o nome da ação (`CreateExpenseCommand`,
+`GetUserNameCommand`). `SessionCommand` permanece em
+`authentication/presentation/commands/` por observar a sessão independentemente
+de uma tela. Renomeações de tela e command atualizam arquivo, tipo, imports,
+registro no módulo, testes e documentação sem mudar a rota por consequência.
 O sign-in entrega `Either` à apresentação para tratar os erros da API; commands
 de outras features podem expor falhas como erros observáveis. Estado
 efêmero pertence à screen ou widget. Quando lifecycle, controllers e handlers
@@ -207,14 +229,15 @@ Registros importantes:
   `HeadersInterceptor`, `OpaqueTokenInterceptor` e, apenas em debug, o logger.
 - `authenticationModule`: registra os data sources remoto e local,
   `IAuthenticationRepository` e os commands `SignInCommand`,
-  `SignUpCommand`, `ResendEmailVerificationCommand` e `ConfirmEmailCommand`.
+  `SignUpCommand`, `ResendEmailVerificationCommand`, `CallbackCommand` e
+  `SessionCommand`.
   A rota de sign-in usa `SignInScreen` e `FormSignInWidget`: o mixin do
   formulário valida e-mail e senha (6 a 12 caracteres, com maiúscula e número).
   A screen apresenta erros do command sem navegar após o sucesso; o repository
   solicita ao data source
   local a gravação do token em storage seguro. Após o sucesso do sign-up, a
-  rota é substituída pela tela de confirmação, que recebe o e-mail cadastrado
-  para exibi-lo em um campo desabilitado.
+  rota é substituída por `ResendEmailVerificationScreen`, que recebe o e-mail
+  cadastrado para exibi-lo em um campo desabilitado e permitir o reenvio do link.
 - `dashboardModule`: `GetUserNameCommand`, tela inicial de dashboard e client
   que retorna um usuário fixo; a ação de gasto abre `/expense`.
 - `expenseModule`: validators, command, repository, data source e client para o
@@ -245,8 +268,9 @@ e vice-versa, mantendo `/welcome` na pilha. O cadastro bem-sucedido substitui
 sign-up por `/authentication/confirm`, que exibe o e-mail em um campo
 desabilitado e permite reenviar o link com feedback da API. Um cooldown local
 de 60 segundos começa ao abrir a tela e reinicia após cada reenvio aceito; o
-tempo restante aparece no `ResendCooldownLabelWidget`. O link de confirmação
-abre `/authentication/confirm-email` com `verification_url` como parâmetro.
+tempo restante aparece no `ResendEmailVerificationCooldownLabelWidget`. O
+link de confirmação abre `/authentication/confirm-email` com
+`verification_url` como parâmetro na `CallbackScreen`.
 
 Os módulos financeiros, dashboard e welcome registram suas rotas dentro de seu
 escopo de composição. A navegação usa extensões de `BuildContext` do Modular 7,

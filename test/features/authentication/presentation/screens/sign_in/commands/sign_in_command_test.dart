@@ -39,6 +39,13 @@ void main() {
     final result = await command.execute.runAsync(credentials);
 
     expect(result?.right, same(session));
+    expect(command.execute.value?.right, same(session));
+    verify(
+      () => repository.signIn(
+        email: credentials.email,
+        password: credentials.password,
+      ),
+    ).called(1);
   });
 
   test('sign-in preserves all errors in the command result', () async {
@@ -59,5 +66,31 @@ void main() {
 
     expect(result?.left, same(errors));
     expect(result?.left.errors, hasLength(2));
+    expect(command.execute.value?.left, same(errors));
   });
+
+  test(
+    'exposes an unexpected repository exception as a command error',
+    () async {
+      final failure = StateError('repository unavailable');
+      when(
+        () => repository.signIn(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).thenAnswer((_) async => throw failure);
+
+      void onResult() {}
+
+      command.execute.results.addListener(onResult);
+      try {
+        await expectLater(
+          command.execute.runAsync(credentials),
+          throwsA(same(failure)),
+        );
+      } finally {
+        command.execute.results.removeListener(onResult);
+      }
+    },
+  );
 }

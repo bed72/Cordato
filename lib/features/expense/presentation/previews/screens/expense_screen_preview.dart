@@ -4,8 +4,8 @@ import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
 
-import 'package:cordato/features/expense/presentation/screens/expense_screen.dart';
-import 'package:cordato/features/expense/presentation/commands/create_expense_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/expense_screen.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/commands/create_expense_command.dart';
 import 'package:cordato/features/expense/presentation/previews/fakes/expense_preview_repository.dart';
 
 import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';

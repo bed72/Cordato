@@ -93,8 +93,13 @@ lib/
         responses/
         clients/          # quando a feature tiver um client próprio
       presentation/
-        commands/
+        commands/          # somente commands sem tela proprietária
         screens/
+          <screen>/
+            <screen>_screen.dart
+            commands/
+            mixins/         # quando a tela precisar de estado de UI extraído
+            widgets/        # widgets específicos da tela
         widgets/
 
 test/
@@ -428,6 +433,17 @@ Descarte `TextEditingController`, `AnimationController`, `Timer` e listeners em
 Operações assíncronas da apresentação devem ser encapsuladas em commands usando
 `command_it`. Commands implementam `ICommand` quando precisam ser descartados
 pelo ciclo de vida do módulo.
+
+Coloque cada command específico de uma tela em
+`presentation/screens/<screen>/commands/<nome>_command.dart`; espelhe esse
+caminho no teste. Quando o command representar o fluxo principal da tela, use o
+mesmo nome-base: `CallbackScreen` → `callback/commands/callback_command.dart` →
+`CallbackCommand`. Se representar uma operação específica, prefira o nome da
+ação, como `CreateExpenseCommand` em `expense/commands/`. Commands sem tela
+proprietária, como `SessionCommand`, ficam em `presentation/commands/` da
+feature. Ao renomear uma tela ou um command, atualize classe, arquivo, imports,
+registro no módulo, testes e documentação na mesma alteração; preserve as
+rotas e o comportamento quando a mudança for somente de nomenclatura.
 
 O sign-in mantém `Either` no resultado do command para a apresentação decidir
 como exibir erros da API:

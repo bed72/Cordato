@@ -61,6 +61,15 @@ void main() {
       );
       expect(await dataSource.confirmEmail('signed'), isNull);
     });
+
+    test('confirmation preserves an unexpected HTTP status', () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Left(HttpResponse(statusCode: 500, body: {})),
+      );
+
+      expect(await dataSource.confirmEmail('signed'), 500);
+    });
+
     test('sign-in returns the parsed access token response', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Right(
@@ -258,6 +267,17 @@ void main() {
       expect(data.left.errors.single.detail, isNotEmpty);
     });
 
+    test('rejects a malformed successful sign-up response', () async {
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(HttpResponse(statusCode: 201, body: {})),
+      );
+
+      final data = await dataSource.signUp(email: email, password: password);
+
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.title, 'Erro desconhecido');
+    });
+
     test('rejects a sign-in response without a user relationship', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
@@ -303,6 +323,18 @@ void main() {
 
       expect(data.isLeft, isTrue);
       expect(data.left.errors.single.detail, isNotEmpty);
+    });
+
+    test('resend maps an empty API error list to a generic error', () async {
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async =>
+            const Left(HttpResponse(statusCode: 429, body: {'errors': []})),
+      );
+
+      final data = await dataSource.resendEmailVerification(email: email);
+
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.title, 'Erro desconhecido');
     });
 
     test('returns an error when the client throws asynchronously', () async {

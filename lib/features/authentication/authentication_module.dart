@@ -7,18 +7,19 @@ import 'package:cordato/features/authentication/data/repositories/authentication
 import 'package:cordato/features/authentication/infrastructure/local/authentication_local_data_source.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
 
-import 'package:cordato/features/authentication/presentation/commands/confirm_email_command.dart';
-import 'package:cordato/features/authentication/presentation/screens/confirm_email/confirm_email_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
+import 'package:cordato/features/authentication/presentation/commands/session_command.dart';
+import 'package:cordato/features/authentication/presentation/screens/callback/callback_screen.dart';
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 
-import 'package:cordato/features/authentication/presentation/commands/sign_up_command.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_up/commands/sign_up_command.dart';
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
-import 'package:cordato/features/authentication/presentation/screens/confirm/confirm_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email_verification/resend_email_verification_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/commands/sign_in_command.dart';
-import 'package:cordato/features/authentication/presentation/commands/resend_email_verification_command.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email_verification/commands/resend_email_verification_command.dart';
 
 final authenticationModule = createModule(
   path: RouteEnum.root.path,
@@ -40,10 +41,11 @@ final authenticationModule = createModule(
       ..addLazySingleton<ResendEmailVerificationCommand>(
         ResendEmailVerificationCommand.new,
       )
-      ..addLazySingleton<ConfirmEmailCommand>(ConfirmEmailCommand.new)
+      ..addLazySingleton<CallbackCommand>(CallbackCommand.new)
+      ..addLazySingleton<SessionCommand>(SessionCommand.new)
       ..route(
         RouteEnum.authenticationConfirm.path,
-        child: (_, state) => ConfirmScreen(
+        child: (_, state) => ResendEmailVerificationScreen(
           email: state.arguments as String? ?? '',
           command: inject<ResendEmailVerificationCommand>(),
         ),
@@ -74,13 +76,13 @@ final authenticationModule = createModule(
       )
       ..route(
         RouteEnum.authenticationConfirmEmail.path,
-        child: (_, state) => ConfirmEmailScreen(
+        child: (_, state) => CallbackScreen(
           verificationUrl:
               switch (state.uri.queryParametersAll['verification_url']) {
                 [final String url] => url,
                 _ => null,
               },
-          command: inject<ConfirmEmailCommand>(),
+          command: inject<CallbackCommand>(),
           onSignIn: (BuildContext context) => context
             ..navigate(RouteEnum.welcome.path)
             ..pushNamed(RouteEnum.authenticationSignIn.path),

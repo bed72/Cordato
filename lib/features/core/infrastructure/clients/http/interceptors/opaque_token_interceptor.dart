@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/storage_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/enums/storage_key_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
 

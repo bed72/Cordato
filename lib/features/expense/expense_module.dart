@@ -9,8 +9,8 @@ import 'package:cordato/features/expense/domain/repositories/interface_expense_r
 import 'package:cordato/features/expense/infrastructure/remoto/expense_data_source.dart';
 import 'package:cordato/features/expense/infrastructure/clients/expense_client.dart';
 
-import 'package:cordato/features/expense/presentation/screens/expense_screen.dart';
-import 'package:cordato/features/expense/presentation/commands/create_expense_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/expense_screen.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/commands/create_expense_command.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_date_validation.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_value_validation.dart';

@@ -3,9 +3,9 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/dashboard/data/repositories/user_repository.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
 import 'package:cordato/features/dashboard/infrastructure/remoto/user_data_source.dart';
-import 'package:cordato/features/dashboard/presentation/commands/get_user_name_command.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/commands/get_user_name_command.dart';
 import 'package:cordato/features/dashboard/infrastructure/clients/user_client.dart';
 import 'package:cordato/features/dashboard/domain/repositories/interface_user_repository.dart';
 

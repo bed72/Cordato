@@ -33,7 +33,7 @@ O app já possui:
 - tela de boas-vindas;
 - tela de sign-in com validação, feedback de erro e persistência segura do token
   no sucesso, ainda sem navegação pós-login;
-- tela de sign-up com validação e tela de confirmação que mostra o e-mail
+- tela de sign-up com validação e tela de reenvio da verificação que mostra o e-mail
   cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
   verificação após uma espera de 60 segundos e feedback da API;
 - dashboard inicial com usuário de exemplo fornecido por um client local;
@@ -100,6 +100,12 @@ compartilha o site pelo IP da rede e atualiza a URL de debug em
 O backend é procurado em `../../../BackEnd/PHP/Trocado` a partir deste projeto;
 use `make android-lan LERD_SITE_PATH=/caminho/do/backend` se estiver em outro
 local. O HTTP da rede local é permitido apenas no build Android de debug.
+
+No simulador iOS, selecione **Cordato (iOS simulator - Lerd)** no VS Code ou
+execute `flutter run --dart-define=BASE_URL=https://trocado.test/api/`. O
+simulador usa o domínio HTTPS local do Lerd no Mac; o endereço IP da configuração
+**Cordato (debug)** é específico do compartilhamento LAN para Android e pode
+ficar desatualizado. Reinicie o app após mudar o `--dart-define`.
 
 ## Android Release
 

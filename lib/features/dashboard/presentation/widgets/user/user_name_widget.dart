@@ -2,7 +2,7 @@ import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/dashboard/presentation/commands/get_user_name_command.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/commands/get_user_name_command.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/avatar_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/user/user_name_skeleton_widget.dart';
 

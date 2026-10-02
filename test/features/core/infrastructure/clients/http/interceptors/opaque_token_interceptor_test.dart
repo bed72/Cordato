@@ -6,8 +6,8 @@ import 'package:cordato/features/core/infrastructure/clients/http/http_client.da
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/interceptors/opaque_token_interceptor.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/enums/storage_key_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 
 class _StorageClientMock extends Mock implements IStorageClient {}
 

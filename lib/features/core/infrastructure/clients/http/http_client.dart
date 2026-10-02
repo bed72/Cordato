@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/enums/http_method_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
 
 abstract interface class IHttpClient {
@@ -16,33 +17,33 @@ abstract interface class IHttpClient {
 final class HttpClient({required final Dio _dio}) implements IHttpClient {
   @override
   Future<Responses> get({required Requests parameter}) =>
-      _execute('GET', parameter);
-
-  @override
-  Future<Responses> post({required Requests parameter}) =>
-      _execute('POST', parameter);
+      _execute(HttpMethodEnum.get, parameter);
 
   @override
   Future<Responses> put({required Requests parameter}) =>
-      _execute('PUT', parameter);
+      _execute(HttpMethodEnum.put, parameter);
+
+  @override
+  Future<Responses> post({required Requests parameter}) =>
+      _execute(HttpMethodEnum.post, parameter);
 
   @override
   Future<Responses> patch({required Requests parameter}) =>
-      _execute('PATCH', parameter);
+      _execute(HttpMethodEnum.patch, parameter);
 
   @override
   Future<Responses> delete({required Requests parameter}) =>
-      _execute('DELETE', parameter);
+      _execute(HttpMethodEnum.delete, parameter);
 
-  Future<Responses> _execute(String method, Requests parameter) async {
+  Future<Responses> _execute(HttpMethodEnum method, Requests parameter) async {
     try {
       final response = await _dio.request<dynamic>(
         parameter.path,
         data: parameter.body,
         queryParameters: parameter.query,
         options: Options(
-          method: method,
           responseType: .json,
+          method: method.value,
           headers: parameter.headers,
           validateStatus: (_) => true,
           followRedirects: parameter.followRedirects,

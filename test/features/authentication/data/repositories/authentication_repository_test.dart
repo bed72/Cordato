@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,6 +42,16 @@ void main() {
     const signed =
         'https://api.cordato.cloud/api/email-verification/12/abc123?signature=abcdef012345&expires=123456';
 
+    test('exposes session changes from the local data source', () async {
+      when(() => localDataSource.hasSession())
+          .thenAnswer((_) => Stream<bool>.fromIterable([true, false]));
+
+      await expectLater(repository.hasSession(), emitsInOrder([true, false]));
+
+      verify(() => localDataSource.hasSession()).called(1);
+      verifyZeroInteractions(dataSource);
+    });
+
     test('rejects empty links without any request', () async {
       expect(
         await repository.confirmEmail(''),
@@ -63,18 +75,32 @@ void main() {
       verify(() => dataSource.confirmEmail(otherHost)).called(1);
     });
 
-    test('sends the original URL and maps 204, 403 and connectivity', () async {
+    test('maps confirmation HTTP statuses and connectivity', () async {
       for (final (status, expected) in [
         (204, EmailVerificationStatusEnum.success),
         (403, EmailVerificationStatusEnum.invalidLink),
+        (500, EmailVerificationStatusEnum.connectionFailure),
         (null, EmailVerificationStatusEnum.connectionFailure),
       ]) {
         when(() => dataSource.confirmEmail(signed))
             .thenAnswer((_) async => status);
         expect(await repository.confirmEmail(signed), expected);
       }
-      verify(() => dataSource.confirmEmail(signed)).called(3);
+      verify(() => dataSource.confirmEmail(signed)).called(4);
     });
+
+    test(
+      'maps an unexpected confirmation exception to connection failure',
+      () async {
+        when(() => dataSource.confirmEmail(signed))
+            .thenAnswer((_) async => throw StateError('offline'));
+
+        expect(
+          await repository.confirmEmail(signed),
+          EmailVerificationStatusEnum.connectionFailure,
+        );
+      },
+    );
 
     test('sign-in returns a session with the response data', () async {
       final expiresAt = DateTime.utc(2026, 9, 28, 18, 30);
@@ -155,6 +181,35 @@ void main() {
       expect(data.left.errors.single.title, 'Erro desconhecido');
     });
 
+    test('sign-in only succeeds after the token has been saved', () async {
+      final saved = Completer<void>();
+      final saving = Completer<void>();
+      when(() => dataSource.signIn(email: email, password: password))
+          .thenAnswer(
+            (_) async => Right(
+              SignInResponse(
+                userId: 'user-1',
+                token: 'opaque-token',
+                expiresAt: DateTime.utc(2026, 11),
+              ),
+            ),
+          );
+      when(() => localDataSource.saveToken('opaque-token')).thenAnswer((_) {
+        saving.complete();
+        return saved.future;
+      });
+
+      var completed = false;
+      final signIn = repository.signIn(email: email, password: password)
+        ..then((_) => completed = true);
+      await saving.future;
+      expect(completed, isFalse);
+
+      saved.complete();
+      expect((await signIn).right.token, 'opaque-token');
+      expect(completed, isTrue);
+    });
+
     test('sign-up returns true when registration succeeds', () async {
       when(
         () => dataSource.signUp(email: email, password: password),
@@ -165,6 +220,7 @@ void main() {
       expect(data.right, isTrue);
       verify(() => dataSource.signUp(email: email, password: password))
           .called(1);
+      verifyNever(() => localDataSource.saveToken(any()));
     });
 
     test('resend returns success after acceptance', () async {
@@ -175,7 +231,21 @@ void main() {
 
       expect(data.right, isTrue);
       verify(() => dataSource.resendEmailVerification(email: email)).called(1);
+      verifyNever(() => localDataSource.saveToken(any()));
     });
+
+    test(
+      'resend forwards a non-accepted result without creating a session',
+      () async {
+        when(() => dataSource.resendEmailVerification(email: email))
+            .thenAnswer((_) async => const Right(false));
+
+        final data = await repository.resendEmailVerification(email: email);
+
+        expect(data.right, isFalse);
+        verifyNever(() => localDataSource.saveToken(any()));
+      },
+    );
 
     test('resend preserves API errors as domain errors', () async {
       when(() => dataSource.resendEmailVerification(email: email)).thenAnswer(
@@ -240,5 +310,25 @@ void main() {
         'Não foi possível processar a resposta.',
       );
     });
+
+    test(
+      'sign-up and resend translate unexpected failures to domain errors',
+      () async {
+        when(() => dataSource.signUp(email: email, password: password))
+            .thenAnswer((_) async => throw StateError('offline'));
+        when(() => dataSource.resendEmailVerification(email: email))
+            .thenAnswer((_) async => throw StateError('offline'));
+
+        final signUp = await repository.signUp(
+          email: email,
+          password: password,
+        );
+        final resend = await repository.resendEmailVerification(email: email);
+
+        expect(signUp.left.errors.single.title, 'Erro desconhecido');
+        expect(resend.left.errors.single.title, 'Erro desconhecido');
+        verifyNever(() => localDataSource.saveToken(any()));
+      },
+    );
   });
 }

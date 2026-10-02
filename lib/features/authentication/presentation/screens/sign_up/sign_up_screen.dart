@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/authentication/presentation/commands/sign_up_command.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_up/commands/sign_up_command.dart';
 
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';

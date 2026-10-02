@@ -8,7 +8,7 @@ import 'package:cordato/features/core/presentation/widgets/buttons/elevated_butt
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/presentation/widgets/expense_header_widget.dart';
-import 'package:cordato/features/expense/presentation/commands/create_expense_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/commands/create_expense_command.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/mixins/expense_form_widget_state_mixin.dart';
 import 'package:cordato/features/expense/presentation/widgets/fields/expense_description_field_widget.dart';

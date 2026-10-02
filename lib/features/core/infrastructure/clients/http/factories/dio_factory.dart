@@ -2,8 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/logger/logger_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/interceptors/headers_interceptor.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/interceptors/opaque_token_interceptor.dart';

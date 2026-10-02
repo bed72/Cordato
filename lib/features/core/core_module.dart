@@ -6,7 +6,7 @@ import 'package:cordato/features/core/infrastructure/clients/http/http_client.da
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/factories/dio_factory.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 
 const _baseUrl = String.fromEnvironment(
   'BASE_URL',

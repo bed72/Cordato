@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/dashboard/presentation/widgets/user/user_name_widget.dart';
-import 'package:cordato/features/dashboard/presentation/commands/get_user_name_command.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/commands/get_user_name_command.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/menu_button_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/notification_button_dashboard_widget.dart';
 
