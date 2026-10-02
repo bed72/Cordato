@@ -8,7 +8,6 @@ import 'package:cordato/features/authentication/infrastructure/local/authenticat
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
-import 'package:cordato/features/authentication/presentation/commands/session_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/callback/callback_screen.dart';
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 
@@ -42,7 +41,6 @@ final authenticationModule = createModule(
         ResendEmailVerificationCommand.new,
       )
       ..addLazySingleton<CallbackCommand>(CallbackCommand.new)
-      ..addLazySingleton<SessionCommand>(SessionCommand.new)
       ..route(
         RouteEnum.authenticationConfirm.path,
         child: (_, state) => ResendEmailVerificationScreen(

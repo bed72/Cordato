@@ -11,8 +11,6 @@ typedef ResendEmailVerificationRepositoryType = Either<ErrorsEntity, bool>;
 abstract interface class IAuthenticationRepository {
   Future<EmailVerificationStatusEnum> confirmEmail(String url);
 
-  Stream<bool> hasSession();
-
   Future<ResendEmailVerificationRepositoryType> resendEmailVerification({
     required String email,
   });

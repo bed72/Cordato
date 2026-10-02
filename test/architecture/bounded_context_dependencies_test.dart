@@ -76,6 +76,29 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
+  test('keeps session observation separate from authentication', () {
+    final violations = <String>[];
+
+    for (final file in _dartFiles()) {
+      final sourceContext = _contextFrom(file);
+      if (sourceContext != 'session' && sourceContext != 'authentication') {
+        continue;
+      }
+
+      for (final match in _importPattern.allMatches(file.readAsStringSync())) {
+        final targetContext = match.group(1)!;
+        if ((sourceContext == 'session' && targetContext == 'authentication') ||
+            (sourceContext == 'authentication' && targetContext == 'session')) {
+          violations.add(
+            '${file.path}: $sourceContext cannot import $targetContext',
+          );
+        }
+      }
+    }
+
+    expect(violations, isEmpty, reason: violations.join('\n'));
+  });
+
   test('keeps domain and presentation independent from external adapters', () {
     final violations = <String>[];
 

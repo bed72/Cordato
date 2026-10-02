@@ -22,8 +22,9 @@ Os bounded contexts do produto são:
 O contexto `identity` do backend não será reproduzido no app neste momento. A
 autenticação por e-mail e senha usa a API JSON:API; há sign-in, sign-up,
 confirmação de e-mail por link e reenvio da verificação. O token opaco do
-sign-in é salvo em storage seguro, mas ainda não há restauração de rota,
-logout ou guard de sessão.
+sign-in é salvo em storage seguro. A feature `session` lê o token na abertura
+e observa mudanças para decidir entre dashboard e welcome; ainda não há logout
+integrado nem validação da sessão no backend ao iniciar.
 O contexto `chat` está fora do escopo atual.
 
 ## Estado atual
@@ -31,8 +32,9 @@ O contexto `chat` está fora do escopo atual.
 O app já possui:
 
 - tela de boas-vindas;
+- splash com logo e decisão inicial de rota pela presença do token;
 - tela de sign-in com validação, feedback de erro e persistência segura do token
-  no sucesso, ainda sem navegação pós-login;
+  no sucesso, seguida de navegação para o dashboard;
 - tela de sign-up com validação e tela de reenvio da verificação que mostra o e-mail
   cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
   verificação após uma espera de 60 segundos e feedback da API;
@@ -44,6 +46,8 @@ O app já possui:
 - tema claro/escuro e componentes de apresentação reutilizáveis;
 - confirmação automática de e-mail ao abrir o link HTTPS, com feedback por toast
   e retorno ao sign-in após sucesso, expiração ou erro de conexão, sem criar sessão.
+- remoção do token após 401 em requisição protegida e retorno à welcome quando
+  o usuário estiver em uma rota protegida.
 
 `budget`, `family` e `insight` seguem planejados. Ao implementá-los, o grupo
 familiar não deve se tornar dono dos dados financeiros de seus membros.
@@ -60,7 +64,8 @@ presentation -> domain -> data -> infrastructure -> API HTTP
 independentes de framework, `data` implementa os repositórios e
 `infrastructure` contém data sources que acessam HTTP, storage e plugins. Na
 autenticação, o data source remoto usa o `IHttpClient` compartilhado do core
-diretamente; a criação de gastos ainda não persiste dados.
+diretamente; `session` encapsula a leitura e a observação do token para a
+entrada do app. A criação de gastos ainda não persiste dados.
 
 Consulte [`ARCHITECTURE.md`](ARCHITECTURE.md) para módulos, rotas, limites
 técnicos e validação, e [`AGENTS.md`](AGENTS.md) para as convenções de
@@ -127,11 +132,13 @@ serviço responsável, com testes próprios.
 
 O token opaco do sign-in é armazenado por `AuthenticationLocalDataSource`
 via `FlutterSecureStorage`. `HttpPathEnum` marca endpoints protegidos; o
-`OpaqueTokenInterceptor` só envia `Authorization: Bearer <token>` quando a
+`SessionInterceptor` só envia `Authorization: Bearer <token>` quando a
 rota protegida coincide com a origem e o caminho da API. `Bearer` é o esquema
 HTTP, não o formato do token. A validade e a renovação continuam sob controle
 do backend. A confirmação por link não envia token e omite a URL assinada dos
-logs do Dio. Não há tratamento global de sessão expirada.
+logs do Dio. Um 401 de requisição protegida com token remove o token salvo;
+`SessionCommand` observa a mudança e o app volta à welcome se estiver em uma
+rota protegida.
 
 ## Revisão De Mudanças
 

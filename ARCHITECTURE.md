@@ -59,6 +59,7 @@ lib/
   app_widget.dart
   features/
     core/
+    session/
     authentication/
     welcome/
     dashboard/
@@ -99,17 +100,18 @@ feature.
   ou exceção inesperada resultam em erro genérico. Na confirmação, converte o
   status HTTP em `int?`, usando `null` para falhas de transporte.
 - `AuthenticationLocalDataSource` em `infrastructure/local/` grava o token
-  usando `IStorageClient` e `StorageKeyEnum.accessToken`, sem expor o plugin
+  usando `IStorageClient` e `StorageKeyEnum.opaqueToken`, sem expor o plugin
   ao repository. No sign-in, `SignInResponse.userId` vem de
   `data.relationships.user.data.id`; `data.id` identifica o token de acesso.
-  `IAuthenticationLocalDataSource.hasSession()` transforma a observação dessa
-  chave em `Stream<bool>` (`null` indica ausência de sessão). A stream emite
-  somente alterações posteriores à inscrição, sem consultar o estado inicial.
-  `IAuthenticationRepository.hasSession()` expõe a mesma stream por delegação
-  ao data source local, sem consultar a API remota.
-  `SessionCommand` observa essa stream e atualiza seu `execute` com `true` ou
-  `false`, começando em `null` até a primeira mudança. Cancela a inscrição no
-  `dispose`, sem fazer restauração de sessão ou navegação por conta própria.
+- `session` é o contexto de leitura da presença do token: `SessionLocalDataSource`
+  lê `StorageKeyEnum.opaqueToken` e observa alterações via `IStorageClient`;
+  `SessionRepository` expõe `loadSession()` para a leitura inicial e o getter
+  `sessionChanges` para alterações posteriores, por contrato próprio.
+  `SessionCommand` combina a leitura com a stream, ignorando um resultado inicial
+  obsoleto quando uma mudança chega durante a leitura. Ele começa em `null`,
+  publica `true` ou `false` e cancela a inscrição no `dispose`. `authentication`
+  continua responsável por gravar o token; nenhum dos dois contextos importa
+  a implementação do outro.
 - `core/domain/entities/errors_entity.dart` representa uma lista de erros com
   título, detalhe, status e apontamento de campo sem depender do cliente HTTP.
   A extensão `ErrorsResponse.toEntity()` no core infrastructure converte a lista
@@ -160,7 +162,7 @@ junto da screen, com testes no caminho espelhado. O command do fluxo principal
 usa o nome-base da tela (`CallbackScreen` → `CallbackCommand`); operações
 específicas podem manter o nome da ação (`CreateExpenseCommand`,
 `GetUserNameCommand`). `SessionCommand` permanece em
-`authentication/presentation/commands/` por observar a sessão independentemente
+`session/presentation/commands/` por observar a sessão independentemente
 de uma tela. Renomeações de tela e command atualizam arquivo, tipo, imports,
 registro no módulo, testes e documentação sem mudar a rota por consequência.
 O sign-in entrega `Either` à apresentação para tratar os erros da API; commands
@@ -206,15 +208,20 @@ ou acesso entre camadas. A matriz operacional e os exemplos canônicos estão em
 
 ## Inicialização, Módulos E Rotas
 
-`main.dart` inicializa Flutter e Modular com `/welcome` como rota inicial.
-`AppWidget` instala temas, localização `pt_BR`, router e provider de toast. Não
-há restauração de rota, logout nem guard de sessão no fluxo atual. O sign-in
-persiste o token, mas ainda não navega após sucesso.
+`main.dart` inicializa Flutter e Modular com `/splash` como rota inicial para
+uma abertura normal. `AppWidget` instala temas, localização `pt_BR`, router e
+provider de toast; observa `SessionCommand` para navegar ao dashboard após o
+sign-in e voltar à welcome após a remoção do token em uma rota protegida.
+`SplashScreen` mostra a logo enquanto lê o token e substitui a rota inicial por
+dashboard ou welcome; erro de leitura também leva à welcome. Links diretos
+para `/authentication/confirm-email` continuam públicos e ignoram `/splash`.
+Não há logout integrado nem validação da sessão no backend na abertura.
 
 `app_module.dart` compõe os módulos existentes:
 
 ```text
 coreModule
+sessionModule
 expenseModule
 welcomeModule
 settingsModule
@@ -226,11 +233,14 @@ Registros importantes:
 
 - `coreModule`: registra `IMoneyFormatter`, `IStorageClient` com
   `FlutterSecureStorage`, `IHttpClient` e o Dio compartilhado. A factory instala
-  `HeadersInterceptor`, `OpaqueTokenInterceptor` e, apenas em debug, o logger.
+  `HeadersInterceptor`, `SessionInterceptor` e, apenas em debug, o logger.
+- `sessionModule`: registra `ISessionLocalDataSource`, `ISessionRepository` e
+  `SessionCommand` como dependências do app inteiro (módulo sem `path`), para
+  continuar observando mudanças depois que a splash sair da pilha; registra
+  a rota `/splash`.
 - `authenticationModule`: registra os data sources remoto e local,
   `IAuthenticationRepository` e os commands `SignInCommand`,
-  `SignUpCommand`, `ResendEmailVerificationCommand`, `CallbackCommand` e
-  `SessionCommand`.
+  `SignUpCommand`, `ResendEmailVerificationCommand` e `CallbackCommand`.
   A rota de sign-in usa `SignInScreen` e `FormSignInWidget`: o mixin do
   formulário valida e-mail e senha (6 a 12 caracteres, com maiúscula e número).
   A screen apresenta erros do command sem navegar após o sucesso; o repository
@@ -251,6 +261,7 @@ Rotas registradas:
 
 ```text
 /welcome
+/splash
 /authentication/sign-in
 /authentication/sign-up
 /authentication/confirm
@@ -263,8 +274,9 @@ Rotas registradas:
 `/dashboard` é uma tela de apresentação, sem shell de navegação autenticada.
 Dashboard abre Settings e Expense como rotas próprias; a ação de orçamento ainda
 não tem destino. Welcome abre `/authentication/sign-in`, e o sucesso do sign-in
-não muda a rota. Os links abaixo dos formulários substituem sign-in por sign-up
-e vice-versa, mantendo `/welcome` na pilha. O cadastro bem-sucedido substitui
+grava o token e conduz ao dashboard pela observação da sessão. Os links abaixo
+dos formulários substituem sign-in por sign-up e vice-versa, mantendo
+`/welcome` na pilha. O cadastro bem-sucedido substitui
 sign-up por `/authentication/confirm`, que exibe o e-mail em um campo
 desabilitado e permite reenviar o link com feedback da API. Um cooldown local
 de 60 segundos começa ao abrir a tela e reinicia após cada reenvio aceito; o
@@ -300,13 +312,17 @@ inicialização e entrega com o app já aberto.
 `HttpPathEnum` identifica os endpoints relativos à base e marca os protegidos.
 `Requests.forPath` carrega essa rota em `RequestOptions.extra` usando
 `HttpExtraKeyEnum.route`. `expenses` está marcado como protegido no catálogo,
-mas `ExpenseClient` ainda não usa a API. O `OpaqueTokenInterceptor` só lê
-`StorageKeyEnum.accessToken` para uma rota protegida cuja origem e caminho
+mas `ExpenseClient` ainda não usa a API. O `SessionInterceptor` só lê
+`StorageKeyEnum.opaqueToken` para uma rota protegida cuja origem e caminho
 coincidam exatamente com o endpoint da base e então envia
 `Authorization: Bearer <token>`. O token é opaco; `Bearer` é o esquema HTTP.
 Sign-in, sign-up e reenvio são públicos. O backend controla a validade e
 renovação do token; `expiresAt` do login é apenas um retrato inicial e não
-bloqueia chamadas no app. Não há tratamento global de 401.
+bloqueia chamadas no app. Se uma requisição protegida que enviou esse token
+receber 401, o interceptor remove somente `StorageKeyEnum.opaqueToken` do
+storage, preservando a resposta 401; não remove um token novo gravado depois
+do envio da requisição. A exclusão notifica `SessionCommand`, e `AppWidget`
+redireciona para welcome se o usuário estiver numa rota protegida.
 
 A confirmação de e-mail usa `IHttpClient.get` no Dio compartilhado com a URL
 assinada original em `Requests(path)`, sem rota autenticada, com

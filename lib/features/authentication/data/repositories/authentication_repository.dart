@@ -13,9 +13,6 @@ final class AuthenticationRepository({
   required final IAuthenticationRemoteDataSource _remoteDataSource,
 }) implements IAuthenticationRepository {
   @override
-  Stream<bool> hasSession() => _localDataSource.hasSession();
-
-  @override
   Future<EmailVerificationStatusEnum> confirmEmail(String url) async {
     if (url.isEmpty) return .invalidLink;
 

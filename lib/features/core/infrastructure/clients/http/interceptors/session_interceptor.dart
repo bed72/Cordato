@@ -2,10 +2,11 @@ import 'package:dio/dio.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
+
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
 
-final class OpaqueTokenInterceptor({required final IStorageClient storage})
+final class SessionInterceptor({required final IStorageClient storage})
     extends Interceptor {
   @override
   void onRequest(
@@ -18,7 +19,7 @@ final class OpaqueTokenInterceptor({required final IStorageClient storage})
     }
 
     try {
-      final token = await storage.read(key: StorageKeyEnum.accessToken.key);
+      final token = await storage.read(key: StorageKeyEnum.opaqueToken.key);
       if (token != null && token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
       }
@@ -34,6 +35,24 @@ final class OpaqueTokenInterceptor({required final IStorageClient storage})
         ),
       );
     }
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) async {
+    final options = response.requestOptions;
+
+    if (response.statusCode == 401 && _requiresToken(options)) {
+      try {
+        final token = await storage.read(key: StorageKeyEnum.opaqueToken.key);
+
+        if (token != null &&
+            options.headers['Authorization'] == 'Bearer $token') {
+          await storage.delete(key: StorageKeyEnum.opaqueToken.key);
+        }
+      } catch (_) {}
+    }
+
+    handler.next(response);
   }
 
   bool _requiresToken(RequestOptions options) {

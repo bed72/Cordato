@@ -6,6 +6,7 @@ void main() {
   test('exposes the application route paths', () {
     expect(RouteEnum.root.path, '/');
     expect(RouteEnum.welcome.path, '/welcome');
+    expect(RouteEnum.splash.path, '/splash');
     expect(RouteEnum.dashboard.path, '/dashboard');
     expect(RouteEnum.authenticationSignIn.path, '/authentication/sign-in');
   });

@@ -1,6 +1,7 @@
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/core_module.dart';
+import 'package:cordato/features/session/session_module.dart';
 import 'package:cordato/features/expense/expense_module.dart';
 import 'package:cordato/features/welcome/welcome_module.dart';
 import 'package:cordato/features/settings/settings_module.dart';
@@ -11,6 +12,7 @@ final appModule = createModule(
   register: (context) {
     context
       ..module(coreModule)
+      ..module(sessionModule)
       ..module(expenseModule)
       ..module(welcomeModule)
       ..module(settingsModule)

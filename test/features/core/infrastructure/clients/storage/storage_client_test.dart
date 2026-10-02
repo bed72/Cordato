@@ -3,10 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 
 class _FlutterSecureStorageMock extends Mock implements FlutterSecureStorage {}
 
 void main() {
+  test('keeps the existing secure-storage key for persisted tokens', () {
+    expect(StorageKeyEnum.opaqueToken.key, 'authentication.access_token');
+  });
+
   late FlutterSecureStorage storage;
   late IStorageClient client;
 

@@ -42,16 +42,6 @@ void main() {
     const signed =
         'https://api.cordato.cloud/api/email-verification/12/abc123?signature=abcdef012345&expires=123456';
 
-    test('exposes session changes from the local data source', () async {
-      when(() => localDataSource.hasSession())
-          .thenAnswer((_) => Stream<bool>.fromIterable([true, false]));
-
-      await expectLater(repository.hasSession(), emitsInOrder([true, false]));
-
-      verify(() => localDataSource.hasSession()).called(1);
-      verifyZeroInteractions(dataSource);
-    });
-
     test('rejects empty links without any request', () async {
       expect(
         await repository.confirmEmail(''),

@@ -12,7 +12,7 @@ final class const HeaderSignUpWidget({super.key}) extends StatelessWidget {
         Semantics(
           header: true,
           child: Text(
-            'Crie sua conta',
+            'Continuar',
             style: context.typography.headlineMedium?.copyWith(
               fontWeight: .w700,
               letterSpacing: -1.0,

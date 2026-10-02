@@ -14,10 +14,10 @@ tags:
     timeout: 10000
 
 - assertVisible:
-    text: "Crie sua conta"
+    text: "Continuar"
 
 - tapOn:
-    text: "Crie sua conta"
+    text: "Continuar"
 
 - extendedWaitUntil:
     visible:

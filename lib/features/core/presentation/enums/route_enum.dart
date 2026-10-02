@@ -1,5 +1,6 @@
 enum RouteEnum(final String path) {
   root('/'),
+  splash('/splash'),
   expense('/expense'),
   welcome('/welcome'),
   settings('/settings'),

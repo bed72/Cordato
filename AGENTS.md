@@ -27,8 +27,10 @@ O modelo de domínio validado possui estes bounded contexts:
 
 O aplicativo integra sign-in e sign-up por e-mail e senha à API HTTP JSON:API;
 também confirma e-mail por link e permite reenviar a verificação. O token opaco
-do sign-in é persistido em storage seguro, mas ainda não há restauração de rota,
-logout ou guard de sessão. O Kotlin legado é somente referência de domínio.
+do sign-in é persistido em storage seguro. A feature `session` lê e observa a
+presença do token, usa uma splash para escolher a rota inicial e redireciona após
+401 de requisição protegida. Ainda não há logout integrado nem validação da
+sessão no backend na abertura. O Kotlin legado é somente referência de domínio.
 `expense` possui formulário e camadas de criação, mas seu client ainda não
 persiste dados. `budget`, `family` e `insight` não têm feature Flutter
 implementada. Não descreva recursos planejados como código existente nem crie
@@ -118,7 +120,8 @@ não um bounded context de negócio. `authentication` encapsula sign-in e
 sign-up por e-mail e senha via API; não deve assumir a responsabilidade de
 modelar todo o ciclo de vida de `identity` do backend antigo. Na implementação
 atual, `authentication` também reúne confirmação de e-mail e reenvio, sem criar
-uma sessão nesses fluxos.
+uma sessão nesses fluxos. `session` detém a leitura e observação da presença do
+token e a composição da splash, sem depender das camadas de `authentication`.
 
 ## Imports
 
@@ -538,14 +541,16 @@ relativos à base preservam o prefixo `/api/`.
 
 O sign-in usa e-mail e senha. No sucesso, `AuthenticationRepository` solicita a
 `IAuthenticationLocalDataSource` que grave o token via `IStorageClient`; falha
-de gravação impede o sucesso. A chave é `StorageKeyEnum.accessToken`, usada
-também pelo `OpaqueTokenInterceptor`. `HttpPathEnum.requiresAuth` marca
+de gravação impede o sucesso. A chave é `StorageKeyEnum.opaqueToken`, usada
+também pelo `SessionInterceptor`. `HttpPathEnum.requiresAuth` marca
 endpoints protegidos e `Requests.forPath` leva a rota ao cliente HTTP: o
 interceptor só lê o token para a rota protegida correspondente na origem/base
 da API e envia `Authorization: Bearer <token>`. O token é opaco; `Bearer` é o
-esquema HTTP, e a validade do token é controlada pelo backend. `expenses` está
+esquema HTTP, e a validade do token é controlada pelo backend. Um 401 dessa
+requisição remove somente o token enviado, se ainda for o valor armazenado;
+requisições públicas não apagam a sessão. `expenses` está
 no catálogo de caminhos protegidos, mas o client Flutter de gastos ainda não
-usa a API. O sucesso do sign-in ainda não navega automaticamente.
+usa a API. O sucesso do sign-in notifica `SessionCommand` e conduz ao dashboard.
 
 Sign-up e reenvio usam endpoints públicos. Para confirmar e-mail, a URL
 assinada recebida no deep link é enviada sem reconstrução por `IHttpClient.get`,
@@ -598,7 +603,8 @@ Regras:
 
 Rotas atuais:
 
-- `/welcome` para a tela de boas-vindas e rota inicial.
+- `/splash` para leitura da sessão e rota inicial padrão.
+- `/welcome` para a tela de boas-vindas quando não há token.
 - `/authentication/sign-in` para entrada por e-mail e senha.
 - `/authentication/sign-up` para cadastro.
 - `/authentication/confirm` para espera e reenvio da verificação.

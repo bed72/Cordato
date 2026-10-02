@@ -6,7 +6,7 @@ import 'package:cordato/features/core/infrastructure/clients/logger/logger_clien
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/interceptors/headers_interceptor.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/interceptors/opaque_token_interceptor.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/interceptors/session_interceptor.dart';
 
 final class DioFactory {
   const DioFactory._();
@@ -19,7 +19,7 @@ final class DioFactory {
 
     dio.interceptors.addAll([
       HeadersInterceptor(),
-      OpaqueTokenInterceptor(storage: storage),
+      SessionInterceptor(storage: storage),
       if (kDebugMode)
         TalkerDioLogger(
           talker: loggerClient,
