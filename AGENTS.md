@@ -26,11 +26,14 @@ O modelo de domínio validado possui estes bounded contexts:
 - `insight`: análises derivadas, somente leitura e sem persistência própria.
 
 O aplicativo integra sign-in e sign-up por e-mail e senha à API HTTP JSON:API;
-o Kotlin legado é somente referência de domínio. `expense` possui formulário e
-camadas de criação, mas seu client ainda não persiste dados. `budget`, `family`
-e `insight` não têm feature Flutter implementada. Não descreva recursos
-planejados como código existente nem crie um contexto `identity` para reproduzir
-o backend antigo. O contexto `chat` não faz parte do escopo atual.
+também confirma e-mail por link e permite reenviar a verificação. O token opaco
+do sign-in é persistido em storage seguro, mas ainda não há restauração de rota,
+logout ou guard de sessão. O Kotlin legado é somente referência de domínio.
+`expense` possui formulário e camadas de criação, mas seu client ainda não
+persiste dados. `budget`, `family` e `insight` não têm feature Flutter
+implementada. Não descreva recursos planejados como código existente nem crie
+um contexto `identity` para reproduzir o backend antigo. O contexto `chat` não
+faz parte do escopo atual.
 
 Regras de domínio que devem ser preservadas nas features financeiras:
 
@@ -85,6 +88,10 @@ lib/
       domain/
       data/
       infrastructure/
+        local/
+        remoto/
+        responses/
+        clients/          # quando a feature tiver um client próprio
       presentation/
         commands/
         screens/
@@ -104,7 +111,9 @@ Os bounded contexts do produto devem ser refletidos em features próprias,
 quando implementados. `dashboard` é uma feature de apresentação e composição,
 não um bounded context de negócio. `authentication` encapsula sign-in e
 sign-up por e-mail e senha via API; não deve assumir a responsabilidade de
-modelar todo o ciclo de vida de `identity` do backend antigo.
+modelar todo o ciclo de vida de `identity` do backend antigo. Na implementação
+atual, `authentication` também reúne confirmação de e-mail e reenvio, sem criar
+uma sessão nesses fluxos.
 
 ## Imports
 
@@ -470,12 +479,17 @@ feature/
 Regras de dependência:
 
 - `domain` define contratos, failures e regras independentes de framework.
-- `data` implementa contratos do domínio e traduz dados vindos de data sources.
-- `infrastructure` acessa rede, storage, plugins e APIs externas.
+- `data` implementa contratos de repository do domínio e traduz respostas de
+  data sources; na autenticação atual, consome as interfaces remota/local e os
+  response DTOs definidos em `infrastructure`.
+- `infrastructure` define as interfaces de data source e acessa rede, storage,
+  plugins e APIs externas; o data source remoto de autenticação usa `IHttpClient`
+  do core diretamente.
 - `presentation` contém screens, widgets e commands; não acessa clientes
   externos diretamente.
-- Dependências devem apontar para dentro: presentation usa interfaces de
-  domain, e infrastructure implementa contratos consumidos por data.
+- `presentation` depende de contratos de `domain`; o repository em `data`
+  depende das interfaces de data source de `infrastructure`, sem acessar SDKs
+  diretamente. O módulo liga as implementações concretas.
 - A rota e o módulo pertencem à feature que possui a tela.
 
 Fluxo esperado:
@@ -486,23 +500,51 @@ Screen/Widget
     -> Domain repository interface
     -> Data repository
     -> Data source interface
-    -> Infrastructure client
+    -> Data source (authentication: IHttpClient do core diretamente)
     -> External service
 ```
 
+Na autenticação, `AuthenticationRemoteDataSource` monta as requisições JSON:API
+e chama `IHttpClient` do core, sem `AuthenticationClient` intermediário. Os
+responses de sign-in e sign-up convertem mapas com casts e `DateTime.parse` do
+Dart; o data source traduz falhas de parsing em `ErrorsResponse` genérico.
+Outras features podem ter clients próprios quando isso fizer sentido.
+
 ## API HTTP E Persistência
 
-`authenticationModule` configura `Dio` com `BASE_URL` (padrão
-`https://api.cordato.cloud/api/`) e `HeadersInterceptor` para JSON:API. O
-`HttpClient` do core devolve `Either` de mapas; `AuthenticationDataSource`
-converte as respostas em objetos tipados e erros JSON:API. Endpoints relativos
-à base preservam o prefixo `/api/`.
+`coreModule` registra `IStorageClient`, `IHttpClient` e o `Dio` compartilhado
+com `BASE_URL` (padrão `https://api.cordato.cloud/api/`). O
+`HeadersInterceptor` aplica os headers JSON:API. O `HttpClient` devolve
+`Either<HttpResponse, HttpResponse>`, com status HTTP e corpo em mapa;
+falhas de transporte recebem status `0`. `AuthenticationRemoteDataSource`
+converte os corpos em respostas tipadas e erros JSON:API. Os endpoints
+relativos à base preservam o prefixo `/api/`.
 
-O sign-in usa e-mail e senha; o token recebido é salvo em storage seguro, mas
-o sucesso não navega automaticamente. Chamadas protegidas optam pelo Bearer em
-`HttpPathEnum.requiresAuth` e `Requests.forPath`; o backend controla a validade do token. Há command
-para sign-up e tela de cadastro. `ExpenseClient.create` ainda retorna falha e não persiste gastos;
-`budget`, `family` e `insight` não possuem integração Flutter. Não descreva
+O sign-in usa e-mail e senha. No sucesso, `AuthenticationRepository` solicita a
+`IAuthenticationLocalDataSource` que grave o token via `IStorageClient`; falha
+de gravação impede o sucesso. A chave é `StorageKeyEnum.accessToken`, usada
+também pelo `OpaqueTokenInterceptor`. `HttpPathEnum.requiresAuth` marca
+endpoints protegidos e `Requests.forPath` leva a rota ao cliente HTTP: o
+interceptor só lê o token para a rota protegida correspondente na origem/base
+da API e envia `Authorization: Bearer <token>`. O token é opaco; `Bearer` é o
+esquema HTTP, e a validade do token é controlada pelo backend. `expenses` está
+no catálogo de caminhos protegidos, mas o client Flutter de gastos ainda não
+usa a API. O sucesso do sign-in ainda não navega automaticamente.
+
+Sign-up e reenvio usam endpoints públicos. Para confirmar e-mail, a URL
+assinada recebida no deep link é enviada sem reconstrução por `IHttpClient.get`,
+sem Bearer, redirecionamentos ou logging da URL; uma URL ausente é tratada na
+screen. O repository traduz os status 204, 403 e falha de transporte, sem
+validar host, caminho ou assinatura localmente. O comando de confirmação
+recebe uma `String` não nula; nenhum desses fluxos cria sessão.
+
+O logger HTTP está ativo apenas em debug e atualmente registra headers e
+payloads das requisições usuais, inclusive dados de sign-in; requisições com
+`Requests(logRequest: false)`, como a confirmação por URL assinada, são
+omitidas dos logs de request, response e error.
+
+`ExpenseClient.create` ainda retorna falha e não persiste gastos. `budget`,
+`family` e `insight` não possuem integração Flutter. Não descreva
 regras de autorização do backend como já aplicadas pelo aplicativo. Ao conectar
 uma feature financeira, defina seu contexto proprietário, preserve as
 invariantes no serviço responsável e adicione testes de autorização e domínio.
@@ -542,6 +584,9 @@ Rotas atuais:
 
 - `/welcome` para a tela de boas-vindas e rota inicial.
 - `/authentication/sign-in` para entrada por e-mail e senha.
+- `/authentication/sign-up` para cadastro.
+- `/authentication/confirm` para espera e reenvio da verificação.
+- `/authentication/confirm-email` para confirmação pelo link recebido.
 - `/dashboard` para a tela inicial de dashboard, ainda sem guard de sessão.
 - `/settings` para configurações.
 - `/expense` para o formulário de gasto.

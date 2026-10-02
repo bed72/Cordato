@@ -123,7 +123,7 @@ The project SHALL document the eligibility rules, exclusions, Dart version requi
 
 #### Scenario: Implementing the convention
 - **WHEN** the adoption change is completed
-- **THEN** `AGENTS.md` describes when primary constructors are preferred and when traditional constructors remain appropriate
+- **THEN** the contributor guidance describes when primary constructors are preferred and when traditional constructors remain appropriate
 - **THEN** examples follow the project's class modifiers, const, import, widget, and architecture conventions
 
 #### Scenario: Validating converted declarations

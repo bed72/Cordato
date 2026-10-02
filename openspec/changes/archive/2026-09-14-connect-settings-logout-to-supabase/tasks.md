@@ -20,7 +20,7 @@
 
 ## 4. Arquitetura E Documentação
 
-- [x] 4.1 Atualizar `ARCHITECTURE.md` com `LogoutCommand`, binding de Settings, dependência sobre `IAuthenticationRepository` e navegação reativa pelo estado global de sessão.
+- [x] 4.1 Atualizar a documentação de arquitetura com `LogoutCommand`, binding de Settings, dependência sobre `IAuthenticationRepository` e navegação reativa pelo estado global de sessão.
 - [x] 4.2 Ampliar o teste arquitetural para rejeitar imports de `data` e `infrastructure` pela presentation e confirmar que a nova dependência de Settings aponta somente para Authentication domain.
 - [x] 4.3 Documentar o escopo root-owned dos bindings compartilhados de Authentication e preservar commands e rotas no módulo feature-scoped.
 

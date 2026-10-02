@@ -1,7 +1,7 @@
 ## 1. Compatibilidade E Convenção
 
 - [x] 1.1 Confirmar que `pubspec.yaml` mantém Dart 3.13 ou superior como limite mínimo e que nenhum experiment flag ou nova dependência é necessário.
-- [x] 1.2 Documentar no `AGENTS.md` exemplos, matriz de elegibilidade, preservação integral de contratos e adoção posterior incremental.
+- [x] 1.2 Documentar nas orientações de contribuição exemplos, matriz de elegibilidade, preservação integral de contratos e adoção posterior incremental.
 - [x] 1.3 Corrigir proposal, spec e design para selecionar explicitamente todas as declarações elegíveis em `lib/`, em vez de somente os cinco pilotos.
 
 ## 2. Inventário Completo
@@ -31,6 +31,6 @@
 
 ## 6. Padrão Futuro
 
-- [x] 6.1 Atualizar `AGENTS.md` para tornar primary constructors o padrão daqui para frente em toda declaração elegível e documentar as exceções concretas.
-- [x] 6.2 Registrar em `ARCHITECTURE.md` a decisão estrutural, sua neutralidade entre camadas e a exigência de preservar contratos.
+- [x] 6.1 Atualizar as orientações de contribuição para tornar primary constructors o padrão daqui para frente em toda declaração elegível e documentar as exceções concretas.
+- [x] 6.2 Registrar na documentação de arquitetura a decisão estrutural, sua neutralidade entre camadas e a exigência de preservar contratos.
 - [x] 6.3 Revisar o diff documental e validar novamente a change OpenSpec em modo estrito.

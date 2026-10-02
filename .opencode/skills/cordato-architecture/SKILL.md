@@ -9,11 +9,11 @@ Use this skill for architecture-sensitive work in the Cordato Flutter app.
 
 ## Source Of Truth
 
-Read these files before changing architecture or a financial feature:
+Review these sources before changing architecture or a financial feature:
 
-1. `AGENTS.md` for project rules and the validated product model.
-2. `ARCHITECTURE.md` for Flutter layers, modules, routes, and dependency rules.
-3. `README.md` for product scope and current implementation status.
+1. Project rules and the validated product model.
+2. Architecture guidance for Flutter layers, modules, routes, and dependency rules.
+3. Product scope and current implementation status.
 4. The affected feature files and their tests.
 
 The Kotlin backend at `/Users/gabrielramos/Code/Me/BackEnd/Kotlin/Cordato` is a

@@ -20,8 +20,10 @@ Os bounded contexts do produto são:
 - `insight`: planejado. Análises derivadas, somente leitura e sem persistência própria.
 
 O contexto `identity` do backend não será reproduzido no app neste momento. A
- autenticação por e-mail e senha usa a API JSON:API; há telas de sign-in e
- sign-up e persistência segura do token, mas ainda não há gestão completa de sessão.
+autenticação por e-mail e senha usa a API JSON:API; há sign-in, sign-up,
+confirmação de e-mail por link e reenvio da verificação. O token opaco do
+sign-in é salvo em storage seguro, mas ainda não há restauração de rota,
+logout ou guard de sessão.
 O contexto `chat` está fora do escopo atual.
 
 ## Estado atual
@@ -39,7 +41,7 @@ O app já possui:
 - tela de configurações, com botão de saída ainda sem logout integrado;
 - navegação de Welcome para Sign In, de Sign In para Sign Up por substituição
   de rota e de Dashboard para Settings e Expense;
-- tema claro/escuro e componentes de apresentação reutilizáveis.
+- tema claro/escuro e componentes de apresentação reutilizáveis;
 - confirmação automática de e-mail ao abrir o link HTTPS, com feedback por toast
   e retorno ao sign-in após sucesso, expiração ou erro de conexão, sem criar sessão.
 
@@ -56,8 +58,9 @@ presentation -> domain -> data -> infrastructure -> API HTTP
 
 `presentation` não conhece SDKs externos. `domain` contém contratos e regras
 independentes de framework, `data` implementa os repositórios e
-`infrastructure` encapsula clientes HTTP, storage e plugins. A integração HTTP
-atual atende à autenticação; a criação de gastos ainda não persiste dados.
+`infrastructure` contém data sources que acessam HTTP, storage e plugins. Na
+autenticação, o data source remoto usa o `IHttpClient` compartilhado do core
+diretamente; a criação de gastos ainda não persiste dados.
 
 Consulte [`ARCHITECTURE.md`](ARCHITECTURE.md) para módulos, rotas, limites
 técnicos e validação, e [`AGENTS.md`](AGENTS.md) para as convenções de
@@ -105,19 +108,24 @@ Android está documentado em [`android/README.md`](android/README.md).
 
 ## API E Persistência
 
-`coreModule` configura `Dio` e o media type JSON:API. O fluxo de
- sign-in, sign-up e reenvio de verificação passa por command, contrato de repository, data source e
-client HTTP. A API é externa a este repositório; não há schema ou migrations do
-backend financeiro versionados aqui. Ao conectar as features financeiras,
-preserve propriedade individual, autorização e invariantes no serviço
-responsável, com testes próprios.
+`coreModule` registra o Dio compartilhado, o cliente HTTP e o storage seguro.
+O fluxo de autenticação passa por command, contrato de repository, repository
+e data sources remoto/local. O remoto monta as requisições e usa `IHttpClient`
+do core diretamente, sem client próprio da feature. `HttpClient` preserva
+status e corpo em `HttpResponse`; `SignInResponse` e `SignUpResponse` leem os
+mapas JSON com Dart puro, o data source remoto converte erros JSON:API e o
+local grava o token. A API é externa a este repositório; não há schema ou
+migrations do backend financeiro versionados aqui. Ao conectar as features
+financeiras, preserve propriedade individual, autorização e invariantes no
+serviço responsável, com testes próprios.
 
-O token opaco do sign-in é armazenado com `FlutterSecureStorage`. Chamadas
-protegidas são identificadas por `HttpPathEnum` e enviam o token opaco com o
-esquema HTTP `Bearer`;
-requisições públicas não enviam o token. A validade e a renovação continuam
-sendo responsabilidade do backend. Restauração de rota, logout e tratamento
-global de sessão expirada ainda não foram integrados.
+O token opaco do sign-in é armazenado por `AuthenticationLocalDataSource`
+via `FlutterSecureStorage`. `HttpPathEnum` marca endpoints protegidos; o
+`OpaqueTokenInterceptor` só envia `Authorization: Bearer <token>` quando a
+rota protegida coincide com a origem e o caminho da API. `Bearer` é o esquema
+HTTP, não o formato do token. A validade e a renovação continuam sob controle
+do backend. A confirmação por link não envia token e omite a URL assinada dos
+logs do Dio. Não há tratamento global de sessão expirada.
 
 ## Revisão De Mudanças
 

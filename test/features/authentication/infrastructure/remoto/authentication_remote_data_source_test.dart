@@ -2,56 +2,67 @@ import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
-import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
 
-class _AuthenticationClientMock extends Mock implements IAuthenticationClient {}
+class _HttpClientMock extends Mock implements IHttpClient {}
 
 void main() {
   const password = 'secret';
   const email = 'person@example.com';
 
-  late IAuthenticationClient client;
+  late IHttpClient client;
   late IAuthenticationRemoteDataSource dataSource;
 
+  setUpAll(() => registerFallbackValue(const Requests('')));
   setUp(() {
-    client = _AuthenticationClientMock();
+    client = _HttpClientMock();
     dataSource = AuthenticationRemoteDataSource(client: client);
   });
 
-  group('AuthenticationDataSource', () {
+  group('AuthenticationRemoteDataSource', () {
     test('confirmation passes the original URL and status', () async {
       const url =
           'https://other.example/api/email-verification/12/abc?signature=123&expires=456';
-      when(() => client.confirmEmail(url)).thenAnswer(
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(HttpResponse(statusCode: 204, body: {})),
       );
 
       expect(await dataSource.confirmEmail(url), 204);
-      verify(() => client.confirmEmail(url)).called(1);
+      final request =
+          verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      expect(request.path, url);
+      expect(request.route, isNull);
+      expect(request.followRedirects, isFalse);
+      expect(request.logRequest, isFalse);
     });
 
     test('confirmation returns null when the client fails', () async {
-      when(() => client.confirmEmail('signed'))
+      when(() => client.get(parameter: any(named: 'parameter')))
           .thenThrow(StateError('offline'));
 
       expect(await dataSource.confirmEmail('signed'), isNull);
     });
     test('confirmation maps 403 and transport failure by status', () async {
-      when(() => client.confirmEmail('signed')).thenAnswer(
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(HttpResponse(statusCode: 403, body: {})),
       );
       expect(await dataSource.confirmEmail('signed'), 403);
 
-      when(() => client.confirmEmail('signed')).thenAnswer(
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(HttpResponse(statusCode: 0, body: {})),
       );
       expect(await dataSource.confirmEmail('signed'), isNull);
     });
     test('sign-in returns the parsed access token response', () async {
-      when(() => client.signIn(email: email, password: password)).thenAnswer(
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Right(
           HttpResponse(
             statusCode: 200,
@@ -80,11 +91,24 @@ void main() {
       expect(data.right.userId, '5');
       expect(data.right.token, 'example-token');
       expect(data.right.expiresAt, DateTime.utc(2026, 9, 28, 18, 30, 6));
-      verify(() => client.signIn(email: email, password: password)).called(1);
+      final request =
+          verify(() => client.post(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      expect(request.headers, isNull);
+      expect(request.path, 'authentication/sign-in');
+      expect(request.route, HttpPathEnum.signIn);
+      expect(request.body, {
+        'data': {
+          'type': 'access-tokens',
+          'attributes': {'email': email, 'password': password},
+        },
+      });
     });
 
     test('sign-up returns the parsed registration response', () async {
-      when(() => client.signUp(email: email, password: password)).thenAnswer(
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Right(
           HttpResponse(
             statusCode: 201,
@@ -99,22 +123,52 @@ void main() {
 
       expect(data.isRight, isTrue);
       expect(data.right.userId, '3');
-      verify(() => client.signUp(email: email, password: password)).called(1);
+      final request =
+          verify(() => client.post(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      expect(request.headers, isNull);
+      expect(request.path, 'authentication/sign-up');
+      expect(request.route, HttpPathEnum.signUp);
+      expect(request.body, {
+        'data': {
+          'type': 'sign-ups',
+          'attributes': {
+            'email': email,
+            'name': 'Trocado',
+            'password': password,
+            'password_confirmation': password,
+          },
+        },
+      });
     });
 
     test('resend accepts a successful response without a body', () async {
-      when(() => client.resendEmailVerification(email: email)).thenAnswer(
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(HttpResponse(statusCode: 202, body: {})),
       );
 
       final data = await dataSource.resendEmailVerification(email: email);
 
       expect(data.right, isTrue);
-      verify(() => client.resendEmailVerification(email: email)).called(1);
+      final request =
+          verify(() => client.post(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      expect(request.path, 'authentication/email-verification/resend');
+      expect(request.route, HttpPathEnum.resendEmailVerification);
+      expect(request.body, {
+        'data': {
+          'type': 'email-verifications',
+          'attributes': {'email': email},
+        },
+      });
     });
 
     test('resend preserves API errors', () async {
-      when(() => client.resendEmailVerification(email: email)).thenAnswer(
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
           HttpResponse(
             statusCode: 429,
@@ -134,7 +188,7 @@ void main() {
     });
 
     test('resend handles transport exceptions', () async {
-      when(() => client.resendEmailVerification(email: email))
+      when(() => client.post(parameter: any(named: 'parameter')))
           .thenThrow(StateError('network unavailable'));
 
       final data = await dataSource.resendEmailVerification(email: email);
@@ -144,7 +198,7 @@ void main() {
     });
 
     test('preserves all API errors from a failed sign-in', () async {
-      when(() => client.signIn(email: email, password: password)).thenAnswer(
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Left(
           HttpResponse(
             statusCode: 401,
@@ -174,7 +228,7 @@ void main() {
     });
 
     test('preserves API errors from a failed sign-up', () async {
-      when(() => client.signUp(email: email, password: password)).thenAnswer(
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Left(
           HttpResponse(
             statusCode: 422,
@@ -194,7 +248,7 @@ void main() {
     });
 
     test('returns an error for a malformed success response', () async {
-      when(() => client.signIn(email: email, password: password)).thenAnswer(
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(HttpResponse(statusCode: 200, body: {})),
       );
 
@@ -205,7 +259,7 @@ void main() {
     });
 
     test('rejects a sign-in response without a user relationship', () async {
-      when(() => client.signIn(email: email, password: password)).thenAnswer(
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
           HttpResponse(
             statusCode: 200,
@@ -229,7 +283,7 @@ void main() {
     });
 
     test('returns an error for a malformed API error response', () async {
-      when(() => client.signUp(email: email, password: password)).thenAnswer(
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(HttpResponse(statusCode: 422, body: {})),
       );
 
@@ -240,7 +294,7 @@ void main() {
     });
 
     test('returns an error when the API error list is empty', () async {
-      when(() => client.signUp(email: email, password: password)).thenAnswer(
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async =>
             const Left(HttpResponse(statusCode: 422, body: {'errors': []})),
       );
@@ -252,7 +306,7 @@ void main() {
     });
 
     test('returns an error when the client throws asynchronously', () async {
-      when(() => client.signIn(email: email, password: password))
+      when(() => client.post(parameter: any(named: 'parameter')))
           .thenAnswer((_) async => throw Exception('network unavailable'));
 
       final data = await dataSource.signIn(email: email, password: password);

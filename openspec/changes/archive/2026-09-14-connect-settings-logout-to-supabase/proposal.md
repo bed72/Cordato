@@ -13,7 +13,7 @@ A confirmação de logout em Settings termina em um callback vazio e ainda não 
 - Registrar a cadeia compartilhada de Authentication em um módulo sem `path`, para que o command feature-scoped de Settings possa resolvê-la sem ativar uma rota de Authentication.
 - Adicionar testes unitários do command e manter os testes de repository, datasource, client Supabase, estado global de sessão e arquitetura como regressão obrigatória.
 - Atualizar previews com um fake de repository e descarte correto do command, sem inicializar Supabase ou módulos.
-- Atualizar `ARCHITECTURE.md` para registrar o novo command, binding e fluxo de logout.
+- Atualizar a documentação de arquitetura para registrar o novo command, binding e fluxo de logout.
 - **BREAKING (internal)**: substituir `onLogoutPressed` no construtor de `SettingsScreen` pela dependência necessária para executar e observar `LogoutCommand`.
 
 ## Capabilities

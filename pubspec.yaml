@@ -35,7 +35,6 @@ dependencies:
 
   dio: ^5.11.1
   intl: ^0.20.3
-  deep_pick: ^1.0.0
   listen_it: ^5.3.5
   command_it: ^9.5.1
   flutter_modular: ^7.1.1

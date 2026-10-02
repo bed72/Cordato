@@ -26,7 +26,7 @@ Nenhuma.
 
 ## Impact
 
-- Afeta convenções de código Dart, `AGENTS.md`, `ARCHITECTURE.md` e todas as declarações existentes elegíveis em `lib/`; mocks e declarações sem construtor útil em `test/` permanecem inalterados.
+- Afeta convenções de código Dart, documentação de contribuição e arquitetura, e todas as declarações existentes elegíveis em `lib/`; mocks e declarações sem construtor útil em `test/` permanecem inalterados.
 - Exige Dart 3.13 ou superior; o requisito atual `sdk: ^3.13.2` já satisfaz essa condição.
 - Não requer nova dependência, geração de código, mudança de analyzer, alteração de módulos, rotas, DI, Supabase ou bounded contexts.
 - Não altera APIs de chamada, comportamento em runtime, performance, persistência, regras financeiras ou experiência do usuário.

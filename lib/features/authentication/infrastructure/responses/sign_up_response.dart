@@ -1,8 +1,7 @@
-import 'package:deep_pick/deep_pick.dart';
-
 final class const SignUpResponse({required final String userId}) {
   factory SignUpResponse.fromJson(Map<String, dynamic> json) {
-    final userId = pick(json, 'data', 'id').asStringOrThrow();
+    final root = json['data'] as Map<String, dynamic>;
+    final userId = root['id'] as String;
 
     return SignUpResponse(userId: userId);
   }

@@ -73,7 +73,7 @@ Não será usado `mocktail` em previews. O preview compacto será ajustado para 
 
 ### Atualizar documentação e regressões
 
-`ARCHITECTURE.md` registrará `LogoutCommand`, seu binding em Settings, a dependência de `IAuthenticationRepository` e a navegação reativa por `SessionGuardWidget`. A suíte obrigatória incluirá o novo teste de command, os testes existentes da cadeia de Authentication, `ExternalClient` e os testes de arquitetura.
+A documentação de arquitetura registrará `LogoutCommand`, seu binding em Settings, a dependência de `IAuthenticationRepository` e a navegação reativa por `SessionGuardWidget`. A suíte obrigatória incluirá o novo teste de command, os testes existentes da cadeia de Authentication, `ExternalClient` e os testes de arquitetura.
 
 ## Risks / Trade-offs
 

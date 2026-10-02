@@ -36,6 +36,7 @@ mixin SignInScreenStateMixin on State<SignInScreen> {
     if (data.data case Left(:final value)) {
       final remaining =
           formKey.currentState?.showErrors(value.errors) ?? value.errors;
+
       if (remaining.isNotEmpty) {
         context.showToast(
           variant: .error,

@@ -50,6 +50,41 @@ void main() {
     expect(response.userId, '3');
   });
 
+  test('sign-in rejects a missing user relationship or invalid expiration', () {
+    final data = <String, dynamic>{
+      'attributes': {
+        'token': 'example-token',
+        'expires_at': '2026-09-28T18:30:06+00:00',
+      },
+    };
+
+    expect(
+      () => SignInResponse.fromJson({'data': data}),
+      throwsA(isA<TypeError>()),
+    );
+
+    data['attributes'] = {
+      'token': 'example-token',
+      'expires_at': 'invalid-date',
+    };
+    data['relationships'] = {
+      'user': {
+        'data': {'id': '5'},
+      },
+    };
+    expect(
+      () => SignInResponse.fromJson({'data': data}),
+      throwsFormatException,
+    );
+  });
+
+  test('sign-up rejects a missing resource id', () {
+    expect(
+      () => SignUpResponse.fromJson({'data': <String, dynamic>{}}),
+      throwsA(isA<TypeError>()),
+    );
+  });
+
   test(
     'validation error preserves detail, title, status and source pointer',
     () {

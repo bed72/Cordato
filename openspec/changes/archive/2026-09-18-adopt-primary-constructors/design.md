@@ -70,7 +70,7 @@ After this baseline, future features apply the convention to new eligible declar
 
 ### Enforce through contributor guidance and ordinary verification
 
-`AGENTS.md` is the operational source of truth for eligibility, examples and review rules. `ARCHITECTURE.md` records primary constructors as the durable construction standard across layers while making clear that syntax does not alter dependency direction. `README.md` remains focused on product setup unless its toolchain instructions need an explicit minimum Flutter version.
+Contributor guidance is the operational source of truth for eligibility, examples and review rules. Architecture documentation records primary constructors as the durable construction standard across layers while making clear that syntax does not alter dependency direction. Product documentation remains focused on setup unless its toolchain instructions need an explicit minimum Flutter version.
 
 No lint currently enforces primary constructor preference, and a custom analyzer rule is disproportionate. Review, `dart format`, `flutter analyze` and existing layer tests provide sufficient enforcement. UI tests are not added for a syntax-only widget conversion under the project's Maestro policy.
 
@@ -82,13 +82,13 @@ No lint currently enforces primary constructor preference, and a custom analyzer
 - [The codebase temporarily contains both styles] -> Accept coexistence as the cost of incremental migration; use the documented rule for all new or actively changed eligible code.
 - [Factories or redirects are accidentally removed] -> Keep them in-body and verify they target or return the same construction path.
 - [Primary syntax makes a complex type less readable] -> Retain the traditional constructor; preference is conditional on equal or better clarity.
-- [No lint guarantees uniform enforcement] -> Keep criteria concrete in `AGENTS.md` and use code review instead of adding analyzer infrastructure for a syntax preference.
+- [No lint guarantees uniform enforcement] -> Keep criteria concrete in the contributor guidance and use code review instead of adding analyzer infrastructure for a syntax preference.
 - [A broad migration conflicts with concurrent feature work] -> Keep every edit declaration-local, preserve unrelated work in touched files and verify the complete diff before formatting and tests.
 
 ## Migration Plan
 
 1. Confirm `pubspec.yaml` continues to require Dart 3.13 or newer and avoid adding experiment flags or dependencies.
-2. Add the primary constructor eligibility, preservation and exception rules to `AGENTS.md`.
+2. Add the primary constructor eligibility, preservation and exception rules to the contributor guidance.
 3. Inventory every explicit constructor under `lib/` and classify direct conversions, manual-review cases and retained declarations.
 4. Review the five current pilots and convert every other eligible declaration, separating unrelated API or body changes from syntax conversion.
 5. Format only the Dart files changed by the implementation.

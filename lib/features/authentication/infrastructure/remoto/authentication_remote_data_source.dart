@@ -1,9 +1,11 @@
 import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 
 import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
 import 'package:cordato/features/authentication/infrastructure/responses/sign_up_response.dart';
-import 'package:cordato/features/authentication/infrastructure/clients/authentication_client.dart';
 
 typedef SignInDataSourceType = Either<ErrorsResponse, SignInResponse>;
 typedef SignUpDataSourceType = Either<ErrorsResponse, SignUpResponse>;
@@ -27,13 +29,14 @@ abstract interface class IAuthenticationRemoteDataSource {
   });
 }
 
-final class AuthenticationRemoteDataSource({
-  required final IAuthenticationClient _client,
-}) implements IAuthenticationRemoteDataSource {
+final class AuthenticationRemoteDataSource({required final IHttpClient _client})
+    implements IAuthenticationRemoteDataSource {
   @override
   Future<int?> confirmEmail(String url) async {
     try {
-      final response = await _client.confirmEmail(url);
+      final response = await _client.get(
+        parameter: Requests(url, followRedirects: false, logRequest: false),
+      );
       final status = response.fold(
         (failure) => failure.statusCode,
         (success) => success.statusCode,
@@ -50,7 +53,17 @@ final class AuthenticationRemoteDataSource({
     required String password,
   }) => _response(
     fromJson: SignInResponse.fromJson,
-    execute: () => _client.signIn(email: email, password: password),
+    execute: () => _client.post(
+      parameter: Requests.forPath(
+        HttpPathEnum.signIn,
+        body: {
+          'data': {
+            'type': 'access-tokens',
+            'attributes': {'email': email, 'password': password},
+          },
+        },
+      ),
+    ),
   );
 
   @override
@@ -59,7 +72,22 @@ final class AuthenticationRemoteDataSource({
     required String password,
   }) => _response(
     fromJson: SignUpResponse.fromJson,
-    execute: () => _client.signUp(email: email, password: password),
+    execute: () => _client.post(
+      parameter: Requests.forPath(
+        HttpPathEnum.signUp,
+        body: {
+          'data': {
+            'type': 'sign-ups',
+            'attributes': {
+              'email': email,
+              'name': 'Trocado',
+              'password': password,
+              'password_confirmation': password,
+            },
+          },
+        },
+      ),
+    ),
   );
 
   @override
@@ -67,7 +95,17 @@ final class AuthenticationRemoteDataSource({
     required String email,
   }) => _response(
     fromJson: (_) => true,
-    execute: () => _client.resendEmailVerification(email: email),
+    execute: () => _client.post(
+      parameter: Requests.forPath(
+        HttpPathEnum.resendEmailVerification,
+        body: {
+          'data': {
+            'type': 'email-verifications',
+            'attributes': {'email': email},
+          },
+        },
+      ),
+    ),
   );
 
   Future<Either<ErrorsResponse, T>> _response<T>({
