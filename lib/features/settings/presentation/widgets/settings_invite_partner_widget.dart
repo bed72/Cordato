@@ -25,7 +25,7 @@ final class const SettingsInvitePartnerWidget({
             BackgroundIconWidget(
               iconSize: 24.0,
               icon: Icons.person_add_alt,
-              iconColor: context.colors.surfaceDim,
+              iconColor: context.colors.onPrimaryContainer,
               backgroundColor: context.colors.primaryContainer,
             ),
             Expanded(

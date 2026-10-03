@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
+import 'package:cordato/features/settings/presentation/widgets/settings_logout_bottom_sheet_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_card_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_item_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_header_widget.dart';
@@ -90,11 +92,20 @@ final class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-              SettingsLogoutWidget(onLogoutPressed: () {}),
+              SettingsLogoutWidget(onLogoutPressed: _showLogoutConfirmation),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _showLogoutConfirmation() async {
+    await showBottomSheetWidget<bool>(
+      context: context,
+      title: 'Realmente deseja sair?',
+      subtitle: 'Ao sair, você precisará fazer login novamente.',
+      child: const SettingsLogoutBottomSheetWidget(),
     );
   }
 }
