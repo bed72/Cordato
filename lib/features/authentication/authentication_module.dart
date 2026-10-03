@@ -24,15 +24,7 @@ final authenticationModule = createModule(
   path: RouteEnum.root.path,
   register: (context) {
     context
-      ..addLazySingleton<IAuthenticationRemoteDataSource>(
-        AuthenticationRemoteDataSource.new,
-      )
-      ..addLazySingleton<IAuthenticationLocalDataSource>(
-        AuthenticationLocalDataSource.new,
-      )
-      ..addLazySingleton<IAuthenticationRepository>(
-        AuthenticationRepository.new,
-      )
+      ..module(_authenticationDependenciesModule)
       ..add(EmailValidation.new)
       ..add(PasswordValidation.new)
       ..addLazySingleton<SignInCommand>(SignInCommand.new)
@@ -87,4 +79,15 @@ final authenticationModule = createModule(
         ),
       );
   },
+);
+
+final _authenticationDependenciesModule = createModule(
+  register: (context) => context
+    ..addLazySingleton<IAuthenticationRemoteDataSource>(
+      AuthenticationRemoteDataSource.new,
+    )
+    ..addLazySingleton<IAuthenticationLocalDataSource>(
+      AuthenticationLocalDataSource.new,
+    )
+    ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new),
 );

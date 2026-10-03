@@ -1,7 +1,6 @@
+import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
-import 'package:cordato/features/settings/presentation/widgets/settings_logout_bottom_sheet_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_card_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_item_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_header_widget.dart';
@@ -10,8 +9,12 @@ import 'package:cordato/features/settings/presentation/widgets/settings_app_bar_
 import 'package:cordato/features/settings/presentation/widgets/settings_section_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_invite_partner_widget.dart';
 
+import 'package:cordato/features/settings/presentation/screens/settings/commands/logout_command.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/mixins/settings_screen_state_mixin.dart';
+
 final class const SettingsScreen({
   super.key,
+  required final LogoutCommand command,
   required final ValueChanged<BuildContext> onBackPressed,
   final VoidCallback? onHelpPressed,
   final VoidCallback? onTermsPressed,
@@ -24,7 +27,8 @@ final class const SettingsScreen({
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-final class _SettingsScreenState extends State<SettingsScreen> {
+final class _SettingsScreenState extends State<SettingsScreen>
+    with SettingsScreenStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,20 +96,23 @@ final class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-              SettingsLogoutWidget(onLogoutPressed: _showLogoutConfirmation),
+              CommandBuilder(
+                command: widget.command.execute,
+                whileRunning: (_, _, _) => const SettingsLogoutWidget(
+                  onLogoutPressed: null,
+                  isLoading: true,
+                ),
+                onSuccess: (_, _) => SettingsLogoutWidget(
+                  onLogoutPressed: showLogoutConfirmation,
+                ),
+                onError: (_, _, _, _) => SettingsLogoutWidget(
+                  onLogoutPressed: showLogoutConfirmation,
+                ),
+              ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Future<void> _showLogoutConfirmation() async {
-    await showBottomSheetWidget<bool>(
-      context: context,
-      title: 'Realmente deseja sair?',
-      subtitle: 'Ao sair, você precisará fazer login novamente.',
-      child: const SettingsLogoutBottomSheetWidget(),
     );
   }
 }

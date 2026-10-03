@@ -25,6 +25,109 @@ void main() {
   });
 
   group('AuthenticationRemoteDataSource', () {
+    test(
+      'logout deletes the protected sign-out endpoint without a body',
+      () async {
+        when(() => client.delete(parameter: any(named: 'parameter')))
+            .thenAnswer(
+              (_) async => const Right(HttpResponse(statusCode: 204, body: {})),
+            );
+
+        expect((await dataSource.logout()).right, isTrue);
+        final request =
+            verify(
+                  () =>
+                      client.delete(parameter: captureAny(named: 'parameter')),
+                ).captured.single
+                as Requests;
+        expect(request.path, 'authentication/sign-out');
+        expect(request.route, HttpPathEnum.logout);
+        expect(request.route?.requiresAuth, isTrue);
+        expect(request.body, isNull);
+        expect(request.headers, isNull);
+        verifyNoMoreInteractions(client);
+      },
+    );
+
+    test('logout preserves JSON API errors', () async {
+      when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Left(
+          HttpResponse(
+            statusCode: 403,
+            body: {
+              'errors': [
+                {
+                  'status': '403',
+                  'title': 'Não autorizado',
+                  'detail': 'Conta bloqueada.',
+                },
+              ],
+            },
+          ),
+        ),
+      );
+
+      final result = await dataSource.logout();
+      expect(result.left.errors.single.status, '403');
+      expect(result.left.errors.single.title, 'Não autorizado');
+      expect(result.left.errors.single.detail, 'Conta bloqueada.');
+    });
+
+    test(
+      'logout translates unexpected client exceptions to unknown errors',
+      () async {
+        when(() => client.delete(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => throw StateError('offline'));
+
+        expect(
+          (await dataSource.logout()).left.errors.single.title,
+          'Erro desconhecido',
+        );
+      },
+    );
+
+    test(
+      'logout translates malformed or empty API errors to unknown errors',
+      () async {
+        for (final body in <Map<String, dynamic>>[
+          {},
+          {'errors': []},
+        ]) {
+          when(() => client.delete(parameter: any(named: 'parameter')))
+              .thenAnswer(
+                (_) async => Left(HttpResponse(statusCode: 500, body: body)),
+              );
+          expect(
+            (await dataSource.logout()).left.errors.single.title,
+            'Erro desconhecido',
+          );
+        }
+      },
+    );
+
+    test('logout preserves transport errors from the HTTP client', () async {
+      when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Left(
+          HttpResponse(
+            statusCode: 0,
+            body: {
+              'errors': [
+                {
+                  'title': 'Erro desconhecido',
+                  'detail': 'Não foi possível processar a resposta.',
+                },
+              ],
+            },
+          ),
+        ),
+      );
+
+      expect(
+        (await dataSource.logout()).left.errors.single.detail,
+        'Não foi possível processar a resposta.',
+      );
+    });
+
     test('confirmation passes the original URL and status', () async {
       const url =
           'https://other.example/api/email-verification/12/abc?signature=123&expires=456';

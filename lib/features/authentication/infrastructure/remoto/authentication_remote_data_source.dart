@@ -10,8 +10,11 @@ import 'package:cordato/features/authentication/infrastructure/responses/sign_up
 typedef SignInDataSourceType = Either<ErrorsResponse, SignInResponse>;
 typedef SignUpDataSourceType = Either<ErrorsResponse, SignUpResponse>;
 typedef ResendEmailVerificationDataSourceType = Either<ErrorsResponse, bool>;
+typedef LogoutDataSourceType = Either<ErrorsResponse, bool>;
 
 abstract interface class IAuthenticationRemoteDataSource {
+  Future<LogoutDataSourceType> logout();
+
   Future<int?> confirmEmail(String url);
 
   Future<ResendEmailVerificationDataSourceType> resendEmailVerification({
@@ -31,6 +34,13 @@ abstract interface class IAuthenticationRemoteDataSource {
 
 final class AuthenticationRemoteDataSource({required final IHttpClient _client})
     implements IAuthenticationRemoteDataSource {
+  @override
+  Future<LogoutDataSourceType> logout() => _response(
+    fromJson: (_) => true,
+    execute: () =>
+        _client.delete(parameter: Requests.forPath(HttpPathEnum.logout)),
+  );
+
   @override
   Future<int?> confirmEmail(String url) async {
     try {

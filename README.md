@@ -23,8 +23,8 @@ O contexto `identity` do backend não será reproduzido no app neste momento. A
 autenticação por e-mail e senha usa a API JSON:API; há sign-in, sign-up,
 confirmação de e-mail por link e reenvio da verificação. O token opaco do
 sign-in é salvo em storage seguro. A feature `session` lê o token na abertura
-e observa mudanças para decidir entre dashboard e welcome; ainda não há logout
-integrado nem validação da sessão no backend ao iniciar.
+e observa mudanças para decidir entre dashboard e welcome, inclusive após o
+logout confirmado em Settings. Não há validação da sessão no backend ao iniciar.
 O contexto `chat` está fora do escopo atual.
 
 ## Estado atual
@@ -40,7 +40,9 @@ O app já possui:
   verificação após uma espera de 60 segundos e feedback da API;
 - dashboard inicial com usuário de exemplo fornecido por um client local;
 - formulário de gasto, cuja operação de criação ainda retorna falha;
-- tela de configurações, com botão de saída ainda sem logout integrado;
+- tela de configurações com confirmação de saída, loading e erros em toast;
+  o logout revoga o token na API e o remove localmente, com retorno à welcome
+  pelo observador global de sessão;
 - navegação de Welcome para Sign In, de Sign In para Sign Up por substituição
   de rota e de Dashboard para Settings e Expense;
 - tema claro/escuro e componentes de apresentação reutilizáveis;

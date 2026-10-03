@@ -101,7 +101,8 @@ feature.
   status HTTP em `int?`, usando `null` para falhas de transporte.
 - `AuthenticationLocalDataSource` em `infrastructure/local/` grava o token
   usando `IStorageClient` e `StorageKeyEnum.opaqueToken`, sem expor o plugin
-  ao repository. No sign-in, `SignInResponse.userId` vem de
+  ao repository; `removeToken()` exclui somente essa chave no logout.
+  No sign-in, `SignInResponse.userId` vem de
   `data.relationships.user.data.id`; `data.id` identifica o token de acesso.
 - `session` é o contexto de leitura da presença do token: `SessionLocalDataSource`
   lê `StorageKeyEnum.opaqueToken` e observa alterações via `IStorageClient`;
@@ -133,6 +134,13 @@ feature.
   `authentication/email-verification/resend` com tipo `email-verifications`;
   a resposta 202 sem corpo é sucesso. O data source e repository preservam
   erros JSON:API em `Either<ErrorsEntity, bool>`.
+- `IAuthenticationRepository.logout()` retorna `Either<ErrorsEntity, bool>`.
+  O repository aguarda a revogação remota e, somente após sucesso, aguarda
+  `IAuthenticationLocalDataSource.removeToken()` antes de retornar `Right(true)`.
+  Erros remotos são convertidos de `ErrorsResponse` para `ErrorsEntity`, sem
+  solicitar remoção local; exceções remotas ou de persistência retornam
+  `Left(ErrorsEntity.unknown())`. O interceptor mantém sua regra existente de
+  remoção do token enviado após 401 de endpoint protegido.
 - `presentation` contém screens, widgets, validators, estado local e commands.
 - A confirmação de e-mail por link tem rota própria `/authentication/confirm-email`:
   `CallbackScreen` exibe o estado de espera e inicia automaticamente uma
@@ -215,7 +223,9 @@ sign-in e voltar à welcome após a remoção do token em uma rota protegida.
 `SplashScreen` mostra a logo enquanto lê o token e substitui a rota inicial por
 dashboard ou welcome; erro de leitura também leva à welcome. Links diretos
 para `/authentication/confirm-email` continuam públicos e ignoram `/splash`.
-Não há logout integrado nem validação da sessão no backend na abertura.
+O logout em Settings remove o token pela arquitetura de Authentication e deixa
+essa mesma observação global navegar para welcome. Não há validação da sessão
+no backend na abertura.
 
 `app_module.dart` compõe os módulos existentes:
 
@@ -238,8 +248,11 @@ Registros importantes:
   `SessionCommand` como dependências do app inteiro (módulo sem `path`), para
   continuar observando mudanças depois que a splash sair da pilha; registra
   a rota `/splash`.
-- `authenticationModule`: registra os data sources remoto e local,
-  `IAuthenticationRepository` e os commands `SignInCommand`,
+- `authenticationModule`: compõe o módulo privado sem `path`
+  `_authenticationDependenciesModule`, que registra os data sources remoto e
+  local e `IAuthenticationRepository` como dependências root-owned, disponíveis
+  também em Settings sem ativar uma rota de Authentication. Registra os commands
+  `SignInCommand`,
   `SignUpCommand`, `ResendEmailVerificationCommand` e `CallbackCommand`.
   A rota de sign-in usa `SignInScreen` e `FormSignInWidget`: o mixin do
   formulário valida e-mail e senha (6 a 12 caracteres, com maiúscula e número).
@@ -253,9 +266,14 @@ Registros importantes:
 - `expenseModule`: validators, command, repository, data source e client para o
   formulário de criação. O client atual retorna falha e ainda não persiste gastos.
 - `welcomeModule`: tela e navegação de entrada.
-- `settingsModule`: tela de configurações com retorno à tela anterior. A ação
-  visual “Sair” ainda não executa logout; os demais itens sem destino têm
-  callbacks de apresentação sem integração.
+- `settingsModule`: registra `LogoutCommand` em
+  `settings/presentation/screens/settings/commands/`, injetado na tela e
+  dependente somente de `IAuthenticationRepository`. “Sair” abre
+  `showBottomSheetWidget<bool>`; cancelar ou dispensar não executa o command.
+  Confirmar fecha a modal pelo `Navigator` e executa o command. O estado do
+  `command_it` mostra loading, bloqueia novas execuções e entrega erros em toast.
+  Settings não navega no sucesso nem acessa adapters de Authentication.
+  Os demais itens sem destino têm callbacks sem integração.
 
 Rotas registradas:
 
@@ -323,6 +341,12 @@ receber 401, o interceptor remove somente `StorageKeyEnum.opaqueToken` do
 storage, preservando a resposta 401; não remove um token novo gravado depois
 do envio da requisição. A exclusão notifica `SessionCommand`, e `AppWidget`
 redireciona para welcome se o usuário estiver numa rota protegida.
+
+O logout usa `DELETE authentication/sign-out`, sem payload, marcado como
+protegido em `HttpPathEnum.logout`. `AuthenticationRemoteDataSource.logout()`
+usa `Requests.forPath` e o interceptor existente para enviar Bearer; o backend
+revoga o token atual e retorna 204 sem corpo, convertido em `Right(true)`.
+O data source remoto não manipula storage.
 
 A confirmação de e-mail usa `IHttpClient.get` no Dio compartilhado com a URL
 assinada original em `Requests(path)`, sem rota autenticada, com

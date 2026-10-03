@@ -13,6 +13,22 @@ final class AuthenticationRepository({
   required final IAuthenticationRemoteDataSource _remoteDataSource,
 }) implements IAuthenticationRepository {
   @override
+  Future<LogoutRepositoryType> logout() async {
+    try {
+      final data = await _remoteDataSource.logout();
+
+      if (data case Left(:final value)) return Left(value.toEntity());
+      if (!data.right) return const Right(false);
+
+      await _localDataSource.removeToken();
+
+      return const Right(true);
+    } catch (_) {
+      return Left(.unknown());
+    }
+  }
+
+  @override
   Future<EmailVerificationStatusEnum> confirmEmail(String url) async {
     if (url.isEmpty) return .invalidLink;
 

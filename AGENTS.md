@@ -29,8 +29,11 @@ O aplicativo integra sign-in e sign-up por e-mail e senha à API HTTP JSON:API;
 também confirma e-mail por link e permite reenviar a verificação. O token opaco
 do sign-in é persistido em storage seguro. A feature `session` lê e observa a
 presença do token, usa uma splash para escolher a rota inicial e redireciona após
-401 de requisição protegida. Ainda não há logout integrado nem validação da
-sessão no backend na abertura. O Kotlin legado é somente referência de domínio.
+401 de requisição protegida e após logout confirmado em Settings. O logout
+revoga remotamente o token antes de removê-lo pelo data source local de
+Authentication; Settings depende apenas do contrato de repository através de
+seu command. Não há validação da sessão no backend na abertura.
+O Kotlin legado é somente referência de domínio.
 `expense` possui formulário e camadas de criação, mas seu client ainda não
 persiste dados. `budget`, `family` e `insight` não têm feature Flutter
 implementada. Não descreva recursos planejados como código existente nem crie

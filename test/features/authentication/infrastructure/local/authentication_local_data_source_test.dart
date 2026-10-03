@@ -8,6 +8,27 @@ import 'package:cordato/features/core/infrastructure/clients/storage/enums/stora
 class _StorageClientMock extends Mock implements IStorageClient {}
 
 void main() {
+  test('removes only the session token from secure storage', () async {
+    final storage = _StorageClientMock();
+    final dataSource = AuthenticationLocalDataSource(storage: storage);
+    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async {});
+
+    await dataSource.removeToken();
+
+    verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verifyNoMoreInteractions(storage);
+  });
+
+  test('propagates token removal failures to the repository', () async {
+    final storage = _StorageClientMock();
+    final dataSource = AuthenticationLocalDataSource(storage: storage);
+    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async => throw StateError('storage unavailable'));
+
+    await expectLater(dataSource.removeToken(), throwsA(isA<StateError>()));
+  });
+
   test('saves the sign-in token in secure storage', () async {
     final storage = _StorageClientMock();
     final dataSource = AuthenticationLocalDataSource(storage: storage);

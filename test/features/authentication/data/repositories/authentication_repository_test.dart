@@ -39,6 +39,125 @@ void main() {
   });
 
   group('AuthenticationRepository', () {
+    group('logout', () {
+      setUp(() {
+        when(() => dataSource.logout())
+            .thenAnswer((_) async => const Right(true));
+        when(() => localDataSource.removeToken()).thenAnswer((_) async {});
+      });
+
+      test('revokes remotely before removing the local token and returning success', () async {
+        final result = await repository.logout();
+
+        expect(result.right, isTrue);
+        verifyInOrder([
+          () => dataSource.logout(),
+          () => localDataSource.removeToken(),
+        ]);
+        verifyNoMoreInteractions(dataSource);
+        verifyNoMoreInteractions(localDataSource);
+      });
+
+      test(
+        'preserves remote errors without removing the local token',
+        () async {
+          when(() => dataSource.logout()).thenAnswer(
+            (_) async => const Left(
+              ErrorsResponse(
+                errors: [
+                  ErrorResponse(
+                    status: '403',
+                    title: 'Não autorizado',
+                    detail: 'Conta bloqueada.',
+                  ),
+                  ErrorResponse(
+                    status: '403',
+                    detail: 'Entre em contato com o suporte.',
+                  ),
+                ],
+              ),
+            ),
+          );
+
+          final result = await repository.logout();
+
+          expect(result.left.errors, hasLength(2));
+          expect(result.left.errors.first.status, '403');
+          expect(result.left.errors.first.title, 'Não autorizado');
+          expect(result.left.errors.first.detail, 'Conta bloqueada.');
+          expect(
+            result.left.errors.last.detail,
+            'Entre em contato com o suporte.',
+          );
+          verifyZeroInteractions(localDataSource);
+        },
+      );
+
+      test(
+        'does not remove the token when remote logout is not accepted',
+        () async {
+          when(() => dataSource.logout())
+              .thenAnswer((_) async => const Right(false));
+
+          expect((await repository.logout()).right, isFalse);
+          verifyZeroInteractions(localDataSource);
+        },
+      );
+
+      test('converts unexpected remote exceptions without removing the local token', () async {
+        when(() => dataSource.logout())
+            .thenAnswer((_) async => throw StateError('offline'));
+
+        expect(
+          (await repository.logout()).left.errors.single.title,
+          'Erro desconhecido',
+        );
+        verifyZeroInteractions(localDataSource);
+      });
+
+      test('returns an unknown error if local token removal fails', () async {
+        when(() => localDataSource.removeToken())
+            .thenAnswer((_) async => throw StateError('storage unavailable'));
+
+        expect(
+          (await repository.logout()).left.errors.single.title,
+          'Erro desconhecido',
+        );
+        verify(() => dataSource.logout()).called(1);
+        verify(() => localDataSource.removeToken()).called(1);
+      });
+
+      test('waits for revocation before removing the token', () async {
+        final revoked = Completer<LogoutDataSourceType>();
+        when(() => dataSource.logout()).thenAnswer((_) => revoked.future);
+
+        final result = repository.logout();
+        verifyZeroInteractions(localDataSource);
+        revoked.complete(const Right(true));
+
+        expect((await result).right, isTrue);
+        verify(() => localDataSource.removeToken()).called(1);
+      });
+
+      test('only succeeds after local token removal completes', () async {
+        final removed = Completer<void>();
+        final removing = Completer<void>();
+        when(() => localDataSource.removeToken()).thenAnswer((_) {
+          removing.complete();
+          return removed.future;
+        });
+
+        var completed = false;
+        final result = repository.logout()..then((_) => completed = true);
+        await removing.future;
+        expect(completed, isFalse);
+        removed.complete();
+
+        expect((await result).right, isTrue);
+        expect(completed, isTrue);
+      });
+    });
+
     const signed =
         'https://api.cordato.cloud/api/email-verification/12/abc123?signature=abcdef012345&expires=123456';
 
