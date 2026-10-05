@@ -45,8 +45,8 @@ final authenticationModule = createModule(
       ..route(
         RouteEnum.authenticationConfirm.path,
         child: (_, state) => ResendEmailScreen(
-          email: state.arguments as String? ?? '',
           command: inject<ResendEmailCommand>(),
+          email: state.arguments as String? ?? '',
         ),
       )
       ..route(

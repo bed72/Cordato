@@ -1,8 +1,8 @@
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
-import 'package:cordato/features/settings/presentation/screens/settings_screen.dart';
 import 'package:cordato/features/authentication/presentation/commands/logout_command.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/settings_screen.dart';
 
 final settingsModule = createModule(
   path: RouteEnum.settings.path,

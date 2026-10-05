@@ -180,6 +180,14 @@ prejudicarem a leitura, use um mixin específico em `presentation/mixins/` ou
 no diretório da própria tela, restrito ao `State` correspondente e responsável
 por seu `dispose`.
 
+Para `StatelessWidget`, lógica de apresentação sem estado pode ser extraída
+para `<Widget>Mixin on StatelessWidget`, em `presentation/mixins/` da feature.
+O widget mantém a composição visual e o mixin concentra cálculos e decisões
+visuais, sem estado mutável, lifecycle, operações assíncronas ou acesso a
+repositories e SDKs. Regras de negócio permanecem no domínio. O padrão é
+específico ao widget proprietário; `UserNameWidgetMixin` isola a inicial do
+nome e a saudação de `UserNameWidget`.
+
 ## Padrão Dart De Construção
 
 O baseline do projeto usa Dart 3.13 ou superior e primary constructors como
@@ -220,12 +228,23 @@ ou acesso entre camadas. A matriz operacional e os exemplos canônicos estão em
 uma abertura normal. `AppWidget` instala temas, localização `pt_BR`, router e
 provider de toast; observa `SessionCommand` para navegar ao dashboard após o
 sign-in e voltar à welcome após a remoção do token em uma rota protegida.
+O command é recebido pelo construtor de `AppWidget` e resolvido por DI em um
+`Builder` dentro de `ModularApp`, em `main.dart`.
+`AppWidgetStateMixin`, em `lib/presentation/mixins/`, concentra o lifecycle do
+listener e os redirecionamentos de sessão, restrito a `State<AppWidget>`;
+o State mantém apenas a composição visual.
 `SplashScreen` mostra a logo enquanto lê o token e substitui a rota inicial por
 dashboard ou welcome; erro de leitura também leva à welcome. Links diretos
 para `/authentication/confirm-email` continuam públicos e ignoram `/splash`.
 O logout em Settings remove o token pela arquitetura de Authentication e deixa
 essa mesma observação global navegar para welcome. Não há validação da sessão
 no backend na abertura.
+
+`RouteEnum` centraliza os caminhos e a classificação das rotas pelo parâmetro
+`authenticated`, que é `false` por padrão. Dashboard, Settings e Expense usam
+`authenticated: true`. Os métodos estáticos `authenticatedRoutes()` e
+`authenticatedPaths()` devolvem, respectivamente, as rotas privadas e seus
+caminhos; `AppWidget` consulta esses caminhos nos redirecionamentos de sessão.
 
 `app_module.dart` compõe os módulos existentes:
 

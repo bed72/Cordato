@@ -338,10 +338,30 @@ entrada, loading local, feedback visual e os métodos `initState` e `dispose`.
 Ele deve descartar todo recurso que criar. A screen deve manter somente a
 composição visual e repassar os membros públicos do mixin aos widgets.
 
-Não use esse padrão em `StatelessWidget`: lógica visual pura deve permanecer em
-métodos privados ou widgets de composição. Não crie mixins genéricos, nem mova
+Não use mixins de estado em `StatelessWidget`; para lógica de apresentação sem
+estado, siga o padrão abaixo. Não crie mixins genéricos, nem mova
 regras de domínio, acesso a repositórios, data sources, storage ou SDKs para um
 mixin de UI.
+
+### Mixins De Lógica De Apresentação Sem Estado
+
+Quando um `StatelessWidget` precisar isolar cálculos e decisões de apresentação,
+extraia essa lógica para um mixin específico chamado `<Widget>Mixin`, em
+`presentation/mixins/<widget>_mixin.dart` da feature. Declare `on StatelessWidget`
+e aplique-o somente ao widget proprietário com `with <Widget>Mixin`.
+
+- Mantenha o widget como `StatelessWidget`, com composição visual no `build` e
+  nos métodos ou widgets de layout existentes.
+- O mixin expõe métodos e getters necessários à composição; helpers internos
+  permanecem privados. Receba os dados necessários por parâmetro ou use membros
+  imutáveis declarados por contrato, sem duplicar os dados do widget.
+- Não armazene estado mutável, controllers, subscriptions, timers ou recursos
+  que precisem de descarte. Não implemente lifecycle nem operações assíncronas.
+- Isole apenas lógica de apresentação, como iniciais, saudações, rótulos e
+  condições visuais. Regras de negócio continuam no domínio; repositories,
+  data sources, storage e SDKs não pertencem ao mixin.
+- Não crie um mixin genérico para widgets não relacionados nem converta o
+  widget para `StatefulWidget` apenas para extrair lógica.
 
 Padrão de callback de navegação:
 

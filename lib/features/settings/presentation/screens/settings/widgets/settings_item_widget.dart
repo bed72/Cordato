@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-import 'package:cordato/features/settings/presentation/widgets/settings_premium_badge_widget.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_premium_badge_widget.dart';
 
 final class const SettingsItemWidget({
   super.key,

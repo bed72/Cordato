@@ -4,8 +4,8 @@ import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
 
-import 'package:cordato/features/settings/presentation/screens/settings_screen.dart';
-import 'package:cordato/features/settings/presentation/widgets/settings_logout_bottom_sheet_widget.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/settings_screen.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_logout_bottom_sheet_widget.dart';
 
 mixin SettingsScreenStateMixin on State<SettingsScreen> {
   @override

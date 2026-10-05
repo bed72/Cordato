@@ -1,13 +1,13 @@
 import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/settings/presentation/widgets/settings_card_widget.dart';
-import 'package:cordato/features/settings/presentation/widgets/settings_item_widget.dart';
-import 'package:cordato/features/settings/presentation/widgets/settings_header_widget.dart';
-import 'package:cordato/features/settings/presentation/widgets/settings_logout_widget.dart';
-import 'package:cordato/features/settings/presentation/widgets/settings_app_bar_widget.dart';
-import 'package:cordato/features/settings/presentation/widgets/settings_section_widget.dart';
-import 'package:cordato/features/settings/presentation/widgets/settings_invite_partner_widget.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_card_widget.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_item_widget.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_header_widget.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_logout_widget.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_app_bar_widget.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_section_widget.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_invite_partner_widget.dart';
 
 import 'package:cordato/features/authentication/presentation/commands/logout_command.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/mixins/settings_screen_state_mixin.dart';
@@ -82,8 +82,8 @@ final class _SettingsScreenState extends State<SettingsScreen>
                           ),
                           SettingsItemWidget(
                             icon: Icons.shield_outlined,
-                            onPressed: widget.onPrivacyPressed,
                             label: 'Políticas de privacidade',
+                            onPressed: widget.onPrivacyPressed,
                           ),
                           SettingsItemWidget(
                             label: 'Ajuda',

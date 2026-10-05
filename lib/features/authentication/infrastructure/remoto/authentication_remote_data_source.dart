@@ -122,7 +122,7 @@ final class AuthenticationRemoteDataSource({required final IHttpClient _client})
     try {
       final response = await execute();
 
-      return await response.fold(
+      return response.fold<Either<ErrorsResponse, T>>(
         (error) => Left(.fromJson(error.body)),
         (success) => Right(fromJson(success.body)),
       );
