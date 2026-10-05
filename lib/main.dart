@@ -16,7 +16,7 @@ Future<void> main() async {
     ModularApp(
       module: appModule,
       navigatorKey: navigatorKey,
-      initialRoute: RouteEnum.splash.path,
+      initialRoute: RouteEnum.app.path,
       defaultTransition: TransitionType.none,
       child: Builder(
         builder: (_) => AppWidget(

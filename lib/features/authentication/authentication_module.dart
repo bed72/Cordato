@@ -23,69 +23,69 @@ import 'package:cordato/features/authentication/presentation/screens/sign_in/com
 import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/commands/resend_email_command.dart';
 
-final authenticationModule = createModule(
-  path: RouteEnum.root.path,
-  register: (context) {
-    context
-      ..addLazySingleton<IAuthenticationRemoteDataSource>(
-        AuthenticationRemoteDataSource.new,
-      )
-      ..addLazySingleton<IAuthenticationLocalDataSource>(
-        AuthenticationLocalDataSource.new,
-      )
-      ..addLazySingleton<IAuthenticationRepository>(
-        AuthenticationRepository.new,
-      )
-      ..add(EmailValidation.new)
-      ..add(PasswordValidation.new)
-      ..addLazySingleton<SignInCommand>(SignInCommand.new)
-      ..addLazySingleton<SignUpCommand>(SignUpCommand.new)
-      ..addLazySingleton<ResendEmailCommand>(ResendEmailCommand.new)
-      ..addLazySingleton<CallbackCommand>(CallbackCommand.new)
-      ..route(
-        RouteEnum.authenticationConfirm.path,
-        child: (_, state) => ResendEmailScreen(
-          command: inject<ResendEmailCommand>(),
-          email: state.arguments as String? ?? '',
+final authenticationDependenciesModule = createModule(
+  register: (ModularContext context) => context
+    ..addLazySingleton<IAuthenticationRemoteDataSource>(
+      AuthenticationRemoteDataSource.new,
+    )
+    ..addLazySingleton<IAuthenticationLocalDataSource>(
+      AuthenticationLocalDataSource.new,
+    )
+    ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
+    ..add(EmailValidation.new)
+    ..add(PasswordValidation.new)
+    ..addLazySingleton<SignInCommand>(SignInCommand.new)
+    ..addLazySingleton<SignUpCommand>(SignUpCommand.new)
+    ..addLazySingleton<CallbackCommand>(CallbackCommand.new)
+    ..addLazySingleton<ResendEmailCommand>(ResendEmailCommand.new),
+);
+
+final authenticationRoutesModule = createModule(
+  path: RouteEnum.app.path,
+  register: (ModularContext context) => context
+    ..route(
+      RouteEnum.authenticationConfirm.path,
+      child: (_, state) => ResendEmailScreen(
+        command: inject<ResendEmailCommand>(),
+        email: state.arguments as String? ?? '',
+      ),
+    )
+    ..route(
+      RouteEnum.authenticationSignIn.path,
+      child: (_, _) => SignInScreen(
+        command: inject<SignInCommand>(),
+        emailValidation: inject<EmailValidation>(),
+        passwordValidation: inject<PasswordValidation>(),
+        onCreateAccount: (BuildContext context) =>
+            context.replace(RouteEnum.authenticationSignUp.path),
+      ),
+    )
+    ..route(
+      RouteEnum.authenticationSignUp.path,
+      child: (_, _) => SignUpScreen(
+        command: inject<SignUpCommand>(),
+        emailValidation: inject<EmailValidation>(),
+        passwordValidation: inject<PasswordValidation>(),
+        onSignIn: (BuildContext context) =>
+            context.replace(RouteEnum.authenticationSignIn.path),
+        onConfirm: (BuildContext context, String email) => context.replace(
+          RouteEnum.authenticationConfirm.path,
+          arguments: email,
         ),
-      )
-      ..route(
-        RouteEnum.authenticationSignIn.path,
-        child: (_, _) => SignInScreen(
-          command: inject<SignInCommand>(),
-          emailValidation: inject<EmailValidation>(),
-          passwordValidation: inject<PasswordValidation>(),
-          onCreateAccount: (BuildContext context) =>
-              context.replace(RouteEnum.authenticationSignUp.path),
-        ),
-      )
-      ..route(
-        RouteEnum.authenticationSignUp.path,
-        child: (_, _) => SignUpScreen(
-          command: inject<SignUpCommand>(),
-          emailValidation: inject<EmailValidation>(),
-          passwordValidation: inject<PasswordValidation>(),
-          onSignIn: (BuildContext context) =>
-              context.replace(RouteEnum.authenticationSignIn.path),
-          onConfirm: (BuildContext context, String email) => context.replace(
-            RouteEnum.authenticationConfirm.path,
-            arguments: email,
-          ),
-        ),
-      )
-      ..route(
-        RouteEnum.authenticationConfirmEmail.path,
-        child: (_, state) => CallbackScreen(
-          verificationUrl:
-              switch (state.uri.queryParametersAll['verification_url']) {
-                [final String url] => url,
-                _ => null,
-              },
-          command: inject<CallbackCommand>(),
-          onSignIn: (BuildContext context) => context
-            ..navigate(RouteEnum.welcome.path)
-            ..pushNamed(RouteEnum.authenticationSignIn.path),
-        ),
-      );
-  },
+      ),
+    )
+    ..route(
+      RouteEnum.authenticationConfirmEmail.path,
+      child: (_, state) => CallbackScreen(
+        verificationUrl:
+            switch (state.uri.queryParametersAll['verification_url']) {
+              [final String url] => url,
+              _ => null,
+            },
+        command: inject<CallbackCommand>(),
+        onSignIn: (BuildContext context) => context
+          ..navigate(RouteEnum.welcome.path)
+          ..pushNamed(RouteEnum.authenticationSignIn.path),
+      ),
+    ),
 );

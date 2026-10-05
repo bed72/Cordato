@@ -232,7 +232,10 @@ O command é recebido pelo construtor de `AppWidget` e resolvido por DI em um
 `Builder` dentro de `ModularApp`, em `main.dart`.
 `AppWidgetStateMixin`, em `lib/presentation/mixins/`, concentra o lifecycle do
 listener e os redirecionamentos de sessão, restrito a `State<AppWidget>`;
-o State mantém apenas a composição visual.
+o State mantém apenas a composição visual. As consultas à rota e a navegação
+global usam `navigatorKey.currentContext`, abaixo do router; o contexto do
+próprio `AppWidget` fica acima de `MaterialApp.router` e não oferece o estado
+de rota do Modular.
 `SplashScreen` mostra a logo enquanto lê o token e substitui a rota inicial por
 dashboard ou welcome; erro de leitura também leva à welcome. Links diretos
 para `/authentication/confirm-email` continuam públicos e ignoram `/splash`.

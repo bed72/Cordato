@@ -4,11 +4,11 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
 
-final dashboardModule = createModule(
+final dashboardRoutesModule = createModule(
   path: RouteEnum.dashboard.path,
   register: (context) {
     context.route(
-      RouteEnum.root.path,
+      RouteEnum.app.path,
       child: (context, _) => DashboardScreen(
         onBudgetPressed: () {},
         onNotificationsPressed: () {},

@@ -1,6 +1,5 @@
 enum RouteEnum(final String path, {final bool authenticated = false}) {
-  root('/'),
-  splash('/splash'),
+  app('/'),
   welcome('/welcome'),
   expense('/expense', authenticated: true),
   settings('/settings', authenticated: true),

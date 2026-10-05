@@ -8,7 +8,7 @@ import 'package:cordato/features/expense/presentation/validators/expense_date_va
 import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_description_validation.dart';
 
-final expenseModule = createModule(
+final expenseRoutesModule = createModule(
   path: RouteEnum.expense.path,
   register: (context) {
     context
@@ -16,7 +16,7 @@ final expenseModule = createModule(
       ..add(ExpenseDateValidation.new)
       ..add(ExpenseDescriptionValidation.new)
       ..route(
-        RouteEnum.root.path,
+        RouteEnum.app.path,
         child: (context, _) => ExpenseScreen(
           onBackPressed: context.pop,
           formatter: inject<IMoneyFormatter>(),

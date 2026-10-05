@@ -12,9 +12,10 @@ mixin AppWidgetStateMixin on State<AppWidget> {
     widget.command.execute.addListener(_handleSession);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _context == null) return;
+      if (!mounted) return;
+      if (_context == null) return;
 
-      if (_contains(context)) context.navigate(RouteEnum.splash.path);
+      if (_contains(_context!)) _context?.navigate(RouteEnum.app.path);
     });
   }
 
@@ -24,9 +25,10 @@ mixin AppWidgetStateMixin on State<AppWidget> {
     if (hasSession == null) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _context == null) return;
+      if (!mounted) return;
+      if (_context == null) return;
 
-      final path = context.routeState(listen: false).uri.path;
+      final path = _context?.routeState(listen: false).uri.path;
 
       if (hasSession) {
         final isEntryRoute =

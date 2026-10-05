@@ -5,10 +5,10 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/welcome/presentation/screens/welcome_screen.dart';
 
-final welcomeModule = createModule(
+final welcomeRoutesModule = createModule(
   path: RouteEnum.welcome.path,
   register: (context) => context.route(
-    RouteEnum.root.path,
+    RouteEnum.app.path,
     child: (_, _) => WelcomeScreen(
       onContinueWithEmail: (BuildContext context) =>
           context.pushNamed(RouteEnum.authenticationSignIn.path),

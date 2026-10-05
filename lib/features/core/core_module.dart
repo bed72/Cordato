@@ -13,11 +13,10 @@ const _baseUrl = String.fromEnvironment(
   defaultValue: 'https://api.cordato.cloud/api/',
 );
 
-final coreModule = createModule(
+final coreDependenciesModule = createModule(
   register: (context) => context
     ..addInstance<String>(_baseUrl)
     ..addInstance<FlutterSecureStorage>(const FlutterSecureStorage())
-    ..addLazySingleton<IStorageClient>(StorageClient.new)
     ..addLazySingleton<Dio>(
       () => DioFactory.create(
         baseUrl: _baseUrl,
@@ -25,5 +24,6 @@ final coreModule = createModule(
       ),
     )
     ..addLazySingleton<IHttpClient>(HttpClient.new)
+    ..addLazySingleton<IStorageClient>(StorageClient.new)
     ..addLazySingleton<IMoneyFormatter>(MoneyFormatter.new),
 );

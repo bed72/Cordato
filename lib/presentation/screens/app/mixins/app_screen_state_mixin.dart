@@ -2,17 +2,20 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/session/presentation/screens/splash/splash_screen.dart';
+import 'package:cordato/presentation/screens/app/app_screen.dart';
 
-mixin SplashScreenStateMixin on State<SplashScreen> {
+mixin AppScreenStateMixin on State<AppScreen> {
   bool _redirected = false;
 
   @override
   void initState() {
     super.initState();
+
     widget.command.execute.addListener(_handleSession);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
       if (widget.command.execute.value case final bool _) {
         _handleSession();
       } else {
