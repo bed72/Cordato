@@ -9,7 +9,7 @@ import 'package:cordato/features/settings/presentation/widgets/settings_app_bar_
 import 'package:cordato/features/settings/presentation/widgets/settings_section_widget.dart';
 import 'package:cordato/features/settings/presentation/widgets/settings_invite_partner_widget.dart';
 
-import 'package:cordato/features/settings/presentation/screens/settings/commands/logout_command.dart';
+import 'package:cordato/features/authentication/presentation/commands/logout_command.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/mixins/settings_screen_state_mixin.dart';
 
 final class const SettingsScreen({
