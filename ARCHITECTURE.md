@@ -376,6 +376,13 @@ vez de estilizar botões Material diretamente.
 O dashboard usa um botão de ação expansível para acessar o formulário de gasto;
 não há barra inferior de navegação ou shell autenticado na composição atual.
 
+O teclado compartilhado `AmountCalculatorWidget` recebe dígitos em reais:
+`80` representa `R$ 80,00`. A tecla de vírgula permite informar até dois
+dígitos de centavos (`80,5` representa `R$ 80,50`). A entrada permite até sete
+dígitos inteiros; `DEL` remove a última entrada e `AC` limpa o valor. O estado
+local usa o `IMoneyFormatter` para converter a entrada e mantém o contrato de
+receber e devolver centavos inteiros ao formulário.
+
 Use os acessos de tema existentes:
 
 ```dart

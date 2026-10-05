@@ -19,7 +19,7 @@ final class _AmountCalculatorWidgetState extends State<AmountCalculatorWidget>
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 6.0),
+      padding: const .only(top: 6.0),
       child: Column(
         spacing: 16.0,
         mainAxisSize: .min,
@@ -31,6 +31,7 @@ final class _AmountCalculatorWidgetState extends State<AmountCalculatorWidget>
             onDelete: delete,
             onSubmit: confirm,
             onDigit: appendDigit,
+            onDecimalSeparator: appendDecimalSeparator,
           ),
         ],
       ),

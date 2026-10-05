@@ -6,13 +6,14 @@ import 'package:cordato/features/core/presentation/widgets/calculator/amount_cal
 
 final class const AmountCalculatorKeyboardWidget({
   super.key,
-  required final ValueChanged<String> onDigit,
   required final VoidCallback onClear,
   required final VoidCallback onDelete,
   required final VoidCallback onSubmit,
+  required final ValueChanged<String> onDigit,
+  required final VoidCallback onDecimalSeparator,
 }) extends StatelessWidget {
-  static const _keySpacing = 4.0;
   static const _keyCount = 4.0;
+  static const _keySpacing = 4.0;
 
   @override
   Widget build(BuildContext context) {
@@ -42,9 +43,23 @@ final class const AmountCalculatorKeyboardWidget({
                     _buildDigitRow(const ['4', '5', '6']),
                     _buildDigitRow(const ['1', '2', '3']),
                     Expanded(
-                      child: AmountCalculatorKeyWidget(
-                        label: '0',
-                        onTap: () => onDigit('0'),
+                      child: Row(
+                        spacing: _keySpacing,
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: AmountCalculatorKeyWidget(
+                              label: '0',
+                              onTap: () => onDigit('0'),
+                            ),
+                          ),
+                          Expanded(
+                            child: AmountCalculatorKeyWidget(
+                              label: ',',
+                              onTap: onDecimalSeparator,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
