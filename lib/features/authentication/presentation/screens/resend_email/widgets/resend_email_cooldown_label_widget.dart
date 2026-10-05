@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class const ResendEmailVerificationCooldownLabelWidget({
+final class const ResendEmailCooldownLabelWidget({
   super.key,
   required final Duration remaining,
 }) extends StatelessWidget {

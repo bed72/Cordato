@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:cordato/features/authentication/domain/enums/email_verification_status_enum.dart';
+import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
 
@@ -26,8 +26,8 @@ void main() {
   });
 
   for (final status in [
-    EmailVerificationStatusEnum.invalidLink,
-    EmailVerificationStatusEnum.connectionFailure,
+    EmailVerificationStatusEnum.invalid,
+    EmailVerificationStatusEnum.failure,
   ]) {
     test('exposes $status as a result of confirmation', () async {
       final repository = _RepositoryMock();

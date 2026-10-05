@@ -14,7 +14,7 @@ void main() {
     when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async {});
 
-    await dataSource.removeToken();
+    await dataSource.remove();
 
     verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
     verifyNoMoreInteractions(storage);
@@ -26,7 +26,7 @@ void main() {
     when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async => throw StateError('storage unavailable'));
 
-    await expectLater(dataSource.removeToken(), throwsA(isA<StateError>()));
+    await expectLater(dataSource.remove(), throwsA(isA<StateError>()));
   });
 
   test('saves the sign-in token in secure storage', () async {
@@ -39,7 +39,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    await dataSource.saveToken('opaque-token');
+    await dataSource.save('opaque-token');
 
     verify(
       () => storage.write(
@@ -60,7 +60,7 @@ void main() {
     ).thenAnswer((_) async => throw StateError('storage unavailable'));
 
     await expectLater(
-      dataSource.saveToken('opaque-token'),
+      dataSource.save('opaque-token'),
       throwsA(isA<StateError>()),
     );
   });

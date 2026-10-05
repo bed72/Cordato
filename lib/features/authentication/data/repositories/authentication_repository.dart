@@ -5,7 +5,7 @@ import 'package:cordato/features/authentication/infrastructure/responses/sign_in
 import 'package:cordato/features/authentication/infrastructure/local/authentication_local_data_source.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
 
-import 'package:cordato/features/authentication/domain/enums/email_verification_status_enum.dart';
+import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 
 final class AuthenticationRepository({
@@ -20,7 +20,7 @@ final class AuthenticationRepository({
       if (data case Left(:final value)) return Left(value.toEntity());
       if (!data.right) return const Right(false);
 
-      await _localDataSource.removeToken();
+      await _localDataSource.remove();
 
       return const Right(true);
     } catch (_) {
@@ -30,29 +30,25 @@ final class AuthenticationRepository({
 
   @override
   Future<EmailVerificationStatusEnum> confirmEmail(String url) async {
-    if (url.isEmpty) return .invalidLink;
+    if (url.isEmpty) return .invalid;
 
     try {
       final status = await _remoteDataSource.confirmEmail(url);
 
       return switch (status) {
         204 => .success,
-        403 => .invalidLink,
-        _ => .connectionFailure,
+        403 => .invalid,
+        _ => .failure,
       };
     } catch (_) {
-      return .connectionFailure;
+      return .failure;
     }
   }
 
   @override
-  Future<ResendEmailVerificationRepositoryType> resendEmailVerification({
-    required String email,
-  }) async {
+  Future<ResendEmailRepositoryType> resendEmail({required String email}) async {
     try {
-      final data = await _remoteDataSource.resendEmailVerification(
-        email: email,
-      );
+      final data = await _remoteDataSource.resendEmail(email: email);
       return data.either((errors) => errors.toEntity(), (success) => success);
     } catch (_) {
       return Left(.unknown());
@@ -90,7 +86,7 @@ final class AuthenticationRepository({
       if (data case Left(:final value)) return Left(value.toEntity());
 
       final session = data.right.toEntity();
-      await _localDataSource.saveToken(session.token);
+      await _localDataSource.save(session.token);
       return Right(session);
     } catch (_) {
       return Left(.unknown());

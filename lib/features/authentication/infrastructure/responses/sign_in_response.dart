@@ -15,7 +15,7 @@ final class const SignInResponse({
     return SignInResponse(
       userId: data['id'] as String,
       token: attributes['token'] as String,
-      expiresAt: DateTime.parse(attributes['expires_at'] as String),
+      expiresAt: .parse(attributes['expires_at'] as String),
     );
   }
 }

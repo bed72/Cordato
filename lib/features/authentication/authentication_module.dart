@@ -4,40 +4,49 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
+
 import 'package:cordato/features/authentication/infrastructure/local/authentication_local_data_source.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
 
-import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
-import 'package:cordato/features/authentication/presentation/screens/callback/callback_screen.dart';
 import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 
-import 'package:cordato/features/authentication/presentation/screens/sign_up/commands/sign_up_command.dart';
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
-import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
-import 'package:cordato/features/authentication/presentation/screens/resend_email_verification/resend_email_verification_screen.dart';
-import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
+
+import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
+
+import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/callback/callback_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_up/commands/sign_up_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/commands/sign_in_command.dart';
-import 'package:cordato/features/authentication/presentation/screens/resend_email_verification/commands/resend_email_verification_command.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/commands/resend_email_command.dart';
 
 final authenticationModule = createModule(
   path: RouteEnum.root.path,
   register: (context) {
     context
-      ..module(_authenticationDependenciesModule)
+      ..addLazySingleton<IAuthenticationRemoteDataSource>(
+        AuthenticationRemoteDataSource.new,
+      )
+      ..addLazySingleton<IAuthenticationLocalDataSource>(
+        AuthenticationLocalDataSource.new,
+      )
+      ..addLazySingleton<IAuthenticationRepository>(
+        AuthenticationRepository.new,
+      )
       ..add(EmailValidation.new)
       ..add(PasswordValidation.new)
       ..addLazySingleton<SignInCommand>(SignInCommand.new)
       ..addLazySingleton<SignUpCommand>(SignUpCommand.new)
-      ..addLazySingleton<ResendEmailVerificationCommand>(
-        ResendEmailVerificationCommand.new,
-      )
+      ..addLazySingleton<ResendEmailCommand>(ResendEmailCommand.new)
       ..addLazySingleton<CallbackCommand>(CallbackCommand.new)
       ..route(
         RouteEnum.authenticationConfirm.path,
-        child: (_, state) => ResendEmailVerificationScreen(
+        child: (_, state) => ResendEmailScreen(
           email: state.arguments as String? ?? '',
-          command: inject<ResendEmailVerificationCommand>(),
+          command: inject<ResendEmailCommand>(),
         ),
       )
       ..route(
@@ -79,15 +88,4 @@ final authenticationModule = createModule(
         ),
       );
   },
-);
-
-final _authenticationDependenciesModule = createModule(
-  register: (context) => context
-    ..addLazySingleton<IAuthenticationRemoteDataSource>(
-      AuthenticationRemoteDataSource.new,
-    )
-    ..addLazySingleton<IAuthenticationLocalDataSource>(
-      AuthenticationLocalDataSource.new,
-    )
-    ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new),
 );

@@ -234,7 +234,7 @@ void main() {
       final data = await dataSource.signUp(email: email, password: password);
 
       expect(data.isRight, isTrue);
-      expect(data.right.userId, '3');
+      expect(data.right.id, '3');
       final request =
           verify(() => client.post(parameter: captureAny(named: 'parameter')))
                   .captured
@@ -261,7 +261,7 @@ void main() {
         (_) async => const Right(HttpResponse(statusCode: 202, body: {})),
       );
 
-      final data = await dataSource.resendEmailVerification(email: email);
+      final data = await dataSource.resendEmail(email: email);
 
       expect(data.right, isTrue);
       final request =
@@ -293,7 +293,7 @@ void main() {
         ),
       );
 
-      final data = await dataSource.resendEmailVerification(email: email);
+      final data = await dataSource.resendEmail(email: email);
 
       expect(data.left.errors.single.status, '429');
       expect(data.left.errors.single.detail, 'Aguarde antes de reenviar.');
@@ -303,7 +303,7 @@ void main() {
       when(() => client.post(parameter: any(named: 'parameter')))
           .thenThrow(StateError('network unavailable'));
 
-      final data = await dataSource.resendEmailVerification(email: email);
+      final data = await dataSource.resendEmail(email: email);
 
       expect(data.isLeft, isTrue);
       expect(data.left.errors.single.detail, isNotEmpty);
@@ -434,7 +434,7 @@ void main() {
             const Left(HttpResponse(statusCode: 429, body: {'errors': []})),
       );
 
-      final data = await dataSource.resendEmailVerification(email: email);
+      final data = await dataSource.resendEmail(email: email);
 
       expect(data.isLeft, isTrue);
       expect(data.left.errors.single.title, 'Erro desconhecido');

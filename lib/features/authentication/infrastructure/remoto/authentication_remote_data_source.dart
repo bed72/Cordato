@@ -7,19 +7,17 @@ import 'package:cordato/features/core/infrastructure/clients/http/enums/http_pat
 import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
 import 'package:cordato/features/authentication/infrastructure/responses/sign_up_response.dart';
 
+typedef LogoutDataSourceType = Either<ErrorsResponse, bool>;
+typedef ResendEmailDataSourceType = Either<ErrorsResponse, bool>;
 typedef SignInDataSourceType = Either<ErrorsResponse, SignInResponse>;
 typedef SignUpDataSourceType = Either<ErrorsResponse, SignUpResponse>;
-typedef ResendEmailVerificationDataSourceType = Either<ErrorsResponse, bool>;
-typedef LogoutDataSourceType = Either<ErrorsResponse, bool>;
 
 abstract interface class IAuthenticationRemoteDataSource {
-  Future<LogoutDataSourceType> logout();
-
   Future<int?> confirmEmail(String url);
 
-  Future<ResendEmailVerificationDataSourceType> resendEmailVerification({
-    required String email,
-  });
+  Future<ResendEmailDataSourceType> resendEmail({required String email});
+
+  Future<LogoutDataSourceType> logout();
 
   Future<SignUpDataSourceType> signUp({
     required String email,
@@ -101,40 +99,35 @@ final class AuthenticationRemoteDataSource({required final IHttpClient _client})
   );
 
   @override
-  Future<ResendEmailVerificationDataSourceType> resendEmailVerification({
-    required String email,
-  }) => _response(
-    fromJson: (_) => true,
-    execute: () => _client.post(
-      parameter: Requests.forPath(
-        HttpPathEnum.resendEmailVerification,
-        body: {
-          'data': {
-            'type': 'email-verifications',
-            'attributes': {'email': email},
-          },
-        },
-      ),
-    ),
-  );
+  Future<ResendEmailDataSourceType> resendEmail({required String email}) =>
+      _response(
+        fromJson: (_) => true,
+        execute: () => _client.post(
+          parameter: Requests.forPath(
+            HttpPathEnum.resendEmailVerification,
+            body: {
+              'data': {
+                'type': 'email-verifications',
+                'attributes': {'email': email},
+              },
+            },
+          ),
+        ),
+      );
 
   Future<Either<ErrorsResponse, T>> _response<T>({
     required Future<Responses> Function() execute,
     required T Function(Map<String, dynamic>) fromJson,
   }) async {
-    late final Either<ErrorsResponse, T> data;
-
     try {
       final response = await execute();
 
-      data = response.fold(
+      return await response.fold(
         (error) => Left(.fromJson(error.body)),
         (success) => Right(fromJson(success.body)),
       );
     } catch (_) {
       return Left(.unknown());
     }
-
-    return data;
   }
 }

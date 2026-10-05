@@ -5,8 +5,8 @@ import 'package:cordato/features/core/presentation/widgets/images/image_widget.d
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
-import 'package:cordato/features/authentication/presentation/screens/callback/mixins/callback_screen_state_mixin.dart';
 import 'package:cordato/features/authentication/presentation/screens/callback/widgets/animated_ellipsis_widget.dart';
+import 'package:cordato/features/authentication/presentation/screens/callback/mixins/callback_screen_state_mixin.dart';
 
 final class const CallbackScreen({
   super.key,

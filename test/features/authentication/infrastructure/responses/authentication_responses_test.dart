@@ -47,7 +47,7 @@ void main() {
       },
     });
 
-    expect(response.userId, '3');
+    expect(response.id, '3');
   });
 
   test('sign-in rejects a missing user relationship or invalid expiration', () {

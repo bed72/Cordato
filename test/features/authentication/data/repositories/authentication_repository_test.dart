@@ -7,7 +7,7 @@ import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
 import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
-import 'package:cordato/features/authentication/domain/enums/email_verification_status_enum.dart';
+import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
 
 import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
 import 'package:cordato/features/authentication/infrastructure/responses/sign_up_response.dart';
@@ -31,7 +31,7 @@ void main() {
   setUp(() {
     dataSource = _AuthenticationDataSourceMock();
     localDataSource = _AuthenticationLocalDataSourceMock();
-    when(() => localDataSource.saveToken(any())).thenAnswer((_) async {});
+    when(() => localDataSource.save(any())).thenAnswer((_) async {});
     repository = AuthenticationRepository(
       remoteDataSource: dataSource,
       localDataSource: localDataSource,
@@ -43,7 +43,7 @@ void main() {
       setUp(() {
         when(() => dataSource.logout())
             .thenAnswer((_) async => const Right(true));
-        when(() => localDataSource.removeToken()).thenAnswer((_) async {});
+        when(() => localDataSource.remove()).thenAnswer((_) async {});
       });
 
       test('revokes remotely before removing the local token and returning success', () async {
@@ -52,7 +52,7 @@ void main() {
         expect(result.right, isTrue);
         verifyInOrder([
           () => dataSource.logout(),
-          () => localDataSource.removeToken(),
+          () => localDataSource.remove(),
         ]);
         verifyNoMoreInteractions(dataSource);
         verifyNoMoreInteractions(localDataSource);
@@ -116,7 +116,7 @@ void main() {
       });
 
       test('returns an unknown error if local token removal fails', () async {
-        when(() => localDataSource.removeToken())
+        when(() => localDataSource.remove())
             .thenAnswer((_) async => throw StateError('storage unavailable'));
 
         expect(
@@ -124,7 +124,7 @@ void main() {
           'Erro desconhecido',
         );
         verify(() => dataSource.logout()).called(1);
-        verify(() => localDataSource.removeToken()).called(1);
+        verify(() => localDataSource.remove()).called(1);
       });
 
       test('waits for revocation before removing the token', () async {
@@ -136,13 +136,13 @@ void main() {
         revoked.complete(const Right(true));
 
         expect((await result).right, isTrue);
-        verify(() => localDataSource.removeToken()).called(1);
+        verify(() => localDataSource.remove()).called(1);
       });
 
       test('only succeeds after local token removal completes', () async {
         final removed = Completer<void>();
         final removing = Completer<void>();
-        when(() => localDataSource.removeToken()).thenAnswer((_) {
+        when(() => localDataSource.remove()).thenAnswer((_) {
           removing.complete();
           return removed.future;
         });
@@ -164,7 +164,7 @@ void main() {
     test('rejects empty links without any request', () async {
       expect(
         await repository.confirmEmail(''),
-        EmailVerificationStatusEnum.invalidLink,
+        EmailVerificationStatusEnum.invalid,
       );
       verifyZeroInteractions(dataSource);
     });
@@ -187,9 +187,9 @@ void main() {
     test('maps confirmation HTTP statuses and connectivity', () async {
       for (final (status, expected) in [
         (204, EmailVerificationStatusEnum.success),
-        (403, EmailVerificationStatusEnum.invalidLink),
-        (500, EmailVerificationStatusEnum.connectionFailure),
-        (null, EmailVerificationStatusEnum.connectionFailure),
+        (403, EmailVerificationStatusEnum.invalid),
+        (500, EmailVerificationStatusEnum.failure),
+        (null, EmailVerificationStatusEnum.failure),
       ]) {
         when(() => dataSource.confirmEmail(signed))
             .thenAnswer((_) async => status);
@@ -206,7 +206,7 @@ void main() {
 
         expect(
           await repository.confirmEmail(signed),
-          EmailVerificationStatusEnum.connectionFailure,
+          EmailVerificationStatusEnum.failure,
         );
       },
     );
@@ -230,7 +230,7 @@ void main() {
       expect(data.right.userId, 'user-1');
       expect(data.right.expiresAt, expiresAt);
       expect(data.right.token, 'example-token');
-      verify(() => localDataSource.saveToken('example-token')).called(1);
+      verify(() => localDataSource.save('example-token')).called(1);
       verify(() => dataSource.signIn(email: email, password: password))
           .called(1);
     });
@@ -267,7 +267,7 @@ void main() {
       expect(data.left.errors.first.detail, 'E-mail inválido.');
       expect(data.left.errors.first.pointer, '/data/attributes/email');
       expect(data.left.errors.last.pointer, '/data/attributes/password');
-      verifyNever(() => localDataSource.saveToken(any()));
+      verifyNever(() => localDataSource.save(any()));
     });
 
     test('sign-in fails if the token cannot be saved', () async {
@@ -281,7 +281,7 @@ void main() {
               ),
             ),
           );
-      when(() => localDataSource.saveToken('example-token'))
+      when(() => localDataSource.save('example-token'))
           .thenThrow(StateError('storage unavailable'));
 
       final data = await repository.signIn(email: email, password: password);
@@ -303,7 +303,7 @@ void main() {
               ),
             ),
           );
-      when(() => localDataSource.saveToken('opaque-token')).thenAnswer((_) {
+      when(() => localDataSource.save('opaque-token')).thenAnswer((_) {
         saving.complete();
         return saved.future;
       });
@@ -320,44 +320,43 @@ void main() {
     });
 
     test('sign-up returns true when registration succeeds', () async {
-      when(
-        () => dataSource.signUp(email: email, password: password),
-      ).thenAnswer((_) async => const Right(SignUpResponse(userId: 'user-1')));
+      when(() => dataSource.signUp(email: email, password: password))
+          .thenAnswer((_) async => const Right(SignUpResponse(id: 'user-1')));
 
       final data = await repository.signUp(email: email, password: password);
 
       expect(data.right, isTrue);
       verify(() => dataSource.signUp(email: email, password: password))
           .called(1);
-      verifyNever(() => localDataSource.saveToken(any()));
+      verifyNever(() => localDataSource.save(any()));
     });
 
     test('resend returns success after acceptance', () async {
-      when(() => dataSource.resendEmailVerification(email: email))
+      when(() => dataSource.resendEmail(email: email))
           .thenAnswer((_) async => const Right(true));
 
-      final data = await repository.resendEmailVerification(email: email);
+      final data = await repository.resendEmail(email: email);
 
       expect(data.right, isTrue);
-      verify(() => dataSource.resendEmailVerification(email: email)).called(1);
-      verifyNever(() => localDataSource.saveToken(any()));
+      verify(() => dataSource.resendEmail(email: email)).called(1);
+      verifyNever(() => localDataSource.save(any()));
     });
 
     test(
       'resend forwards a non-accepted result without creating a session',
       () async {
-        when(() => dataSource.resendEmailVerification(email: email))
+        when(() => dataSource.resendEmail(email: email))
             .thenAnswer((_) async => const Right(false));
 
-        final data = await repository.resendEmailVerification(email: email);
+        final data = await repository.resendEmail(email: email);
 
         expect(data.right, isFalse);
-        verifyNever(() => localDataSource.saveToken(any()));
+        verifyNever(() => localDataSource.save(any()));
       },
     );
 
     test('resend preserves API errors as domain errors', () async {
-      when(() => dataSource.resendEmailVerification(email: email)).thenAnswer(
+      when(() => dataSource.resendEmail(email: email)).thenAnswer(
         (_) async => const Left(
           ErrorsResponse(
             errors: [
@@ -370,7 +369,7 @@ void main() {
         ),
       );
 
-      final data = await repository.resendEmailVerification(email: email);
+      final data = await repository.resendEmail(email: email);
 
       expect(data.left.errors.single.status, '429');
       expect(data.left.errors.single.detail, 'Aguarde antes de reenviar.');
@@ -425,18 +424,18 @@ void main() {
       () async {
         when(() => dataSource.signUp(email: email, password: password))
             .thenAnswer((_) async => throw StateError('offline'));
-        when(() => dataSource.resendEmailVerification(email: email))
+        when(() => dataSource.resendEmail(email: email))
             .thenAnswer((_) async => throw StateError('offline'));
 
         final signUp = await repository.signUp(
           email: email,
           password: password,
         );
-        final resend = await repository.resendEmailVerification(email: email);
+        final resend = await repository.resendEmail(email: email);
 
         expect(signUp.left.errors.single.title, 'Erro desconhecido');
         expect(resend.left.errors.single.title, 'Erro desconhecido');
-        verifyNever(() => localDataSource.saveToken(any()));
+        verifyNever(() => localDataSource.save(any()));
       },
     );
   });

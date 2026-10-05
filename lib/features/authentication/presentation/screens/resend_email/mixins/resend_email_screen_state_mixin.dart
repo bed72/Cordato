@@ -2,12 +2,11 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/authentication/presentation/screens/resend_email_verification/resend_email_verification_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-mixin ResendEmailVerificationScreenStateMixin
-    on State<ResendEmailVerificationScreen> {
+mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
   static const _cooldown = Duration(seconds: 60);
 
   Timer? _timer;

@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/authentication/domain/enums/email_verification_status_enum.dart';
+
+import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
 import 'package:cordato/features/authentication/presentation/screens/callback/callback_screen.dart';
 
 mixin CallbackScreenStateMixin on State<CallbackScreen> {
@@ -44,10 +45,10 @@ mixin CallbackScreenStateMixin on State<CallbackScreen> {
 
     try {
       if (url == null || url.isEmpty) {
-        status = .invalidLink;
+        status = .invalid;
       } else {
-        final command = widget.command.execute;
         bool joinedSameLink = false;
+        final command = widget.command.execute;
 
         if (command.isRunning.value) {
           joinedSameLink = command.results.value.paramData == url;
@@ -59,7 +60,7 @@ mixin CallbackScreenStateMixin on State<CallbackScreen> {
         if (!joinedSameLink) status = await command.runAsync(url);
       }
     } catch (_) {
-      status = .connectionFailure;
+      status = .failure;
     } finally {
       _isRunning = false;
       if (mounted && revision != _revision) _scheduleConfirmation();
@@ -67,20 +68,20 @@ mixin CallbackScreenStateMixin on State<CallbackScreen> {
 
     if (!mounted || revision != _revision) return;
 
-    switch (status ?? .connectionFailure) {
+    switch (status ?? .failure) {
       case .success:
         context.showToast(
           variant: .success,
           title: 'E-mail confirmado',
           description: 'Entre na sua conta para continuar.',
         );
-      case .invalidLink:
+      case .invalid:
         context.showToast(
           variant: .error,
           title: 'Link inválido ou expirado',
           description: 'Solicite um novo e-mail de confirmação.',
         );
-      case .connectionFailure:
+      case .failure:
         context.showToast(
           variant: .error,
           title: 'Não foi possível confirmar o e-mail',
@@ -88,6 +89,7 @@ mixin CallbackScreenStateMixin on State<CallbackScreen> {
               'Verifique sua conexão e tente novamente com o link recebido.',
         );
     }
+
     widget.onSignIn(context);
   }
 }

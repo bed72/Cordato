@@ -6,24 +6,22 @@ import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/email_field_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
-import 'package:cordato/features/authentication/presentation/screens/resend_email_verification/commands/resend_email_verification_command.dart';
-import 'package:cordato/features/authentication/presentation/screens/resend_email_verification/widgets/resend_email_verification_header_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/app_bar_sign_up_widget.dart';
-import 'package:cordato/features/authentication/presentation/screens/resend_email_verification/mixins/resend_email_verification_screen_state_mixin.dart';
-import 'package:cordato/features/authentication/presentation/screens/resend_email_verification/widgets/resend_email_verification_cooldown_label_widget.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/commands/resend_email_command.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/mixins/resend_email_screen_state_mixin.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/widgets/resend_email_header_widget.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/widgets/resend_email_cooldown_label_widget.dart';
 
-final class const ResendEmailVerificationScreen({
+final class const ResendEmailScreen({
   super.key,
   required final String email,
-  required final ResendEmailVerificationCommand command,
+  required final ResendEmailCommand command,
 }) extends StatefulWidget {
   @override
-  State<ResendEmailVerificationScreen> createState() =>
-      _ResendEmailVerificationScreenState();
+  State<ResendEmailScreen> createState() => _ResendEmailScreenState();
 }
 
-final class _ResendEmailVerificationScreenState
-    extends State<ResendEmailVerificationScreen>
+final class _ResendEmailScreenState extends State<ResendEmailScreen>
     with ResendEmailVerificationScreenStateMixin {
   @override
   Widget build(BuildContext context) {
@@ -44,7 +42,7 @@ final class _ResendEmailVerificationScreenState
                       spacing: 24.0,
                       crossAxisAlignment: .stretch,
                       children: [
-                        const ResendEmailVerificationHeaderWidget(),
+                        const ResendEmailHeaderWidget(),
                         EmailFieldWidget(
                           enabled: false,
                           label: 'E-mail',
@@ -55,7 +53,7 @@ final class _ResendEmailVerificationScreenState
                   ),
                 ),
               ),
-              ResendEmailVerificationCooldownLabelWidget(remaining: remaining),
+              ResendEmailCooldownLabelWidget(remaining: remaining),
               CommandBuilder<String, Either<ErrorsEntity, bool>?>(
                 command: widget.command.execute,
                 whileRunning: (_, _, _) => const ElevatedButtonWidget(
@@ -71,7 +69,7 @@ final class _ResendEmailVerificationScreenState
                 ),
                 onError: (_, _, _, _) => ElevatedButtonWidget(
                   label: 'Reenviar',
-                  onTap: remaining > Duration.zero || widget.email.isEmpty
+                  onTap: remaining > .zero || widget.email.isEmpty
                       ? null
                       : resend,
                 ),
