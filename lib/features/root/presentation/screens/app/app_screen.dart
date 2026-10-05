@@ -4,7 +4,7 @@ import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/core/presentation/widgets/images/image_widget.dart';
 
 import 'package:cordato/features/session/presentation/commands/session_command.dart';
-import 'package:cordato/presentation/screens/app/mixins/app_screen_state_mixin.dart';
+import 'package:cordato/features/root/presentation/screens/app/mixins/app_screen_state_mixin.dart';
 
 final class const AppScreen({
   super.key,

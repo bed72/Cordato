@@ -8,6 +8,11 @@ widgets, telas, estado, rotas e testes.
 
 Documentação canônica: [ARCHITECTURE.md](ARCHITECTURE.md).
 
+Use o código atual para descrever o que existe e este arquivo e a documentação
+canônica para as convenções aprovadas. Há specs OpenSpec e skills locais com
+referências antigas a Supabase; elas não representam a integração HTTP atual.
+Não reintroduza esse fluxo para reproduzir uma descrição histórica.
+
 Antes de alterar código, leia a feature afetada, os widgets compartilhados que
 ela usa e os testes correspondentes. O projeto evolui por alterações pequenas;
 não substitua uma convenção existente por uma abstração nova sem necessidade.
@@ -28,14 +33,18 @@ O modelo de domínio validado possui estes bounded contexts:
 O aplicativo integra sign-in e sign-up por e-mail e senha à API HTTP JSON:API;
 também confirma e-mail por link e permite reenviar a verificação. O token opaco
 do sign-in é persistido em storage seguro. A feature `session` lê e observa a
-presença do token, usa uma splash para escolher a rota inicial e redireciona após
+presença do token. `AppScreen`, em `features/root/presentation/`, usa essa leitura para
+escolher a rota inicial em `/`; `AppWidget` observa mudanças e redireciona após
 401 de requisição protegida e após logout confirmado em Settings. O logout
 revoga remotamente o token antes de removê-lo pelo data source local de
-Authentication; Settings depende apenas do contrato de repository através de
-seu command. Não há validação da sessão no backend na abertura.
+Authentication. `LogoutCommand` pertence a `authentication` e depende do
+contrato de repository; Settings recebe esse command. Não há validação da
+sessão no backend na abertura, refresh automático ou guard do Modular.
 O Kotlin legado é somente referência de domínio.
-`expense` possui formulário e camadas de criação, mas seu client ainda não
-persiste dados. `budget`, `family` e `insight` não têm feature Flutter
+`expense` possui estrutura visual de formulário, validators e estado de
+apresentação, sem command, repository, data source, client ou persistência.
+Dashboard usa nome fixo no widget e conteúdo placeholder, sem consulta de perfil.
+`budget`, `family` e `insight` não têm feature Flutter
 implementada. Não descreva recursos planejados como código existente nem crie
 um contexto `identity` para reproduzir o backend antigo. O contexto `chat` não
 faz parte do escopo atual.
@@ -65,7 +74,7 @@ Regras de domínio que devem ser preservadas nas features financeiras:
 
 ## Stack Atual
 
-- Flutter/Dart com SDK definido em `pubspec.yaml`.
+- Flutter/Dart com constraint de SDK `^3.13.2` em `pubspec.yaml`.
 - Material 3 através de `material_ui`.
 - `flutter_modular` 7 para módulos, injeção de dependências e rotas.
 - `command_it` para operações assíncronas observáveis pela apresentação.
@@ -81,8 +90,14 @@ Regras de domínio que devem ser preservadas nas features financeiras:
 lib/
   main.dart
   app_module.dart
-  app_widget.dart
   features/
+    root/
+      presentation/
+        widgets/app_widget.dart
+        mixins/app_widget_state_mixin.dart
+        screens/app/
+          app_screen.dart
+          mixins/app_screen_state_mixin.dart
     core/
       core_module.dart
       domain/
@@ -98,7 +113,7 @@ lib/
         responses/
         clients/          # quando a feature tiver um client próprio
       presentation/
-        commands/          # somente commands sem tela proprietária
+        commands/          # commands da feature sem tela proprietária nela
         screens/
           <screen>/
             <screen>_screen.dart
@@ -124,7 +139,11 @@ sign-up por e-mail e senha via API; não deve assumir a responsabilidade de
 modelar todo o ciclo de vida de `identity` do backend antigo. Na implementação
 atual, `authentication` também reúne confirmação de e-mail e reenvio, sem criar
 uma sessão nesses fluxos. `session` detém a leitura e observação da presença do
-token e a composição da splash, sem depender das camadas de `authentication`.
+token, sem depender das camadas de `authentication`. A entrada e a observação
+global são composição do app em `features/root/presentation/`, não telas de
+`session`. `root` é uma feature de apresentação global, sem domínio, repository
+ou módulo próprio no estado atual; `app_module.dart` registra sua rota `/`.
+Não crie camadas vazias para features que hoje possuem somente apresentação.
 
 ## Imports
 
@@ -465,10 +484,12 @@ Coloque cada command específico de uma tela em
 caminho no teste. Quando o command representar o fluxo principal da tela, use o
 mesmo nome-base: `CallbackScreen` → `callback/commands/callback_command.dart` →
 `CallbackCommand`. Se representar uma operação específica, prefira o nome da
-ação, como `CreateExpenseCommand` em `expense/commands/`. Commands sem tela
-proprietária, como `SessionCommand`, ficam em `presentation/commands/` da
-feature. Ao renomear uma tela ou um command, atualize classe, arquivo, imports,
-registro no módulo, testes e documentação na mesma alteração; preserve as
+ação. Commands sem tela proprietária dentro da própria feature ficam em
+`presentation/commands/`: `SessionCommand` em `session` e `LogoutCommand` em
+`authentication`, ainda que Settings consuma o logout. `ResendEmailScreen` e
+`ResendEmailCommand` ficam em `screens/resend_email/`; a rota permanece
+`/authentication/confirm`. Ao renomear uma tela ou um command, atualize classe,
+arquivo, imports, registro no módulo, testes e documentação na mesma alteração; preserve as
 rotas e o comportamento quando a mudança for somente de nomenclatura.
 
 O sign-in mantém `Either` no resultado do command para a apresentação decidir
@@ -532,7 +553,19 @@ Regras de dependência:
 - `presentation` depende de contratos de `domain`; o repository em `data`
   depende das interfaces de data source de `infrastructure`, sem acessar SDKs
   diretamente. O módulo liga as implementações concretas.
-- A rota e o módulo pertencem à feature que possui a tela.
+- A rota e o módulo pertencem à feature que possui a tela; a rota inicial `/`
+  é composição do app em `app_module.dart`.
+
+Direções aprovadas entre features:
+
+- `authentication` e `session` não importam uma à outra; comunicam-se pela
+  escrita e observação da mesma chave no storage do core.
+- Settings consome `LogoutCommand` de Authentication; o command conhece apenas
+  `IAuthenticationRepository`, sem adapters na UI de Settings.
+- `expense` e `budget` não dependem de outros contextos financeiros.
+- Quando implementadas, `family` lê `expense`/`budget` por contratos próprios,
+  com adapters em infrastructure; `insight` pode ler os três pelo mesmo padrão.
+- Contextos proprietários não dependem de `family` ou `insight`.
 
 Fluxo esperado:
 
@@ -554,7 +587,7 @@ Outras features podem ter clients próprios quando isso fizer sentido.
 
 ## API HTTP E Persistência
 
-`coreModule` registra `IStorageClient`, `IHttpClient` e o `Dio` compartilhado
+`coreDependenciesModule` registra `IStorageClient`, `IHttpClient` e o `Dio` compartilhado
 com `BASE_URL` (padrão `https://api.cordato.cloud/api/`). O
 `HeadersInterceptor` aplica os headers JSON:API. O `HttpClient` devolve
 `Either<HttpResponse, HttpResponse>`, com status HTTP e corpo em mapa;
@@ -572,8 +605,8 @@ da API e envia `Authorization: Bearer <token>`. O token é opaco; `Bearer` é o
 esquema HTTP, e a validade do token é controlada pelo backend. Um 401 dessa
 requisição remove somente o token enviado, se ainda for o valor armazenado;
 requisições públicas não apagam a sessão. `expenses` está
-no catálogo de caminhos protegidos, mas o client Flutter de gastos ainda não
-usa a API. O sucesso do sign-in notifica `SessionCommand` e conduz ao dashboard.
+no catálogo de caminhos protegidos, mas não há integração de gastos com a API.
+O sucesso do sign-in notifica `SessionCommand` e conduz ao dashboard.
 
 Sign-up e reenvio usam endpoints públicos. Para confirmar e-mail, a URL
 assinada recebida no deep link é enviada sem reconstrução por `IHttpClient.get`,
@@ -587,7 +620,8 @@ payloads das requisições usuais, inclusive dados de sign-in; requisições com
 `Requests(logRequest: false)`, como a confirmação por URL assinada, são
 omitidas dos logs de request, response e error.
 
-`ExpenseClient.create` ainda retorna falha e não persiste gastos. `budget`,
+O formulário de gastos ainda não executa criação: seus handlers são placeholders
+e o botão está desabilitado em loading fixo. `budget`,
 `family` e `insight` não possuem integração Flutter. Não descreva
 regras de autorização do backend como já aplicadas pelo aplicativo. Ao conectar
 uma feature financeira, defina seu contexto proprietário, preserve as
@@ -598,11 +632,15 @@ invariantes no serviço responsável e adicione testes de autorização e domín
 Use a API funcional do `flutter_modular` 7:
 
 ```dart
-final featureModule = createModule(
+final featureDependenciesModule = createModule(
+  register: (context) => context
+    ..addLazySingleton<IRepository>(Repository.new),
+);
+
+final featureRoutesModule = createModule(
   path: '/feature',
   register: (context) {
     context
-      ..addLazySingleton<IRepository>(Repository.new)
       ..route(
         '/',
         child: (_, _) => const FeatureScreen(),
@@ -614,7 +652,14 @@ final featureModule = createModule(
 Regras:
 
 - Cada feature declara seu módulo em `<feature>_module.dart`.
-- `app_module.dart` apenas compõe módulos de alto nível.
+- Separe `<feature>DependenciesModule`, sem `path`, de
+  `<feature>RoutesModule` quando houver dependências compartilhadas e rotas.
+- `app_module.dart` compõe módulos de alto nível e registra `AppScreen` em `/`.
+  Atualmente os módulos root de dependências são `core`, `session` e
+  `authentication`; `welcome`, `expense`, `settings`, `dashboard` e
+  `authentication` fornecem módulos de rotas.
+- Dependências estritamente locais, como validators de Expense e o registro
+  de `LogoutCommand` em Settings, podem ficar no módulo de rotas proprietário.
 - Use `addInstance` para objetos já criados e `addSingleton` ou
   `addLazySingleton` conforme o ciclo de vida necessário.
 - Registre interfaces apontando para implementações concretas.
@@ -626,7 +671,7 @@ Regras:
 
 Rotas atuais:
 
-- `/splash` para leitura da sessão e rota inicial padrão.
+- `/` para `AppScreen`, leitura da sessão e rota inicial padrão; não há `/splash`.
 - `/welcome` para a tela de boas-vindas quando não há token.
 - `/authentication/sign-in` para entrada por e-mail e senha.
 - `/authentication/sign-up` para cadastro.
@@ -635,6 +680,11 @@ Rotas atuais:
 - `/dashboard` para a tela inicial de dashboard, ainda sem guard de sessão.
 - `/settings` para configurações.
 - `/expense` para o formulário de gasto.
+
+`RouteEnum.authenticatedPaths()` lista Dashboard, Settings e Expense. A flag
+`authenticated` classifica rotas; não instala um guard. `AppWidget` encaminha
+uma abertura inicial nessas rotas para `/` e reage à perda de token enquanto
+elas estiverem ativas. Não confunda isso com autorização do backend.
 
 ## Erros E Falhas
 
@@ -721,3 +771,17 @@ como padrão novo:
   infraestrutura de apresentação; código novo deve usar `material_ui`.
 - `listen_it` está declarado sem uso direto na aplicação.
 - Não existe suíte `integration_test`.
+- Não há flows Maestro versionados; a política de validação com Maestro não
+  representa cobertura automatizada já implementada.
+- `UserNameWidget` mantém o helper `_skeleton` não utilizado, reportado por
+  `flutter analyze`.
+- `ExpenseFormWidget` cria um `TextEditingController` no `build`, sem descarte;
+  o formulário atual é um placeholder, não um exemplo de lifecycle aprovado.
+- O teste arquitetural ainda contém referências históricas a Supabase/RPC.
+  Seu helper identifica apenas contextos financeiros, deixando a verificação
+  de imports entre Authentication e Session sem cobertura efetiva.
+  Não descreva esses checks como garantias completas da arquitetura atual.
+  O check de import de presentation em `data` também é ignorado pelo filtro
+  atual, e as listas de SDKs proibidos não incluem Dio.
+- O teste de `ResendEmailCommand` ainda está no caminho antigo
+  `screens/resend_email_verification/`, embora importe a implementação nova.

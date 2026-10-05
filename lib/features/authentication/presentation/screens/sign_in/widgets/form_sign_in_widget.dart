@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/fields/email_field_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/fields/password_field_widget.dart';
+import 'package:cordato/features/authentication/presentation/widgets/email_field_widget.dart';
+import 'package:cordato/features/authentication/presentation/widgets/password_field_widget.dart';
 
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';

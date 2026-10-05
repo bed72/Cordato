@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/calculator/amount_calculator_widget.dart';
+import 'package:cordato/features/expense/presentation/widgets/calculator/amount_calculator_widget.dart';
 
 mixin AmountCalculatorWidgetStateMixin on State<AmountCalculatorWidget> {
   static const _maxWholeDigits = 7;

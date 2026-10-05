@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/calculator/amount_calculator_key_widget.dart';
+import 'package:cordato/features/expense/presentation/widgets/calculator/amount_calculator_key_widget.dart';
 
 final class const AmountCalculatorKeyboardWidget({
   super.key,

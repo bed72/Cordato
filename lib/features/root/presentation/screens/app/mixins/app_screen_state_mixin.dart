@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/presentation/screens/app/app_screen.dart';
+import 'package:cordato/features/root/presentation/screens/app/app_screen.dart';
 
 mixin AppScreenStateMixin on State<AppScreen> {
   bool _redirected = false;

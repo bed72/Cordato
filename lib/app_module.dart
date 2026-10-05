@@ -9,7 +9,7 @@ import 'package:cordato/features/settings/settings_module.dart';
 import 'package:cordato/features/dashboard/dashboard_module.dart';
 import 'package:cordato/features/authentication/authentication_module.dart';
 
-import 'package:cordato/presentation/screens/app/app_screen.dart';
+import 'package:cordato/features/root/presentation/screens/app/app_screen.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/session/presentation/commands/session_command.dart';
 

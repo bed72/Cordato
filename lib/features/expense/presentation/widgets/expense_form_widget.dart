@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/fields/date_field_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/fields/amount_field_widget.dart';
+import 'package:cordato/features/authentication/presentation/widgets/date_field_widget.dart';
+import 'package:cordato/features/authentication/presentation/widgets/amount_field_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
