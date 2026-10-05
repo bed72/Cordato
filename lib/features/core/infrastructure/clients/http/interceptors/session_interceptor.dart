@@ -60,7 +60,23 @@ final class SessionInterceptor({required final IStorageClient storage})
     if (route is! HttpPathEnum || !route.requiresAuth) return false;
 
     final base = Uri.parse(options.baseUrl);
-    return options.uri.origin == base.origin &&
-        options.uri.path == base.resolve(route.path).path;
+    if (options.uri.origin != base.origin) return false;
+
+    final expected = base.resolve(route.path).pathSegments;
+    final actual = options.uri.pathSegments;
+    if (actual.length != expected.length) return false;
+
+    for (var index = 0; index < expected.length; index++) {
+      if (expected[index] == '{id}') {
+        if (actual[index].isEmpty ||
+            actual[index] == '.' ||
+            actual[index] == '..') {
+          return false;
+        }
+      } else if (actual[index] != expected[index]) {
+        return false;
+      }
+    }
+    return true;
   }
 }

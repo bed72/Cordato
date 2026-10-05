@@ -20,7 +20,7 @@ final class AuthenticationRepository({
       if (data case Left(:final value)) return Left(value.toEntity());
       if (!data.right) return const Right(false);
 
-      await _localDataSource.remove();
+      await _localDataSource.clear();
 
       return const Right(true);
     } catch (_) {
@@ -49,6 +49,7 @@ final class AuthenticationRepository({
   Future<ResendEmailRepositoryType> resendEmail({required String email}) async {
     try {
       final data = await _remoteDataSource.resendEmail(email: email);
+
       return data.either((errors) => errors.toEntity(), (success) => success);
     } catch (_) {
       return Left(.unknown());
@@ -86,7 +87,12 @@ final class AuthenticationRepository({
       if (data case Left(:final value)) return Left(value.toEntity());
 
       final session = data.right.toEntity();
-      await _localDataSource.save(session.token);
+
+      await Future.wait([
+        _localDataSource.saveToken(session.token),
+        _localDataSource.saveUserId(session.userId),
+      ]);
+
       return Right(session);
     } catch (_) {
       return Left(.unknown());

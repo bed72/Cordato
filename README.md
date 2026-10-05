@@ -14,6 +14,8 @@ ainda não está conectada. A regra central é:
 
 Os bounded contexts do produto são:
 
+- `user`: modelo de domínio, contrato de repository e data source HTTP para
+  consulta, atualização do nome e exclusão; ainda sem repository concreto ou UI.
 - `expense`: estrutura visual de formulário e validators, sem criação ou persistência.
 - `budget`: planejado. Tetos por intervalo de datas, com gasto e saldo derivados.
 - `family`: planejado. Organização familiar com acesso combinado somente de leitura.

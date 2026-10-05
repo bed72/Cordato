@@ -12,10 +12,6 @@ typedef SignInRepositoryType = Either<ErrorsEntity, SessionEntity>;
 abstract interface class IAuthenticationRepository {
   Future<LogoutRepositoryType> logout();
 
-  Future<EmailVerificationStatusEnum> confirmEmail(String url);
-
-  Future<ResendEmailRepositoryType> resendEmail({required String email});
-
   Future<SignUpRepositoryType> signUp({
     required String email,
     required String password,
@@ -25,4 +21,8 @@ abstract interface class IAuthenticationRepository {
     required String email,
     required String password,
   });
+
+  Future<EmailVerificationStatusEnum> confirmEmail(String url);
+
+  Future<ResendEmailRepositoryType> resendEmail({required String email});
 }

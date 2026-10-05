@@ -42,6 +42,32 @@ Os contextos financeiros e seu estado atual são:
 - `family`: planejado. Será uma organização de membros com leitura combinada autorizada.
 - `insight`: planejado; não há feature Flutter, dados ou consultas analíticas.
 
+`user` é o bounded context dos dados do usuário. `UserEntity`, em
+`domain/entities/user_entity.dart`, é imutável e possui
+`id`, `name`, `email` e `status` como `String`, além de `createdAt`
+como `DateTime`. O identificador preserva a representação textual da API;
+`status` preserva o valor informado, pois o contrato disponível não define todos
+os estados possíveis. O envelope JSON:API (`data`, `type` e `links`) não faz
+parte da entidade. `IUserRepository`, em
+`domain/repositories/interface_user_repository.dart`, define `getById`, `delete`
+e `update`, com `id` nomeado e obrigatório. Os typedefs `GetByIdRepositoryType`
+e `UpdateRepositoryType` representam `Either<ErrorsEntity, UserEntity>`;
+`DeleteRepositoryType` representa `Either<ErrorsEntity, bool>`. `update` permite
+atualizar somente `name`, opcional; quando nulo, o campo é omitido do payload.
+`IUserRemoteDataSource` e `UserRemoteDataSource`, em
+`infrastructure/remoto/user_remote_data_source.dart`, usam `IHttpClient` do core
+para GET, PATCH e DELETE de `users/{id}`. GET e PATCH retornam
+`Either<ErrorsResponse, UserResponse>`; DELETE exige 204 sem corpo e retorna
+`Either<ErrorsResponse, bool>`. PATCH envia `data.type: users`, `data.id` e
+somente o nome informado em `data.attributes`. Erros JSON:API são preservados;
+respostas malformadas e exceções inesperadas recebem erro genérico.
+`UserResponse.fromJson` extrai os campos do modelo com casts e `DateTime.parse`,
+e `UserResponseToEntity.toEntity()` os converte para `UserEntity`. `updated_at`
+e os metadados JSON:API não são incorporados ao modelo atual. O id devolvido
+pela API é preservado, sem substituição pelo id solicitado. Ainda não há
+implementação de repository, módulo, rotas ou apresentação em `user`; o
+contexto não gerencia autenticação ou tokens.
+
 `dashboard` é uma feature de apresentação e composição, com nome fixo no widget
 e conteúdo placeholder, sem consulta de perfil. `settings` é uma feature
 de apresentação que consome o logout de Authentication. `authentication`
@@ -87,6 +113,13 @@ lib/
     core/
     session/
     authentication/
+    user/
+      domain/
+        entities/user_entity.dart
+        repositories/interface_user_repository.dart
+      infrastructure/
+        remoto/user_remote_data_source.dart
+        responses/user_response.dart
     welcome/
     dashboard/
     expense/
@@ -423,12 +456,18 @@ Android e iOS usam o deep linking nativo do Flutter/Modular, incluindo
 inicialização e entrega com o app já aberto.
 
 `HttpPathEnum` identifica os endpoints relativos à base e marca os protegidos.
-`Requests.forPath` carrega essa rota em `RequestOptions.extra` usando
+`Requests.forPath` resolve parâmetros de caminho com `pathParameters`,
+codificando cada valor como um segmento, e carrega essa rota em `RequestOptions.extra` usando
 `HttpExtraKeyEnum.route`. `expenses` está marcado como protegido no catálogo,
 mas não há integração HTTP de Expense. O `SessionInterceptor` só lê
 `StorageKeyEnum.opaqueToken` para uma rota protegida cuja origem e caminho
-coincidam exatamente com o endpoint da base e então envia
+coincidam com o endpoint da base e então envia
 `Authorization: Bearer <token>`. O token é opaco; `Bearer` é o esquema HTTP.
+`HttpPathEnum.user` marca `users/{id}` como protegido; o interceptor permite
+exatamente um segmento não vazio no lugar de `{id}`, preservando a comparação
+da origem, do prefixo da base e dos demais segmentos. GET, PATCH e DELETE de
+User usam o mesmo token armazenado e a mesma remoção após 401; o data source
+não define headers de autenticação nem acessa storage.
 Sign-in, sign-up e reenvio são públicos. O backend controla a validade do
 token; não há refresh implementado no app. `expiresAt` do login é apenas um
 retrato inicial e não bloqueia chamadas no app. Se uma requisição protegida

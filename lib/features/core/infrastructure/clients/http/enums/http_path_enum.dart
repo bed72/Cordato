@@ -3,5 +3,6 @@ enum HttpPathEnum(final String path, {final bool requiresAuth = false}) {
   signUp('authentication/sign-up'),
   logout('authentication/sign-out', requiresAuth: true),
   expenses('expenses', requiresAuth: true),
+  user('users/{id}', requiresAuth: true),
   resendEmailVerification('authentication/email-verification/resend'),
 }

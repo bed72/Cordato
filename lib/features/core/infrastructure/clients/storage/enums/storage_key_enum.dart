@@ -1,3 +1,4 @@
 enum StorageKeyEnum(final String key) {
-  opaqueToken('authentication.access_token'),
+  userId('@trocado.user_id'),
+  opaqueToken('@trocado.opaque_token'),
 }

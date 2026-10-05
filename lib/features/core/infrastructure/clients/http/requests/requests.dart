@@ -11,11 +11,18 @@ final class const Requests(
 }) {
   factory Requests.forPath(
     HttpPathEnum route, {
+    Map<String, String> pathParameters = const {},
     Map<String, dynamic>? body,
     Map<String, dynamic>? query,
     Map<String, dynamic>? headers,
   }) => Requests(
-    route.path,
+    route.path.replaceAllMapped(RegExp(r'\{([^}]+)\}'), (match) {
+      final value = pathParameters[match.group(1)];
+      if (value == null || value.isEmpty || value == '.' || value == '..') {
+        throw ArgumentError('Invalid path parameter: ${match.group(1)}');
+      }
+      return Uri.encodeComponent(value);
+    }),
     body: body,
     query: query,
     route: route,
@@ -27,8 +34,8 @@ final class const Requests(
     Map<String, dynamic>? body,
     Map<String, dynamic>? query,
     Map<String, dynamic>? headers,
-    HttpPathEnum? route,
     bool? logRequest,
+    HttpPathEnum? route,
     bool? followRedirects,
   }) => Requests(
     path ?? this.path,

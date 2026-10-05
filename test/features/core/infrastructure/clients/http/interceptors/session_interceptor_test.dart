@@ -66,6 +66,56 @@ void main() {
     expect(captured!.headers.containsKey('Authorization'), isFalse);
   });
 
+  test('authenticates GET, PATCH and DELETE of the user resource', () async {
+    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async => 'opaque-token');
+    final parameter = Requests.forPath(
+      HttpPathEnum.user,
+      pathParameters: {'id': '10'},
+    );
+
+    await client.get(parameter: parameter);
+    expect(captured!.uri.path, '/api/users/10');
+    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
+    await client.patch(parameter: parameter);
+    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
+    await client.delete(parameter: parameter);
+    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
+  });
+
+  test('does not authenticate unrelated or external user paths', () async {
+    for (final path in [
+      'users',
+      'users/',
+      'users/10/expenses',
+      'https://example.com/users/10',
+      'other/10',
+      'https://external.example/api/users/10',
+    ]) {
+      await client.get(parameter: Requests(path, route: HttpPathEnum.user));
+      expect(captured!.headers.containsKey('Authorization'), isFalse);
+    }
+    verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
+  });
+
+  test('removes the sent token after a user resource returns 401', () async {
+    responseStatus = 401;
+    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async => 'opaque-token');
+    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async {});
+
+    final response = await client.get(
+      parameter: Requests.forPath(
+        HttpPathEnum.user,
+        pathParameters: {'id': '10'},
+      ),
+    );
+
+    expect(response.left.statusCode, 401);
+    verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
+  });
+
   test('does not read the token for an unclassified request', () async {
     await client.get(parameter: const Requests('expenses'));
 
