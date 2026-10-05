@@ -4,7 +4,7 @@ import 'package:cordato/features/authentication/presentation/validators/email_va
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/commands/sign_in_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/form_sign_in_widget.dart';
-import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/header_sign_in_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/sign_up_footer_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/app_bar_sign_in_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/mixins/sign_in_screen_state_mixin.dart';
@@ -42,7 +42,10 @@ final class _SignInScreenState extends State<SignInScreen>
                       spacing: 24.0,
                       crossAxisAlignment: .stretch,
                       children: [
-                        const HeaderSignInWidget(),
+                        const HeaderWidget(
+                          title: 'Que bom ter você por aqui',
+                          description: 'Entre com seu e-mail e senha',
+                        ),
                         FormSignInWidget(
                           key: formKey,
                           onSubmit: submit,

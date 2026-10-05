@@ -11,12 +11,12 @@ final settingsRoutesModule = createModule(
       ..addLazySingleton<LogoutCommand>(LogoutCommand.new)
       ..route(
         RouteEnum.app.path,
-        child: (_, _) => SettingsScreen(
+        child: (context, _) => SettingsScreen(
           command: inject<LogoutCommand>(),
           onHelpPressed: () {},
           onTermsPressed: () {},
           onPrivacyPressed: () {},
-          onPersonalDataPressed: () {},
+          onPersonalDataPressed: () => context.pushNamed(RouteEnum.user.path),
           onSubscriptionPressed: () {},
           onInvitePartnerPressed: () {},
           onBackPressed: (context) => context.pop(),

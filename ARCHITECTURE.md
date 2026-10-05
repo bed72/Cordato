@@ -72,7 +72,22 @@ pela API é preservado, sem substituição pelo id solicitado. `UserRepository`,
 e traduz exceções inesperadas em `ErrorsEntity.unknown()`. `userDependenciesModule`,
 em `user_module.dart`, registra o repository e os dois data sources como lazy
 singletons pelos contratos e é composto por `appModule`, sem `path`.
-Ainda não há rotas ou apresentação em `user`. O contexto não realiza autenticação ou leitura
+`userRoutesModule` registra `/user`, acessível por “Dados pessoais” em Settings.
+`UserScreen` lista nome e e-mail em `SettingsCardWidget`, reutiliza a app bar de
+Settings e exibe `DangerButtonWidget` com “Excluir conta” no rodapé. Nome abre
+`/user/edit`; e-mail fica desativado, sem chevron. Os dados são exemplos e a
+exclusão é somente um callback placeholder, sem integração ou efeito na conta.
+Acima da lista, `UserAvatarWidget` mostra um avatar quadrado centralizado com
+os mesmos cantos arredondados (`cornerRadius100`) da Dashboard,
+a inicial e as cores do avatar da Dashboard, ou `ImageWidget` quando recebe
+uma imagem. O ícone de câmera recebe callback opcional; não há seleção ou
+upload de foto implementados.
+`EditUserScreen` segue a referência `ProfileNameScreen` do Trocado: título “Nome”,
+descrição “Atualize o seu nome de exibição.”, um campo de nome e botão “Atualizar”
+no rodapé de um `SliverFillRemaining`. Reutiliza o tema e componentes do Cordato.
+Recebe callbacks e estados visuais por construtor; a rota usa nome de exemplo
+e mantém o botão desabilitado enquanto não houver callback de atualização.
+Não consulta o repository nem persiste dados. O contexto não realiza autenticação ou leitura
 de sessão. `IUserLocalDataSource` e `UserLocalDataSource` ficam no mesmo arquivo,
 `infrastructure/local/user_local_data_source.dart`; a implementação recebe
 `IStorageClient` e delega `clear()` para limpar todo o storage seguro.
@@ -148,6 +163,12 @@ Cada feature pode conter `domain`, `data`, `infrastructure` e `presentation`.
 `core` contém capacidades compartilhadas, como tema, formatação monetária,
 widgets, animações, imagens e storage; não deve receber regras de uma
 feature.
+
+`HeaderWidget`, em `core/presentation/widgets/header_widget.dart`, concentra o
+cabeçalho de tela com `title` e `description` obrigatórios, semântica de heading,
+tipografia e cores do tema e espaçamento de 6 pixels. Sign-in, sign-up, reenvio
+de e-mail, gasto, Settings, dados pessoais e edição de nome o compõem diretamente,
+sem wrappers dedicados por feature para essa mesma estrutura.
 
 Direções de dependência aprovadas:
 
@@ -401,6 +422,7 @@ appModule
     welcomeRoutesModule
     expenseRoutesModule
     settingsRoutesModule
+    userRoutesModule
     dashboardRoutesModule
     authenticationRoutesModule
     / -> AppScreen
@@ -413,6 +435,8 @@ Registros importantes:
   `HeadersInterceptor`, `SessionInterceptor` e, apenas em debug, o logger.
 - `userDependenciesModule`: registra `IUserRemoteDataSource`, `IUserLocalDataSource`
   e `IUserRepository` como lazy singletons, usando o HTTP e o storage do core.
+- `userRoutesModule`: compõe a UI de edição de dados pessoais, sem dependências
+  assíncronas ou integração HTTP, recebendo a navegação por callback.
 - `sessionDependenciesModule`: registra `ISessionLocalDataSource`, `ISessionRepository` e
   `SessionCommand` como dependências do app inteiro (módulo sem `path`), para
   continuar observando mudanças depois que `AppScreen` sair da pilha.
@@ -441,7 +465,8 @@ Registros importantes:
   Confirmar fecha a modal pelo `Navigator` e executa o command. O estado do
   `command_it` mostra loading, bloqueia novas execuções e entrega erros em toast.
   Settings não navega no sucesso nem acessa adapters de Authentication.
-  Os demais itens sem destino têm callbacks sem integração.
+  “Dados pessoais” abre `/user`. Os demais itens sem destino têm callbacks
+  sem integração.
 
 Rotas registradas:
 
@@ -454,6 +479,8 @@ Rotas registradas:
 /authentication/confirm-email
 /dashboard
 /settings
+/user
+/user/edit
 /expense
 ```
 

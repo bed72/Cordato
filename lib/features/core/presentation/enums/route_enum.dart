@@ -3,6 +3,8 @@ enum RouteEnum(final String path, {final bool authenticated = false}) {
   welcome('/welcome'),
   expense('/expense', authenticated: true),
   settings('/settings', authenticated: true),
+  user('/user', authenticated: true),
+  userEdit('/user/edit', authenticated: true),
   dashboard('/dashboard', authenticated: true),
   authenticationSignIn('/authentication/sign-in'),
   authenticationSignUp('/authentication/sign-up'),

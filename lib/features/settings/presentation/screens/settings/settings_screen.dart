@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_card_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_item_widget.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_header_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_logout_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_app_bar_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_section_widget.dart';
@@ -39,7 +39,10 @@ final class _SettingsScreenState extends State<SettingsScreen>
           child: Column(
             crossAxisAlignment: .stretch,
             children: [
-              const SettingsHeaderWidget(),
+              const HeaderWidget(
+                title: 'Configurações',
+                description: 'Gerencie suas preferências.',
+              ),
               const SizedBox(height: 8.0),
               Expanded(
                 child: SingleChildScrollView(

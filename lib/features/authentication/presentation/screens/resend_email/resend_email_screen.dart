@@ -9,7 +9,7 @@ import 'package:cordato/features/core/presentation/widgets/buttons/elevated_butt
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/app_bar_sign_up_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/commands/resend_email_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/mixins/resend_email_screen_state_mixin.dart';
-import 'package:cordato/features/authentication/presentation/screens/resend_email/widgets/resend_email_header_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/widgets/resend_email_cooldown_label_widget.dart';
 
 final class const ResendEmailScreen({
@@ -42,7 +42,11 @@ final class _ResendEmailScreenState extends State<ResendEmailScreen>
                       spacing: 24.0,
                       crossAxisAlignment: .stretch,
                       children: [
-                        const ResendEmailHeaderWidget(),
+                        const HeaderWidget(
+                          title: 'Verifique seu e-mail',
+                          description:
+                              'Enviamos um link de confirmação para você',
+                        ),
                         EmailFieldWidget(
                           enabled: false,
                           label: 'E-mail',

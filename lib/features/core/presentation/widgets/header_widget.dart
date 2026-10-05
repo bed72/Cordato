@@ -2,7 +2,11 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class const HeaderSignInWidget({super.key}) extends StatelessWidget {
+final class const HeaderWidget({
+  super.key,
+  required final String title,
+  required final String description,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -12,18 +16,18 @@ final class const HeaderSignInWidget({super.key}) extends StatelessWidget {
         Semantics(
           header: true,
           child: Text(
-            'Que bom ter você por aqui',
+            title,
             style: context.typography.headlineMedium?.copyWith(
+              color: context.colors.onSurface,
               fontWeight: .w700,
               letterSpacing: -1.0,
-              color: context.colors.onSurface,
             ),
           ),
         ),
         Text(
-          'Entre com seu e-mail e senha',
+          description,
           style: context.typography.bodyLarge?.copyWith(
-            color: context.colors.onSurfaceVariant.withValues(alpha: .8),
+            color: context.colors.onSurfaceVariant.withValues(alpha: 0.8),
           ),
         ),
       ],

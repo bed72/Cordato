@@ -15,7 +15,8 @@ a persistência das features financeiras ainda não está conectada. A regra cen
 Os bounded contexts do produto são:
 
 - `user`: modelo de domínio, contrato de repository e data source HTTP para
-  consulta, atualização do nome e exclusão; ainda sem repository concreto ou UI.
+  consulta, atualização do nome e exclusão, com repository concreto e UI de
+  edição visual ainda sem integração com a API.
 - `expense`: estrutura visual de formulário e validators, sem criação ou persistência.
 - `budget`: planejado. Tetos por intervalo de datas, com gasto e saldo derivados.
 - `family`: planejado. Organização familiar com acesso combinado somente de leitura.
@@ -46,6 +47,10 @@ O app já possui:
 - tela de configurações com confirmação de saída, loading e erros em toast;
   o logout revoga o token na API e limpa o storage seguro, com retorno à welcome
   pelo observador global de sessão;
+- tela de dados pessoais em `/user`, aberta por Settings, com nome clicável,
+  e-mail desativado e botão visual “Excluir conta” no rodapé;
+- tela de edição de nome em `/user/edit`, aberta pelo item Nome, seguindo a UI
+  de `ProfileNameScreen` do Trocado, com atualização ainda sem integração;
 - navegação de Welcome para Sign In, de Sign In para Sign Up por substituição
   de rota e de Dashboard para Settings e Expense;
 - tema claro/escuro e componentes de apresentação reutilizáveis;
@@ -55,7 +60,7 @@ O app já possui:
   o usuário estiver em uma rota protegida;
 - estrutura de `user` com entidade, contrato de repository, DTO e data source
   HTTP para buscar por ID, atualizar somente o nome e excluir o usuário; essa
-  estrutura ainda não está registrada em DI nem conectada a telas.
+  estrutura está registrada em DI, mas ainda não é consumida pela tela de edição.
 
 `budget`, `family` e `insight` seguem planejados. Ao implementá-los, o grupo
 familiar não deve se tornar dono dos dados financeiros de seus membros.

@@ -8,7 +8,7 @@ import 'package:cordato/features/authentication/presentation/validators/password
 import 'package:cordato/features/authentication/presentation/screens/sign_up/mixins/sign_up_screen_state_mixin.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/form_sign_up_widget.dart';
-import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/header_sign_up_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/sign_in_footer_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/app_bar_sign_up_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/button_sign_up_builder_widget.dart';
@@ -46,7 +46,10 @@ final class _SignUpScreenState extends State<SignUpScreen>
                       spacing: 24.0,
                       crossAxisAlignment: .stretch,
                       children: [
-                        const HeaderSignUpWidget(),
+                        const HeaderWidget(
+                          title: 'Continuar',
+                          description: 'Cadastre-se com seu e-mail e senha',
+                        ),
                         FormSignUpWidget(
                           key: formKey,
                           onSubmit: submit,

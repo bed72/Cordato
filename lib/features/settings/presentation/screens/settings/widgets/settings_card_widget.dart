@@ -10,9 +10,8 @@ final class const SettingsCardWidget({
   Widget build(BuildContext context) => Container(
     clipBehavior: .antiAlias,
     decoration: BoxDecoration(
-      color: context.colors.surface,
-      border: Border.all(color: context.colors.outlineVariant),
       borderRadius: context.radius.cornerRadius100,
+      border: Border.all(color: context.colors.outlineVariant),
     ),
     child: Column(children: _withDividers(context)),
   );

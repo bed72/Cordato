@@ -5,7 +5,7 @@ import 'package:cordato/features/authentication/presentation/widgets/amount_fiel
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
-import 'package:cordato/features/expense/presentation/widgets/expense_header_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/widgets/fields/expense_description_field_widget.dart';
 
@@ -33,7 +33,10 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget> {
               spacing: 16.0,
               crossAxisAlignment: .stretch,
               children: [
-                const ExpenseHeaderWidget(),
+                const HeaderWidget(
+                  title: 'Novo gasto',
+                  description: 'Preencha as informações abaixo para cadastrar um novo gasto.',
+                ),
                 ExpenseDescriptionFieldWidget(
                   onChanged: (_) {},
                   onSubmitted: (_) {},

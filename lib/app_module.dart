@@ -23,6 +23,7 @@ final appModule = createModule(
       ..module(authenticationDependenciesModule);
 
     context
+      ..module(userRoutesModule)
       ..module(welcomeRoutesModule)
       ..module(expenseRoutesModule)
       ..module(settingsRoutesModule)
