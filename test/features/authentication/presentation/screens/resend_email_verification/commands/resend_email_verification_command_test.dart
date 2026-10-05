@@ -6,8 +6,7 @@ import 'package:cordato/features/authentication/presentation/screens/resend_emai
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
-class _AuthenticationRepositoryMock extends Mock
-    implements IAuthenticationRepository {}
+import '../../../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
   const email = 'person@example.com';
@@ -15,7 +14,7 @@ void main() {
   late ResendEmailCommand command;
 
   setUp(() {
-    repository = _AuthenticationRepositoryMock();
+    repository = AuthenticationRepositoryMock();
     command = ResendEmailCommand(repository: repository);
   });
 

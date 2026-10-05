@@ -2,13 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/user/infrastructure/remoto/user_remote_data_source.dart';
 
-class _HttpClientMock extends Mock implements IHttpClient {}
+import '../../../../support/core/mocks/http_client_mock.dart';
 
 void main() {
   const body = {
@@ -26,18 +24,18 @@ void main() {
     },
   };
 
-  late _HttpClientMock client;
+  late HttpClientMock client;
   late IUserRemoteDataSource dataSource;
 
-  setUpAll(() => registerFallbackValue(const Requests('')));
+  setUpAll(() => registerFallbackValue(const Requests(path: '')));
   setUp(() {
-    client = _HttpClientMock();
+    client = HttpClientMock();
     dataSource = UserRemoteDataSource(client: client);
   });
 
   test('gets the protected user resource and preserves its response', () async {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(HttpResponse(statusCode: 200, body: body)),
+      (_) async => const Right(Reponse(statusCode: 200, body: body)),
     );
 
     final user = (await dataSource.getById(id: '9')).right;
@@ -46,15 +44,12 @@ void main() {
     expect(user.name, 'Gabriel Ramos');
     expect(user.email, 'person@example.com');
     expect(user.status, 'active');
-    expect(user.createdAt, DateTime.utc(2026, 10, 2, 17, 21, 48));
     final request =
         verify(() => client.get(parameter: captureAny(named: 'parameter')))
                 .captured
                 .single
             as Requests;
     expect(request.path, 'users/9');
-    expect(request.route, HttpPathEnum.user);
-    expect(request.route?.requiresAuth, isTrue);
     expect(request.body, isNull);
     expect(request.headers, isNull);
   });
@@ -63,7 +58,7 @@ void main() {
     'patches only the name and returns the user supplied by the API',
     () async {
       when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(HttpResponse(statusCode: 200, body: body)),
+        (_) async => const Right(Reponse(statusCode: 200, body: body)),
       );
 
       final user = (await dataSource.update(
@@ -79,7 +74,6 @@ void main() {
                   .single
               as Requests;
       expect(request.path, 'users/10');
-      expect(request.route, HttpPathEnum.user);
       expect(request.headers, isNull);
       expect(request.body, {
         'data': {
@@ -91,9 +85,49 @@ void main() {
     },
   );
 
+  test(
+    'encodes the id in all resource paths without changing the payload id',
+    () async {
+      const id = 'a/b?c#d';
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(Reponse(statusCode: 200, body: body)),
+      );
+      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(Reponse(statusCode: 200, body: body)),
+      );
+      when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(Reponse(statusCode: 204, body: {})),
+      );
+
+      await dataSource.getById(id: id);
+      await dataSource.update(id: id, name: 'Gabriel');
+      await dataSource.delete(id: id);
+
+      final get =
+          verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      final patch =
+          verify(() => client.patch(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      final delete =
+          verify(() => client.delete(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      for (final request in [get, patch, delete]) {
+        expect(request.path, 'users/a%2Fb%3Fc%23d');
+      }
+      expect((patch.body!['data'] as Map)['id'], id);
+    },
+  );
+
   test('omits the name when it was not supplied', () async {
     when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(HttpResponse(statusCode: 200, body: body)),
+      (_) async => const Right(Reponse(statusCode: 200, body: body)),
     );
 
     await dataSource.update(id: '9');
@@ -107,9 +141,9 @@ void main() {
   });
 
   test('deletes the protected user and accepts 204 without a body', () async {
-    when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(HttpResponse(statusCode: 204, body: {})),
-    );
+    when(
+      () => client.delete(parameter: any(named: 'parameter')),
+    ).thenAnswer((_) async => const Right(Reponse(statusCode: 204, body: {})));
 
     expect((await dataSource.delete(id: '10')).right, isTrue);
     final request =
@@ -118,16 +152,15 @@ void main() {
                 .single
             as Requests;
     expect(request.path, 'users/10');
-    expect(request.route, HttpPathEnum.user);
     expect(request.headers, isNull);
     expect(request.body, isNull);
   });
 
   test('does not report deletion for an unexpected success status', () async {
-    when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(HttpResponse(statusCode: 200, body: {})),
-    );
-    expect((await dataSource.delete(id: '10')).isLeft, isTrue);
+    when(
+      () => client.delete(parameter: any(named: 'parameter')),
+    ).thenAnswer((_) async => const Right(Reponse(statusCode: 200, body: {})));
+    expect((await dataSource.delete(id: '10')).right, isFalse);
   });
 
   for (final operation in ['getById', 'update', 'delete']) {
@@ -145,7 +178,7 @@ void main() {
     test('$operation preserves every JSON:API error', () async {
       when(request).thenAnswer(
         (_) async => const Left(
-          HttpResponse(
+          Reponse(
             statusCode: 422,
             body: {
               'errors': [
@@ -174,9 +207,9 @@ void main() {
       '$operation translates malformed errors and transport failures',
       () async {
         for (final response in [
-          const HttpResponse(statusCode: 500, body: {}),
-          const HttpResponse(statusCode: 500, body: {'errors': []}),
-          HttpResponse(
+          const Reponse(statusCode: 500, body: {}),
+          const Reponse(statusCode: 500, body: {'errors': []}),
+          Reponse(
             statusCode: 0,
             body: {
               'errors': [
@@ -211,19 +244,18 @@ void main() {
         'data': {
           'id': '10',
           'attributes': {
-            'name': 'Gabriel',
+            'name': 123,
             'email': 'person@example.com',
             'status': 'active',
-            'created_at': 'invalid-date',
           },
         },
       },
     ]) {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Right(HttpResponse(statusCode: 200, body: malformed)),
+        (_) async => Right(Reponse(statusCode: 200, body: malformed)),
       );
       when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Right(HttpResponse(statusCode: 200, body: malformed)),
+        (_) async => Right(Reponse(statusCode: 200, body: malformed)),
       );
       expect((await dataSource.getById(id: '10')).isLeft, isTrue);
       expect(

@@ -12,13 +12,9 @@ import 'package:cordato/features/authentication/domain/enums/email_status_enum.d
 import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
 import 'package:cordato/features/authentication/infrastructure/responses/sign_up_response.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
-import 'package:cordato/features/authentication/infrastructure/local/authentication_local_data_source.dart';
 
-class _AuthenticationDataSourceMock extends Mock
-    implements IAuthenticationRemoteDataSource {}
-
-class _AuthenticationLocalDataSourceMock extends Mock
-    implements IAuthenticationLocalDataSource {}
+import '../../../../support/authentication/mocks/authentication_local_data_source_mock.dart';
+import '../../../../support/authentication/mocks/authentication_remote_data_source_mock.dart';
 
 void main() {
   const password = 'secret';
@@ -26,12 +22,13 @@ void main() {
 
   late AuthenticationRepository repository;
   late IAuthenticationRemoteDataSource dataSource;
-  late _AuthenticationLocalDataSourceMock localDataSource;
+  late AuthenticationLocalDataSourceMock localDataSource;
 
   setUp(() {
-    dataSource = _AuthenticationDataSourceMock();
-    localDataSource = _AuthenticationLocalDataSourceMock();
+    dataSource = AuthenticationRemoteDataSourceMock();
+    localDataSource = AuthenticationLocalDataSourceMock();
     when(() => localDataSource.saveToken(any())).thenAnswer((_) async {});
+    when(() => localDataSource.saveUserId(any())).thenAnswer((_) async {});
     repository = AuthenticationRepository(
       remoteDataSource: dataSource,
       localDataSource: localDataSource,
@@ -43,58 +40,58 @@ void main() {
       setUp(() {
         when(() => dataSource.logout())
             .thenAnswer((_) async => const Right(true));
-        when(() => localDataSource.removeToken()).thenAnswer((_) async {});
-      });
-
-      test('revokes remotely before removing the local token and returning success', () async {
-        final result = await repository.logout();
-
-        expect(result.right, isTrue);
-        verifyInOrder([
-          () => dataSource.logout(),
-          () => localDataSource.removeToken(),
-        ]);
-        verifyNoMoreInteractions(dataSource);
-        verifyNoMoreInteractions(localDataSource);
+        when(() => localDataSource.clear()).thenAnswer((_) async {});
       });
 
       test(
-        'preserves remote errors without removing the local token',
+        'revokes remotely before clearing local storage and returning success',
         () async {
-          when(() => dataSource.logout()).thenAnswer(
-            (_) async => const Left(
-              ErrorsResponse(
-                errors: [
-                  ErrorResponse(
-                    status: '403',
-                    title: 'Não autorizado',
-                    detail: 'Conta bloqueada.',
-                  ),
-                  ErrorResponse(
-                    status: '403',
-                    detail: 'Entre em contato com o suporte.',
-                  ),
-                ],
-              ),
-            ),
-          );
-
           final result = await repository.logout();
 
-          expect(result.left.errors, hasLength(2));
-          expect(result.left.errors.first.status, '403');
-          expect(result.left.errors.first.title, 'Não autorizado');
-          expect(result.left.errors.first.detail, 'Conta bloqueada.');
-          expect(
-            result.left.errors.last.detail,
-            'Entre em contato com o suporte.',
-          );
-          verifyZeroInteractions(localDataSource);
+          expect(result.right, isTrue);
+          verifyInOrder([
+            () => dataSource.logout(),
+            () => localDataSource.clear(),
+          ]);
+          verifyNoMoreInteractions(dataSource);
+          verifyNoMoreInteractions(localDataSource);
         },
       );
 
+      test('preserves remote errors without clearing local storage', () async {
+        when(() => dataSource.logout()).thenAnswer(
+          (_) async => const Left(
+            ErrorsResponse(
+              errors: [
+                ErrorResponse(
+                  status: '403',
+                  title: 'Não autorizado',
+                  detail: 'Conta bloqueada.',
+                ),
+                ErrorResponse(
+                  status: '403',
+                  detail: 'Entre em contato com o suporte.',
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final result = await repository.logout();
+
+        expect(result.left.errors, hasLength(2));
+        expect(result.left.errors.first.status, '403');
+        expect(result.left.errors.first.title, 'Não autorizado');
+        expect(result.left.errors.first.detail, 'Conta bloqueada.');
+        expect(
+          result.left.errors.last.detail,
+          'Entre em contato com o suporte.',
+        );
+        verifyZeroInteractions(localDataSource);
+      });
+
       test(
-        'does not remove the token when remote logout is not accepted',
+        'does not clear local storage when remote logout is not accepted',
         () async {
           when(() => dataSource.logout())
               .thenAnswer((_) async => const Right(false));
@@ -104,30 +101,36 @@ void main() {
         },
       );
 
-      test('converts unexpected remote exceptions without removing the local token', () async {
-        when(() => dataSource.logout())
-            .thenAnswer((_) async => throw StateError('offline'));
+      test(
+        'converts unexpected remote exceptions without clearing local storage',
+        () async {
+          when(() => dataSource.logout())
+              .thenAnswer((_) async => throw StateError('offline'));
 
-        expect(
-          (await repository.logout()).left.errors.single.title,
-          'Erro desconhecido',
-        );
-        verifyZeroInteractions(localDataSource);
-      });
+          expect(
+            (await repository.logout()).left.errors.single.title,
+            'Erro desconhecido',
+          );
+          verifyZeroInteractions(localDataSource);
+        },
+      );
 
-      test('returns an unknown error if local token removal fails', () async {
-        when(() => localDataSource.removeToken())
-            .thenAnswer((_) async => throw StateError('storage unavailable'));
+      test(
+        'returns an unknown error if local storage clearing fails',
+        () async {
+          when(() => localDataSource.clear())
+              .thenAnswer((_) async => throw StateError('storage unavailable'));
 
-        expect(
-          (await repository.logout()).left.errors.single.title,
-          'Erro desconhecido',
-        );
-        verify(() => dataSource.logout()).called(1);
-        verify(() => localDataSource.removeToken()).called(1);
-      });
+          expect(
+            (await repository.logout()).left.errors.single.title,
+            'Erro desconhecido',
+          );
+          verify(() => dataSource.logout()).called(1);
+          verify(() => localDataSource.clear()).called(1);
+        },
+      );
 
-      test('waits for revocation before removing the token', () async {
+      test('waits for revocation before clearing local storage', () async {
         final revoked = Completer<LogoutDataSourceType>();
         when(() => dataSource.logout()).thenAnswer((_) => revoked.future);
 
@@ -136,13 +139,13 @@ void main() {
         revoked.complete(const Right(true));
 
         expect((await result).right, isTrue);
-        verify(() => localDataSource.removeToken()).called(1);
+        verify(() => localDataSource.clear()).called(1);
       });
 
-      test('only succeeds after local token removal completes', () async {
+      test('only succeeds after local storage clearing completes', () async {
         final removed = Completer<void>();
         final removing = Completer<void>();
-        when(() => localDataSource.removeToken()).thenAnswer((_) {
+        when(() => localDataSource.clear()).thenAnswer((_) {
           removing.complete();
           return removed.future;
         });
@@ -231,6 +234,7 @@ void main() {
       expect(data.right.expiresAt, expiresAt);
       expect(data.right.token, 'example-token');
       verify(() => localDataSource.saveToken('example-token')).called(1);
+      verify(() => localDataSource.saveUserId('user-1')).called(1);
       verify(() => dataSource.signIn(email: email, password: password))
           .called(1);
     });
@@ -267,7 +271,7 @@ void main() {
       expect(data.left.errors.first.detail, 'E-mail inválido.');
       expect(data.left.errors.first.pointer, '/data/attributes/email');
       expect(data.left.errors.last.pointer, '/data/attributes/password');
-      verifyNever(() => localDataSource.saveToken(any()));
+      verifyZeroInteractions(localDataSource);
     });
 
     test('sign-in fails if the token cannot be saved', () async {
@@ -290,34 +294,67 @@ void main() {
       expect(data.left.errors.single.title, 'Erro desconhecido');
     });
 
-    test('sign-in only succeeds after the token has been saved', () async {
-      final saved = Completer<void>();
-      final saving = Completer<void>();
+    test('sign-in fails if the user id cannot be saved', () async {
       when(() => dataSource.signIn(email: email, password: password))
           .thenAnswer(
             (_) async => Right(
               SignInResponse(
                 userId: 'user-1',
-                token: 'opaque-token',
+                token: 'example-token',
                 expiresAt: DateTime.utc(2026, 11),
               ),
             ),
           );
-      when(() => localDataSource.saveToken('opaque-token')).thenAnswer((_) {
-        saving.complete();
-        return saved.future;
-      });
+      when(() => localDataSource.saveUserId('user-1'))
+          .thenAnswer((_) async => throw StateError('storage unavailable'));
 
-      var completed = false;
-      final signIn = repository.signIn(email: email, password: password)
-        ..then((_) => completed = true);
-      await saving.future;
-      expect(completed, isFalse);
+      final data = await repository.signIn(email: email, password: password);
 
-      saved.complete();
-      expect((await signIn).right.token, 'opaque-token');
-      expect(completed, isTrue);
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors.single.title, 'Erro desconhecido');
     });
+
+    test(
+      'sign-in only succeeds after both token and user id have been saved',
+      () async {
+        final saved = Completer<void>();
+        final saving = Completer<void>();
+        final userIdSaved = Completer<void>();
+        final savingUserId = Completer<void>();
+        when(() => dataSource.signIn(email: email, password: password))
+            .thenAnswer(
+              (_) async => Right(
+                SignInResponse(
+                  userId: 'user-1',
+                  token: 'opaque-token',
+                  expiresAt: DateTime.utc(2026, 11),
+                ),
+              ),
+            );
+        when(() => localDataSource.saveToken('opaque-token')).thenAnswer((_) {
+          saving.complete();
+          return saved.future;
+        });
+        when(() => localDataSource.saveUserId('user-1')).thenAnswer((_) {
+          savingUserId.complete();
+          return userIdSaved.future;
+        });
+
+        var completed = false;
+        final signIn = repository.signIn(email: email, password: password)
+          ..then((_) => completed = true);
+        await saving.future;
+        await savingUserId.future;
+        expect(completed, isFalse);
+
+        saved.complete();
+        await Future<void>.delayed(Duration.zero);
+        expect(completed, isFalse);
+        userIdSaved.complete();
+        expect((await signIn).right.token, 'opaque-token');
+        expect(completed, isTrue);
+      },
+    );
 
     test('sign-up returns true when registration succeeds', () async {
       when(() => dataSource.signUp(email: email, password: password))

@@ -1,19 +1,18 @@
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 
 import 'package:cordato/features/session/infrastructure/local/session_local_data_source.dart';
 
-class _StorageClientMock extends Mock implements IStorageClient {}
+import '../../../../support/core/mocks/storage_client_mock.dart';
 
 void main() {
-  late _StorageClientMock storage;
+  late StorageClientMock storage;
   late SessionLocalDataSource dataSource;
 
   setUp(() {
-    storage = _StorageClientMock();
+    storage = StorageClientMock();
     dataSource = SessionLocalDataSource(storage: storage);
   });
 

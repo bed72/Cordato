@@ -4,14 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
-import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
 
-class _RepositoryMock extends Mock implements IAuthenticationRepository {}
+import '../../../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
   test('confirms the URL when the command is executed', () async {
-    final repository = _RepositoryMock();
+    final repository = AuthenticationRepositoryMock();
     final command = CallbackCommand(repository: repository);
     addTearDown(command.dispose);
     verifyZeroInteractions(repository);
@@ -30,7 +29,7 @@ void main() {
     EmailVerificationStatusEnum.failure,
   ]) {
     test('exposes $status as a result of confirmation', () async {
-      final repository = _RepositoryMock();
+      final repository = AuthenticationRepositoryMock();
       final command = CallbackCommand(repository: repository);
       addTearDown(command.dispose);
       when(() => repository.confirmEmail('signed'))
@@ -44,7 +43,7 @@ void main() {
   test(
     'exposes an unexpected repository exception as a command error',
     () async {
-      final repository = _RepositoryMock();
+      final repository = AuthenticationRepositoryMock();
       final command = CallbackCommand(repository: repository);
       addTearDown(command.dispose);
       final failure = StateError('repository unavailable');
@@ -68,7 +67,7 @@ void main() {
   test(
     'shares an in-flight confirmation instead of repeating the GET',
     () async {
-      final repository = _RepositoryMock();
+      final repository = AuthenticationRepositoryMock();
       final command = CallbackCommand(repository: repository);
       addTearDown(command.dispose);
       final response = Completer<EmailVerificationStatusEnum>();

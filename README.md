@@ -7,8 +7,8 @@ família, oferecer uma visão compartilhada das finanças de seus membros.
 ## Produto
 
 O modelo de negócio tem como referência o backend legado em Kotlin. O app usa
-uma API HTTP JSON:API para autenticação; a persistência das features financeiras
-ainda não está conectada. A regra central é:
+uma API HTTP JSON:API para autenticação e possui data source remoto de User;
+a persistência das features financeiras ainda não está conectada. A regra central é:
 
 > A pessoa é dona dos próprios dados. A família é apenas uma lente de leitura.
 
@@ -24,8 +24,8 @@ Os bounded contexts do produto são:
 O contexto `identity` do backend não será reproduzido no app neste momento. A
 autenticação por e-mail e senha usa a API JSON:API; há sign-in, sign-up,
 confirmação de e-mail por link e reenvio da verificação. O token opaco do
-sign-in é salvo em storage seguro. A feature `session` lê o token na abertura
-e observa mudanças para decidir entre dashboard e welcome, inclusive após o
+sign-in e o ID do usuário são salvos em storage seguro. A feature `session` lê
+o token na abertura e observa mudanças para decidir entre dashboard e welcome, inclusive após o
 logout confirmado em Settings. Não há validação da sessão no backend ao iniciar.
 O contexto `chat` está fora do escopo atual.
 
@@ -36,7 +36,7 @@ O app já possui:
 - tela de boas-vindas;
 - tela de entrada `AppScreen` em `/`, com logo e decisão inicial pela presença do token;
 - tela de sign-in com validação, feedback de erro e persistência segura do token
-  no sucesso, seguida de navegação para o dashboard;
+  e do ID do usuário no sucesso, seguida de navegação para o dashboard;
 - tela de sign-up com validação e tela de reenvio da verificação que mostra o e-mail
   cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
   verificação após uma espera de 60 segundos e feedback da API;
@@ -44,7 +44,7 @@ O app já possui:
 - estrutura visual de formulário de gasto com descrição, valor e data;
   os handlers ainda não estão conectados e o cadastro está desabilitado;
 - tela de configurações com confirmação de saída, loading e erros em toast;
-  o logout revoga o token na API e o remove localmente, com retorno à welcome
+  o logout revoga o token na API e limpa o storage seguro, com retorno à welcome
   pelo observador global de sessão;
 - navegação de Welcome para Sign In, de Sign In para Sign Up por substituição
   de rota e de Dashboard para Settings e Expense;
@@ -52,7 +52,10 @@ O app já possui:
 - confirmação automática de e-mail ao abrir o link HTTPS, com feedback por toast
   e retorno ao sign-in após sucesso, expiração ou erro de conexão, sem criar sessão;
 - remoção do token após 401 em requisição protegida e retorno à welcome quando
-  o usuário estiver em uma rota protegida.
+  o usuário estiver em uma rota protegida;
+- estrutura de `user` com entidade, contrato de repository, DTO e data source
+  HTTP para buscar por ID, atualizar somente o nome e excluir o usuário; essa
+  estrutura ainda não está registrada em DI nem conectada a telas.
 
 `budget`, `family` e `insight` seguem planejados. Ao implementá-los, o grupo
 familiar não deve se tornar dono dos dados financeiros de seus membros.
@@ -80,6 +83,10 @@ Decisões técnicas atuais:
 - `flutter_modular` 7 com módulos de dependências separados dos módulos de rotas;
 - `command_it` para operações observáveis e estado efêmero local nos widgets;
 - Material 3 via `material_ui`, tema compartilhado, Inter e localização `pt_BR`;
+- `Requests` com parâmetros nomeados e somente `path`, `body`, `query` e `headers`;
+  caminhos do enum são usados diretamente, com IDs interpolados no data source;
+- `response<T>` compartilhado no core para conversão de sucesso e tratamento
+  dos erros JSON:API nos data sources;
 - testes unitários para lógica e adapters; validação visual e de fluxos com
   Maestro, sem suíte Flutter de widgets ou `integration_test`.
 
@@ -155,28 +162,49 @@ e data sources remoto/local. O remoto monta as requisições e usa `IHttpClient`
 do core diretamente, sem client próprio da feature. `HttpClient` preserva
 status e corpo em `HttpResponse`; `SignInResponse` e `SignUpResponse` leem os
 mapas JSON com Dart puro, o data source remoto converte erros JSON:API e o
-local grava o token. A API é externa a este repositório; não há schema ou
-migrations do backend financeiro versionados aqui. Ao conectar as features
+local grava token e ID do usuário. A API é externa a este repositório; não há
+schema ou migrations do backend financeiro versionados aqui. Ao conectar as features
 financeiras, preserve propriedade individual, autorização e invariantes no
 serviço responsável, com testes próprios.
 
-O token opaco do sign-in é armazenado por `AuthenticationLocalDataSource`
-via `FlutterSecureStorage`. `HttpPathEnum` marca endpoints protegidos; o
-`SessionInterceptor` só envia `Authorization: Bearer <token>` quando a
-rota protegida coincide com a origem e o caminho da API. `Bearer` é o esquema
+`AuthenticationLocalDataSource` usa `IStorageClient`, implementado por
+`StorageClient` com `FlutterSecureStorage`. `saveToken` grava
+`StorageKeyEnum.opaqueToken` (`@trocado.opaque_token`) e `saveUserId` grava
+`StorageKeyEnum.userId` (`@trocado.user_id`). O repository aguarda ambas as
+gravações com `Future.wait` antes de retornar sucesso. Após revogação remota
+aceita no logout, `clear()` limpa todo o storage seguro. Um 401 de endpoint
+protegido remove somente o token enviado, sem limpar o ID do usuário.
+
+`HttpPathEnum.authenticated` marca endpoints protegidos; o
+`SessionInterceptor` só envia `Authorization: Bearer <token>` quando o
+caminho relativo coincide com a origem e o endpoint da API. `Bearer` é o esquema
 HTTP, não o formato do token. A validade é controlada pelo backend; o app não
 implementa refresh nem bloqueia chamadas por `expiresAt`. A confirmação por
-link não envia token e omite a URL assinada dos logs do Dio. Um 401 de
+link usa uma URL absoluta. URLs absolutas não recebem token e o cliente HTTP
+desabilita seus redirecionamentos e logs automaticamente. Um 401 de
 requisição protegida remove o token somente se ele ainda for o token enviado;
 `SessionCommand` observa a mudança e o app volta à welcome se estiver em uma
 rota protegida.
 
-A integração HTTP atual é de autenticação. `expenses` consta no catálogo de
-endpoints protegidos, mas não há command, repository, data source ou client de
+A integração HTTP atual inclui os fluxos de autenticação e o data source e
+repository de User, registrados em `userDependenciesModule` e compostos por
+`appModule`, ainda sem apresentação. `UserRepository` converte
+respostas e erros remotos para os tipos de domínio nas operações de consulta,
+atualização do nome e exclusão. Após exclusão de User confirmada com status 204,
+o repository aguarda a limpeza de todo o storage seguro por `UserLocalDataSource`,
+que delega a `IStorageClient.clear()`. `expenses` consta
+no catálogo de endpoints protegidos, mas não há command, repository, data source ou client de
 gastos no código atual. Dashboard não consulta um perfil remoto. O logger Dio
 de debug registra headers e payloads usuais, inclusive credenciais e resposta
-de sign-in; apenas requisições com logging desabilitado, como a confirmação
-assinada, são omitidas. Em release esse logger não é instalado.
+de sign-in; requisições com URLs absolutas, como a confirmação assinada, são
+omitidas. Em release esse logger não é instalado.
+
+Os data sources de Authentication e User reutilizam a função top-level
+`response<T>` em `core/infrastructure/clients/http/responses/responses.dart`.
+Ela recebe `execute` para a requisição e `from` para converter o `HttpResponse`
+de sucesso, com acesso ao corpo e ao status, e retorna `Either<ErrorsResponse, T>`.
+Erros JSON:API são preservados; exceções inesperadas viram erro genérico.
+O status da confirmação de e-mail continua sendo tratado por Authentication.
 
 ## Revisão De Mudanças
 
@@ -184,3 +212,7 @@ Mudanças em módulos, rotas, contratos, integração HTTP, comandos de validaç
 ou configuração de release devem atualizar, na mesma alteração, a
 documentação canônica correspondente. Consulte a seção de revisão em
 [`ARCHITECTURE.md`](ARCHITECTURE.md#revisão-de-documentação).
+
+Não adicione comentários no código, incluindo comentários de documentação.
+Use nomes e estrutura claros e registre explicações e decisões nos arquivos
+Markdown, conforme a regra de [`AGENTS.md`](AGENTS.md#comentários-no-código).

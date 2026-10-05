@@ -5,7 +5,6 @@ final class const UserResponse({
   required final String name,
   required final String email,
   required final String status,
-  required final DateTime createdAt,
 }) {
   factory UserResponse.fromJson(Map<String, dynamic> json) {
     final data = json['data'] as Map<String, dynamic>;
@@ -16,17 +15,11 @@ final class const UserResponse({
       name: attributes['name'] as String,
       email: attributes['email'] as String,
       status: attributes['status'] as String,
-      createdAt: DateTime.parse(attributes['created_at'] as String),
     );
   }
 }
 
 extension UserResponseToEntity on UserResponse {
-  UserEntity toEntity() => UserEntity(
-    id: id,
-    name: name,
-    email: email,
-    status: status,
-    createdAt: createdAt,
-  );
+  UserEntity toEntity() =>
+      UserEntity(id: id, name: name, email: email, status: status);
 }

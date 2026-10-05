@@ -21,63 +21,40 @@ abstract interface class IUserRemoteDataSource {
 final class UserRemoteDataSource({required final IHttpClient _client})
     implements IUserRemoteDataSource {
   @override
-  Future<DeleteDataSourceType> delete({required String id}) => _response(
+  Future<DeleteDataSourceType> delete({required String id}) => response(
+    from: (response) => response.statusCode == 204,
     execute: () => _client.delete(
-      parameter: Requests.forPath(
-        HttpPathEnum.user,
-        pathParameters: {'id': id},
+      parameter: Requests(
+        path: '${HttpPathEnum.user.path}/${Uri.encodeComponent(id)}',
       ),
     ),
-    fromResponse: (response) {
-      if (response.statusCode != 204) {
-        throw const FormatException('Expected a 204 response');
-      }
-      return true;
-    },
   );
 
   @override
-  Future<GetByIdDataSourceType> getById({required String id}) => _response(
+  Future<GetByIdDataSourceType> getById({required String id}) => response(
+    from: (response) => .fromJson(response.body),
     execute: () => _client.get(
-      parameter: Requests.forPath(
-        HttpPathEnum.user,
-        pathParameters: {'id': id},
+      parameter: Requests(
+        path: '${HttpPathEnum.user.path}/${Uri.encodeComponent(id)}',
       ),
     ),
-    fromResponse: (response) => UserResponse.fromJson(response.body),
   );
 
   @override
   Future<UpdateDataSourceType> update({required String id, String? name}) =>
-      _response(
+      response(
+        from: (response) => .fromJson(response.body),
         execute: () => _client.patch(
-          parameter: Requests.forPath(
-            HttpPathEnum.user,
-            pathParameters: {'id': id},
+          parameter: Requests(
+            path: '${HttpPathEnum.user.path}/${Uri.encodeComponent(id)}',
             body: {
               'data': {
-                'type': 'users',
                 'id': id,
+                'type': 'users',
                 'attributes': {'name': ?name},
               },
             },
           ),
         ),
-        fromResponse: (response) => UserResponse.fromJson(response.body),
       );
-
-  Future<Either<ErrorsResponse, T>> _response<T>({
-    required Future<Responses> Function() execute,
-    required T Function(HttpResponse) fromResponse,
-  }) async {
-    try {
-      final response = await execute();
-      return response.fold<Either<ErrorsResponse, T>>(
-        (error) => Left(.fromJson(error.body)),
-        (success) => Right(fromResponse(success)),
-      );
-    } catch (_) {
-      return Left(.unknown());
-    }
-  }
 }

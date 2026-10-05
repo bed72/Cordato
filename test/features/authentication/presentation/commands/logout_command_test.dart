@@ -8,15 +8,14 @@ import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/authentication/presentation/commands/logout_command.dart';
 
-class _AuthenticationRepositoryMock extends Mock
-    implements IAuthenticationRepository {}
+import '../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
   late IAuthenticationRepository repository;
   late LogoutCommand command;
 
   setUp(() {
-    repository = _AuthenticationRepositoryMock();
+    repository = AuthenticationRepositoryMock();
     command = LogoutCommand(repository: repository);
   });
 

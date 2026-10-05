@@ -7,8 +7,7 @@ import 'package:cordato/features/authentication/presentation/screens/sign_in/com
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
-class _AuthenticationRepositoryMock extends Mock
-    implements IAuthenticationRepository {}
+import '../../../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
   const credentials = (email: 'person@example.com', password: 'secret');
@@ -17,7 +16,7 @@ void main() {
   late SignInCommand command;
 
   setUp(() {
-    repository = _AuthenticationRepositoryMock();
+    repository = AuthenticationRepositoryMock();
     command = SignInCommand(repository: repository);
   });
 

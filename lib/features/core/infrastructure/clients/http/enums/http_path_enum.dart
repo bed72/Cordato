@@ -1,8 +1,14 @@
-enum HttpPathEnum(final String path, {final bool requiresAuth = false}) {
-  signIn('authentication/sign-in'),
-  signUp('authentication/sign-up'),
-  logout('authentication/sign-out', requiresAuth: true),
-  expenses('expenses', requiresAuth: true),
-  user('users/{id}', requiresAuth: true),
-  resendEmailVerification('authentication/email-verification/resend'),
+enum HttpPathEnum({
+  required final String path,
+  required final bool authenticated,
+}) {
+  user(path: 'users', authenticated: true),
+  expenses(path: 'expenses', authenticated: true),
+  logout(path: 'authentication/sign-out', authenticated: true),
+  signIn(path: 'authentication/sign-in', authenticated: false),
+  signUp(path: 'authentication/sign-up', authenticated: false),
+  resendEmailVerification(
+    path: 'authentication/email-verification/resend',
+    authenticated: false,
+  ),
 }

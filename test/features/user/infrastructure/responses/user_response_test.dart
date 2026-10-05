@@ -24,6 +24,5 @@ void main() {
     expect(user.name, 'Trocado');
     expect(user.email, 'person@example.com');
     expect(user.status, 'active');
-    expect(user.createdAt, DateTime.utc(2026, 10, 5, 16, 48, 33));
   });
 }

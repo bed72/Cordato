@@ -1,27 +1,11 @@
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
-final class _TestAdapter({
-  required final ResponseBody Function(RequestOptions) respond,
-}) implements HttpClientAdapter {
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async => respond(options);
-
-  @override
-  void close({bool force = false}) {}
-}
+import '../../../../../support/core/fakes/http_client_adapter_fake.dart';
 
 void main() {
   late Dio dio;
@@ -38,7 +22,7 @@ void main() {
     captured = null;
     dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'));
 
-    dio.httpClientAdapter = _TestAdapter(
+    dio.httpClientAdapter = HttpClientAdapterFake(
       respond: (options) {
         captured = options;
         if (failure case final error?) throw error;
@@ -58,14 +42,17 @@ void main() {
 
   test('sends every HTTP method with its request body', () async {
     final operations = <String, Future<dynamic> Function()>{
-      'GET': () => client.get(parameter: const Requests('items')),
-      'POST': () =>
-          client.post(parameter: const Requests('items', body: {'a': 1})),
-      'PUT': () =>
-          client.put(parameter: const Requests('items', body: {'a': 1})),
-      'PATCH': () =>
-          client.patch(parameter: const Requests('items', body: {'a': 1})),
-      'DELETE': () => client.delete(parameter: const Requests('items')),
+      'GET': () => client.get(parameter: const Requests(path: 'items')),
+      'POST': () => client.post(
+        parameter: const Requests(path: 'items', body: {'a': 1}),
+      ),
+      'PUT': () => client.put(
+        parameter: const Requests(path: 'items', body: {'a': 1}),
+      ),
+      'PATCH': () => client.patch(
+        parameter: const Requests(path: 'items', body: {'a': 1}),
+      ),
+      'DELETE': () => client.delete(parameter: const Requests(path: 'items')),
     };
 
     for (final entry in operations.entries) {
@@ -86,7 +73,7 @@ void main() {
 
       final response = await client.get(
         parameter: const Requests(
-          'items?existing=1',
+          path: 'items?existing=1',
           query: {'search': 'a & b'},
           headers: {'X-Request-Id': '123'},
         ),
@@ -106,7 +93,9 @@ void main() {
     status = 422;
     body = '{"errors":[{"code":"invalid"}]}';
 
-    final response = await client.post(parameter: const Requests('items'));
+    final response = await client.post(
+      parameter: const Requests(path: 'items'),
+    );
 
     expect(response.left.statusCode, 422);
     expect(response.left.body, {
@@ -121,7 +110,9 @@ void main() {
     status = 204;
 
     expect(
-      (await client.delete(parameter: const Requests('items'))).right.body,
+      (await client.delete(parameter: const Requests(path: 'items')))
+          .right
+          .body,
       isEmpty,
     );
   });
@@ -131,7 +122,9 @@ void main() {
     status = 202;
 
     final response = await client.post(
-      parameter: const Requests('authentication/email-verification/resend'),
+      parameter: const Requests(
+        path: 'authentication/email-verification/resend',
+      ),
     );
 
     expect(response.right.body, isEmpty);
@@ -145,7 +138,7 @@ void main() {
   test('rejects a successful response that is not a JSON object', () async {
     body = '[]';
 
-    final response = await client.get(parameter: const Requests('items'));
+    final response = await client.get(parameter: const Requests(path: 'items'));
 
     expect(response.isLeft, isTrue);
   });
@@ -157,7 +150,7 @@ void main() {
       requestOptions: RequestOptions(path: 'items'),
     );
 
-    final response = await client.get(parameter: const Requests('items'));
+    final response = await client.get(parameter: const Requests(path: 'items'));
 
     expect(response.left.statusCode, 0);
     final error = ErrorsResponse.fromJson(response.left.body).errors.single;
@@ -176,7 +169,9 @@ void main() {
         requestOptions: RequestOptions(path: 'items'),
       );
 
-      final response = await client.get(parameter: const Requests('items'));
+      final response = await client.get(
+        parameter: const Requests(path: 'items'),
+      );
 
       final error = ErrorsResponse.fromJson(response.left.body).errors.single;
 
@@ -189,7 +184,7 @@ void main() {
     body = '[]';
     status = 500;
 
-    final response = await client.get(parameter: const Requests('items'));
+    final response = await client.get(parameter: const Requests(path: 'items'));
 
     final error = ErrorsResponse.fromJson(response.left.body).errors.single;
 
@@ -199,7 +194,7 @@ void main() {
   test('returns an unknown failure for malformed JSON', () async {
     body = '{invalid';
 
-    final response = await client.get(parameter: const Requests('items'));
+    final response = await client.get(parameter: const Requests(path: 'items'));
 
     final error = ErrorsResponse.fromJson(response.left.body).errors.single;
 
@@ -211,12 +206,9 @@ void main() {
 
   test('keeps unchanged request fields when copying', () {
     const request = Requests(
-      'items',
+      path: 'items',
       body: {'a': 1},
       headers: {'x': 'y'},
-      route: HttpPathEnum.expenses,
-      followRedirects: false,
-      logRequest: false,
     );
 
     final copy = request.copyWith(query: {'page': 2});
@@ -225,25 +217,12 @@ void main() {
     expect(copy.body, {'a': 1});
     expect(copy.query, {'page': 2});
     expect(copy.headers, {'x': 'y'});
-    expect(copy.route, HttpPathEnum.expenses);
-    expect(copy.followRedirects, isFalse);
-    expect(copy.logRequest, isFalse);
-
-    expect(copy.copyWith(path: 'other').route, isNull);
+    expect(copy.copyWith(path: 'other').path, 'other');
   });
 
-  test('takes path and auth metadata from HttpPathEnum', () {
-    final protected = Requests.forPath(HttpPathEnum.expenses);
-    final public = Requests.forPath(HttpPathEnum.signIn);
+  test('uses default HTTP behavior for relative paths', () async {
+    await client.get(parameter: const Requests(path: 'expenses'));
 
-    expect(protected.path, 'expenses');
-    expect(protected.route!.requiresAuth, isTrue);
-    expect(public.route!.requiresAuth, isFalse);
-  });
-
-  test('passes protected-request intent to Dio', () async {
-    await client.get(parameter: Requests.forPath(HttpPathEnum.expenses));
-
-    expect(captured!.extra[HttpExtraKeyEnum.route.key], HttpPathEnum.expenses);
+    expect(captured!.followRedirects, isTrue);
   });
 }

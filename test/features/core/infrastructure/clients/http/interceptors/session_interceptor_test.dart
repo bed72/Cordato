@@ -2,24 +2,22 @@ import 'package:dio/dio.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/interceptors/session_interceptor.dart';
 
-class _StorageClientMock extends Mock implements IStorageClient {}
+import '../../../../../../support/core/mocks/storage_client_mock.dart';
 
 void main() {
-  late _StorageClientMock storage;
+  late StorageClientMock storage;
   late HttpClient client;
   late int responseStatus;
   late RequestOptions? captured;
 
   setUp(() {
-    storage = _StorageClientMock();
+    storage = StorageClientMock();
     captured = null;
     responseStatus = 200;
     final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
@@ -46,12 +44,14 @@ void main() {
     when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async => 'opaque-token');
 
-    await client.get(parameter: Requests.forPath(HttpPathEnum.expenses));
+    await client.get(parameter: const Requests(path: 'expenses'));
 
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');
     verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
 
-    await client.post(parameter: Requests.forPath(HttpPathEnum.signIn));
+    await client.post(
+      parameter: const Requests(path: 'authentication/sign-in'),
+    );
 
     expect(captured!.headers.containsKey('Authorization'), isFalse);
     verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
@@ -61,7 +61,7 @@ void main() {
     when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async => null);
 
-    await client.get(parameter: Requests.forPath(HttpPathEnum.expenses));
+    await client.get(parameter: const Requests(path: 'expenses'));
 
     expect(captured!.headers.containsKey('Authorization'), isFalse);
   });
@@ -69,10 +69,7 @@ void main() {
   test('authenticates GET, PATCH and DELETE of the user resource', () async {
     when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async => 'opaque-token');
-    final parameter = Requests.forPath(
-      HttpPathEnum.user,
-      pathParameters: {'id': '10'},
-    );
+    const parameter = Requests(path: 'users/10');
 
     await client.get(parameter: parameter);
     expect(captured!.uri.path, '/api/users/10');
@@ -91,8 +88,10 @@ void main() {
       'https://example.com/users/10',
       'other/10',
       'https://external.example/api/users/10',
+      'https://example.com/api/users/10',
+      'users/10/../11/expenses',
     ]) {
-      await client.get(parameter: Requests(path, route: HttpPathEnum.user));
+      await client.get(parameter: Requests(path: path));
       expect(captured!.headers.containsKey('Authorization'), isFalse);
     }
     verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
@@ -106,38 +105,45 @@ void main() {
         .thenAnswer((_) async {});
 
     final response = await client.get(
-      parameter: Requests.forPath(
-        HttpPathEnum.user,
-        pathParameters: {'id': '10'},
-      ),
+      parameter: const Requests(path: 'users/10'),
     );
 
     expect(response.left.statusCode, 401);
     verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
   });
 
-  test('does not read the token for an unclassified request', () async {
-    await client.get(parameter: const Requests('expenses'));
+  test('does not read the token for an unknown endpoint', () async {
+    await client.get(parameter: const Requests(path: 'items'));
 
     expect(captured!.headers.containsKey('Authorization'), isFalse);
     verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
   });
 
-  test('does not read the token when the route differs from the URL', () async {
-    await client.get(
-      parameter: const Requests('expenses', route: HttpPathEnum.signIn),
+  test('authenticates sign-out by its path without request metadata', () async {
+    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async => 'opaque-token');
+
+    await client.delete(
+      parameter: const Requests(path: 'authentication/sign-out'),
     );
 
-    expect(captured!.headers.containsKey('Authorization'), isFalse);
-    verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
+    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
+    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
   });
+
+  test(
+    'does not authenticate a path resembling a protected endpoint',
+    () async {
+      await client.get(parameter: const Requests(path: 'expenses-other'));
+
+      expect(captured!.headers.containsKey('Authorization'), isFalse);
+      verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
+    },
+  );
 
   test('does not send the token to an external URL', () async {
     await client.get(
-      parameter: const Requests(
-        'https://external.example/items',
-        route: HttpPathEnum.expenses,
-      ),
+      parameter: const Requests(path: 'https://external.example/expenses'),
     );
 
     expect(captured!.headers.containsKey('Authorization'), isFalse);
@@ -149,7 +155,7 @@ void main() {
         .thenThrow(StateError('storage unavailable'));
 
     final response = await client.get(
-      parameter: Requests.forPath(HttpPathEnum.expenses),
+      parameter: const Requests(path: 'expenses'),
     );
 
     expect(response.isLeft, isTrue);
@@ -164,7 +170,7 @@ void main() {
         .thenAnswer((_) async {});
 
     final response = await client.get(
-      parameter: Requests.forPath(HttpPathEnum.expenses),
+      parameter: const Requests(path: 'expenses'),
     );
 
     expect(response.isLeft, isTrue);
@@ -176,7 +182,7 @@ void main() {
     responseStatus = 401;
 
     final response = await client.post(
-      parameter: Requests.forPath(HttpPathEnum.signIn),
+      parameter: const Requests(path: 'authentication/sign-in'),
     );
 
     expect(response.left.statusCode, 401);
@@ -189,7 +195,7 @@ void main() {
         .thenAnswer((_) async => 'opaque-token');
 
     final response = await client.get(
-      parameter: Requests.forPath(HttpPathEnum.expenses),
+      parameter: const Requests(path: 'expenses'),
     );
 
     expect(response.left.statusCode, 403);
@@ -205,7 +211,7 @@ void main() {
           .thenAnswer((_) async => ++reads == 1 ? 'old-token' : 'new-token');
 
       final response = await client.get(
-        parameter: Requests.forPath(HttpPathEnum.expenses),
+        parameter: const Requests(path: 'expenses'),
       );
 
       expect(response.left.statusCode, 401);
@@ -221,7 +227,7 @@ void main() {
         .thenThrow(StateError('storage unavailable'));
 
     final response = await client.get(
-      parameter: Requests.forPath(HttpPathEnum.expenses),
+      parameter: const Requests(path: 'expenses'),
     );
 
     expect(response.left.statusCode, 401);

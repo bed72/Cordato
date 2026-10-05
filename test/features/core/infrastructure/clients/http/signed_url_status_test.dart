@@ -1,59 +1,38 @@
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:talker_dio_logger/talker_dio_logger.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/http/factories/dio_factory.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/factories/dio_factory.dart';
 
-class _StorageClientMock extends Mock implements IStorageClient {}
-
-final class _TestAdapter({
-  required final ResponseBody Function(RequestOptions) respond,
-}) implements HttpClientAdapter {
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async => respond(options);
-
-  @override
-  void close({bool force = false}) {}
-}
+import '../../../../../support/core/mocks/storage_client_mock.dart';
+import '../../../../../support/core/fakes/http_client_adapter_fake.dart';
 
 void main() {
   const url =
       'https://other.example/api/email-verification/12/abc123?expires=123456&signature=abcdef012345';
   late Dio dio;
   late int status;
-  late RequestOptions? request;
   late HttpClient client;
-  late _StorageClientMock storage;
   late bool connectionFails;
+  late RequestOptions? request;
+  late StorageClientMock storage;
 
   setUp(() {
-    storage = _StorageClientMock();
+    storage = StorageClientMock();
     dio = DioFactory.create(
-      baseUrl: 'https://api.cordato.cloud/api/',
       storage: storage,
+      baseUrl: 'https://api.cordato.cloud/api/',
     );
     status = 204;
     request = null;
     connectionFails = false;
-    dio.httpClientAdapter = _TestAdapter(
+    dio.httpClientAdapter = HttpClientAdapterFake(
       respond: (options) {
         request = options;
         if (connectionFails) {
-          throw DioException(
-            requestOptions: options,
-            type: DioExceptionType.connectionError,
-          );
+          throw DioException(requestOptions: options, type: .connectionError);
         }
         return ResponseBody.fromString('', status);
       },
@@ -61,64 +40,31 @@ void main() {
     client = HttpClient(dio: dio);
   });
 
-  test('sends the original URL without auth or redirects', () async {
-    final response = await client.get(
-      parameter: const Requests(url, followRedirects: false, logRequest: false),
-    );
-    expect(response.right.statusCode, 204);
-    expect(request!.uri.toString(), url);
+  test('sends the original absolute URL without authentication', () async {
+    final response = await client.get(parameter: const Requests(path: url));
+
     expect(request!.method, 'GET');
+    expect(request!.uri.toString(), url);
+    expect(response.right.statusCode, 204);
     expect(request!.headers.containsKey('Authorization'), isFalse);
-    expect(request!.followRedirects, isFalse);
-    expect(request!.extra[HttpExtraKeyEnum.skipLogging.key], isTrue);
+
     verifyNever(() => storage.read(key: any(named: 'key')));
   });
 
-  test('returns the response status without following redirects', () async {
+  test('preserves failure and redirect response statuses', () async {
     status = 403;
-    final forbidden = await client.get(
-      parameter: const Requests(url, followRedirects: false, logRequest: false),
-    );
+    final forbidden = await client.get(parameter: const Requests(path: url));
     expect(forbidden.left.statusCode, 403);
+
     status = 302;
-    final redirect = await client.get(
-      parameter: const Requests(url, followRedirects: false, logRequest: false),
-    );
+    final redirect = await client.get(parameter: const Requests(path: url));
     expect(redirect.left.statusCode, 302);
-    expect(request!.followRedirects, isFalse);
   });
 
-  test('returns null on connection failure', () async {
+  test('returns status zero on connection failure', () async {
     connectionFails = true;
-    final response = await client.get(
-      parameter: const Requests(url, followRedirects: false, logRequest: false),
-    );
+    final response = await client.get(parameter: const Requests(path: url));
+
     expect(response.left.statusCode, 0);
   });
-
-  test(
-    'keeps the signed URL out of request, response and error logs',
-    () async {
-      await client.get(
-        parameter: const Requests(
-          url,
-          followRedirects: false,
-          logRequest: false,
-        ),
-      );
-      final logger = dio.interceptors.whereType<TalkerDioLogger>().single;
-      final options = request!;
-      expect(logger.settings.requestFilter!(options), isFalse);
-      expect(
-        logger.settings.responseFilter!(
-          Response<void>(requestOptions: options, statusCode: 204),
-        ),
-        isFalse,
-      );
-      expect(
-        logger.settings.errorFilter!(DioException(requestOptions: options)),
-        isFalse,
-      );
-    },
-  );
 }

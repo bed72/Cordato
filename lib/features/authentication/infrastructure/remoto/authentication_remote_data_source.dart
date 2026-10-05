@@ -33,37 +33,50 @@ abstract interface class IAuthenticationRemoteDataSource {
 final class AuthenticationRemoteDataSource({required final IHttpClient _client})
     implements IAuthenticationRemoteDataSource {
   @override
-  Future<LogoutDataSourceType> logout() => _response(
-    fromJson: (_) => true,
+  Future<LogoutDataSourceType> logout() => response(
+    from: (_) => true,
     execute: () =>
-        _client.delete(parameter: Requests.forPath(HttpPathEnum.logout)),
+        _client.delete(parameter: Requests(path: HttpPathEnum.logout.path)),
   );
 
   @override
+  Future<ResendEmailDataSourceType> resendEmail({required String email}) =>
+      response(
+        from: (_) => true,
+        execute: () => _client.post(
+          parameter: Requests(
+            path: HttpPathEnum.resendEmailVerification.path,
+            body: {
+              'data': {
+                'type': 'email-verifications',
+                'attributes': {'email': email},
+              },
+            },
+          ),
+        ),
+      );
+
+  @override
   Future<int?> confirmEmail(String url) async {
-    try {
-      final response = await _client.get(
-        parameter: Requests(url, followRedirects: false, logRequest: false),
-      );
-      final status = response.fold(
-        (failure) => failure.statusCode,
-        (success) => success.statusCode,
-      );
-      return status == 0 ? null : status;
-    } catch (_) {
-      return null;
-    }
+    final response = await _client.get(parameter: Requests(path: url));
+
+    final status = response.fold(
+      (failure) => failure.statusCode,
+      (success) => success.statusCode,
+    );
+
+    return status == 0 ? null : status;
   }
 
   @override
   Future<SignInDataSourceType> signIn({
     required String email,
     required String password,
-  }) => _response(
-    fromJson: SignInResponse.fromJson,
+  }) => response(
+    from: (response) => .fromJson(response.body),
     execute: () => _client.post(
-      parameter: Requests.forPath(
-        HttpPathEnum.signIn,
+      parameter: Requests(
+        path: HttpPathEnum.signIn.path,
         body: {
           'data': {
             'type': 'access-tokens',
@@ -78,11 +91,11 @@ final class AuthenticationRemoteDataSource({required final IHttpClient _client})
   Future<SignUpDataSourceType> signUp({
     required String email,
     required String password,
-  }) => _response(
-    fromJson: SignUpResponse.fromJson,
+  }) => response(
+    from: (response) => .fromJson(response.body),
     execute: () => _client.post(
-      parameter: Requests.forPath(
-        HttpPathEnum.signUp,
+      parameter: Requests(
+        path: HttpPathEnum.signUp.path,
         body: {
           'data': {
             'type': 'sign-ups',
@@ -97,37 +110,4 @@ final class AuthenticationRemoteDataSource({required final IHttpClient _client})
       ),
     ),
   );
-
-  @override
-  Future<ResendEmailDataSourceType> resendEmail({required String email}) =>
-      _response(
-        fromJson: (_) => true,
-        execute: () => _client.post(
-          parameter: Requests.forPath(
-            HttpPathEnum.resendEmailVerification,
-            body: {
-              'data': {
-                'type': 'email-verifications',
-                'attributes': {'email': email},
-              },
-            },
-          ),
-        ),
-      );
-
-  Future<Either<ErrorsResponse, T>> _response<T>({
-    required Future<Responses> Function() execute,
-    required T Function(Map<String, dynamic>) fromJson,
-  }) async {
-    try {
-      final response = await execute();
-
-      return response.fold<Either<ErrorsResponse, T>>(
-        (error) => Left(.fromJson(error.body)),
-        (success) => Right(fromJson(success.body)),
-      );
-    } catch (_) {
-      return Left(.unknown());
-    }
-  }
 }

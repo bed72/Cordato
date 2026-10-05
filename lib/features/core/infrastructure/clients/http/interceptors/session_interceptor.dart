@@ -4,7 +4,6 @@ import 'package:cordato/features/core/infrastructure/clients/storage/storage_cli
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
 
 final class SessionInterceptor({required final IStorageClient storage})
     extends Interceptor {
@@ -56,27 +55,30 @@ final class SessionInterceptor({required final IStorageClient storage})
   }
 
   bool _requiresToken(RequestOptions options) {
-    final route = options.extra[HttpExtraKeyEnum.route.key];
-    if (route is! HttpPathEnum || !route.requiresAuth) return false;
-
     final base = Uri.parse(options.baseUrl);
+    if (Uri.parse(options.path).isAbsolute) return false;
     if (options.uri.origin != base.origin) return false;
-
-    final expected = base.resolve(route.path).pathSegments;
     final actual = options.uri.pathSegments;
-    if (actual.length != expected.length) return false;
-
-    for (var index = 0; index < expected.length; index++) {
-      if (expected[index] == '{id}') {
-        if (actual[index].isEmpty ||
-            actual[index] == '.' ||
-            actual[index] == '..') {
-          return false;
+    for (final endpoint in HttpPathEnum.values) {
+      if (!endpoint.authenticated) continue;
+      final expected = base.resolve(endpoint.path).pathSegments;
+      final hasId = endpoint == HttpPathEnum.user;
+      if (actual.length != expected.length + (hasId ? 1 : 0)) continue;
+      var matches = true;
+      for (var index = 0; index < expected.length; index++) {
+        if (actual[index] != expected[index]) {
+          matches = false;
+          break;
         }
-      } else if (actual[index] != expected[index]) {
-        return false;
+      }
+      if (matches &&
+          (!hasId ||
+              (actual.last.isNotEmpty &&
+                  actual.last != '.' &&
+                  actual.last != '..'))) {
+        return true;
       }
     }
-    return true;
+    return false;
   }
 }

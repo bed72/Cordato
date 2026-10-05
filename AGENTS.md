@@ -23,8 +23,10 @@ Cordato é um aplicativo de finanças pessoais e familiares. Cada pessoa é dona
 dos próprios dados financeiros; uma família é somente uma lente de leitura
 compartilhada entre seus membros, não uma dona de dinheiro.
 
-O modelo de domínio validado possui estes bounded contexts:
+O produto possui o contexto de dados do usuário e os contextos financeiros:
 
+- `user`: dados do usuário; possui entidade, contrato de repository, DTO e data
+  source remoto, implementação de repository e módulo de dependências, sem apresentação.
 - `expense`: fatos atômicos de gastos, pertencentes a uma pessoa.
 - `budget`: tetos planejados por intervalo de datas; gasto e saldo são derivados.
 - `family`: organização entre membros de uma família, com leitura combinada e sem escrita nos dados de outra pessoa.
@@ -32,12 +34,13 @@ O modelo de domínio validado possui estes bounded contexts:
 
 O aplicativo integra sign-in e sign-up por e-mail e senha à API HTTP JSON:API;
 também confirma e-mail por link e permite reenviar a verificação. O token opaco
-do sign-in é persistido em storage seguro. A feature `session` lê e observa a
-presença do token. `AppScreen`, em `features/root/presentation/`, usa essa leitura para
+do sign-in e o ID do usuário são persistidos em storage seguro. A feature
+`session` lê e observa a presença do token. `AppScreen`, em
+`features/root/presentation/`, usa essa leitura para
 escolher a rota inicial em `/`; `AppWidget` observa mudanças e redireciona após
 401 de requisição protegida e após logout confirmado em Settings. O logout
-revoga remotamente o token antes de removê-lo pelo data source local de
-Authentication. `LogoutCommand` pertence a `authentication` e depende do
+revoga remotamente o token antes de limpar todo o storage seguro pelo data
+source local de Authentication. `LogoutCommand` pertence a `authentication` e depende do
 contrato de repository; Settings recebe esse command. Não há validação da
 sessão no backend na abertura, refresh automático ou guard do Modular.
 O Kotlin legado é somente referência de domínio.
@@ -72,6 +75,15 @@ Regras de domínio que devem ser preservadas nas features financeiras:
 - Não faça commit, push ou alterações destrutivas sem solicitação explícita.
 - Mudanças estruturais devem atualizar a documentação canônica na mesma alteração.
 
+### Comentários No Código
+
+- Não adicione comentários no código: comentários de linha, de bloco ou de
+  documentação, incluindo `//`, `/* ... */`, `///` e `/** ... */`.
+- Use nomes, tipos, testes e organização do código para expressar a intenção.
+- Registre explicações, decisões e contratos nos arquivos Markdown apropriados,
+  especialmente `ARCHITECTURE.md`, `README.md` e este arquivo.
+- Não remova comentários existentes fora do escopo da tarefa.
+
 ## Stack Atual
 
 - Flutter/Dart com constraint de SDK `^3.13.2` em `pubspec.yaml`.
@@ -79,7 +91,7 @@ Regras de domínio que devem ser preservadas nas features financeiras:
 - `flutter_modular` 7 para módulos, injeção de dependências e rotas.
 - `command_it` para operações assíncronas observáveis pela apresentação.
 - `listen_it` está declarado, mas não é usado diretamente no código atual.
-- `dio` para integração HTTP JSON:API de autenticação.
+- `dio` para integração HTTP JSON:API de Authentication e User.
 - `flutter_secure_storage` para armazenamento seguro.
 - `mocktail` e `flutter_test` para testes.
 - Fonte de aplicação: `Inter-Variable.ttf`.
@@ -103,6 +115,13 @@ lib/
       domain/
       infrastructure/
       presentation/
+    user/
+      domain/
+        entities/user_entity.dart
+        repositories/interface_user_repository.dart
+      infrastructure/
+        remoto/user_remote_data_source.dart
+        responses/user_response.dart
     <feature>/
       <feature>_module.dart
       domain/
@@ -131,6 +150,8 @@ test/
 Feature code deve ficar dentro da própria feature. O `core` contém apenas
 capacidades realmente compartilhadas, como tema, widgets básicos, animações,
 imagens, storage e `Either`.
+Também oferece o cliente HTTP, os responses de erro e a função `response<T>`
+compartilhada pelos data sources.
 
 Os bounded contexts do produto devem ser refletidos em features próprias,
 quando implementados. `dashboard` é uma feature de apresentação e composição,
@@ -144,6 +165,39 @@ global são composição do app em `features/root/presentation/`, não telas de
 `session`. `root` é uma feature de apresentação global, sem domínio, repository
 ou módulo próprio no estado atual; `app_module.dart` registra sua rota `/`.
 Não crie camadas vazias para features que hoje possuem somente apresentação.
+Crie módulos e demais camadas apenas quando houver dependências, rotas ou
+implementações reais a registrar. A feature `user` possui `userDependenciesModule`
+em `user_module.dart`, sem `path`, registrando os data sources remoto e local e
+`IUserRepository` como lazy singletons e composto por `appModule`.
+
+### Contexto User
+
+- `UserEntity` é imutável, com `id`, `name`, `email` e `status` como `String` e
+  `createdAt` como `DateTime`. Não inclui `updatedAt`, `type` ou `links`.
+- `status` preserva o valor textual da API; não invente estados de enum sem
+  contrato definido.
+- `IUserRepository` define `getById({required String id})`,
+  `delete({required String id})` e `update({required String id, String? name})`.
+  Os resultados usam typedefs `Either<ErrorsEntity, UserEntity>` para consulta
+  e atualização e `Either<ErrorsEntity, bool>` para exclusão.
+- Atualização permite somente `name`, omitido do payload quando nulo. Não
+  inclua atualização de e-mail, status ou datas sem uma nova decisão.
+- `IUserRemoteDataSource` e `UserRemoteDataSource` ficam no mesmo arquivo em
+  `infrastructure/remoto/`, seguindo o padrão de Authentication. O DTO
+  `UserResponse` faz parsing e oferece `UserResponseToEntity.toEntity()`.
+- GET e PATCH retornam `Either<ErrorsResponse, UserResponse>`. DELETE retorna
+  `Either<ErrorsResponse, bool>`, com `true` para 204 e `false` para outros 2xx.
+- User não realiza autenticação ou leitura de sessão. `IUserLocalDataSource` e
+  `UserLocalDataSource` ficam no mesmo arquivo em `infrastructure/local/`.
+  A implementação recebe `IStorageClient` e delega `clear()`, propagando falhas.
+  `UserRepository.delete` aguarda a exclusão remota e limpa o storage pelo data
+  source local somente em `Right(true)` (status 204), antes de retornar sucesso.
+  `Left` e `Right(false)` não acionam a limpeza; falha local retorna erro
+  genérico. Dashboard ainda não consome esse contexto e mantém o nome fixo.
+- `UserRepository`, em `data/repositories/`, implementa `IUserRepository` por
+  delegação a `IUserRemoteDataSource` e coordenação de `IUserLocalDataSource`, converte responses para entidades e
+  traduz exceções inesperadas em `ErrorsEntity.unknown()`. Exclusão preserva
+  o booleano devolvido pelo data source.
 
 ## Imports
 
@@ -172,9 +226,10 @@ import 'package:cordato/features/...';
 Use imports explícitos e remova imports não utilizados. Não adicione barrel
 files ou exports globais sem uma necessidade clara.
 
-Imports internos do projeto devem sempre usar o caminho completo com o prefixo
-`package:cordato/`. Não use imports relativos como `import 'data/...';` ou
-`import '../...';`.
+Imports de código da aplicação devem sempre usar o caminho completo com o
+prefixo `package:cordato/`. Não use imports relativos entre arquivos de `lib/`.
+Nos testes, imports de suporte em `test/support/` usam caminhos relativos
+explícitos, pois esses arquivos não pertencem ao pacote de produção em `lib/`.
 
 ## Primary Constructors
 
@@ -453,7 +508,8 @@ Use a variante semântica mais próxima (`headlineMedium`, `headlineSmall`,
 Use `context.radius` para raios compartilhados. Essa extensão depende de
 `CornerRadiusToken` estar registrado por `Themes.light` ou `Themes.dark`.
 Widgets testados com `MaterialApp` puro podem falhar se não instalarem esse
-tema; use o tema completo no harness.
+tema; previews devem instalar o tema completo pelo wrapper compartilhado.
+Não crie testes Flutter de widgets para esse fim.
 
 Tokens de raio atuais incluem `cornerRadius050`, `100`, `300`, `500`, `700` e
 `Full`. Dimensões que são específicas de uma tela podem permanecer locais, mas
@@ -595,18 +651,39 @@ falhas de transporte recebem status `0`. `AuthenticationRemoteDataSource`
 converte os corpos em respostas tipadas e erros JSON:API. Os endpoints
 relativos à base preservam o prefixo `/api/`.
 
+Data sources que retornam `Either<ErrorsResponse, T>` reutilizam `response<T>`
+de `core/infrastructure/clients/http/responses/responses.dart`. Informe
+`execute` para executar a requisição e `from` para converter o `HttpResponse`
+de sucesso, usando seu corpo ou status. A função preserva erros JSON:API e
+converte exceções inesperadas em erro genérico.
+
 O sign-in usa e-mail e senha. No sucesso, `AuthenticationRepository` solicita a
-`IAuthenticationLocalDataSource` que grave o token via `IStorageClient`; falha
-de gravação impede o sucesso. A chave é `StorageKeyEnum.opaqueToken`, usada
-também pelo `SessionInterceptor`. `HttpPathEnum.requiresAuth` marca
-endpoints protegidos e `Requests.forPath` leva a rota ao cliente HTTP: o
-interceptor só lê o token para a rota protegida correspondente na origem/base
-da API e envia `Authorization: Bearer <token>`. O token é opaco; `Bearer` é o
-esquema HTTP, e a validade do token é controlada pelo backend. Um 401 dessa
+`IAuthenticationLocalDataSource` que grave token e ID via `saveToken` e
+`saveUserId`, usando `IStorageClient`. O repository aguarda ambas as gravações
+com `Future.wait`; falha de gravação impede o retorno de sucesso. As chaves são
+`StorageKeyEnum.opaqueToken` (`@trocado.opaque_token`) e `StorageKeyEnum.userId`
+(`@trocado.user_id`). O token é usado também pelo `SessionInterceptor`.
+O logout aceito remotamente chama `clear()` para limpar todo o storage seguro.
+Um 401 de endpoint protegido remove somente o token enviado, preservando o ID.
+`HttpPathEnum.authenticated` marca
+endpoints protegidos. Os data sources usam `Requests(path: ...)`, com caminhos
+obtidos do enum e ids interpolados com `Uri.encodeComponent`. Requests possui
+somente `path`, `body`, `query` e `headers`. O interceptor identifica os endpoints
+protegidos pelo caminho na origem/base da API e envia
+`Authorization: Bearer <token>`. URLs absolutas não recebem token. O token é
+opaco; `Bearer` é o esquema HTTP, e a validade do token é controlada pelo backend. Um 401 dessa
 requisição remove somente o token enviado, se ainda for o valor armazenado;
 requisições públicas não apagam a sessão. `expenses` está
 no catálogo de caminhos protegidos, mas não há integração de gastos com a API.
 O sucesso do sign-in notifica `SessionCommand` e conduz ao dashboard.
+
+`Requests.path` é uma `String` obrigatória nomeada. Caminhos fixos usam
+`Requests(path: HttpPathEnum.signIn.path)`; User usa
+`Requests(path: '${HttpPathEnum.user.path}/${Uri.encodeComponent(id)}')`.
+`HttpPathEnum.user.path` contém somente `users`, sem placeholder de ID.
+Não adicione factory `forPath`, campo `route` ou flags `logRequest` e
+`followRedirects` a Requests; autenticação e política de URLs absolutas são
+responsabilidades do interceptor e do cliente HTTP.
 
 Sign-up e reenvio usam endpoints públicos. Para confirmar e-mail, a URL
 assinada recebida no deep link é enviada sem reconstrução por `IHttpClient.get`,
@@ -616,9 +693,9 @@ validar host, caminho ou assinatura localmente. O comando de confirmação
 recebe uma `String` não nula; nenhum desses fluxos cria sessão.
 
 O logger HTTP está ativo apenas em debug e atualmente registra headers e
-payloads das requisições usuais, inclusive dados de sign-in; requisições com
-`Requests(logRequest: false)`, como a confirmação por URL assinada, são
-omitidas dos logs de request, response e error.
+payloads das requisições usuais, inclusive dados de sign-in. Para caminhos que
+são URLs absolutas, como a confirmação assinada, o cliente HTTP desabilita
+redirecionamentos e logging de request, response e error automaticamente.
 
 O formulário de gastos ainda não executa criação: seus handlers são placeholders
 e o botão está desabilitado em loading fixo. `budget`,
@@ -651,11 +728,12 @@ final featureRoutesModule = createModule(
 
 Regras:
 
-- Cada feature declara seu módulo em `<feature>_module.dart`.
+- Quando uma feature precisar de registros de DI ou rotas, declare seu módulo
+  em `<feature>_module.dart`; não crie módulo vazio para padronizar a estrutura.
 - Separe `<feature>DependenciesModule`, sem `path`, de
   `<feature>RoutesModule` quando houver dependências compartilhadas e rotas.
 - `app_module.dart` compõe módulos de alto nível e registra `AppScreen` em `/`.
-  Atualmente os módulos root de dependências são `core`, `session` e
+  Atualmente os módulos root de dependências são `core`, `user`, `session` e
   `authentication`; `welcome`, `expense`, `settings`, `dashboard` e
   `authentication` fornecem módulos de rotas.
 - Dependências estritamente locais, como validators de Expense e o registro
@@ -717,6 +795,20 @@ de interação e de fluxos completos dessas camadas será feita com Maestro.
 Use `mocktail`. Dê nomes aos testes pelo comportamento observável, não pelo
 método privado.
 
+Mocks, fakes e adapters de teste ficam em arquivos próprios sob
+`test/support/<feature>/mocks/` ou `test/support/<feature>/fakes/`. Use tipos
+públicos com nomes específicos do contrato, como `AuthenticationRepositoryMock`,
+sem declarar classes auxiliares dentro de arquivos `*_test.dart`. Reutilize
+o mesmo double para cada contrato; doubles de core podem servir várias features.
+Não coloque suporte de testes em `lib/` nem importe `mocktail` na aplicação.
+
+`HttpClientAdapterFake`, em `test/support/core/fakes/`, implementa o adapter de
+Dio com o callback `respond`, permitindo controlar respostas e exceções sem
+rede. Instâncias, stubs, fixtures de cenário e descarte continuam locais aos
+testes, em `setUp`, `tearDown` ou no próprio cenário; não compartilhe mocks
+mutáveis ou configurações globais entre suítes. Cada double ocupa um arquivo,
+sem barrel file para agrupar exports.
+
 Toda subscription criada em teste deve ser removida e todo command criado
 manualmente deve ser descartado no `tearDown`.
 
@@ -757,6 +849,7 @@ verificação de release Android estão em `android/README.md`.
 - `flutter analyze` foi executado.
 - `flutter test` foi executado e qualquer falha não relacionada foi registrada.
 - Nenhuma extensão, token ou abstração duplicada foi criada.
+- Nenhum comentário foi adicionado ao código; explicações e decisões ficam em Markdown.
 - Mudanças em módulos, rotas, contratos ou comandos atualizaram `ARCHITECTURE.md`.
 - Mudanças de integração HTTP ou contratos de autenticação atualizaram `ARCHITECTURE.md`.
 - Mudanças de release Android atualizaram `android/README.md`.
@@ -777,6 +870,9 @@ como padrão novo:
   `flutter analyze`.
 - `ExpenseFormWidget` cria um `TextEditingController` no `build`, sem descarte;
   o formulário atual é um placeholder, não um exemplo de lifecycle aprovado.
+- Expense ainda importa `AmountFieldWidget` e `DateFieldWidget` de
+  `authentication/presentation/widgets/`; essa localização legada não é uma
+  convenção para novos componentes compartilhados.
 - O teste arquitetural ainda contém referências históricas a Supabase/RPC.
   Seu helper identifica apenas contextos financeiros, deixando a verificação
   de imports entre Authentication e Session sem cobertura efetiva.

@@ -1,12 +1,28 @@
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
-final class const HttpResponse({
+final class const Reponse({
   required final int statusCode,
   required final Map<String, dynamic> body,
 });
 
-typedef Responses = Either<HttpResponse, HttpResponse>;
+typedef Responses = Either<Reponse, Reponse>;
+
+Future<Either<ErrorsResponse, T>> response<T>({
+  required T Function(Reponse) from,
+  required Future<Responses> Function() execute,
+}) async {
+  try {
+    final response = await execute();
+
+    return response.fold<Either<ErrorsResponse, T>>(
+      (error) => Left(.fromJson(error.body)),
+      (success) => Right(from(success)),
+    );
+  } catch (_) {
+    return Left(.unknown());
+  }
+}
 
 final class const ErrorsResponse({required final List<ErrorResponse> errors}) {
   factory ErrorsResponse.fromJson(Map<String, dynamic> json) {

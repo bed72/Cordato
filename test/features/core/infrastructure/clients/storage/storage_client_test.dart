@@ -5,18 +5,19 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 
-class _FlutterSecureStorageMock extends Mock implements FlutterSecureStorage {}
+import '../../../../../support/core/mocks/flutter_secure_storage_mock.dart';
 
 void main() {
-  test('keeps the existing secure-storage key for persisted tokens', () {
-    expect(StorageKeyEnum.opaqueToken.key, 'authentication.access_token');
+  test('uses distinct secure-storage keys for the token and user id', () {
+    expect(StorageKeyEnum.userId.key, '@trocado.user_id');
+    expect(StorageKeyEnum.opaqueToken.key, '@trocado.opaque_token');
   });
 
-  late FlutterSecureStorage storage;
   late IStorageClient client;
+  late FlutterSecureStorage storage;
 
   setUp(() {
-    storage = _FlutterSecureStorageMock();
+    storage = FlutterSecureStorageMock();
     client = StorageClient(storage: storage);
   });
 
@@ -73,16 +74,17 @@ void main() {
       await observed.clear();
       await Future<void>.delayed(Duration.zero);
 
-      expect(events, ['first', 'second', null, null]);
       expect(otherEvents, events);
+      expect(events, ['first', 'second', null, null]);
       expect(plugin.getListeners['key'], hasLength(2));
 
       await subscription.cancel();
       expect(plugin.getListeners['key'], hasLength(1));
+
       await plugin.write(key: 'key', value: 'third');
       await Future<void>.delayed(Duration.zero);
-      expect(events, ['first', 'second', null, null]);
       expect(otherEvents.last, 'third');
+      expect(events, ['first', 'second', null, null]);
 
       await secondSubscription.cancel();
       expect(plugin.getListeners['key'], isEmpty);

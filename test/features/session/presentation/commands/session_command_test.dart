@@ -4,17 +4,16 @@ import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/session/presentation/commands/session_command.dart';
-import 'package:cordato/features/session/domain/repositories/interface_session_repository.dart';
 
-class _RepositoryMock extends Mock implements ISessionRepository {}
+import '../../../../support/session/mocks/session_repository_mock.dart';
 
 void main() {
-  late _RepositoryMock repository;
+  late SessionRepositoryMock repository;
   late StreamController<bool> changes;
   late SessionCommand command;
 
   setUp(() {
-    repository = _RepositoryMock();
+    repository = SessionRepositoryMock();
     changes = StreamController<bool>.broadcast();
     when(() => repository.sessionChanges).thenAnswer((_) => changes.stream);
     command = SessionCommand(repository: repository);

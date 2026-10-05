@@ -3,13 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
 
-class _HttpClientMock extends Mock implements IHttpClient {}
+import '../../../../support/core/mocks/http_client_mock.dart';
 
 void main() {
   const password = 'secret';
@@ -18,9 +17,9 @@ void main() {
   late IHttpClient client;
   late IAuthenticationRemoteDataSource dataSource;
 
-  setUpAll(() => registerFallbackValue(const Requests('')));
+  setUpAll(() => registerFallbackValue(const Requests(path: '')));
   setUp(() {
-    client = _HttpClientMock();
+    client = HttpClientMock();
     dataSource = AuthenticationRemoteDataSource(client: client);
   });
 
@@ -30,7 +29,7 @@ void main() {
       () async {
         when(() => client.delete(parameter: any(named: 'parameter')))
             .thenAnswer(
-              (_) async => const Right(HttpResponse(statusCode: 204, body: {})),
+              (_) async => const Right(Reponse(statusCode: 204, body: {})),
             );
 
         expect((await dataSource.logout()).right, isTrue);
@@ -41,8 +40,6 @@ void main() {
                 ).captured.single
                 as Requests;
         expect(request.path, 'authentication/sign-out');
-        expect(request.route, HttpPathEnum.logout);
-        expect(request.route?.requiresAuth, isTrue);
         expect(request.body, isNull);
         expect(request.headers, isNull);
         verifyNoMoreInteractions(client);
@@ -52,7 +49,7 @@ void main() {
     test('logout preserves JSON API errors', () async {
       when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
-          HttpResponse(
+          Reponse(
             statusCode: 403,
             body: {
               'errors': [
@@ -93,10 +90,9 @@ void main() {
           {},
           {'errors': []},
         ]) {
-          when(() => client.delete(parameter: any(named: 'parameter')))
-              .thenAnswer(
-                (_) async => Left(HttpResponse(statusCode: 500, body: body)),
-              );
+          when(
+            () => client.delete(parameter: any(named: 'parameter')),
+          ).thenAnswer((_) async => Left(Reponse(statusCode: 500, body: body)));
           expect(
             (await dataSource.logout()).left.errors.single.title,
             'Erro desconhecido',
@@ -108,7 +104,7 @@ void main() {
     test('logout preserves transport errors from the HTTP client', () async {
       when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
-          HttpResponse(
+          Reponse(
             statusCode: 0,
             body: {
               'errors': [
@@ -132,7 +128,7 @@ void main() {
       const url =
           'https://other.example/api/email-verification/12/abc?signature=123&expires=456';
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(HttpResponse(statusCode: 204, body: {})),
+        (_) async => const Right(Reponse(statusCode: 204, body: {})),
       );
 
       expect(await dataSource.confirmEmail(url), 204);
@@ -142,33 +138,37 @@ void main() {
                   .single
               as Requests;
       expect(request.path, url);
-      expect(request.route, isNull);
-      expect(request.followRedirects, isFalse);
-      expect(request.logRequest, isFalse);
     });
 
-    test('confirmation returns null when the client fails', () async {
-      when(() => client.get(parameter: any(named: 'parameter')))
-          .thenThrow(StateError('offline'));
+    test(
+      'confirmation propagates unexpected client exceptions to the repository',
+      () async {
+        final failure = StateError('offline');
+        when(() => client.get(parameter: any(named: 'parameter')))
+            .thenThrow(failure);
 
-      expect(await dataSource.confirmEmail('signed'), isNull);
-    });
+        await expectLater(
+          dataSource.confirmEmail('signed'),
+          throwsA(same(failure)),
+        );
+      },
+    );
     test('confirmation maps 403 and transport failure by status', () async {
-      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Left(HttpResponse(statusCode: 403, body: {})),
-      );
+      when(
+        () => client.get(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Left(Reponse(statusCode: 403, body: {})));
       expect(await dataSource.confirmEmail('signed'), 403);
 
-      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Left(HttpResponse(statusCode: 0, body: {})),
-      );
+      when(
+        () => client.get(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Left(Reponse(statusCode: 0, body: {})));
       expect(await dataSource.confirmEmail('signed'), isNull);
     });
 
     test('confirmation preserves an unexpected HTTP status', () async {
-      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Left(HttpResponse(statusCode: 500, body: {})),
-      );
+      when(
+        () => client.get(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Left(Reponse(statusCode: 500, body: {})));
 
       expect(await dataSource.confirmEmail('signed'), 500);
     });
@@ -176,7 +176,7 @@ void main() {
     test('sign-in returns the parsed access token response', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Right(
-          HttpResponse(
+          Reponse(
             statusCode: 200,
             body: {
               'data': {
@@ -210,7 +210,6 @@ void main() {
               as Requests;
       expect(request.headers, isNull);
       expect(request.path, 'authentication/sign-in');
-      expect(request.route, HttpPathEnum.signIn);
       expect(request.body, {
         'data': {
           'type': 'access-tokens',
@@ -222,7 +221,7 @@ void main() {
     test('sign-up returns the parsed registration response', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Right(
-          HttpResponse(
+          Reponse(
             statusCode: 201,
             body: {
               'data': {'id': '3'},
@@ -242,7 +241,6 @@ void main() {
               as Requests;
       expect(request.headers, isNull);
       expect(request.path, 'authentication/sign-up');
-      expect(request.route, HttpPathEnum.signUp);
       expect(request.body, {
         'data': {
           'type': 'sign-ups',
@@ -258,7 +256,7 @@ void main() {
 
     test('resend accepts a successful response without a body', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(HttpResponse(statusCode: 202, body: {})),
+        (_) async => const Right(Reponse(statusCode: 202, body: {})),
       );
 
       final data = await dataSource.resendEmail(email: email);
@@ -270,7 +268,6 @@ void main() {
                   .single
               as Requests;
       expect(request.path, 'authentication/email-verification/resend');
-      expect(request.route, HttpPathEnum.resendEmailVerification);
       expect(request.body, {
         'data': {
           'type': 'email-verifications',
@@ -282,7 +279,7 @@ void main() {
     test('resend preserves API errors', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
-          HttpResponse(
+          Reponse(
             statusCode: 429,
             body: {
               'errors': [
@@ -312,7 +309,7 @@ void main() {
     test('preserves all API errors from a failed sign-in', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Left(
-          HttpResponse(
+          Reponse(
             statusCode: 401,
             body: {
               'errors': [
@@ -342,7 +339,7 @@ void main() {
     test('preserves API errors from a failed sign-up', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Left(
-          HttpResponse(
+          Reponse(
             statusCode: 422,
             body: {
               'errors': [
@@ -361,7 +358,7 @@ void main() {
 
     test('returns an error for a malformed success response', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(HttpResponse(statusCode: 200, body: {})),
+        (_) async => const Right(Reponse(statusCode: 200, body: {})),
       );
 
       final data = await dataSource.signIn(email: email, password: password);
@@ -372,7 +369,7 @@ void main() {
 
     test('rejects a malformed successful sign-up response', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(HttpResponse(statusCode: 201, body: {})),
+        (_) async => const Right(Reponse(statusCode: 201, body: {})),
       );
 
       final data = await dataSource.signUp(email: email, password: password);
@@ -384,7 +381,7 @@ void main() {
     test('rejects a sign-in response without a user relationship', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
-          HttpResponse(
+          Reponse(
             statusCode: 200,
             body: {
               'data': {
@@ -406,9 +403,9 @@ void main() {
     });
 
     test('returns an error for a malformed API error response', () async {
-      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Left(HttpResponse(statusCode: 422, body: {})),
-      );
+      when(
+        () => client.post(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Left(Reponse(statusCode: 422, body: {})));
 
       final data = await dataSource.signUp(email: email, password: password);
 
@@ -418,8 +415,7 @@ void main() {
 
     test('returns an error when the API error list is empty', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async =>
-            const Left(HttpResponse(statusCode: 422, body: {'errors': []})),
+        (_) async => const Left(Reponse(statusCode: 422, body: {'errors': []})),
       );
 
       final data = await dataSource.signUp(email: email, password: password);
@@ -430,8 +426,7 @@ void main() {
 
     test('resend maps an empty API error list to a generic error', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async =>
-            const Left(HttpResponse(statusCode: 429, body: {'errors': []})),
+        (_) async => const Left(Reponse(statusCode: 429, body: {'errors': []})),
       );
 
       final data = await dataSource.resendEmail(email: email);

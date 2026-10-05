@@ -6,8 +6,8 @@ Cordato é um aplicativo Flutter de finanças pessoais e familiares organizado
 por feature e por camadas. Cada pessoa é dona dos próprios dados financeiros;
 a família é uma lente de leitura compartilhada, nunca uma dona de dinheiro.
 
-O aplicativo integra o fluxo de autenticação à API HTTP JSON:API pelo cliente
-compartilhado de `coreDependenciesModule` (padrão
+O aplicativo integra o fluxo de autenticação e o data source de User à API
+HTTP JSON:API pelo cliente compartilhado de `coreDependenciesModule` (padrão
 `https://api.cordato.cloud/api/`). Não há schema ou backend financeiro ativo
 versionado neste repositório. O Kotlin legado é
 referência de domínio, não uma dependência de execução. A apresentação permanece
@@ -56,17 +56,31 @@ e `UpdateRepositoryType` representam `Either<ErrorsEntity, UserEntity>`;
 atualizar somente `name`, opcional; quando nulo, o campo é omitido do payload.
 `IUserRemoteDataSource` e `UserRemoteDataSource`, em
 `infrastructure/remoto/user_remote_data_source.dart`, usam `IHttpClient` do core
-para GET, PATCH e DELETE de `users/{id}`. GET e PATCH retornam
-`Either<ErrorsResponse, UserResponse>`; DELETE exige 204 sem corpo e retorna
-`Either<ErrorsResponse, bool>`. PATCH envia `data.type: users`, `data.id` e
+para GET, PATCH e DELETE de `users/<id>`. GET e PATCH retornam
+`Either<ErrorsResponse, UserResponse>`; DELETE retorna
+`Either<ErrorsResponse, bool>`, com `true` em 204 e `false` para outros status
+de sucesso. PATCH envia `data.type: users`, `data.id` e
 somente o nome informado em `data.attributes`. Erros JSON:API são preservados;
 respostas malformadas e exceções inesperadas recebem erro genérico.
 `UserResponse.fromJson` extrai os campos do modelo com casts e `DateTime.parse`,
 e `UserResponseToEntity.toEntity()` os converte para `UserEntity`. `updated_at`
 e os metadados JSON:API não são incorporados ao modelo atual. O id devolvido
-pela API é preservado, sem substituição pelo id solicitado. Ainda não há
-implementação de repository, módulo, rotas ou apresentação em `user`; o
-contexto não gerencia autenticação ou tokens.
+pela API é preservado, sem substituição pelo id solicitado. `UserRepository`, em
+`data/repositories/user_repository.dart`, implementa `IUserRepository` e recebe
+`IUserRemoteDataSource` e `IUserLocalDataSource`. Delega os parâmetros, converte `ErrorsResponse` em
+`ErrorsEntity` e `UserResponse` em `UserEntity`, preserva o booleano da exclusão
+e traduz exceções inesperadas em `ErrorsEntity.unknown()`. `userDependenciesModule`,
+em `user_module.dart`, registra o repository e os dois data sources como lazy
+singletons pelos contratos e é composto por `appModule`, sem `path`.
+Ainda não há rotas ou apresentação em `user`. O contexto não realiza autenticação ou leitura
+de sessão. `IUserLocalDataSource` e `UserLocalDataSource` ficam no mesmo arquivo,
+`infrastructure/local/user_local_data_source.dart`; a implementação recebe
+`IStorageClient` e delega `clear()` para limpar todo o storage seguro.
+`UserRepository.delete` aguarda a exclusão remota e, somente em `Right(true)`
+(status 204), aguarda a limpeza local antes de retornar sucesso. `Left` e
+`Right(false)` não acionam a limpeza. Uma falha local retorna
+`ErrorsEntity.unknown()`, mesmo que a exclusão remota já tenha sido confirmada.
+O data source remoto acessa somente HTTP; o local propaga falhas ao repository.
 
 `dashboard` é uma feature de apresentação e composição, com nome fixo no widget
 e conteúdo placeholder, sem consulta de perfil. `settings` é uma feature
@@ -114,10 +128,14 @@ lib/
     session/
     authentication/
     user/
+      user_module.dart
       domain/
         entities/user_entity.dart
         repositories/interface_user_repository.dart
+      data/
+        repositories/user_repository.dart
       infrastructure/
+        local/user_local_data_source.dart
         remoto/user_remote_data_source.dart
         responses/user_response.dart
     welcome/
@@ -161,6 +179,14 @@ Responsabilidades e implementações atuais:
   `HttpResponse` contém status HTTP e corpo em mapa; falhas de transporte
   retornam `Left` com status `0` e erro genérico. O `coreDependenciesModule`
   registra o Dio com `BASE_URL` e os interceptors compartilhados.
+- A função genérica `response<T>`, em
+  `core/infrastructure/clients/http/responses/responses.dart`, é compartilhada
+  pelos data sources remotos de Authentication e User. Recebe `execute`, que
+  retorna `Future<Responses>`, e `from`, que converte o `HttpResponse` de sucesso
+  em `T` com acesso a corpo e status. Retorna `Either<ErrorsResponse, T>`,
+  preservando erros JSON:API e traduzindo exceções de execução, parsing ou
+  conversão em erro genérico. O tratamento de status de confirmação de e-mail
+  continua específico de Authentication.
 - `IStorageClient.watch(key: ...)` adapta `FlutterSecureStorage.registerListener`
   para uma stream por chave; cancela o registro em `unregisterListener` quando
   a subscription termina. Escrita emite o novo valor, remoção e limpeza emitem
@@ -178,9 +204,11 @@ Responsabilidades e implementações atuais:
   ou exceção inesperada resultam em erro genérico. Na confirmação, converte o
   status HTTP em `int?`, usando `null` para falhas de transporte.
 - `AuthenticationLocalDataSource` em `infrastructure/local/` grava o token
-  usando `IStorageClient` e `StorageKeyEnum.opaqueToken`, sem expor o plugin
-  ao repository; `save(token)` grava e `remove()` exclui somente essa chave
-  no logout.
+  e o ID do usuário usando `IStorageClient`, sem expor o plugin ao repository.
+  `saveToken(token)` escreve em `StorageKeyEnum.opaqueToken`
+  (`@trocado.opaque_token`); `saveUserId(userId)` escreve em `StorageKeyEnum.userId`
+  (`@trocado.user_id`). `clear()` delega a `IStorageClient.clear()`, que executa
+  `FlutterSecureStorage.deleteAll()` no logout.
   No sign-in, `SignInResponse.userId` vem de
   `data.relationships.user.data.id`; `data.id` identifica o token de acesso.
 - `session` é o contexto de leitura da presença do token: `SessionLocalDataSource`
@@ -197,9 +225,11 @@ Responsabilidades e implementações atuais:
   A extensão `ErrorsResponse.toEntity()` no core infrastructure converte a lista
   completa, com erro genérico quando a resposta não contém itens.
 - `AuthenticationRepository.signIn` converte `SignInResponse` em `SessionEntity`
-  com `toEntity()` e aguarda a gravação do token opaco pelo data source local
-  antes de retornar sucesso. Falhas de gravação retornam erro genérico; erros
-  da API não gravam token. `signUp` retorna sucesso após o cadastro. Sign-in,
+  com `toEntity()` e aguarda as gravações de token e ID pelo data source local
+  com `Future.wait` antes de retornar sucesso. Falhas de gravação retornam erro
+  genérico; erros da API não solicitam nenhuma gravação. As duas escritas não
+  são uma transação e não há rollback de uma escrita já concluída quando a
+  outra falha. `signUp` retorna sucesso após o cadastro. Sign-in,
   sign-up e reenvio retornam `Either<ErrorsEntity, R>`: os erros JSON:API são
   preservados no `Left` e falhas inesperadas usam um erro genérico.
   `SignInCommand` e `SignUpCommand` entregam esse `Either` como resultado ao
@@ -215,9 +245,10 @@ Responsabilidades e implementações atuais:
   erros JSON:API em `Either<ErrorsEntity, bool>`.
 - `IAuthenticationRepository.logout()` retorna `Either<ErrorsEntity, bool>`.
   O repository aguarda a revogação remota e, somente após sucesso, aguarda
-  `IAuthenticationLocalDataSource.remove()` antes de retornar `Right(true)`.
+  `IAuthenticationLocalDataSource.clear()` antes de retornar `Right(true)`.
+  `Right(false)` remoto é preservado sem limpeza local.
   Erros remotos são convertidos de `ErrorsResponse` para `ErrorsEntity`, sem
-  solicitar remoção local; exceções remotas ou de persistência retornam
+  solicitar limpeza local; exceções remotas ou de persistência retornam
   `Left(ErrorsEntity.unknown())`. O interceptor mantém sua regra existente de
   remoção do token enviado após 401 de endpoint protegido.
 - `presentation` contém screens, widgets, validators, estado local e commands.
@@ -311,6 +342,14 @@ sintáticas e não podem alterar contratos, responsabilidades, regras de domíni
 ou acesso entre camadas. A matriz operacional e os exemplos canônicos estão em
 [`AGENTS.md`](AGENTS.md#primary-constructors).
 
+### Comentários No Código
+
+Não adicione comentários de linha, bloco ou documentação ao código, incluindo
+`//`, `/* ... */`, `///` e `/** ... */`. A intenção deve ser expressa por nomes,
+tipos, organização e testes. Explicações, decisões e contratos ficam em Markdown.
+Comentários existentes fora do escopo da mudança devem ser preservados; a regra
+não solicita uma remoção indiscriminada do legado.
+
 ## Inicialização, Módulos E Rotas
 
 `main.dart` inicializa Flutter e Modular com `/` como rota inicial para
@@ -337,8 +376,8 @@ Links diretos para `/authentication/confirm-email` continuam públicos e não
 são desviados para a entrada. Após sign-in, a observação global navega ao
 dashboard quando a rota ativa é Welcome ou Sign In; após perda do token,
 navega para Welcome somente se a rota ativa estiver classificada como autenticada.
-O logout em Settings remove o token pela arquitetura de Authentication e deixa
-essa mesma observação global navegar para welcome. Não há validação da sessão
+O logout em Settings limpa o storage seguro pela arquitetura de Authentication
+e deixa essa mesma observação global navegar para welcome. Não há validação da sessão
 no backend na abertura, refresh automático ou guard do Modular. Presença do
 token é um sinal local para navegação, não prova de validade ou autorização.
 
@@ -346,7 +385,7 @@ token é um sinal local para navegação, não prova de validade ou autorizaçã
 `authenticated`, que é `false` por padrão. Dashboard, Settings e Expense usam
 `authenticated: true`. O método estático `authenticatedPaths()` devolve seus
 caminhos; `AppWidget` consulta esse conjunto nos redirecionamentos de sessão.
-Essa classificação de UI é distinta de `HttpPathEnum.requiresAuth`, que
+Essa classificação de UI é distinta de `HttpPathEnum.authenticated`, que
 controla o envio do token em requisições HTTP.
 
 `app_module.dart` compõe os módulos existentes:
@@ -355,6 +394,7 @@ controla o envio do token em requisições HTTP.
 appModule
   dependências root (sem path):
     coreDependenciesModule
+    userDependenciesModule
     sessionDependenciesModule
     authenticationDependenciesModule
   rotas:
@@ -371,6 +411,8 @@ Registros importantes:
 - `coreDependenciesModule`: registra `IMoneyFormatter`, `IStorageClient` com
   `FlutterSecureStorage`, `IHttpClient` e o Dio compartilhado. A factory instala
   `HeadersInterceptor`, `SessionInterceptor` e, apenas em debug, o logger.
+- `userDependenciesModule`: registra `IUserRemoteDataSource`, `IUserLocalDataSource`
+  e `IUserRepository` como lazy singletons, usando o HTTP e o storage do core.
 - `sessionDependenciesModule`: registra `ISessionLocalDataSource`, `ISessionRepository` e
   `SessionCommand` como dependências do app inteiro (módulo sem `path`), para
   continuar observando mudanças depois que `AppScreen` sair da pilha.
@@ -382,8 +424,8 @@ Registros importantes:
   A rota de sign-in usa `SignInScreen` e `FormSignInWidget`: o mixin do
   formulário valida e-mail e senha (6 a 12 caracteres, com maiúscula e número).
   A screen apresenta erros do command sem navegar após o sucesso; o repository
-  solicita ao data source
-  local a gravação do token em storage seguro. Após o sucesso do sign-up, a
+  solicita ao data source local a gravação de token e ID em storage seguro.
+  Após o sucesso do sign-up, a
   rota é substituída por `ResendEmailScreen`, que recebe o e-mail
   cadastrado para exibi-lo em um campo desabilitado e permitir o reenvio do link.
 - `dashboardRoutesModule`: compõe a tela inicial; o nome `Gabriel Ramos` é
@@ -418,7 +460,7 @@ Rotas registradas:
 `/dashboard` é uma tela de apresentação, sem shell de navegação autenticada.
 Dashboard abre Settings e Expense como rotas próprias; a ação de orçamento ainda
 não tem destino. Welcome abre `/authentication/sign-in`, e o sucesso do sign-in
-grava o token e conduz ao dashboard pela observação da sessão. Os links abaixo
+grava token e ID e conduz ao dashboard pela observação da sessão. Os links abaixo
 dos formulários substituem sign-in por sign-up e vice-versa, mantendo
 `/welcome` na pilha. O cadastro bem-sucedido substitui
 sign-up por `/authentication/confirm`, que exibe o e-mail em um campo
@@ -456,15 +498,22 @@ Android e iOS usam o deep linking nativo do Flutter/Modular, incluindo
 inicialização e entrega com o app já aberto.
 
 `HttpPathEnum` identifica os endpoints relativos à base e marca os protegidos.
-`Requests.forPath` resolve parâmetros de caminho com `pathParameters`,
-codificando cada valor como um segmento, e carrega essa rota em `RequestOptions.extra` usando
-`HttpExtraKeyEnum.route`. `expenses` está marcado como protegido no catálogo,
+Os data sources constroem `Requests(path: ...)` com o caminho do enum;
+para User, interpolam `'${HttpPathEnum.user.path}/${Uri.encodeComponent(id)}'`.
+`Requests` possui somente os campos `path` (String), `body`, `query` e `headers`;
+não carrega classificação de endpoint ou opções de logging/redirecionamento.
+Todos os parâmetros são nomeados; `path` é obrigatório. `copyWith` preserva
+campos não informados. Os data sources montam os caminhos diretamente, sem
+factory `forPath`, e deixam a autenticação para o interceptor. O catálogo usa
+o campo booleano `authenticated`, obrigatório em cada entrada.
+`expenses` está marcado como protegido no catálogo,
 mas não há integração HTTP de Expense. O `SessionInterceptor` só lê
-`StorageKeyEnum.opaqueToken` para uma rota protegida cuja origem e caminho
+`StorageKeyEnum.opaqueToken` para um caminho relativo de endpoint marcado
+com `authenticated: true` no enum cuja origem e caminho
 coincidam com o endpoint da base e então envia
 `Authorization: Bearer <token>`. O token é opaco; `Bearer` é o esquema HTTP.
-`HttpPathEnum.user` marca `users/{id}` como protegido; o interceptor permite
-exatamente um segmento não vazio no lugar de `{id}`, preservando a comparação
+`HttpPathEnum.user.path` contém `users`; o interceptor permite
+exatamente um segmento de id não vazio após esse caminho, preservando a comparação
 da origem, do prefixo da base e dos demais segmentos. GET, PATCH e DELETE de
 User usam o mesmo token armazenado e a mesma remoção após 401; o data source
 não define headers de autenticação nem acessa storage.
@@ -476,17 +525,38 @@ receber 401, o interceptor remove somente `StorageKeyEnum.opaqueToken` do
 storage, preservando a resposta 401; não remove um token novo gravado depois
 do envio da requisição. A exclusão notifica `SessionCommand`, e `AppWidget`
 redireciona para welcome se o usuário estiver numa rota protegida.
+Essa remoção por 401 preserva `StorageKeyEnum.userId` e outras chaves; somente
+o logout aceito solicita a limpeza completa do storage.
+
+Endpoints usados pelos data sources atuais:
+
+| Operação | Método e caminho relativo | `authenticated` | Resultado do data source |
+|---|---|---|---|
+| Sign-in | POST `authentication/sign-in` | `false` | `Either<ErrorsResponse, SignInResponse>` |
+| Sign-up | POST `authentication/sign-up` | `false` | `Either<ErrorsResponse, SignUpResponse>` |
+| Reenvio | POST `authentication/email-verification/resend` | `false` | `Either<ErrorsResponse, bool>` |
+| Logout | DELETE `authentication/sign-out` | `true` | `Either<ErrorsResponse, bool>` |
+| Consulta de User | GET `users/<id>` | `true` | `Either<ErrorsResponse, UserResponse>` |
+| Atualização do nome | PATCH `users/<id>` | `true` | `Either<ErrorsResponse, UserResponse>` |
+| Exclusão de User | DELETE `users/<id>` | `true` | `Either<ErrorsResponse, bool>` |
+
+Confirmação de e-mail usa GET da URL assinada absoluta e retorna `int?` no data
+source. `expenses` é apenas uma entrada protegida do enum, sem requisição
+implementada. No enum, User guarda `users`; o sufixo de ID é interpolado pelo
+data source, não armazenado como template no catálogo.
 
 O logout usa `DELETE authentication/sign-out`, sem payload, marcado como
 protegido em `HttpPathEnum.logout`. `AuthenticationRemoteDataSource.logout()`
-usa `Requests.forPath` e o interceptor existente para enviar Bearer; o backend
+usa `Requests(path: HttpPathEnum.logout.path)` e o
+interceptor existente para enviar Bearer; o backend
 revoga o token atual e retorna 204 sem corpo, convertido em `Right(true)`.
 O data source remoto não manipula storage.
 
 A confirmação de e-mail usa `IHttpClient.get` no Dio compartilhado com a URL
-assinada original em `Requests(path)`, sem rota autenticada, com
-`followRedirects: false` e `logRequest: false`. A última opção define
-`HttpExtraKeyEnum.skipLogging` e omite URL, resposta e erro dos logs. O data
+assinada original em `Requests(path: url)`. O cliente HTTP identifica URLs
+absolutas e desabilita redirecionamentos, definindo `HttpExtraKeyEnum.skipLogging`
+para omitir URL, resposta e erro dos logs. O interceptor não envia Bearer para
+URLs absolutas. Essas opções são política do cliente, não campos de Requests. O data
 source remoto entrega o status (`null` quando é `0`) ao repository, que traduz
 204 em sucesso, 403 em link inválido e os demais resultados em falha de
 conexão, sem verificar host, caminho ou assinatura localmente.
@@ -547,11 +617,22 @@ do descarte de recursos no catálogo, e `.widget_preview/` não é versionado.
 ## Testes E Verificação
 
 Testes unitários cobrem `Either`, autenticação e sessão em data/infrastructure,
-validators de autenticação, formatters, helpers,
+entidade, DTO e data source de User, cliente HTTP, interceptors, storage,
+`response<T>`, validators de autenticação, formatters, helpers,
 commands e limites arquiteturais. Use `mocktail` para doubles. A política atual
 não mantém testes Flutter automatizados para widgets, screens, temas, módulos
 ou rotas; esses fluxos serão validados com Maestro quando os cenários existirem.
 Não há suíte `integration_test` Flutter registrada.
+
+Os arquivos `*_test.dart` contêm cenários e configuração, sem classes de mocks,
+fakes ou adapters locais. Os doubles ficam em arquivos públicos próprios sob
+`test/support/<feature>/mocks/` e `test/support/<feature>/fakes/`, com reutilização
+por contrato e instâncias independentes em cada teste. `HttpClientAdapterFake`,
+em `test/support/core/fakes/http_client_adapter_fake.dart`, permite simular
+respostas e exceções de Dio pelo callback `respond` e é compartilhado pelos
+testes do cliente HTTP. Mocks de HTTP e storage de core também são reutilizados
+por Authentication, Session e User. Imports de suporte de teste são relativos;
+imports da aplicação continuam usando `package:cordato/`.
 
 Não há flows Maestro versionados no repositório atual. A decisão de validar
 UI e fluxos com Maestro não significa que esses cenários já estejam cobertos.
@@ -579,6 +660,9 @@ Outras pendências do código atual: `UserNameWidget._skeleton` não é utilizad
 e gera warning no analyzer; `ExpenseFormWidget` cria um controller no `build`
 sem descartá-lo. Esses placeholders não substituem a regra de lifecycle de
 controllers, listeners, timers e commands em [`AGENTS.md`](AGENTS.md).
+Expense também reutiliza os campos de valor e data ainda localizados em
+`authentication/presentation/widgets/`; componentes compartilhados novos devem
+seguir a localização em core, sem repetir essa dependência legada.
 
 Execute para alterações Flutter:
 

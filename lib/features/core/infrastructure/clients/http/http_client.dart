@@ -4,7 +4,6 @@ import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_method_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
 
 abstract interface class IHttpClient {
   Future<Responses> get({required Requests parameter});
@@ -46,11 +45,6 @@ final class HttpClient({required final Dio _dio}) implements IHttpClient {
           method: method.value,
           headers: parameter.headers,
           validateStatus: (_) => true,
-          followRedirects: parameter.followRedirects,
-          extra: {
-            HttpExtraKeyEnum.route.key: parameter.route,
-            HttpExtraKeyEnum.skipLogging.key: !parameter.logRequest,
-          },
           contentType: parameter.body == null
               ? null
               : parameter.headers?['Content-Type'] as String? ??
@@ -64,21 +58,20 @@ final class HttpClient({required final Dio _dio}) implements IHttpClient {
       final body = data == null || data == '' ? <String, dynamic>{} : data;
 
       if (body is! Map<String, dynamic>) {
-        return Left(
-          HttpResponse(statusCode: statusCode, body: _unknownFailure()),
-        );
+        return Left(Reponse(statusCode: statusCode, body: _unknown));
       }
 
-      final value = HttpResponse(statusCode: statusCode, body: body);
+      final value = Reponse(statusCode: statusCode, body: body);
+
       return isSuccess ? Right(value) : Left(value);
     } on DioException catch (_) {
-      return Left(HttpResponse(statusCode: 0, body: _unknownFailure()));
+      return Left(Reponse(statusCode: 0, body: _unknown));
     } catch (_) {
-      return Left(HttpResponse(statusCode: 0, body: _unknownFailure()));
+      return Left(Reponse(statusCode: 0, body: _unknown));
     }
   }
 
-  Map<String, dynamic> _unknownFailure() => {
+  Map<String, dynamic> get _unknown => {
     'errors': [
       {
         'title': 'Erro desconhecido',

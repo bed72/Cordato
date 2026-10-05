@@ -1,36 +1,34 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/authentication/infrastructure/local/authentication_local_data_source.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 
-class _StorageClientMock extends Mock implements IStorageClient {}
+import '../../../../support/core/mocks/storage_client_mock.dart';
 
 void main() {
-  test('removes only the session token from secure storage', () async {
-    final storage = _StorageClientMock();
+  test('clears secure storage on logout', () async {
+    final storage = StorageClientMock();
     final dataSource = AuthenticationLocalDataSource(storage: storage);
-    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
-        .thenAnswer((_) async {});
+    when(() => storage.clear()).thenAnswer((_) async {});
 
-    await dataSource.removeToken();
+    await dataSource.clear();
 
-    verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verify(() => storage.clear()).called(1);
     verifyNoMoreInteractions(storage);
   });
 
-  test('propagates token removal failures to the repository', () async {
-    final storage = _StorageClientMock();
+  test('propagates storage clearing failures to the repository', () async {
+    final storage = StorageClientMock();
     final dataSource = AuthenticationLocalDataSource(storage: storage);
-    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.clear())
         .thenAnswer((_) async => throw StateError('storage unavailable'));
 
-    await expectLater(dataSource.removeToken(), throwsA(isA<StateError>()));
+    await expectLater(dataSource.clear(), throwsA(isA<StateError>()));
   });
 
   test('saves the sign-in token in secure storage', () async {
-    final storage = _StorageClientMock();
+    final storage = StorageClientMock();
     final dataSource = AuthenticationLocalDataSource(storage: storage);
     when(
       () => storage.write(
@@ -49,8 +47,33 @@ void main() {
     ).called(1);
   });
 
-  test('propagates storage failures to the repository', () async {
-    final storage = _StorageClientMock();
+  test('saves the sign-in user id separately from the token', () async {
+    final storage = StorageClientMock();
+    final dataSource = AuthenticationLocalDataSource(storage: storage);
+    when(() => storage.write(key: StorageKeyEnum.userId.key, value: 'user-1'))
+        .thenAnswer((_) async {});
+
+    await dataSource.saveUserId('user-1');
+
+    verify(() => storage.write(key: StorageKeyEnum.userId.key, value: 'user-1'))
+        .called(1);
+    verifyNoMoreInteractions(storage);
+  });
+
+  test('propagates user id persistence failures to the repository', () async {
+    final storage = StorageClientMock();
+    final dataSource = AuthenticationLocalDataSource(storage: storage);
+    when(() => storage.write(key: StorageKeyEnum.userId.key, value: 'user-1'))
+        .thenAnswer((_) async => throw StateError('storage unavailable'));
+
+    await expectLater(
+      dataSource.saveUserId('user-1'),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test('propagates token persistence failures to the repository', () async {
+    final storage = StorageClientMock();
     final dataSource = AuthenticationLocalDataSource(storage: storage);
     when(
       () => storage.write(

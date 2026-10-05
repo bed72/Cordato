@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/core_module.dart';
+import 'package:cordato/features/user/user_module.dart';
 import 'package:cordato/features/session/session_module.dart';
 import 'package:cordato/features/expense/expense_module.dart';
 import 'package:cordato/features/welcome/welcome_module.dart';
@@ -17,6 +18,7 @@ final appModule = createModule(
   register: (context) {
     context
       ..module(coreDependenciesModule)
+      ..module(userDependenciesModule)
       ..module(sessionDependenciesModule)
       ..module(authenticationDependenciesModule);
 

@@ -2,13 +2,12 @@ import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/session/data/repositories/session_repository.dart';
-import 'package:cordato/features/session/infrastructure/local/session_local_data_source.dart';
 
-class _LocalDataSourceMock extends Mock implements ISessionLocalDataSource {}
+import '../../../../support/session/mocks/session_local_data_source_mock.dart';
 
 void main() {
   test('delegates the initial session and subsequent changes', () async {
-    final dataSource = _LocalDataSourceMock();
+    final dataSource = SessionLocalDataSourceMock();
     final repository = SessionRepository(dataSource: dataSource);
     when(dataSource.loadSession).thenAnswer((_) async => false);
     when(() => dataSource.sessionChanges)

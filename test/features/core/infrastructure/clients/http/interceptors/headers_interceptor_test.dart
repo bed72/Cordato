@@ -28,7 +28,7 @@ void main() {
 
     await client.post(
       parameter: const Requests(
-        'authentication/sign-in',
+        path: 'authentication/sign-in',
         body: {
           'data': {'type': 'access-tokens'},
         },
@@ -62,7 +62,7 @@ void main() {
     );
     final client = HttpClient(dio: dio);
 
-    await client.get(parameter: const Requests('items'));
+    await client.get(parameter: const Requests(path: 'items'));
 
     expect(
       captured!.headers[Headers.acceptHeader],

@@ -4,7 +4,6 @@ import 'package:talker_dio_logger/talker_dio_logger.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/logger/logger_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_extra_key_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/interceptors/headers_interceptor.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/interceptors/session_interceptor.dart';
 
@@ -31,16 +30,6 @@ final class DioFactory {
             printRequestHeaders: kDebugMode,
             printResponseHeaders: kDebugMode,
             printResponseMessage: kDebugMode,
-            requestFilter: (options) =>
-                options.extra[HttpExtraKeyEnum.skipLogging.key] != true,
-            responseFilter: (response) =>
-                response.requestOptions.extra[HttpExtraKeyEnum
-                    .skipLogging
-                    .key] !=
-                true,
-            errorFilter: (error) =>
-                error.requestOptions.extra[HttpExtraKeyEnum.skipLogging.key] !=
-                true,
           ),
         ),
     ]);
