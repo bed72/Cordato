@@ -44,8 +44,12 @@ source local de Authentication. `LogoutCommand` pertence a `authentication` e de
 contrato de repository; Settings recebe esse command. Não há validação da
 sessão no backend na abertura, refresh automático ou guard do Modular.
 O Kotlin legado é somente referência de domínio.
-`expense` possui estrutura visual de formulário, validators e estado de
-apresentação, sem command, repository, data source, client ou persistência.
+`expense` possui `ExpenseEntity` imutável e `ExpenseCategoryEnum` no domínio,
+rótulos pt-BR em `ExpenseCategoryExtension` na apresentação, estrutura visual de
+formulário, validators e estado de apresentação. Também possui `CreateExpenseInput`
+em `application/data/`, o contrato `IExpenseRepository.create`, `ExpenseResponse`
+e data source HTTP de criação, sem command ou implementação de repository.
+O data source ainda não está registrado em DI nem conectado ao formulário.
 Dashboard consulta nome e inicial do avatar por `UserCommand` e mantém conteúdo financeiro placeholder.
 `budget`, `family` e `insight` não têm feature Flutter
 implementada. Não descreva recursos planejados como código existente nem crie
@@ -91,7 +95,7 @@ Regras de domínio que devem ser preservadas nas features financeiras:
 - `flutter_modular` 7 para módulos, injeção de dependências e rotas.
 - `command_it` para operações assíncronas observáveis pela apresentação.
 - `listen_it` está declarado, mas não é usado diretamente no código atual.
-- `dio` para integração HTTP JSON:API de Authentication e User.
+- `dio` para integração HTTP JSON:API de Authentication, User e Expense.
 - `flutter_secure_storage` para armazenamento seguro.
 - `mocktail` e `flutter_test` para testes.
 - Fonte de aplicação: `Inter-Variable.ttf`.
@@ -606,6 +610,25 @@ feature/
 Regras de dependência:
 
 - `domain` define contratos, failures e regras independentes de framework.
+- O contrato `IExpenseRepository` pode importar `CreateExpenseInput` de
+  `expense/application/data/`, por decisão arquitetural. O input é um tipo Dart
+  puro, imutável, com `cents` como `int` em centavos e `description` como `String`,
+  ambos obrigatórios e não nulos. A descrição de `ExpenseEntity` também é
+  obrigatória e não nula.
+  `occurredOn` é opcional na construção, com `DateTime.now()` quando omitido ou
+  nulo, e o campo não nulo representa a data civil do gasto. O construtor não é
+  `const`; o input não faz parsing ou serialização JSON.
+  `create({required CreateExpenseInput input})` retorna
+  `Future<CreateRepositoryType>`, com `Either<ErrorsEntity, ExpenseEntity>`.
+- `ExpenseEntity.cents` usa `AmountValueObject` de
+  `expense/domain/value_objects/`. O VO pertence somente ao domínio;
+  `CreateExpenseInput.cents` transporta centavos como `int`, sem validação de
+  domínio. A criação do VO retorna `Either` com
+  `ErrorsEntity` para centavos menores ou iguais a zero. Valores positivos são
+  armazenados no campo imutável `cents`, sem conversão ou arredondamento, com
+  igualdade por valor. O data source envia `input.cents` no atributo `amount`;
+  `ExpenseResponse.toEntity()` retorna `Either<ErrorsEntity, ExpenseEntity>` e
+  valida os centavos recebidos pelo VO antes de construir a entidade.
 - `data` implementa contratos de repository do domínio e traduz respostas de
   data sources; na autenticação atual, consome as interfaces remota/local e os
   response DTOs definidos em `infrastructure`.
@@ -682,7 +705,8 @@ protegidos pelo caminho na origem/base da API e envia
 opaco; `Bearer` é o esquema HTTP, e a validade do token é controlada pelo backend. Um 401 dessa
 requisição remove somente o token enviado, se ainda for o valor armazenado;
 requisições públicas não apagam a sessão. `expenses` está
-no catálogo de caminhos protegidos, mas não há integração de gastos com a API.
+no catálogo de caminhos protegidos e é usado pelo data source remoto de criação
+de Expense, ainda sem integração com o formulário.
 O sucesso do sign-in notifica `SessionCommand` e conduz ao dashboard.
 
 `Requests.path` é uma `String` obrigatória nomeada. Caminhos fixos usam

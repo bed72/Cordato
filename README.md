@@ -7,7 +7,7 @@ família, oferecer uma visão compartilhada das finanças de seus membros.
 ## Produto
 
 O modelo de negócio tem como referência o backend legado em Kotlin. O app usa
-uma API HTTP JSON:API para autenticação e possui data source remoto de User;
+uma API HTTP JSON:API para autenticação e possui data sources remotos de User e Expense;
 a persistência das features financeiras ainda não está conectada. A regra central é:
 
 > A pessoa é dona dos próprios dados. A família é apenas uma lente de leitura.
@@ -17,7 +17,10 @@ Os bounded contexts do produto são:
 - `user`: modelo de domínio, contrato de repository e data source HTTP para
   consulta, atualização do nome e exclusão, com repository concreto e UI de
   edição de nome integrada à API pelo ID persistido no sign-in.
-- `expense`: estrutura visual de formulário e validators, sem criação ou persistência.
+- `expense`: entidade de domínio, value object para valores positivos em centavos,
+  categorias com rótulos pt-BR, input e contrato
+  de repository para criação, DTO e data source HTTP, além de estrutura visual de
+  formulário e validators; sem criação integrada ao formulário.
 - `budget`: planejado. Tetos por intervalo de datas, com gasto e saldo derivados.
 - `family`: planejado. Organização familiar com acesso combinado somente de leitura.
 - `insight`: planejado. Análises derivadas, somente leitura e sem persistência própria.
@@ -209,13 +212,15 @@ respostas e erros remotos para os tipos de domínio nas operações de consulta,
 atualização do nome e exclusão. Após exclusão de User confirmada com status 204,
 o repository aguarda a limpeza de todo o storage seguro por `UserLocalDataSource`,
 que delega a `IStorageClient.clear()`. `expenses` consta
-no catálogo de endpoints protegidos, mas não há command, repository, data source ou client de
-gastos no código atual. Dashboard não consulta um perfil remoto. O logger Dio
+no catálogo de endpoints protegidos e é usado por `ExpenseRemoteDataSource.create`.
+O POST envia centavos inteiros, descrição e data civil como `yyyy-MM-dd`, e retorna
+`ExpenseResponse`; sua conversão à entidade valida o valor pelo VO. O data source
+não está registrado em DI nem conectado ao formulário. O logger Dio
 de debug registra headers e payloads usuais, inclusive credenciais e resposta
 de sign-in; requisições com URLs absolutas, como a confirmação assinada, são
 omitidas. Em release esse logger não é instalado.
 
-Os data sources de Authentication e User reutilizam a função top-level
+Os data sources de Authentication, User e Expense reutilizam a função top-level
 `response<T>` em `core/infrastructure/clients/http/responses/responses.dart`.
 Ela recebe `execute` para a requisição e `from` para converter o `HttpResponse`
 de sucesso, com acesso ao corpo e ao status, e retorna `Either<ErrorsResponse, T>`.

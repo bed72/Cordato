@@ -6,13 +6,11 @@ import 'package:cordato/features/core/presentation/formatters/interface_money_fo
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
-import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/widgets/fields/expense_description_field_widget.dart';
 
 final class const ExpenseFormWidget({
   super.key,
   required final IMoneyFormatter formatter,
-  required final ExpenseFormValidator validator,
   required final ValueChanged<BuildContext> onExpenseCreated,
 }) extends StatefulWidget {
   @override

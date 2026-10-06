@@ -6,7 +6,7 @@ Cordato é um aplicativo Flutter de finanças pessoais e familiares organizado
 por feature e por camadas. Cada pessoa é dona dos próprios dados financeiros;
 a família é uma lente de leitura compartilhada, nunca uma dona de dinheiro.
 
-O aplicativo integra o fluxo de autenticação e o data source de User à API
+O aplicativo integra o fluxo de autenticação e os data sources de User e Expense à API
 HTTP JSON:API pelo cliente compartilhado de `coreDependenciesModule` (padrão
 `https://api.cordato.cloud/api/`). Não há schema ou backend financeiro ativo
 versionado neste repositório. O Kotlin legado é
@@ -34,13 +34,82 @@ nem justificam restaurar camadas removidas.
 
 Os contextos financeiros e seu estado atual são:
 
-- `expense`: estrutura visual de formulário, validators e estado de apresentação;
-  sem domínio financeiro implementado, command, repository, data source,
-  client ou persistência. Os handlers são placeholders e o botão de cadastro
+- `expense`: entidade de domínio, value object monetário, categorias, input de criação e contrato de
+  repository, estrutura visual de formulário, validators e estado de apresentação;
+  possui data source HTTP de criação e response DTO, sem command ou implementação
+  de repository. Os handlers são placeholders e o botão de cadastro
   permanece desabilitado em loading fixo.
 - `budget`: planejado; não há feature Flutter de orçamento nesta versão.
 - `family`: planejado. Será uma organização de membros com leitura combinada autorizada.
 - `insight`: planejado; não há feature Flutter, dados ou consultas analíticas.
+
+`ExpenseEntity`, em `expense/domain/entities/expense_entity.dart`, representa uma
+despesa cadastrada, com primary constructor `const` e campos imutáveis obrigatórios:
+`id` como `String`, `cents` como `AmountValueObject`, `occurredOn` como
+`DateTime` para a data civil do gasto, `description` como `String`, `category`
+como `ExpenseCategoryEnum`.
+A entidade não faz parsing, serialização ou validação de entrada; não recebe o
+envelope JSON:API nem referências a orçamento ou família. A data civil deve ser
+preservada sem conversões de fuso na futura integração.
+
+`AmountValueObject`, em `expense/domain/value_objects/amount_value_object.dart`,
+representa valores positivos em centavos inteiros de BRL. O construtor é privado
+e `create({required int cents})` retorna `Either<ErrorsEntity, AmountValueObject>`:
+zero e valores negativos retornam erro de domínio com mensagem pt-BR; valores
+positivos são preservados sem conversão ou arredondamento. O campo `cents` é
+imutável, e igualdade e hash são definidos pelo valor em centavos. Não aceita
+`double`, não faz parsing ou formatação e não depende de HTTP. O VO pertence
+ao domínio e é usado em `ExpenseEntity`, não no input de criação. O data source
+envia `input.cents` como inteiro em centavos no atributo `amount` do payload.
+`ExpenseResponse.toEntity()` converte o valor recebido em `AmountValueObject`
+antes de construir a entidade.
+
+`ExpenseCategoryEnum`, em `expense/domain/enums/expense_category_enum.dart`, define
+`food`, `health`, `housing`, `leisure`, `shopping`, `services`, `transport`,
+`education`, `subscriptions` e `other`, com nomes correspondentes ao contrato da API.
+`ExpenseCategoryExtension`, em `expense/presentation/extensions/`, oferece `label`
+com os rótulos pt-BR: Alimentação, Saúde, Moradia, Lazer, Compras, Serviços,
+Transporte, Educação, Assinaturas e Outros. A tradução pertence à apresentação;
+o domínio não depende de idioma. Parsing e serialização ficam para infrastructure,
+sem conversão silenciosa de categorias desconhecidas para `other`.
+
+`CreateExpenseInput`, em `expense/application/data/create_expense_input.dart`,
+agrupa os dados de criação em um tipo Dart puro, imutável, com primary constructor:
+`cents` como `int` em centavos de BRL e `description` como `String` são
+obrigatórios e não nulos.
+O input transporta valores primitivos, sem depender do value object ou validar
+as regras de domínio.
+`occurredOn` é opcional na construção e usa `DateTime.now()` quando omitido ou nulo;
+o campo resultante é um `DateTime` não nulo que representa a data civil do gasto.
+O construtor não é `const` por calcular esse valor em runtime. Não faz validação,
+parsing ou serialização JSON. Categoria, identificador e instante de criação
+pertencem ao resultado retornado pelo backend no contrato apresentado.
+`IExpenseRepository`, em `expense/domain/repositories/interface_expense_repository.dart`,
+define `create({required CreateExpenseInput input})`, retornando
+`Future<CreateRepositoryType>`. O typedef representa
+`Either<ErrorsEntity, ExpenseEntity>`. Por decisão arquitetural, o contrato de
+domínio de Expense pode importar esse input de `application/data` da própria
+feature; esses tipos de entrada permanecem independentes de frameworks,
+apresentação e infraestrutura. Não há implementação do repository nesta etapa.
+
+`IExpenseRemoteDataSource` e `ExpenseRemoteDataSource`, no mesmo arquivo em
+`expense/infrastructure/remoto/expense_remote_data_source.dart`, recebem o input
+em `create({required CreateExpenseInput input})`. O retorno `CreateDataSourceType`
+é `Either<ErrorsResponse, ExpenseResponse>`. A implementação recebe `IHttpClient`
+do core e reutiliza `response<T>` para preservar erros JSON:API e converter
+exceções e respostas malformadas em erro genérico. POST `expenses` usa
+`HttpPathEnum.expenses.path` e `data.type: expenses`, com `amount: input.cents`,
+`description` sem normalização e `occurred_on` como `yyyy-MM-dd`. A data utiliza
+os componentes do input sem conversão de fuso; o horário é omitido. Headers e
+Bearer são aplicados pelos interceptors compartilhados, sem leitura de storage
+no data source.
+`ExpenseResponse`, em `expense/infrastructure/responses/expense_response.dart`,
+faz parsing de `id`, `amount` inteiro, `description`, `occurred_on` e `category`.
+Usa casts e `DateTime.parse`; categorias desconhecidas falham sem fallback para
+`other`. `created_at` e os metadados JSON:API não integram a entidade atual.
+`ExpenseResponseToEntity.toEntity()` retorna `Either<ErrorsEntity, ExpenseEntity>`
+para preservar a falha de validação do VO quando o valor recebido não é positivo.
+O data source ainda não está registrado em DI nem conectado ao formulário.
 
 `user` é o bounded context dos dados do usuário. `UserEntity`, em
 `domain/entities/user_entity.dart`, é imutável e possui
@@ -240,7 +309,10 @@ Direções de dependência aprovadas:
   `data`, data sources ou clients de `infrastructure`;
 - `data` implementa contratos de `domain` e consome interfaces de data source e
   DTOs de `infrastructure`, sem acessar SDKs diretamente;
-- `domain` é independente das demais camadas e de frameworks;
+- `domain` é independente de frameworks, implementações de `data`,
+  `infrastructure` e `presentation`; o contrato de Expense pode consumir
+  `CreateExpenseInput` de `application/data` da própria feature, conforme a
+  decisão documentada acima;
 - `authentication` e `session` não importam uma à outra: comunicam-se pela
   escrita e observação de `StorageKeyEnum.opaqueToken` no storage do core;
 - Settings recebe `LogoutCommand` de Authentication como dependência de
@@ -268,7 +340,7 @@ Responsabilidades e implementações atuais:
   registra o Dio com `BASE_URL` e os interceptors compartilhados.
 - A função genérica `response<T>`, em
   `core/infrastructure/clients/http/responses/responses.dart`, é compartilhada
-  pelos data sources remotos de Authentication e User. Recebe `execute`, que
+  pelos data sources remotos de Authentication, User e Expense. Recebe `execute`, que
   retorna `Future<Responses>`, e `from`, que converte o `HttpResponse` de sucesso
   em `T` com acesso a corpo e status. Retorna `Either<ErrorsResponse, T>`,
   preservando erros JSON:API e traduzindo exceções de execução, parsing ou
@@ -607,8 +679,8 @@ Todos os parâmetros são nomeados; `path` é obrigatório. `copyWith` preserva
 campos não informados. Os data sources montam os caminhos diretamente, sem
 factory `forPath`, e deixam a autenticação para o interceptor. O catálogo usa
 o campo booleano `authenticated`, obrigatório em cada entrada.
-`expenses` está marcado como protegido no catálogo,
-mas não há integração HTTP de Expense. O `SessionInterceptor` só lê
+`expenses` está marcado como protegido no catálogo e é usado pelo data source
+remoto de criação de Expense. O `SessionInterceptor` só lê
 `StorageKeyEnum.opaqueToken` para um caminho relativo de endpoint marcado
 com `authenticated: true` no enum cuja origem e caminho
 coincidam com o endpoint da base e então envia
@@ -640,10 +712,10 @@ Endpoints usados pelos data sources atuais:
 | Consulta de User | GET `users/<id>` | `true` | `Either<ErrorsResponse, UserResponse>` |
 | Atualização do nome | PATCH `users/<id>` | `true` | `Either<ErrorsResponse, UserResponse>` |
 | Exclusão de User | DELETE `users/<id>` | `true` | `Either<ErrorsResponse, bool>` |
+| Criação de Expense | POST `expenses` | `true` | `Either<ErrorsResponse, ExpenseResponse>` |
 
 Confirmação de e-mail usa GET da URL assinada absoluta e retorna `int?` no data
-source. `expenses` é apenas uma entrada protegida do enum, sem requisição
-implementada. No enum, User guarda `users`; o sufixo de ID é interpolado pelo
+source. No enum, User guarda `users`; o sufixo de ID é interpolado pelo
 data source, não armazenado como template no catálogo.
 
 O logout usa `DELETE authentication/sign-out`, sem payload, marcado como
@@ -671,7 +743,8 @@ O sign-up ainda envia `name: 'Trocado'` fixo e repete a senha em
 `password_confirmation`; o formulário não coleta nome. Isso não fornece um
 perfil ao Dashboard.
 
-O fluxo financeiro ainda não usa a API: Expense é apenas apresentação,
+O formulário financeiro ainda não usa a API: Expense possui entidade, categorias,
+input, contrato de repository e data source HTTP de criação,
 Dashboard consulta o perfil pelo `UserCommand`, mas não existe feature Flutter de orçamento.
 Ao conectar persistência financeira, preserve propriedade
 individual e invariantes no serviço responsável, com testes de autorização e
