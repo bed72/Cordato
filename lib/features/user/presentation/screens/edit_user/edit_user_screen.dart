@@ -1,25 +1,43 @@
+import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
-import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
+import 'package:cordato/features/user/domain/entities/user_entity.dart';
+import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';
+
+import 'package:cordato/features/user/presentation/screens/edit_user/commands/update_user_command.dart';
 import 'package:cordato/features/user/presentation/screens/edit_user/widgets/edit_user_app_bar_widget.dart';
+import 'package:cordato/features/user/presentation/screens/edit_user/mixins/edit_user_screen_state_mixin.dart';
 
 final class const EditUserScreen({
   super.key,
   required final String initialName,
+  required final UpdateUserCommand command,
   required final ValueChanged<BuildContext> onBackPressed,
-  final String? nameFailure,
-  final VoidCallback? onUpdatePressed,
-  final ValueChanged<String>? onNameChanged,
-  final bool isLoading = false,
-}) extends StatelessWidget {
+  required final void Function(BuildContext, UserEntity) onUpdated,
+}) extends StatefulWidget {
+  @override
+  State<EditUserScreen> createState() => _EditUserScreenState();
+}
+
+final class _EditUserScreenState extends State<EditUserScreen>
+    with EditUserScreenStateMixin {
   @override
   Widget build(BuildContext context) {
+    return CommandBuilder<String, UpdateRepositoryType?>(
+      command: widget.command.execute,
+      onSuccess: (_, _) => _buildContent(),
+      onError: (_, _, _, _) => _buildContent(),
+      whileRunning: (_, _, _) => _buildContent(isLoading: true),
+    );
+  }
+
+  Scaffold _buildContent({bool isLoading = false}) {
     return Scaffold(
-      appBar: EditUserAppBarWidget(onBackPressed: onBackPressed),
+      appBar: EditUserAppBarWidget(onBackPressed: widget.onBackPressed),
       body: SafeArea(
         child: Padding(
           padding: const .fromLTRB(16.0, 0.0, 16.0, 24.0),
@@ -48,8 +66,9 @@ final class const EditUserScreen({
                           keyboardType: .name,
                           failure: nameFailure,
                           onChanged: onNameChanged,
-                          initialValue: initialName,
                           textCapitalization: .words,
+                          initialValue: widget.initialName,
+                          onSubmitted: (_) => updateName(),
                         ),
                       ],
                     ),
@@ -59,12 +78,7 @@ final class const EditUserScreen({
               ElevatedButtonWidget(
                 label: 'Atualizar',
                 isLoading: isLoading,
-                onTap: isLoading || onUpdatePressed == null
-                    ? null
-                    : () {
-                        context.dismissKeyboard();
-                        onUpdatePressed!();
-                      },
+                onTap: isLoading || !canUpdate ? null : updateName,
               ),
             ],
           ),

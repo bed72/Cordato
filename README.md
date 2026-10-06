@@ -16,7 +16,7 @@ Os bounded contexts do produto são:
 
 - `user`: modelo de domínio, contrato de repository e data source HTTP para
   consulta, atualização do nome e exclusão, com repository concreto e UI de
-  edição visual ainda sem integração com a API.
+  edição de nome integrada à API pelo ID persistido no sign-in.
 - `expense`: estrutura visual de formulário e validators, sem criação ou persistência.
 - `budget`: planejado. Tetos por intervalo de datas, com gasto e saldo derivados.
 - `family`: planejado. Organização familiar com acesso combinado somente de leitura.
@@ -50,7 +50,8 @@ O app já possui:
 - tela de dados pessoais em `/user`, aberta por Settings, com nome clicável,
   e-mail desativado e botão visual “Excluir conta” no rodapé;
 - tela de edição de nome em `/user/edit`, aberta pelo item Nome, seguindo a UI
-  de `ProfileNameScreen` do Trocado, com atualização ainda sem integração;
+  centralizada da autenticação, com atualização pela API, loading, erros no campo
+  ou toast e retorno dos dados atualizados para a tela de dados pessoais;
 - navegação de Welcome para Sign In, de Sign In para Sign Up por substituição
   de rota e de Dashboard para Settings e Expense;
 - tema claro/escuro e componentes de apresentação reutilizáveis;
@@ -60,7 +61,11 @@ O app já possui:
   o usuário estiver em uma rota protegida;
 - estrutura de `user` com entidade, contrato de repository, DTO e data source
   HTTP para buscar por ID, atualizar somente o nome e excluir o usuário; essa
-  estrutura está registrada em DI, mas ainda não é consumida pela tela de edição.
+  estrutura está registrada em DI e é consumida pela tela de edição.
+
+A tela de dados pessoais ainda inicia com exemplos, sem consulta de perfil.
+Após salvar o nome, usa os dados retornados pela API enquanto a tela permanece
+aberta; reabrir `/user` ainda restaura os exemplos iniciais.
 
 `budget`, `family` e `insight` seguem planejados. Ao implementá-los, o grupo
 familiar não deve se tornar dono dos dados financeiros de seus membros.
@@ -193,7 +198,10 @@ rota protegida.
 
 A integração HTTP atual inclui os fluxos de autenticação e o data source e
 repository de User, registrados em `userDependenciesModule` e compostos por
-`appModule`, ainda sem apresentação. `UserRepository` converte
+`appModule`, com atualização de nome consumida por `UpdateUserCommand` na edição.
+As operações `getById()`, `update({String? name})` e `delete()` de `UserRepository`
+leem o ID por `UserLocalDataSource.getUserId()` e chamam o data source remoto
+com o ID explícito; ID ausente impede a requisição. `UserRepository` converte
 respostas e erros remotos para os tipos de domínio nas operações de consulta,
 atualização do nome e exclusão. Após exclusão de User confirmada com status 204,
 o repository aguarda a limpeza de todo o storage seguro por `UserLocalDataSource`,

@@ -30,8 +30,8 @@ void main() {
           const Right(Reponse(statusCode: 200, body: {'name': 'Gabriel'})),
         );
 
-        expect(conversions, 1);
         expect((await data).right, '200: Gabriel');
+        expect(conversions, 1);
       },
     );
 

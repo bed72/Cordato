@@ -5,35 +5,56 @@ import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget
 import 'package:cordato/features/core/presentation/widgets/menu/menu_item_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/danger_button_widget.dart';
 
-import 'package:cordato/features/user/presentation/screens/user/widgets/user_avatar_widget.dart';
+import 'package:cordato/features/user/domain/entities/user_entity.dart';
 
+import 'package:cordato/features/user/presentation/screens/user/widgets/user_avatar_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_app_bar_widget.dart';
 
 final class const UserScreen({
   super.key,
   required final String name,
   required final String email,
-  required final VoidCallback onNamePressed,
   required final ValueChanged<BuildContext> onBackPressed,
+  required final Future<UserEntity?> Function(String name) onNamePressed,
   final String? imageSource,
   final VoidCallback? onPhotoPressed,
   final VoidCallback? onDeletePressed,
-}) extends StatelessWidget {
+}) extends StatefulWidget {
+  @override
+  State<UserScreen> createState() => _UserScreenState();
+}
+
+final class _UserScreenState extends State<UserScreen> {
+  late String name = widget.name;
+  late String email = widget.email;
+
+  Future<void> _editName() async {
+    final user = await widget.onNamePressed(name);
+
+    if (!mounted || user == null) return;
+
+    setState(() {
+      name = user.name;
+      email = user.email;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: SettingsAppBarWidget(onBackPressed: onBackPressed),
+      appBar: SettingsAppBarWidget(onBackPressed: widget.onBackPressed),
       body: SafeArea(
         child: Padding(
           padding: const .all(16.0),
           child: Column(
+            spacing: 16,
             crossAxisAlignment: .stretch,
             children: [
               const HeaderWidget(
                 title: 'Dados pessoais',
                 description: 'Gerencie os dados da sua conta.',
               ),
-              const SizedBox(height: 24.0),
+              const SizedBox(height: 8.0),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
@@ -42,8 +63,8 @@ final class const UserScreen({
                       Center(
                         child: UserAvatarWidget(
                           name: name,
-                          imageSource: imageSource,
-                          onPhotoPressed: onPhotoPressed,
+                          imageSource: widget.imageSource,
+                          onPhotoPressed: widget.onPhotoPressed,
                         ),
                       ),
                       const SizedBox(height: 32.0),
@@ -54,7 +75,7 @@ final class const UserScreen({
                             label: 'Nome',
                             height: 64.0,
                             spacing: 12.0,
-                            onPressed: onNamePressed,
+                            onPressed: _editName,
                             icon: Icons.person_outline,
                           ),
                           MenuItemWidget(
@@ -72,10 +93,10 @@ final class const UserScreen({
                   ),
                 ),
               ),
-              const SizedBox(height: 16.0),
+              const SizedBox(height: 8.0),
               DangerButtonWidget(
                 label: 'Excluir conta',
-                onTap: onDeletePressed,
+                onTap: widget.onDeletePressed,
               ),
             ],
           ),

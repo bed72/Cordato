@@ -49,11 +49,19 @@ como `DateTime`. O identificador preserva a representação textual da API;
 `status` preserva o valor informado, pois o contrato disponível não define todos
 os estados possíveis. O envelope JSON:API (`data`, `type` e `links`) não faz
 parte da entidade. `IUserRepository`, em
-`domain/repositories/interface_user_repository.dart`, define `getById`, `delete`
-e `update`, com `id` nomeado e obrigatório. Os typedefs `GetByIdRepositoryType`
+`domain/repositories/interface_user_repository.dart`, define `getById()`,
+`delete()` e `update({String? name})`. As três operações obtêm o ID
+persistido pelo data source local. Os typedefs `GetByIdRepositoryType`
 e `UpdateRepositoryType` representam `Either<ErrorsEntity, UserEntity>`;
 `DeleteRepositoryType` representa `Either<ErrorsEntity, bool>`. `update` permite
 atualizar somente `name`, opcional; quando nulo, o campo é omitido do payload.
+Em cada operação, `UserRepository` lê o ID pelo data source local e chama
+o método correspondente de `IUserRemoteDataSource` com esse ID explícito.
+ID ausente, vazio ou composto apenas de espaços retorna o erro de domínio
+“Usuário não identificado”, sem chamada remota. O ID não é normalizado nem
+substituído; a autorização continua sendo validada pela API através do token.
+Falhas de leitura local retornam `ErrorsEntity.unknown()` e erros remotos são
+preservados. A edição de nome consome essa operação por `UpdateUserCommand`.
 `IUserRemoteDataSource` e `UserRemoteDataSource`, em
 `infrastructure/remoto/user_remote_data_source.dart`, usam `IHttpClient` do core
 para GET, PATCH e DELETE de `users/<id>`. GET e PATCH retornam
@@ -75,23 +83,36 @@ singletons pelos contratos e é composto por `appModule`, sem `path`.
 `userRoutesModule` registra `/user`, acessível por “Dados pessoais” em Settings.
 `UserScreen` lista nome e e-mail em `MenuCardWidget`, reutiliza a app bar de
 Settings e exibe `DangerButtonWidget` com “Excluir conta” no rodapé. Nome abre
-`/user/edit`; e-mail fica desativado, sem chevron. Os dados são exemplos e a
+`/user/edit`, passando o nome exibido como argumento; e-mail fica desativado,
+sem chevron. Os dados iniciais são exemplos e a
 exclusão é somente um callback placeholder, sem integração ou efeito na conta.
 Acima da lista, `UserAvatarWidget` mostra um avatar quadrado centralizado com
 os mesmos cantos arredondados (`cornerRadius100`) da Dashboard,
 a inicial e as cores do avatar da Dashboard, ou `ImageWidget` quando recebe
 uma imagem. O ícone de câmera recebe callback opcional; não há seleção ou
 upload de foto implementados.
-`EditUserScreen` segue a referência `ProfileNameScreen` do Trocado: título “Nome”,
-descrição “Atualize o seu nome de exibição.”, um campo de nome e botão “Atualizar”
-no rodapé de um `SliverFillRemaining`. Reutiliza o tema e componentes do Cordato.
-Recebe callbacks e estados visuais por construtor; a rota usa nome de exemplo
-e mantém o botão desabilitado enquanto não houver callback de atualização.
-Não consulta o repository nem persiste dados. O contexto não realiza autenticação ou leitura
+`EditUserScreen` centraliza título “Nome”, descrição “Atualize o seu nome de
+exibição.” e campo na área acima do botão “Atualizar”, com rolagem e adaptação
+ao teclado, seguindo o layout da autenticação. Recebe nome inicial,
+`UpdateUserCommand` e callbacks de navegação por construtor.
+`EditUserScreenStateMixin` mantém a entrada e o erro do campo, registra e remove
+o listener do command e trata o resultado. A tela usa `CommandBuilder` para
+loading e desabilita campo e envio durante a requisição. O botão só habilita
+para nome não vazio após `trim()` e diferente do inicial; o nome é enviado sem
+espaços nas extremidades. Erros com pointer `/data/attributes/name` aparecem no
+campo e os demais por toast. Sucesso exibe toast e retorna o `UserEntity` pela
+navegação; `UserScreen` atualiza nome, e-mail e avatar em estado local. Esses
+dados não são consultados novamente ao reabrir `/user`, que ainda começa com
+exemplos. `UpdateUserCommand`, em `edit_user/commands/`, delega a `update`,
+preserva `Either` e implementa `ICommand`; `userRoutesModule` o registra como lazy
+singleton, com descarte pelo módulo. O contexto não realiza autenticação ou leitura
 de sessão. `IUserLocalDataSource` e `UserLocalDataSource` ficam no mesmo arquivo,
 `infrastructure/local/user_local_data_source.dart`; a implementação recebe
 `IStorageClient` e delega `clear()` para limpar todo o storage seguro.
-`UserRepository.delete` aguarda a exclusão remota e, somente em `Right(true)`
+Também oferece `getUserId()`, que lê `StorageKeyEnum.userId` e preserva o resultado
+anulável do storage. Authentication grava esse ID no sign-in; User o lê pelo
+storage do core, sem dependência entre as duas features e sem ler o token.
+`UserRepository.delete` lê o ID persistido, aguarda a exclusão remota e, somente em `Right(true)`
 (status 204), aguarda a limpeza local antes de retornar sucesso. `Left` e
 `Right(false)` não acionam a limpeza. Uma falha local retorna
 `ErrorsEntity.unknown()`, mesmo que a exclusão remota já tenha sido confirmada.

@@ -176,8 +176,10 @@ em `user_module.dart`, sem `path`, registrando os data sources remoto e local e
   `createdAt` como `DateTime`. Não inclui `updatedAt`, `type` ou `links`.
 - `status` preserva o valor textual da API; não invente estados de enum sem
   contrato definido.
-- `IUserRepository` define `getById({required String id})`,
-  `delete({required String id})` e `update({required String id, String? name})`.
+- `IUserRepository` define `getById()`, `delete()` e `update({String? name})`.
+  As três operações leem o ID persistido por `IUserLocalDataSource.getUserId()`;
+  ID ausente ou vazio retorna erro sem chamada remota. O data source remoto
+  continua recebendo o ID explicitamente.
   Os resultados usam typedefs `Either<ErrorsEntity, UserEntity>` para consulta
   e atualização e `Either<ErrorsEntity, bool>` para exclusão.
 - Atualização permite somente `name`, omitido do payload quando nulo. Não

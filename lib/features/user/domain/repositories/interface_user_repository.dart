@@ -8,9 +8,9 @@ typedef UpdateRepositoryType = Either<ErrorsEntity, UserEntity>;
 typedef GetByIdRepositoryType = Either<ErrorsEntity, UserEntity>;
 
 abstract interface class IUserRepository {
-  Future<DeleteRepositoryType> delete({required String id});
+  Future<DeleteRepositoryType> delete();
 
-  Future<GetByIdRepositoryType> getById({required String id});
+  Future<GetByIdRepositoryType> getById();
 
-  Future<UpdateRepositoryType> update({required String id, String? name});
+  Future<UpdateRepositoryType> update({String? name});
 }
