@@ -34,11 +34,12 @@ nem justificam restaurar camadas removidas.
 
 Os contextos financeiros e seu estado atual são:
 
-- `expense`: entidade de domínio, value object monetário, categorias, input de criação e contrato de
-  repository, estrutura visual de formulário, validators e estado de apresentação;
-  possui data source HTTP de criação, response DTO e command, sem implementação
-  de repository. Os handlers são placeholders e o botão de cadastro
-  permanece desabilitado em loading fixo.
+- `expense`: cadastro integrado à API por formulário, validators, command,
+  repository e data source HTTP. Possui entidade de domínio, value object
+  monetário, categorias, input de criação e response DTO. Seleção de valor e
+  data usa bottom sheets. `HoldButtonWidget` permite cadastrar e voltar ao
+  dashboard com toque simples ou cadastrar e continuar com um novo formulário
+  após completar o hold; ambos exibem toast de sucesso.
 - `budget`: planejado; não há feature Flutter de orçamento nesta versão.
 - `family`: planejado. Será uma organização de membros com leitura combinada autorizada.
 - `insight`: planejado; não há feature Flutter, dados ou consultas analíticas.
@@ -90,7 +91,13 @@ define `create({required CreateExpenseInput input})`, retornando
 `Either<ErrorsEntity, ExpenseEntity>`. Por decisão arquitetural, o contrato de
 domínio de Expense pode importar esse input de `application/data` da própria
 feature; esses tipos de entrada permanecem independentes de frameworks,
-apresentação e infraestrutura. Não há implementação do repository nesta etapa.
+apresentação e infraestrutura. `ExpenseRepository`, em
+`expense/data/repositories/expense_repository.dart`, implementa esse contrato e
+recebe `IExpenseRemoteDataSource`. Delega o mesmo input, converte `ErrorsResponse`
+em `ErrorsEntity` e usa `ExpenseResponse.toEntity()` para validar e converter o
+sucesso, preservando falhas do VO. Exceções inesperadas retornam
+`ErrorsEntity.unknown()`. Não acessa HTTP ou storage diretamente e não substitui
+os dados devolvidos pelo backend pelos valores do input.
 
 `IExpenseRemoteDataSource` e `ExpenseRemoteDataSource`, no mesmo arquivo em
 `expense/infrastructure/remoto/expense_remote_data_source.dart`, recebem o input
@@ -109,7 +116,8 @@ Usa casts e `DateTime.parse`; categorias desconhecidas falham sem fallback para
 `other`. `created_at` e os metadados JSON:API não integram a entidade atual.
 `ExpenseResponseToEntity.toEntity()` retorna `Either<ErrorsEntity, ExpenseEntity>`
 para preservar a falha de validação do VO quando o valor recebido não é positivo.
-O data source ainda não está registrado em DI nem conectado ao formulário.
+`expenseDependenciesModule` registra o data source e o repository como lazy
+singletons pelos contratos, com o HTTP do core, e é composto por `appModule`.
 
 `CreateExpenseCommand`, em
 `expense/presentation/screens/expense/commands/create_expense_command.dart`,
@@ -119,19 +127,46 @@ inicial `null`, preservando `Either<ErrorsEntity, ExpenseEntity>` para a
 apresentação tratar sucesso e erros. O estado observável acompanha a execução e
 impede chamadas adicionais enquanto uma criação está pendente; após erro permite
 nova tentativa. Implementa `ICommand` e descarta `execute` em `dispose`. O command
-ainda não está registrado em DI nem conectado ao formulário.
+é registrado como lazy singleton em `expenseRoutesModule`, com descarte pelo
+módulo, e é recebido por `ExpenseScreen` e `ExpenseFormWidget` via construtor.
 
 `ExpenseFormValidator`, em `expense/presentation/validators/`, compõe
-`ExpenseAmountValidation`, `ExpenseDescriptionValidation` e
+`ExpenseCentsValidation`, `ExpenseDescriptionValidation` e
 `ExpenseDateValidation`. Seu `call` recebe `cents`, `description` e `occurredOn`
 e retorna um record com `ValidationResult` para cada campo, validando todos em
 uma chamada. Valor deve ser positivo em centavos inteiros. A descrição reutiliza
 a regra existente: `trim()` e entre 2 e 128 caracteres Unicode. A data deve estar
 selecionada no formulário, mesmo que o input de criação ofereça `now()` como
 default. Valores válidos são preservados, exceto pelo trim da descrição. Esses
-validators e o agregador estão registrados em `expenseRoutesModule`, mas ainda
-não são consumidos pelo formulário placeholder. O validator não cria inputs,
+validators e o agregador estão registrados em `expenseRoutesModule` e são
+consumidos pelo formulário. O validator não cria inputs,
 não executa commands e não realiza navegação ou requisições.
+
+`ExpenseScreen` mantém a composição de app bar e formulário e recebe command,
+validator, formatter e callbacks de navegação. `ExpenseFormWidgetStateMixin`,
+restrito a `State<ExpenseFormWidget>`, possui o controller de descrição, centavos,
+data civil inicial de hoje, erros por campo e handlers. Cria e descarta o
+controller, registra e remove o listener do command, inclusive quando a instância
+recebida muda. `selectAmount` e `selectDate` abrem `AmountCalculatorWidget` e
+`ExpenseDatePickerWidget` por `showBottomSheetWidget`; cancelar preserva a entrada.
+Seleções confirmadas atualizam somente o campo correspondente e limpam seu erro.
+O submit valida todos os campos e, somente com resultados válidos, monta
+`CreateExpenseInput` com a descrição normalizada pelo validator e executa o
+command. O estado local não contém valores monetários em `double` ou acesso a
+repository, rede ou storage.
+`CommandBuilder` controla o loading: campos e botão ficam desabilitados durante
+o cadastro, e os handlers também impedem execução duplicada e abertura simultânea
+de pickers. Erros com pointers de `amount`, `description` e `occurred_on` são
+agrupados nos respectivos campos; demais erros e exceções recebem toast. O
+formulário preserva os dados para uma nova tentativa.
+O envio usa `HoldButtonWidget`: `onTap` cadastra e, somente em `Right`, exibe o
+toast de sucesso e chama `onExpenseCreated`, cuja navegação para `/dashboard`
+é injetada pela rota. `onHoldComplete` usa a mesma validação e command, mas após
+sucesso exibe o toast, limpa descrição, valor e erros, redefine a data para hoje
+e permanece na tela. A escolha pertence ao estado local de apresentação e não
+altera `CreateExpenseInput` ou o command. Falhas em qualquer modo preservam o
+formulário; cancelar o hold antes de completá-lo não cadastra. Voltar não executa
+cadastro.
 
 `user` é o bounded context dos dados do usuário. `UserEntity`, em
 `domain/entities/user_entity.dart`, é imutável e possui
@@ -577,6 +612,7 @@ appModule
     coreDependenciesModule
     userDependenciesModule
     sessionDependenciesModule
+    expenseDependenciesModule
     authenticationDependenciesModule
   rotas:
     welcomeRoutesModule
@@ -623,9 +659,13 @@ Registros importantes:
   injetada por callback e sem acesso ao router no widget.
   O corpo exibe `Dashboard`. Menu abre `/settings`
   e a ação de gasto abre `/expense`; orçamento e notificações não têm integração.
-- `expenseRoutesModule`: registra os validators de valor, descrição e data e
-  `ExpenseFormValidator`, e compõe o formulário visual com
-  `IMoneyFormatter` do core; ainda não executa criação.
+- `expenseDependenciesModule`: registra `IExpenseRemoteDataSource` e
+  `IExpenseRepository` como lazy singletons, sem `path`.
+- `expenseRoutesModule`: registra os validators de centavos, descrição e data,
+  `ExpenseFormValidator` e `CreateExpenseCommand`. Compõe `ExpenseScreen` com
+  command, validator e `IMoneyFormatter` do core; após cadastro confirmado por
+  toque simples, o callback injetado navega para `/dashboard`. O hold permanece
+  na tela com o formulário limpo para o próximo cadastro.
 - `welcomeRoutesModule`: tela e navegação de entrada.
 - `settingsRoutesModule`: registra localmente o `LogoutCommand` definido em
   `authentication/presentation/commands/`, injetado na tela e
@@ -766,8 +806,7 @@ O sign-up ainda envia `name: 'Trocado'` fixo e repete a senha em
 `password_confirmation`; o formulário não coleta nome. Isso não fornece um
 perfil ao Dashboard.
 
-O formulário financeiro ainda não usa a API: Expense possui entidade, categorias,
-input, contrato de repository e data source HTTP de criação,
+O formulário de Expense executa o cadastro pela API através do command e repository.
 Dashboard consulta o perfil pelo `UserCommand`, mas não existe feature Flutter de orçamento.
 Ao conectar persistência financeira, preserve propriedade
 individual e invariantes no serviço responsável, com testes de autorização e
@@ -788,8 +827,8 @@ O teclado `AmountCalculatorWidget`, em
 dígitos de centavos (`80,5` representa `R$ 80,50`). A entrada permite até sete
 dígitos inteiros; `DEL` remove a última entrada e `AC` limpa o valor. O estado
 local usa o `IMoneyFormatter` para converter a entrada e mantém o contrato de
-receber e devolver centavos inteiros. O formulário placeholder atual ainda
-não abre esse teclado.
+receber e devolver centavos inteiros. O formulário de Expense abre esse teclado
+em uma bottom sheet ao tocar em Valor ou avançar a partir da descrição.
 
 Use os acessos de tema existentes:
 
@@ -853,10 +892,7 @@ O teste de `ResendEmailCommand` permanece no caminho histórico
 embora importe o command atual em `screens/resend_email/`. Essas pendências
 não alteram as direções aprovadas nem devem ser tratadas como novas convenções.
 
-Outras pendências do código atual: `ExpenseFormWidget` cria um controller no `build`
-sem descartá-lo. Esses placeholders não substituem a regra de lifecycle de
-controllers, listeners, timers e commands em [`AGENTS.md`](AGENTS.md).
-Expense também reutiliza os campos de valor e data ainda localizados em
+Expense reutiliza os campos de valor e data ainda localizados em
 `authentication/presentation/widgets/`; componentes compartilhados novos devem
 seguir a localização em core, sem repetir essa dependência legada.
 

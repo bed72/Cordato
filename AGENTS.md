@@ -49,15 +49,24 @@ rótulos pt-BR em `ExpenseCategoryExtension` na apresentação, estrutura visual
 formulário, validators e estado de apresentação. Também possui `CreateExpenseInput`
 em `application/data/`, o contrato `IExpenseRepository.create`, `ExpenseResponse`
 e data source HTTP de criação, além de `CreateExpenseCommand` em
-`presentation/screens/expense/commands/`, sem implementação de repository.
+`presentation/screens/expense/commands/`, e `ExpenseRepository` em `data/`.
 O command delega o input a `IExpenseRepository.create`, preserva `Either` e
-implementa `ICommand`. Command e data source ainda não estão registrados em DI
-nem conectados ao formulário.
+implementa `ICommand`. `expenseDependenciesModule` registra data source e
+repository pelos contratos; `expenseRoutesModule` registra command e validators
+e os injeta na tela. O formulário executa o cadastro pela API.
 `ExpenseFormValidator` reúne os resultados de valor, descrição e data pelo padrão
 `ValidationResult` do core. Reutiliza os validators existentes de descrição e
-data, e `ExpenseAmountValidation` exige centavos positivos. Retorna um record
+data, e `ExpenseCentsValidation` exige centavos positivos. Retorna um record
 com resultado por campo, sem interromper na primeira falha. Os validators estão registrados
-no módulo de rotas de Expense e ainda não são consumidos pelo formulário.
+no módulo de rotas de Expense e são consumidos pelo formulário.
+`ExpenseFormWidgetStateMixin` concentra controller, campos, seleção de valor e
+data, validação e listener do command, descartando os recursos que cria.
+`CommandBuilder` controla loading e desabilita campos e envio. Erros da API são
+mostrados nos campos pelo pointer ou por toast. `HoldButtonWidget` envia por toque
+simples ou hold: após sucesso, ambos exibem toast; o toque simples chama o callback
+de navegação injetado para Dashboard, e o hold limpa descrição, valor e erros,
+redefine a data para hoje e permanece na tela. Falhas preservam os dados nos dois
+modos; hold interrompido não envia. Cancelar pickers preserva a entrada.
 Dashboard consulta nome e inicial do avatar por `UserCommand` e mantém conteúdo financeiro placeholder.
 `budget`, `family` e `insight` não têm feature Flutter
 implementada. Não descreva recursos planejados como código existente nem crie
@@ -737,8 +746,8 @@ payloads das requisições usuais, inclusive dados de sign-in. Para caminhos que
 são URLs absolutas, como a confirmação assinada, o cliente HTTP desabilita
 redirecionamentos e logging de request, response e error automaticamente.
 
-O formulário de gastos ainda não executa criação: seus handlers são placeholders
-e o botão está desabilitado em loading fixo. `budget`,
+O formulário de gastos executa criação por `CreateExpenseCommand`,
+`ExpenseRepository` e data source remoto. `budget`,
 `family` e `insight` não possuem integração Flutter. Não descreva
 regras de autorização do backend como já aplicadas pelo aplicativo. Ao conectar
 uma feature financeira, defina seu contexto proprietário, preserve as
@@ -773,7 +782,7 @@ Regras:
 - Separe `<feature>DependenciesModule`, sem `path`, de
   `<feature>RoutesModule` quando houver dependências compartilhadas e rotas.
 - `app_module.dart` compõe módulos de alto nível e registra `AppScreen` em `/`.
-  Atualmente os módulos root de dependências são `core`, `user`, `session` e
+  Atualmente os módulos root de dependências são `core`, `user`, `session`, `expense` e
   `authentication`; `welcome`, `expense`, `settings`, `dashboard` e
   `authentication` fornecem módulos de rotas.
 - Dependências estritamente locais, como validators de Expense e o registro
@@ -906,8 +915,6 @@ como padrão novo:
 - Não existe suíte `integration_test`.
 - Não há flows Maestro versionados; a política de validação com Maestro não
   representa cobertura automatizada já implementada.
-- `ExpenseFormWidget` cria um `TextEditingController` no `build`, sem descarte;
-  o formulário atual é um placeholder, não um exemplo de lifecycle aprovado.
 - Expense ainda importa `AmountFieldWidget` e `DateFieldWidget` de
   `authentication/presentation/widgets/`; essa localização legada não é uma
   convenção para novos componentes compartilhados.

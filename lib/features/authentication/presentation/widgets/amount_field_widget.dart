@@ -10,6 +10,7 @@ final class const AmountFieldWidget({
   required final VoidCallback? onTap,
   required final IMoneyFormatter formatter,
   final String? failure,
+  final bool enabled = true,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -20,6 +21,7 @@ final class const AmountFieldWidget({
         label: 'Valor',
         readOnly: true,
         absorbing: true,
+        enabled: enabled,
         failure: failure,
         hint: 'Ex: R\$ 1.000,00',
         initialValue: value > 0 ? formatter.formatCents(value) : null,

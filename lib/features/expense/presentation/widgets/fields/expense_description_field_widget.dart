@@ -6,18 +6,22 @@ final class const ExpenseDescriptionFieldWidget({
   super.key,
   required final TextEditingController controller,
   final String? failure,
+  final bool enabled = true,
   final ValueChanged<String>? onChanged,
   final ValueChanged<String>? onSubmitted,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => TextFieldWidget(
-    label: 'Descrição',
-    hint: 'Ex: Mercado',
-    failure: failure,
-    inputAction: TextInputAction.next,
-    controller: controller,
-    onChanged: onChanged,
-    onSubmitted: onSubmitted,
-    textCapitalization: TextCapitalization.sentences,
-  );
+  Widget build(BuildContext context) {
+    return TextFieldWidget(
+      failure: failure,
+      enabled: enabled,
+      label: 'Descrição',
+      hint: 'Ex: Mercado',
+      inputAction: .next,
+      onChanged: onChanged,
+      controller: controller,
+      onSubmitted: onSubmitted,
+      textCapitalization: .sentences,
+    );
+  }
 }

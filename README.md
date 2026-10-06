@@ -8,7 +8,7 @@ família, oferecer uma visão compartilhada das finanças de seus membros.
 
 O modelo de negócio tem como referência o backend legado em Kotlin. O app usa
 uma API HTTP JSON:API para autenticação e possui data sources remotos de User e Expense;
-a persistência das features financeiras ainda não está conectada. A regra central é:
+o cadastro de despesas está conectado à API. A regra central é:
 
 > A pessoa é dona dos próprios dados. A família é apenas uma lente de leitura.
 
@@ -19,8 +19,8 @@ Os bounded contexts do produto são:
   edição de nome integrada à API pelo ID persistido no sign-in.
 - `expense`: entidade de domínio, value object para valores positivos em centavos,
   categorias com rótulos pt-BR, input e contrato
-  de repository para criação, command, DTO e data source HTTP, além de estrutura visual de
-  formulário e validators; sem criação integrada ao formulário.
+  de repository para criação, implementação de repository, command, DTO e data
+  source HTTP, com formulário e validators integrados ao cadastro.
 - `budget`: planejado. Tetos por intervalo de datas, com gasto e saldo derivados.
 - `family`: planejado. Organização familiar com acesso combinado somente de leitura.
 - `insight`: planejado. Análises derivadas, somente leitura e sem persistência própria.
@@ -46,8 +46,10 @@ O app já possui:
   verificação após uma espera de 60 segundos e feedback da API;
 - dashboard com nome e inicial do avatar consultados na API por `UserCommand`,
   skeleton, opção de tentar novamente em caso de erro e conteúdo financeiro placeholder;
-- estrutura visual de formulário de gasto com descrição, valor e data;
-  os handlers ainda não estão conectados e o cadastro está desabilitado;
+- formulário de gasto integrado à API, com descrição obrigatória, calculadora
+  de valor em centavos, seleção de data, validação, loading, erros por campo e
+  toast de sucesso; toque simples cadastra e retorna ao dashboard, enquanto
+  completar o hold cadastra e limpa o formulário para adicionar outro gasto;
 - tela de configurações com confirmação de saída, loading e erros em toast;
   o logout revoga o token na API e limpa o storage seguro, com retorno à welcome
   pelo observador global de sessão;
@@ -215,7 +217,8 @@ que delega a `IStorageClient.clear()`. `expenses` consta
 no catálogo de endpoints protegidos e é usado por `ExpenseRemoteDataSource.create`.
 O POST envia centavos inteiros, descrição e data civil como `yyyy-MM-dd`, e retorna
 `ExpenseResponse`; sua conversão à entidade valida o valor pelo VO. O data source
-não está registrado em DI nem conectado ao formulário. O logger Dio
+é registrado em DI e consumido por `ExpenseRepository` e `CreateExpenseCommand`
+no formulário. O logger Dio
 de debug registra headers e payloads usuais, inclusive credenciais e resposta
 de sign-in; requisições com URLs absolutas, como a confirmação assinada, são
 omitidas. Em release esse logger não é instalado.

@@ -11,6 +11,7 @@ final class const DateFieldWidget({
   required final VoidCallback? onTap,
   required final DateTimeRange? value,
   final String? failure,
+  final bool enabled = true,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -22,6 +23,7 @@ final class const DateFieldWidget({
         label: label,
         readOnly: true,
         absorbing: true,
+        enabled: enabled,
         failure: failure,
         initialValue: value?.format(),
       ),
