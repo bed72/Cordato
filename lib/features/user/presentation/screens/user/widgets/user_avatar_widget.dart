@@ -1,14 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/widgets/images/image_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
 
 final class const UserAvatarWidget({
   super.key,
   required final String name,
-  final String? imageSource,
-  final VoidCallback? onPhotoPressed,
+  final VoidCallback? onPressed,
 }) extends StatelessWidget {
   String get _initial =>
       name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
@@ -28,29 +26,21 @@ final class const UserAvatarWidget({
             label: 'Avatar de $name',
             child: ClipRRect(
               borderRadius: context.radius.cornerRadius300,
-              child: imageSource == null || imageSource!.trim().isEmpty
-                  ? ColoredBox(
-                      color: context.colors.primaryContainer,
-                      child: SizedBox.square(
-                        dimension: 100.0,
-                        child: Center(
-                          child: Text(
-                            _initial,
-                            style: context.typography.headlineLarge?.copyWith(
-                              fontWeight: .w700,
-                              color: context.colors.onPrimaryContainer,
-                            ),
-                          ),
-                        ),
+              child: ColoredBox(
+                color: context.colors.primaryContainer,
+                child: SizedBox.square(
+                  dimension: 100.0,
+                  child: Center(
+                    child: Text(
+                      _initial,
+                      style: context.typography.headlineLarge?.copyWith(
+                        fontWeight: .w700,
+                        color: context.colors.onPrimaryContainer,
                       ),
-                    )
-                  : ImageWidget(
-                      fit: .cover,
-                      width: 128.0,
-                      height: 128.0,
-                      alt: 'Foto de $name',
-                      source: imageSource,
                     ),
+                  ),
+                ),
+              ),
             ),
           ),
           Positioned(
@@ -66,12 +56,12 @@ final class const UserAvatarWidget({
                 child: Semantics(
                   button: true,
                   label: 'Alterar foto',
-                  enabled: onPhotoPressed != null,
+                  enabled: onPressed != null,
                   child: IconButtonWidget(
                     width: 36.0,
                     height: 36.0,
                     iconSize: 20.0,
-                    onPress: onPhotoPressed,
+                    onPress: onPressed,
                     borderRadius: buttonRadius,
                     icon: Icons.camera_alt_outlined,
                     iconColor: context.colors.onPrimary,

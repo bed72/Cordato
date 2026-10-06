@@ -200,6 +200,12 @@ em `user_module.dart`, sem `path`, registrando os data sources remoto e local e
   delegação a `IUserRemoteDataSource` e coordenação de `IUserLocalDataSource`, converte responses para entidades e
   traduz exceções inesperadas em `ErrorsEntity.unknown()`. Exclusão preserva
   o booleano devolvido pelo data source.
+- `UserScreen` recebe `UserCommand`, em `user/commands/`, para consultar
+  `getById()` ao abrir e após atualizar o nome. Nome, e-mail e inicial do avatar
+  vêm da API. `CommandBuilder` renderiza skeleton, resultado e erro com tentativa
+  de recarregamento. `UserScreenStateMixin` concentra carregamento e handlers de
+  UI; a tela não acessa repository ou storage diretamente. `UserAvatarWidget`
+  exibe somente a inicial, sem receber imagem externa.
 
 ## Imports
 

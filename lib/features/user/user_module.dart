@@ -11,6 +11,7 @@ import 'package:cordato/features/user/infrastructure/local/user_local_data_sourc
 import 'package:cordato/features/user/infrastructure/remoto/user_remote_data_source.dart';
 
 import 'package:cordato/features/user/presentation/screens/user/user_screen.dart';
+import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
 import 'package:cordato/features/user/presentation/screens/edit_user/edit_user_screen.dart';
 import 'package:cordato/features/user/presentation/screens/edit_user/commands/update_user_command.dart';
 
@@ -24,12 +25,12 @@ final userDependenciesModule = createModule(
 final userRoutesModule = createModule(
   path: RouteEnum.user.path,
   register: (context) => context
+    ..addLazySingleton<UserCommand>(UserCommand.new)
     ..addLazySingleton<UpdateUserCommand>(UpdateUserCommand.new)
     ..route(
       RouteEnum.app.path,
       child: (context, _) => UserScreen(
-        name: 'Gabriel Ramos',
-        email: 'gabriel@exemplo.com',
+        command: inject<UserCommand>(),
         onBackPressed: (context) => context.pop(),
         onNamePressed: (name) => context.pushNamed<UserEntity>(
           RouteEnum.userEdit.path,

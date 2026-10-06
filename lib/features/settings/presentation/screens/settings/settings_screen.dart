@@ -107,8 +107,8 @@ final class _SettingsScreenState extends State<SettingsScreen>
               CommandBuilder(
                 command: widget.command.execute,
                 whileRunning: (_, _, _) => const SettingsLogoutWidget(
-                  onLogoutPressed: null,
                   isLoading: true,
+                  onLogoutPressed: null,
                 ),
                 onSuccess: (_, _) => SettingsLogoutWidget(
                   onLogoutPressed: showLogoutConfirmation,

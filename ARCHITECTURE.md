@@ -84,13 +84,22 @@ singletons pelos contratos e é composto por `appModule`, sem `path`.
 `UserScreen` lista nome e e-mail em `MenuCardWidget`, reutiliza a app bar de
 Settings e exibe `DangerButtonWidget` com “Excluir conta” no rodapé. Nome abre
 `/user/edit`, passando o nome exibido como argumento; e-mail fica desativado,
-sem chevron. Os dados iniciais são exemplos e a
-exclusão é somente um callback placeholder, sem integração ou efeito na conta.
+sem chevron. `UserCommand`, em `user/commands/`, consulta `IUserRepository.getById()`
+e preserva `Either<ErrorsEntity, UserEntity>`. A tela recebe esse command por
+construtor e usa `CommandBuilder` para consultar a API ao montar, renderizar
+loading com `UserSkeletonWidget`, nome e e-mail reais e erros com botão “Tentar
+novamente”. O skeleton reutiliza o layout de avatar e menu com placeholders
+visuais e `Skeletonizer`, que bloqueia interação durante o carregamento.
+`UserScreenStateMixin`, restrito a `State<UserScreen>`, inicia a consulta,
+encapsula recarregamento, edição de nome e descrição dos erros; a screen mantém
+a composição visual. O avatar usa o nome retornado.
+`userRoutesModule` registra o command como lazy singleton,
+com descarte pelo módulo. A exclusão é somente um callback placeholder,
+sem integração ou efeito na conta.
 Acima da lista, `UserAvatarWidget` mostra um avatar quadrado centralizado com
-os mesmos cantos arredondados (`cornerRadius100`) da Dashboard,
-a inicial e as cores do avatar da Dashboard, ou `ImageWidget` quando recebe
-uma imagem. O ícone de câmera recebe callback opcional; não há seleção ou
-upload de foto implementados.
+cantos arredondados (`cornerRadius300`), a inicial do nome e as cores do tema.
+Não recebe imagem; o avatar atual é somente a inicial. O ícone de câmera recebe
+callback opcional; não há seleção ou upload de foto implementados.
 `EditUserScreen` centraliza título “Nome”, descrição “Atualize o seu nome de
 exibição.” e campo na área acima do botão “Atualizar”, com rolagem e adaptação
 ao teclado, seguindo o layout da autenticação. Recebe nome inicial,
@@ -101,9 +110,9 @@ loading e desabilita campo e envio durante a requisição. O botão só habilita
 para nome não vazio após `trim()` e diferente do inicial; o nome é enviado sem
 espaços nas extremidades. Erros com pointer `/data/attributes/name` aparecem no
 campo e os demais por toast. Sucesso exibe toast e retorna o `UserEntity` pela
-navegação; `UserScreen` atualiza nome, e-mail e avatar em estado local. Esses
-dados não são consultados novamente ao reabrir `/user`, que ainda começa com
-exemplos. `UpdateUserCommand`, em `edit_user/commands/`, delega a `update`,
+navegação; `UserScreen` executa novamente `UserCommand` para consultar nome,
+e-mail e avatar atualizados. Reabrir `/user` também realiza uma nova consulta.
+`UpdateUserCommand`, em `edit_user/commands/`, delega a `update`,
 preserva `Either` e implementa `ICommand`; `userRoutesModule` o registra como lazy
 singleton, com descarte pelo módulo. O contexto não realiza autenticação ou leitura
 de sessão. `IUserLocalDataSource` e `UserLocalDataSource` ficam no mesmo arquivo,

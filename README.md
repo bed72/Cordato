@@ -48,7 +48,8 @@ O app já possui:
   o logout revoga o token na API e limpa o storage seguro, com retorno à welcome
   pelo observador global de sessão;
 - tela de dados pessoais em `/user`, aberta por Settings, com nome clicável,
-  e-mail desativado e botão visual “Excluir conta” no rodapé;
+  nome e e-mail consultados na API por `UserCommand`, skeleton e opção de tentar
+  novamente em caso de erro, e-mail desativado e botão visual “Excluir conta” no rodapé;
 - tela de edição de nome em `/user/edit`, aberta pelo item Nome, seguindo a UI
   centralizada da autenticação, com atualização pela API, loading, erros no campo
   ou toast e retorno dos dados atualizados para a tela de dados pessoais;
@@ -63,9 +64,8 @@ O app já possui:
   HTTP para buscar por ID, atualizar somente o nome e excluir o usuário; essa
   estrutura está registrada em DI e é consumida pela tela de edição.
 
-A tela de dados pessoais ainda inicia com exemplos, sem consulta de perfil.
-Após salvar o nome, usa os dados retornados pela API enquanto a tela permanece
-aberta; reabrir `/user` ainda restaura os exemplos iniciais.
+A tela de dados pessoais consulta o perfil ao abrir e novamente após salvar
+o nome, usando o ID persistido no sign-in.
 
 `budget`, `family` e `insight` seguem planejados. Ao implementá-los, o grupo
 familiar não deve se tornar dono dos dados financeiros de seus membros.
