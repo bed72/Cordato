@@ -1,10 +1,11 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
-import 'package:cordato/features/user/presentation/screens/edit_user/widgets/edit_user_app_bar_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
+
+import 'package:cordato/features/user/presentation/screens/edit_user/widgets/edit_user_app_bar_widget.dart';
 
 final class const EditUserScreen({
   super.key,
@@ -20,48 +21,53 @@ final class const EditUserScreen({
     return Scaffold(
       appBar: EditUserAppBarWidget(onBackPressed: onBackPressed),
       body: SafeArea(
-        child: CustomScrollView(
-          keyboardDismissBehavior: .onDrag,
-          slivers: [
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Padding(
-                padding: const .all(16.0),
-                child: Column(
-                  spacing: 24.0,
-                  crossAxisAlignment: .stretch,
-                  children: [
-                    const HeaderWidget(
-                      title: 'Nome',
-                      description: 'Atualize o seu nome de exibição.',
+        child: Padding(
+          padding: const .fromLTRB(16.0, 0.0, 16.0, 24.0),
+          child: Column(
+            spacing: 16.0,
+            crossAxisAlignment: .stretch,
+            children: [
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior: .onDrag,
+                    padding: const .symmetric(vertical: 24.0),
+                    child: Column(
+                      spacing: 24.0,
+                      crossAxisAlignment: .stretch,
+                      children: [
+                        const HeaderWidget(
+                          title: 'Nome',
+                          description: 'Atualize o seu nome de exibição.',
+                        ),
+                        TextFieldWidget(
+                          hint: 'Nome',
+                          label: 'Nome',
+                          inputAction: .done,
+                          enabled: !isLoading,
+                          keyboardType: .name,
+                          failure: nameFailure,
+                          onChanged: onNameChanged,
+                          initialValue: initialName,
+                          textCapitalization: .words,
+                        ),
+                      ],
                     ),
-                    TextFieldWidget(
-                      label: 'Nome',
-                      hint: 'Nome',
-                      initialValue: initialName,
-                      failure: nameFailure,
-                      inputAction: .done,
-                      keyboardType: .name,
-                      textCapitalization: .words,
-                      onChanged: onNameChanged,
-                      enabled: !isLoading,
-                    ),
-                    const Spacer(),
-                    ElevatedButtonWidget(
-                      label: 'Atualizar',
-                      isLoading: isLoading,
-                      onTap: isLoading || onUpdatePressed == null
-                          ? null
-                          : () {
-                              context.dismissKeyboard();
-                              onUpdatePressed!();
-                            },
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+              ElevatedButtonWidget(
+                label: 'Atualizar',
+                isLoading: isLoading,
+                onTap: isLoading || onUpdatePressed == null
+                    ? null
+                    : () {
+                        context.dismissKeyboard();
+                        onUpdatePressed!();
+                      },
+              ),
+            ],
+          ),
         ),
       ),
     );

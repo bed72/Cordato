@@ -73,7 +73,7 @@ e traduz exceções inesperadas em `ErrorsEntity.unknown()`. `userDependenciesMo
 em `user_module.dart`, registra o repository e os dois data sources como lazy
 singletons pelos contratos e é composto por `appModule`, sem `path`.
 `userRoutesModule` registra `/user`, acessível por “Dados pessoais” em Settings.
-`UserScreen` lista nome e e-mail em `SettingsCardWidget`, reutiliza a app bar de
+`UserScreen` lista nome e e-mail em `MenuCardWidget`, reutiliza a app bar de
 Settings e exibe `DangerButtonWidget` com “Excluir conta” no rodapé. Nome abre
 `/user/edit`; e-mail fica desativado, sem chevron. Os dados são exemplos e a
 exclusão é somente um callback placeholder, sem integração ou efeito na conta.
@@ -169,6 +169,23 @@ cabeçalho de tela com `title` e `description` obrigatórios, semântica de head
 tipografia e cores do tema e espaçamento de 6 pixels. Sign-in, sign-up, reenvio
 de e-mail, gasto, Settings, dados pessoais e edição de nome o compõem diretamente,
 sem wrappers dedicados por feature para essa mesma estrutura.
+
+Menus compartilhados ficam em `core/presentation/widgets/menu/`:
+
+- `MenuSectionWidget`: título em caixa alta com semântica de heading e conteúdo
+  livre em `child`; o espaçamento padrão é 8 pixels.
+- `MenuCardWidget`: contorno e cantos arredondados do tema, fundo transparente
+  por padrão, padding horizontal de 16 pixels por item e divisórias somente
+  entre itens. Aceita widgets livres, padding, cor de fundo e divisórias opcionais.
+- `MenuItemWidget`: label, ícone ou `leading` customizado, valor textual opcional,
+  `trailing` livre e chevron configurável. Reutiliza `BounceWidget` quando há
+  callback e mantém semântica de botão, valor e estado habilitado. Altura,
+  espaçamento e opacidade desativada são configuráveis; os padrões preservam
+  Settings (56 pixels, 16 pixels e sem alteração de opacidade).
+
+Settings e User compõem esses componentes diretamente. O badge PREMIUM continua
+pertencendo a Settings e é passado como `trailing`, sem acoplar o core à feature.
+User mantém itens de 64 pixels, valores à direita e e-mail desativado sem chevron.
 
 Direções de dependência aprovadas:
 
