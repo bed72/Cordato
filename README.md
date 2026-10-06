@@ -19,7 +19,7 @@ Os bounded contexts do produto são:
   edição de nome integrada à API pelo ID persistido no sign-in.
 - `expense`: entidade de domínio, value object para valores positivos em centavos,
   categorias com rótulos pt-BR, input e contrato
-  de repository para criação, DTO e data source HTTP, além de estrutura visual de
+  de repository para criação, command, DTO e data source HTTP, além de estrutura visual de
   formulário e validators; sem criação integrada ao formulário.
 - `budget`: planejado. Tetos por intervalo de datas, com gasto e saldo derivados.
 - `family`: planejado. Organização familiar com acesso combinado somente de leitura.

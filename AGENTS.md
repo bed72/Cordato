@@ -48,8 +48,11 @@ O Kotlin legado é somente referência de domínio.
 rótulos pt-BR em `ExpenseCategoryExtension` na apresentação, estrutura visual de
 formulário, validators e estado de apresentação. Também possui `CreateExpenseInput`
 em `application/data/`, o contrato `IExpenseRepository.create`, `ExpenseResponse`
-e data source HTTP de criação, sem command ou implementação de repository.
-O data source ainda não está registrado em DI nem conectado ao formulário.
+e data source HTTP de criação, além de `CreateExpenseCommand` em
+`presentation/screens/expense/commands/`, sem implementação de repository.
+O command delega o input a `IExpenseRepository.create`, preserva `Either` e
+implementa `ICommand`. Command e data source ainda não estão registrados em DI
+nem conectados ao formulário.
 Dashboard consulta nome e inicial do avatar por `UserCommand` e mantém conteúdo financeiro placeholder.
 `budget`, `family` e `insight` não têm feature Flutter
 implementada. Não descreva recursos planejados como código existente nem crie

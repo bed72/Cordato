@@ -36,7 +36,7 @@ Os contextos financeiros e seu estado atual são:
 
 - `expense`: entidade de domínio, value object monetário, categorias, input de criação e contrato de
   repository, estrutura visual de formulário, validators e estado de apresentação;
-  possui data source HTTP de criação e response DTO, sem command ou implementação
+  possui data source HTTP de criação, response DTO e command, sem implementação
   de repository. Os handlers são placeholders e o botão de cadastro
   permanece desabilitado em loading fixo.
 - `budget`: planejado; não há feature Flutter de orçamento nesta versão.
@@ -110,6 +110,16 @@ Usa casts e `DateTime.parse`; categorias desconhecidas falham sem fallback para
 `ExpenseResponseToEntity.toEntity()` retorna `Either<ErrorsEntity, ExpenseEntity>`
 para preservar a falha de validação do VO quando o valor recebido não é positivo.
 O data source ainda não está registrado em DI nem conectado ao formulário.
+
+`CreateExpenseCommand`, em
+`expense/presentation/screens/expense/commands/create_expense_command.dart`,
+recebe `IExpenseRepository` e delega `CreateExpenseInput` diretamente a `create`.
+Seu `execute` é `Command<CreateExpenseInput, CreateRepositoryType?>`, com valor
+inicial `null`, preservando `Either<ErrorsEntity, ExpenseEntity>` para a
+apresentação tratar sucesso e erros. O estado observável acompanha a execução e
+impede chamadas adicionais enquanto uma criação está pendente; após erro permite
+nova tentativa. Implementa `ICommand` e descarta `execute` em `dispose`. O command
+ainda não está registrado em DI nem conectado ao formulário.
 
 `user` é o bounded context dos dados do usuário. `UserEntity`, em
 `domain/entities/user_entity.dart`, é imutável e possui
