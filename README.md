@@ -49,7 +49,9 @@ O app já possui:
   pelo observador global de sessão;
 - tela de dados pessoais em `/user`, aberta por Settings, com nome clicável,
   nome e e-mail consultados na API por `UserCommand`, skeleton e opção de tentar
-  novamente em caso de erro, e-mail desativado e botão visual “Excluir conta” no rodapé;
+  novamente em caso de erro, e-mail desativado e exclusão de conta com confirmação,
+  loading e feedback de erro por `DeleteUserCommand`; após exclusão confirmada,
+  a limpeza da sessão redireciona para as boas-vindas;
 - tela de edição de nome em `/user/edit`, aberta pelo item Nome, seguindo a UI
   centralizada da autenticação, com atualização pela API, loading, erros no campo
   ou toast e retorno dos dados atualizados para a tela de dados pessoais;

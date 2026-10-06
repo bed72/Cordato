@@ -2,10 +2,9 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
 
 import 'package:cordato/features/settings/presentation/screens/settings/settings_screen.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_logout_bottom_sheet_widget.dart';
 
 mixin SettingsScreenStateMixin on State<SettingsScreen> {
   @override
@@ -22,18 +21,16 @@ mixin SettingsScreenStateMixin on State<SettingsScreen> {
 
   Future<void> showLogoutConfirmation() async {
     if (widget.command.execute.isRunning.value) return;
-    final confirmed = await showBottomSheetWidget<bool>(
+    await showConfirmationBottomSheetWidget(
       context: context,
       title: 'Realmente deseja sair?',
-      child: const SettingsLogoutBottomSheetWidget(),
+      subtitle: 'Ao sair da sua conta, você precisará fazer login novamente para acessar o Trocado.',
+      confirmLabel: 'Sair',
+      onConfirm: () {
+        if (widget.command.execute.isRunning.value) return;
+        widget.command.execute.run();
+      },
     );
-
-    if (!mounted ||
-        confirmed != true ||
-        widget.command.execute.isRunning.value) {
-      return;
-    }
-    widget.command.execute.run();
   }
 
   void _handleLogout() {

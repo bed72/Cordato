@@ -94,8 +94,25 @@ visuais e `Skeletonizer`, que bloqueia interação durante o carregamento.
 encapsula recarregamento, edição de nome e descrição dos erros; a screen mantém
 a composição visual. O avatar usa o nome retornado.
 `userRoutesModule` registra o command como lazy singleton,
-com descarte pelo módulo. A exclusão é somente um callback placeholder,
-sem integração ou efeito na conta.
+com descarte pelo módulo. “Excluir conta” abre a bottom sheet de confirmação
+com título “Deseja apagar sua conta?”, aviso de ação irreversível e botões
+“Voltar” e “Confirmar”, seguindo o layout do logout. O handler fica em
+`UserScreenStateMixin`; somente a confirmação executa `DeleteUserCommand`,
+em `presentation/screens/user/commands/`, que delega a `IUserRepository.delete()`
+e preserva `Either<ErrorsEntity, bool>`. A tela recebe o command por construtor,
+registrado como lazy singleton em `userRoutesModule`, com descarte pelo módulo.
+`CommandBuilder` mostra loading e desabilita o botão durante a exclusão; o handler
+também impede execução duplicada. O mixin registra e remove o listener de
+resultados e exibe toast para erros da API, exceções e `Right(false)`, permitindo
+nova tentativa. Em `Right(true)`, o repository já aguardou a limpeza do storage;
+a observação da sessão por `AppWidget` redireciona de `/user` para `/welcome`,
+sem navegação adicional na tela.
+Logout e exclusão reutilizam `showConfirmationBottomSheetWidget` do core,
+que recebe `title`, `subtitle` e `onConfirm`, com `confirmLabel` opcional
+(“Confirmar” por padrão e “Sair” no logout). Título e subtítulo usam o scaffold
+compartilhado; `ConfirmationBottomSheetWidget` compõe os botões. O callback só
+é chamado após fechar a sheet com confirmação e enquanto o contexto
+proprietário estiver montado; cancelar ou dispensar não executa a ação.
 Acima da lista, `UserAvatarWidget` mostra um avatar quadrado centralizado com
 cantos arredondados (`cornerRadius300`), a inicial do nome e as cores do tema.
 Não recebe imagem; o avatar atual é somente a inicial. O ícone de câmera recebe
