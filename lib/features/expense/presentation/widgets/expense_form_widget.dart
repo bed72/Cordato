@@ -29,13 +29,14 @@ final class const ExpenseFormWidget({
 final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
     with ExpenseFormWidgetStateMixin {
   @override
-  Widget build(BuildContext context) =>
-      CommandBuilder<CreateExpenseInput, CreateRepositoryType?>(
-        command: widget.command.execute,
-        onSuccess: (_, _) => _buildContent(),
-        onError: (_, _, _, _) => _buildContent(),
-        whileRunning: (_, _, _) => _buildContent(isLoading: true),
-      );
+  Widget build(BuildContext context) {
+    return CommandBuilder<CreateExpenseInput, CreateRepositoryType?>(
+      command: widget.command.execute,
+      onSuccess: (_, _) => _buildContent(),
+      onError: (_, _, _, _) => _buildContent(),
+      whileRunning: (_, _, _) => _buildContent(isLoading: true),
+    );
+  }
 
   Padding _buildContent({bool isLoading = false}) => Padding(
     padding: const .fromLTRB(16.0, 0.0, 16.0, 24.0),

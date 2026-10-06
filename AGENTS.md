@@ -54,6 +54,15 @@ O command delega o input a `IExpenseRepository.create`, preserva `Either` e
 implementa `ICommand`. `expenseDependenciesModule` registra data source e
 repository pelos contratos; `expenseRoutesModule` registra command e validators
 e os injeta na tela. O formulário executa o cadastro pela API.
+`IExpenseRepository.get({required int pageSize, String? pageLink})` e o data source
+remoto oferecem consulta paginada, ainda sem UI ou command de listagem.
+`ExpensePageEntity` e `ExpensePageResponse` copiam os itens para listas não
+modificáveis e preservam `next` e `prev` como continuações opacas anuláveis.
+O repository valida tamanho positivo e os centavos de todos os itens, sem
+resultado parcial. O data source usa GET relativo `expenses`, `page[size]` na
+query e extrai a query do link de continuação, sem acessar seu destino absoluto.
+O tamanho solicitado prevalece sobre o do link; ordem e datas da API são preservadas.
+O recorte de seis despesas da Dashboard é uma decisão do consumidor futuro.
 `ExpenseFormValidator` reúne os resultados de valor, descrição e data pelo padrão
 `ValidationResult` do core. Reutiliza os validators existentes de descrição e
 data, e `ExpenseCentsValidation` exige centavos positivos. Retorna um record

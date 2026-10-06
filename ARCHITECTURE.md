@@ -35,7 +35,8 @@ nem justificam restaurar camadas removidas.
 Os contextos financeiros e seu estado atual são:
 
 - `expense`: cadastro integrado à API por formulário, validators, command,
-  repository e data source HTTP. Possui entidade de domínio, value object
+  repository e data source HTTP, além de consulta paginada no repository e data
+  source, ainda sem apresentação da listagem. Possui entidade de domínio, value object
   monetário, categorias, input de criação e response DTO. Seleção de valor e
   data usa bottom sheets. `HoldButtonWidget` permite cadastrar e voltar ao
   dashboard com toque simples ou cadastrar e continuar com um novo formulário
@@ -116,6 +117,32 @@ Usa casts e `DateTime.parse`; categorias desconhecidas falham sem fallback para
 `other`. `created_at` e os metadados JSON:API não integram a entidade atual.
 `ExpenseResponseToEntity.toEntity()` retorna `Either<ErrorsEntity, ExpenseEntity>`
 para preservar a falha de validação do VO quando o valor recebido não é positivo.
+`IExpenseRepository.get({required int pageSize, String? pageLink})` retorna
+`Future<GetRepositoryType>`, com `Either<ErrorsEntity, ExpensePageEntity>`.
+O tamanho deve ser positivo; valores inválidos retornam erro de domínio sem
+chamada remota. `ExpensePageEntity` mantém uma cópia não modificável de `items`
+e as continuações opacas anuláveis `next` e `prev`. A ordem da API é preservada,
+sem ordenação, filtro de datas futuras ou truncamento local. Lista vazia é sucesso.
+O repository converte todos os itens com `ExpenseResponse.toEntity()`;
+qualquer falha de validação monetária invalida a página inteira, sem resultado parcial.
+
+`IExpenseRemoteDataSource.get` recebe os mesmos parâmetros e retorna
+`Either<ErrorsResponse, ExpensePageResponse>`. GET relativo `expenses` usa
+`page[size]` em `Requests.query`. Sem `pageLink`, solicita a primeira página.
+Para continuar, o consumidor repassa `next` ou `prev` sem interpretá-los.
+O data source extrai os parâmetros da query do link, preservando valores
+repetidos e sobrescrevendo `page[size]` com o tamanho solicitado. A origem e o
+caminho do link nunca são usados como destino HTTP: a chamada permanece no
+endpoint relativo protegido da base configurada, inclusive para links absolutos.
+Não presume nomes de cursor ou número de página. Links sem query ou com fragmento
+retornam erro sem requisição. `ExpensePageResponse.fromJson` interpreta `data`
+como lista, reutiliza `ExpenseResponse` por item e lê `links.next` e `links.prev`
+como strings anuláveis. Parsing inválido e exceções usam o erro genérico de
+`response<T>`; erros JSON:API são preservados. O DTO também copia sua lista.
+O limite de seis despesas previsto para a Dashboard pertence ao consumidor;
+o repository não conhece telas nem aplica esse limite globalmente. Ainda não há
+command de listagem, seção de recentes ou tela completa implementados.
+
 `expenseDependenciesModule` registra o data source e o repository como lazy
 singletons pelos contratos, com o HTTP do core, e é composto por `appModule`.
 
@@ -776,6 +803,7 @@ Endpoints usados pelos data sources atuais:
 | Atualização do nome | PATCH `users/<id>` | `true` | `Either<ErrorsResponse, UserResponse>` |
 | Exclusão de User | DELETE `users/<id>` | `true` | `Either<ErrorsResponse, bool>` |
 | Criação de Expense | POST `expenses` | `true` | `Either<ErrorsResponse, ExpenseResponse>` |
+| Listagem de Expense | GET `expenses` com `page[size]` e query de continuação | `true` | `Either<ErrorsResponse, ExpensePageResponse>` |
 
 Confirmação de e-mail usa GET da URL assinada absoluta e retorna `int?` no data
 source. No enum, User guarda `users`; o sufixo de ID é interpolado pelo

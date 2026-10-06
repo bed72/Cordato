@@ -38,6 +38,167 @@ void main() {
   });
 
   test(
+    'gets the first page with an explicit size and preserves order',
+    () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(
+          Reponse(
+            statusCode: 200,
+            body: {
+              'data': [
+                {'id': '9', 'type': 'expenses', 'attributes': attributes},
+                {'id': '2', 'type': 'expenses', 'attributes': attributes},
+              ],
+              'links': {'next': '?page%5Bafter%5D=2', 'prev': null},
+            },
+          ),
+        ),
+      );
+
+      final page = (await dataSource.get(pageSize: 6)).right;
+
+      expect(page.items.map((item) => item.id), ['9', '2']);
+      expect(page.next, '?page%5Bafter%5D=2');
+      expect(page.prev, isNull);
+      final request =
+          verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      expect(request.path, 'expenses');
+      expect(request.query, {'page[size]': 6});
+      expect(request.headers, isNull);
+      expect(request.body, isNull);
+    },
+  );
+
+  test(
+    'uses continuation queries on the protected relative endpoint',
+    () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(
+          Reponse(
+            statusCode: 200,
+            body: {
+              'data': [],
+              'links': {'next': null, 'prev': null},
+            },
+          ),
+        ),
+      );
+      for (final link in [
+        'https://trocado.test/api/expenses?page%5Bafter%5D=abc%2B123&page%5Bsize%5D=20',
+        'expenses?page%5Bafter%5D=abc%2B123&page%5Bsize%5D=20',
+        '?page%5Bafter%5D=abc%2B123&page%5Bsize%5D=20',
+      ]) {
+        final result = await dataSource.get(pageSize: 6, pageLink: link);
+        expect(result.right.items, isEmpty);
+        final request =
+            verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                    .captured
+                    .single
+                as Requests;
+        expect(request.path, 'expenses');
+        expect(request.query, {'page[after]': 'abc+123', 'page[size]': 6});
+      }
+    },
+  );
+
+  test('preserves repeated continuation query parameters', () async {
+    when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+      (_) async => const Right(
+        Reponse(
+          statusCode: 200,
+          body: {
+            'data': [],
+            'links': {'next': null, 'prev': null},
+          },
+        ),
+      ),
+    );
+    await dataSource.get(
+      pageSize: 20,
+      pageLink:
+          '?page[number]=2&filter[category][]=food&filter[category][]=other',
+    );
+    final request =
+        verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                .captured
+                .single
+            as Requests;
+    expect(request.query, {
+      'page[number]': '2',
+      'filter[category][]': ['food', 'other'],
+      'page[size]': 20,
+    });
+  });
+
+  test('rejects invalid pagination without making a request', () async {
+    for (final size in [0, -1]) {
+      expect((await dataSource.get(pageSize: size)).isLeft, isTrue);
+    }
+    for (final link in ['', 'expenses', '?page[number]=2#fragment']) {
+      expect(
+        (await dataSource.get(pageSize: 6, pageLink: link)).isLeft,
+        isTrue,
+      );
+    }
+    verifyNoMoreInteractions(client);
+  });
+
+  test('preserves listing authentication and transport errors', () async {
+    for (final status in [401, 0]) {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => Left(
+          Reponse(
+            statusCode: status,
+            body: {
+              'errors': [
+                {'title': 'Falha na consulta', 'status': '$status'},
+              ],
+            },
+          ),
+        ),
+      );
+      final errors = (await dataSource.get(pageSize: 6)).left.errors;
+      expect(errors.single.title, 'Falha na consulta');
+      expect(errors.single.status, '$status');
+    }
+  });
+
+  test(
+    'returns an error for malformed pages and unexpected exceptions',
+    () async {
+      for (final invalidBody in [
+        <String, dynamic>{},
+        {
+          'data': {},
+          'links': {'next': null, 'prev': null},
+        },
+        {
+          'data': [
+            body['data'],
+            {'id': 'invalid'},
+          ],
+          'links': {'next': null, 'prev': null},
+        },
+        {
+          'data': [],
+          'links': {'next': 1, 'prev': null},
+        },
+      ]) {
+        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+          (_) async => Right(Reponse(statusCode: 200, body: invalidBody)),
+        );
+        expect((await dataSource.get(pageSize: 6)).isLeft, isTrue);
+      }
+      when(() => client.get(parameter: any(named: 'parameter')))
+          .thenThrow(StateError('failure'));
+      expect((await dataSource.get(pageSize: 6)).isLeft, isTrue);
+    },
+  );
+
+  test(
     'posts the input as JSON:API and preserves the returned expense',
     () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(

@@ -6,15 +6,31 @@ import 'package:cordato/features/core/infrastructure/clients/http/enums/http_pat
 
 import 'package:cordato/features/expense/application/data/create_expense_input.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
+import 'package:cordato/features/expense/infrastructure/responses/expense_page_response.dart';
 
 typedef CreateDataSourceType = Either<ErrorsResponse, ExpenseResponse>;
+typedef GetDataSourceType = Either<ErrorsResponse, ExpensePageResponse>;
 
 abstract interface class IExpenseRemoteDataSource {
+  Future<GetDataSourceType> get({required int pageSize, String? pageLink});
+
   Future<CreateDataSourceType> create({required CreateExpenseInput input});
 }
 
 final class ExpenseRemoteDataSource({required final IHttpClient _client})
     implements IExpenseRemoteDataSource {
+  @override
+  Future<GetDataSourceType> get({required int pageSize, String? pageLink}) =>
+      response(
+        from: (response) => ExpensePageResponse.fromJson(response.body),
+        execute: () => _client.get(
+          parameter: Requests(
+            path: HttpPathEnum.expenses.path,
+            query: _pageQuery(pageSize, pageLink),
+          ),
+        ),
+      );
+
   @override
   Future<CreateDataSourceType> create({required CreateExpenseInput input}) =>
       response(
@@ -40,4 +56,26 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
       '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
+
+  Map<String, dynamic> _pageQuery(int pageSize, String? pageLink) {
+    if (pageSize <= 0) throw ArgumentError.value(pageSize, 'pageSize');
+
+    final query = <String, dynamic>{};
+
+    if (pageLink != null) {
+      final uri = Uri.parse(pageLink);
+      if (!uri.hasQuery || uri.fragment.isNotEmpty) {
+        throw FormatException('Link de paginação inválido');
+      }
+
+      for (final entry in uri.queryParametersAll.entries) {
+        query[entry.key] = entry.value.length == 1
+            ? entry.value.single
+            : entry.value;
+      }
+    }
+    query['page[size]'] = pageSize;
+
+    return query;
+  }
 }
