@@ -3,9 +3,12 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/user/user_name_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/menu_button_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/notification_button_dashboard_widget.dart';
+import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
 
 final class const AppBarDashboardWidget({
   super.key,
+  required final UserCommand command,
+  final VoidCallback? onAvatarPressed,
   final VoidCallback? onMenuPressed,
   final VoidCallback? onNotificationsPressed,
 }) extends StatelessWidget implements PreferredSizeWidget {
@@ -16,7 +19,7 @@ final class const AppBarDashboardWidget({
   Widget build(BuildContext context) {
     return AppBar(
       titleSpacing: 16.0,
-      title: UserNameWidget(),
+      title: UserNameWidget(command: command, onAvatarPressed: onAvatarPressed),
       toolbarHeight: preferredSize.height,
       actions: [
         Padding(

@@ -41,7 +41,8 @@ O app já possui:
 - tela de sign-up com validação e tela de reenvio da verificação que mostra o e-mail
   cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
   verificação após uma espera de 60 segundos e feedback da API;
-- dashboard inicial com nome de exemplo fixo no widget e conteúdo placeholder;
+- dashboard com nome e inicial do avatar consultados na API por `UserCommand`,
+  skeleton, opção de tentar novamente em caso de erro e conteúdo financeiro placeholder;
 - estrutura visual de formulário de gasto com descrição, valor e data;
   os handlers ainda não estão conectados e o cadastro está desabilitado;
 - tela de configurações com confirmação de saída, loading e erros em toast;

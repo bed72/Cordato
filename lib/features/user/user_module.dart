@@ -12,21 +12,21 @@ import 'package:cordato/features/user/infrastructure/remoto/user_remote_data_sou
 
 import 'package:cordato/features/user/presentation/screens/user/user_screen.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
-import 'package:cordato/features/user/presentation/screens/user/commands/delete_user_command.dart';
 import 'package:cordato/features/user/presentation/screens/edit_user/edit_user_screen.dart';
+import 'package:cordato/features/user/presentation/screens/user/commands/delete_user_command.dart';
 import 'package:cordato/features/user/presentation/screens/edit_user/commands/update_user_command.dart';
 
 final userDependenciesModule = createModule(
   register: (ModularContext context) => context
     ..addLazySingleton<IUserLocalDataSource>(UserLocalDataSource.new)
     ..addLazySingleton<IUserRemoteDataSource>(UserRemoteDataSource.new)
-    ..addLazySingleton<IUserRepository>(UserRepository.new),
+    ..addLazySingleton<IUserRepository>(UserRepository.new)
+    ..add<UserCommand>(UserCommand.new),
 );
 
 final userRoutesModule = createModule(
   path: RouteEnum.user.path,
   register: (context) => context
-    ..addLazySingleton<UserCommand>(UserCommand.new)
     ..addLazySingleton<DeleteUserCommand>(DeleteUserCommand.new)
     ..addLazySingleton<UpdateUserCommand>(UpdateUserCommand.new)
     ..route(

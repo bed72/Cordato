@@ -46,7 +46,7 @@ sessão no backend na abertura, refresh automático ou guard do Modular.
 O Kotlin legado é somente referência de domínio.
 `expense` possui estrutura visual de formulário, validators e estado de
 apresentação, sem command, repository, data source, client ou persistência.
-Dashboard usa nome fixo no widget e conteúdo placeholder, sem consulta de perfil.
+Dashboard consulta nome e inicial do avatar por `UserCommand` e mantém conteúdo financeiro placeholder.
 `budget`, `family` e `insight` não têm feature Flutter
 implementada. Não descreva recursos planejados como código existente nem crie
 um contexto `identity` para reproduzir o backend antigo. O contexto `chat` não
@@ -195,7 +195,7 @@ em `user_module.dart`, sem `path`, registrando os data sources remoto e local e
   `UserRepository.delete` aguarda a exclusão remota e limpa o storage pelo data
   source local somente em `Right(true)` (status 204), antes de retornar sucesso.
   `Left` e `Right(false)` não acionam a limpeza; falha local retorna erro
-  genérico. Dashboard ainda não consome esse contexto e mantém o nome fixo.
+  genérico. Dashboard consome `UserCommand` para preencher nome e inicial do avatar.
 - `UserRepository`, em `data/repositories/`, implementa `IUserRepository` por
   delegação a `IUserRemoteDataSource` e coordenação de `IUserLocalDataSource`, converte responses para entidades e
   traduz exceções inesperadas em `ErrorsEntity.unknown()`. Exclusão preserva
@@ -874,8 +874,6 @@ como padrão novo:
 - Não existe suíte `integration_test`.
 - Não há flows Maestro versionados; a política de validação com Maestro não
   representa cobertura automatizada já implementada.
-- `UserNameWidget` mantém o helper `_skeleton` não utilizado, reportado por
-  `flutter analyze`.
 - `ExpenseFormWidget` cria um `TextEditingController` no `build`, sem descarte;
   o formulário atual é um placeholder, não um exemplo de lifecycle aprovado.
 - Expense ainda importa `AmountFieldWidget` e `DateFieldWidget` de

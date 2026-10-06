@@ -93,8 +93,8 @@ visuais e `Skeletonizer`, que bloqueia interação durante o carregamento.
 `UserScreenStateMixin`, restrito a `State<UserScreen>`, inicia a consulta,
 encapsula recarregamento, edição de nome e descrição dos erros; a screen mantém
 a composição visual. O avatar usa o nome retornado.
-`userRoutesModule` registra o command como lazy singleton,
-com descarte pelo módulo. “Excluir conta” abre a bottom sheet de confirmação
+`userDependenciesModule` registra `UserCommand` como lazy singleton compartilhado
+entre User e Dashboard, com descarte pelo módulo. “Excluir conta” abre a bottom sheet de confirmação
 com título “Deseja apagar sua conta?”, aviso de ação irreversível e botões
 “Voltar” e “Confirmar”, seguindo o layout do logout. O handler fica em
 `UserScreenStateMixin`; somente a confirmação executa `DeleteUserCommand`,
@@ -144,8 +144,8 @@ storage do core, sem dependência entre as duas features e sem ler o token.
 `ErrorsEntity.unknown()`, mesmo que a exclusão remota já tenha sido confirmada.
 O data source remoto acessa somente HTTP; o local propaga falhas ao repository.
 
-`dashboard` é uma feature de apresentação e composição, com nome fixo no widget
-e conteúdo placeholder, sem consulta de perfil. `settings` é uma feature
+`dashboard` é uma feature de apresentação e composição, com nome e inicial do
+avatar consultados por `UserCommand` e conteúdo financeiro placeholder. `settings` é uma feature
 de apresentação que consome o logout de Authentication. `authentication`
 encapsula sign-in, sign-up, reenvio e
 confirmação de e-mail via API JSON:API; não recria o contexto `identity` nem
@@ -245,6 +245,8 @@ Direções de dependência aprovadas:
   escrita e observação de `StorageKeyEnum.opaqueToken` no storage do core;
 - Settings recebe `LogoutCommand` de Authentication como dependência de
   apresentação; o command conhece somente `IAuthenticationRepository`;
+- Dashboard recebe o `UserCommand` compartilhado de User como dependência de
+  apresentação, sem acessar repository, HTTP ou storage diretamente;
 - `root` compõe a apresentação global e consome `SessionCommand`, sem assumir
   a escrita do token ou as operações de autenticação;
 - `expense` e `budget` não importam contextos financeiros irmãos; `family`
@@ -498,7 +500,8 @@ Registros importantes:
   `FlutterSecureStorage`, `IHttpClient` e o Dio compartilhado. A factory instala
   `HeadersInterceptor`, `SessionInterceptor` e, apenas em debug, o logger.
 - `userDependenciesModule`: registra `IUserRemoteDataSource`, `IUserLocalDataSource`
-  e `IUserRepository` como lazy singletons, usando o HTTP e o storage do core.
+  e `IUserRepository` como lazy singletons, usando o HTTP e o storage do core;
+  também registra `UserCommand`, compartilhado entre Dashboard e dados pessoais.
 - `userRoutesModule`: compõe a UI de edição de dados pessoais, sem dependências
   assíncronas ou integração HTTP, recebendo a navegação por callback.
 - `sessionDependenciesModule`: registra `ISessionLocalDataSource`, `ISessionRepository` e
@@ -516,8 +519,15 @@ Registros importantes:
   Após o sucesso do sign-up, a
   rota é substituída por `ResendEmailScreen`, que recebe o e-mail
   cadastrado para exibi-lo em um campo desabilitado e permitir o reenvio do link.
-- `dashboardRoutesModule`: compõe a tela inicial; o nome `Gabriel Ramos` é
-  fixo em `UserNameWidget`, e o corpo exibe `Dashboard`. Menu abre `/settings`
+- `dashboardRoutesModule`: injeta `UserCommand` na tela inicial, que consulta
+  o usuário ao montar. O AppBar recebe o command e `UserNameWidget` usa
+  `CommandBuilder` para mostrar nome e inicial da API, skeleton durante a consulta
+  e “Tentar novamente” em caso de erro. Nomes longos usam ellipsis. A saudação
+  continua baseada na hora local. A consulta após editar o nome em User atualiza
+  também o AppBar, pois as telas observam a mesma instância do command.
+  O avatar reutiliza `BounceWidget` e abre `/user` ao tocar, com navegação
+  injetada por callback e sem acesso ao router no widget.
+  O corpo exibe `Dashboard`. Menu abre `/settings`
   e a ação de gasto abre `/expense`; orçamento e notificações não têm integração.
 - `expenseRoutesModule`: registra validators e compõe o formulário visual com
   `IMoneyFormatter` do core; ainda não executa criação.
@@ -662,7 +672,7 @@ O sign-up ainda envia `name: 'Trocado'` fixo e repete a senha em
 perfil ao Dashboard.
 
 O fluxo financeiro ainda não usa a API: Expense é apenas apresentação,
-Dashboard usa nome fixo no widget e não existe feature Flutter de orçamento.
+Dashboard consulta o perfil pelo `UserCommand`, mas não existe feature Flutter de orçamento.
 Ao conectar persistência financeira, preserve propriedade
 individual e invariantes no serviço responsável, com testes de autorização e
 regras de domínio; a UI não é fronteira de autorização.
@@ -747,8 +757,7 @@ O teste de `ResendEmailCommand` permanece no caminho histórico
 embora importe o command atual em `screens/resend_email/`. Essas pendências
 não alteram as direções aprovadas nem devem ser tratadas como novas convenções.
 
-Outras pendências do código atual: `UserNameWidget._skeleton` não é utilizado
-e gera warning no analyzer; `ExpenseFormWidget` cria um controller no `build`
+Outras pendências do código atual: `ExpenseFormWidget` cria um controller no `build`
 sem descartá-lo. Esses placeholders não substituem a regra de lifecycle de
 controllers, listeners, timers e commands em [`AGENTS.md`](AGENTS.md).
 Expense também reutiliza os campos de valor e data ainda localizados em
