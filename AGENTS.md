@@ -53,6 +53,11 @@ e data source HTTP de criação, além de `CreateExpenseCommand` em
 O command delega o input a `IExpenseRepository.create`, preserva `Either` e
 implementa `ICommand`. Command e data source ainda não estão registrados em DI
 nem conectados ao formulário.
+`ExpenseFormValidator` reúne os resultados de valor, descrição e data pelo padrão
+`ValidationResult` do core. Reutiliza os validators existentes de descrição e
+data, e `ExpenseAmountValidation` exige centavos positivos. Retorna um record
+com resultado por campo, sem interromper na primeira falha. Os validators estão registrados
+no módulo de rotas de Expense e ainda não são consumidos pelo formulário.
 Dashboard consulta nome e inicial do avatar por `UserCommand` e mantém conteúdo financeiro placeholder.
 `budget`, `family` e `insight` não têm feature Flutter
 implementada. Não descreva recursos planejados como código existente nem crie

@@ -121,6 +121,18 @@ impede chamadas adicionais enquanto uma criação está pendente; após erro per
 nova tentativa. Implementa `ICommand` e descarta `execute` em `dispose`. O command
 ainda não está registrado em DI nem conectado ao formulário.
 
+`ExpenseFormValidator`, em `expense/presentation/validators/`, compõe
+`ExpenseAmountValidation`, `ExpenseDescriptionValidation` e
+`ExpenseDateValidation`. Seu `call` recebe `cents`, `description` e `occurredOn`
+e retorna um record com `ValidationResult` para cada campo, validando todos em
+uma chamada. Valor deve ser positivo em centavos inteiros. A descrição reutiliza
+a regra existente: `trim()` e entre 2 e 128 caracteres Unicode. A data deve estar
+selecionada no formulário, mesmo que o input de criação ofereça `now()` como
+default. Valores válidos são preservados, exceto pelo trim da descrição. Esses
+validators e o agregador estão registrados em `expenseRoutesModule`, mas ainda
+não são consumidos pelo formulário placeholder. O validator não cria inputs,
+não executa commands e não realiza navegação ou requisições.
+
 `user` é o bounded context dos dados do usuário. `UserEntity`, em
 `domain/entities/user_entity.dart`, é imutável e possui
 `id`, `name`, `email` e `status` como `String`, além de `createdAt`
@@ -611,7 +623,8 @@ Registros importantes:
   injetada por callback e sem acesso ao router no widget.
   O corpo exibe `Dashboard`. Menu abre `/settings`
   e a ação de gasto abre `/expense`; orçamento e notificações não têm integração.
-- `expenseRoutesModule`: registra validators e compõe o formulário visual com
+- `expenseRoutesModule`: registra os validators de valor, descrição e data e
+  `ExpenseFormValidator`, e compõe o formulário visual com
   `IMoneyFormatter` do core; ainda não executa criação.
 - `welcomeRoutesModule`: tela e navegação de entrada.
 - `settingsRoutesModule`: registra localmente o `LogoutCommand` definido em

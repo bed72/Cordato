@@ -4,15 +4,19 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/expense_screen.dart';
+import 'package:cordato/features/expense/presentation/validators/expense_cents_validation.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_date_validation.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_description_validation.dart';
+import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';
 
 final expenseRoutesModule = createModule(
   path: RouteEnum.expense.path,
   register: (context) {
     context
+      ..add(ExpenseCentsValidation.new)
       ..add(ExpenseDateValidation.new)
       ..add(ExpenseDescriptionValidation.new)
+      ..add(ExpenseFormValidator.new)
       ..route(
         RouteEnum.app.path,
         child: (context, _) => ExpenseScreen(
