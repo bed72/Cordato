@@ -88,7 +88,15 @@ retorno assíncrono do formulário. `ExpensesSectionWidget` usa `CommandBuilder`
 para loading, erro com título e descrição sem ação de retry, vazio e sucesso, sem paginação na UI.
 Reutiliza `ExpenseItemWidget` de Expense, `IMoneyFormatter` e datas pt-BR sem
 conversão de fuso. “Ver tudo” requer itens e callback de navegação disponível;
-a rota atual não fornece destino porque a tela completa ainda não existe.
+a rota fornece o destino `/expenses` para a listagem completa.
+`ExpensesScreen`, em `expense/presentation/screens/expenses/`, usa uma instância
+própria de `GetExpensesCommand` e reutiliza `ExpenseItemWidget` e os formatters
+do core. `ExpensesScreenStateMixin` acumula páginas de 20 itens em ordem da API,
+repassa `next` sem interpretação e carrega ao se aproximar do fim da rolagem.
+Atualização por gesto substitui os itens somente após sucesso. Falhas preservam
+os itens e permitem repetir a operação que falhou por “Tentar novamente”. O mixin
+descarta controller e command e ignora respostas obsoletas. `expenseRoutesModule`
+registra a rota autenticada `/expenses`, acessível por “Ver tudo” da Dashboard.
 `budget`, `family` e `insight` não têm feature Flutter
 implementada. Não descreva recursos planejados como código existente nem crie
 um contexto `identity` para reproduzir o backend antigo. O contexto `chat` não
@@ -828,8 +836,10 @@ Rotas atuais:
 - `/dashboard` para a tela inicial de dashboard, ainda sem guard de sessão.
 - `/settings` para configurações.
 - `/expense` para `CreateExpenseScreen`, o formulário de cadastro de gasto.
+- `/expenses` para `ExpensesScreen`, a listagem completa com rolagem infinita.
 
-`RouteEnum.authenticatedPaths()` lista Dashboard, Settings e Expense. A flag
+`RouteEnum.authenticatedPaths()` inclui Dashboard, Settings, User, edição de User,
+cadastro de Expense e listagem de Expenses. A flag
 `authenticated` classifica rotas; não instala um guard. `AppWidget` encaminha
 uma abertura inicial nessas rotas para `/` e reage à perda de token enquanto
 elas estiverem ativas. Não confunda isso com autorização do backend.

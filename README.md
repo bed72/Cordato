@@ -20,7 +20,8 @@ Os bounded contexts do produto são:
 - `expense`: entidade de domínio, value object para valores positivos em centavos,
   categorias com rótulos pt-BR, input e contrato
   de repository para criação, implementação de repository, command, DTO e data
-  source HTTP, com formulário e validators integrados ao cadastro.
+  source HTTP, com formulário e validators integrados ao cadastro e consulta
+  paginada consumida pela Dashboard e pela listagem completa.
 - `budget`: planejado. Tetos por intervalo de datas, com gasto e saldo derivados.
 - `family`: planejado. Organização familiar com acesso combinado somente de leitura.
 - `insight`: planejado. Análises derivadas, somente leitura e sem persistência própria.
@@ -48,6 +49,9 @@ O app já possui:
   e seção de despesas recentes com as seis primeiras despesas da API, skeleton,
   estado vazio, erro com título e descrição e atualização por gesto ou
   ao retornar do formulário de gasto;
+- listagem completa em `/expenses`, aberta por “Ver tudo” da Dashboard, com
+  rolagem infinita em páginas de 20 itens, atualização por gesto, loading, vazio
+  e nova tentativa após erro, preservando os itens já carregados;
 - formulário de gasto integrado à API, com descrição obrigatória, calculadora
   de valor em centavos, seleção de data, validação, loading, erros por campo e
   toast de sucesso; toque simples cadastra e retorna ao dashboard, enquanto

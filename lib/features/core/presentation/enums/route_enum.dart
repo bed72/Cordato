@@ -1,9 +1,10 @@
 enum RouteEnum(final String path, {final bool authenticated = false}) {
   app('/'),
   welcome('/welcome'),
-  expense('/expense', authenticated: true),
-  settings('/settings', authenticated: true),
   user('/user', authenticated: true),
+  expense('/expense', authenticated: true),
+  expenses('/expenses', authenticated: true),
+  settings('/settings', authenticated: true),
   userEdit('/user/edit', authenticated: true),
   dashboard('/dashboard', authenticated: true),
   authenticationSignIn('/authentication/sign-in'),

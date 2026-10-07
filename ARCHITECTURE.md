@@ -141,7 +141,8 @@ como strings anuláveis. Parsing inválido e exceções usam o erro genérico de
 `response<T>`; erros JSON:API são preservados. O DTO também copia sua lista.
 O limite de seis despesas previsto para a Dashboard pertence ao consumidor;
 o repository não conhece telas nem aplica esse limite globalmente. A seção de
-recentes está integrada à Dashboard; a tela completa ainda não está implementada.
+recentes está integrada à Dashboard; a listagem completa usa rolagem infinita em
+`ExpensesScreen`, na rota autenticada `/expenses`.
 
 `GetExpensesCommand`, em `expense/presentation/commands/get_expenses_command.dart`,
 recebe `IExpenseRepository` e delega a `get` os campos do record
@@ -155,11 +156,28 @@ automaticamente. Durante a execução, o estado do `command_it` bloqueia novas
 chamadas; após erro permite tentativa novamente. Exceções inesperadas são erros
 observáveis do command. Implementa `ICommand` e descarta `execute` em `dispose`.
 `expenseDependenciesModule` registra o command por factory (`add`), permitindo
-instâncias independentes para Dashboard e a futura listagem completa. O consumidor
+instâncias independentes para Dashboard e a listagem completa. O consumidor
 que obtiver uma instância é responsável por descartá-la ao encerrar seu lifecycle.
 
 `expenseDependenciesModule` registra o data source e o repository como lazy
 singletons pelos contratos, com o HTTP do core, e é composto por `appModule`.
+
+`ExpensesScreen`, em `expense/presentation/screens/expenses/`, recebe uma instância
+própria de `GetExpensesCommand`, formatters e callback de retorno. Usa
+`ExpensesAppBarWidget`, `HeaderWidget`, `ExpenseItemWidget` e
+`ExpensesFeedbackWidget`, com `CommandBuilder` para acompanhar a consulta.
+`ExpensesScreenStateMixin` mantém os itens acumulados, a continuação opaca `next`
+e os estados locais de loading, vazio e falha. Solicita páginas de 20 itens ao
+montar e ao restarem menos de 240 pixels de conteúdo; após uma página, também
+verifica se é preciso preencher a área visível. A ordem da API é preservada e
+`next: null` encerra a paginação. Não carrega automaticamente após uma falha.
+Requisições simultâneas são bloqueadas. Atualização por gesto substitui os itens
+somente após sucesso da primeira página. Falhas preservam os itens e a continuação;
+“Tentar novamente” repete a operação que falhou, incluindo atualização.
+O mixin descarta o controller e o command e ignora respostas após descarte ou
+troca do command. A listagem não acessa repository, HTTP ou storage diretamente.
+`expenseRoutesModule`, em `expense_module.dart`, reúne `/expense` e `/expenses`
+sob o path `/` e é composto por `appModule`. “Ver tudo” na Dashboard abre `/expenses`.
 
 `CreateExpenseCommand`, em
 `expense/presentation/screens/create_expense/commands/create_expense_command.dart`,
@@ -634,7 +652,8 @@ welcome. `AppScreenStateMixin` concentra a leitura, o listener e a decisão
 nem módulo de rotas. Não há rota `/splash`.
 
 No primeiro frame, `AppWidget` encaminha uma abertura inicial em Dashboard,
-Settings ou Expense para `/`, para passar pela leitura local da sessão.
+Settings, User, edição de User, cadastro ou listagem de despesas para `/`,
+para passar pela leitura local da sessão.
 Links diretos para `/authentication/confirm-email` continuam públicos e não
 são desviados para a entrada. Após sign-in, a observação global navega ao
 dashboard quando a rota ativa é Welcome ou Sign In; após perda do token,
@@ -645,7 +664,8 @@ no backend na abertura, refresh automático ou guard do Modular. Presença do
 token é um sinal local para navegação, não prova de validade ou autorização.
 
 `RouteEnum` centraliza os caminhos e a classificação das rotas pelo parâmetro
-`authenticated`, que é `false` por padrão. Dashboard, Settings e Expense usam
+`authenticated`, que é `false` por padrão. Dashboard, Settings, User, edição de User,
+cadastro de Expense e listagem de Expenses usam
 `authenticated: true`. O método estático `authenticatedPaths()` devolve seus
 caminhos; `AppWidget` consulta esse conjunto nos redirecionamentos de sessão.
 Essa classificação de UI é distinta de `HttpPathEnum.authenticated`, que
@@ -742,7 +762,7 @@ Registros importantes:
   `ExpenseCategoryExtension`. Descrição e textos longos usam ellipsis.
   O callback opcional `onSeeAllExpensesPressed` fica preparado para a listagem
   completa: “Ver tudo” aparece somente com itens e callback disponível. A rota
-  atual não fornece esse callback, pois o destino ainda não está implementado.
+  fornece esse callback para abrir `/expenses`.
   Menu abre `/settings` e a ação de gasto abre `/expense`; orçamento e notificações
   não têm integração.
 - `expenseDependenciesModule`: registra `IExpenseRemoteDataSource` e
@@ -753,6 +773,8 @@ Registros importantes:
   command, validator, `IMoneyFormatter` e `IDateFormatter` do core; após cadastro confirmado por
   toque simples, o callback injetado navega para `/dashboard`. O hold permanece
   na tela com o formulário limpo para o próximo cadastro.
+  Também compõe `ExpensesScreen` em `/expenses`, com uma instância própria de
+  `GetExpensesCommand`, os formatters do core e callback de retorno.
 - `welcomeRoutesModule`: tela e navegação de entrada.
 - `settingsRoutesModule`: registra localmente o `LogoutCommand` definido em
   `authentication/presentation/commands/`, injetado na tela e
@@ -778,6 +800,7 @@ Rotas registradas:
 /user
 /user/edit
 /expense
+/expenses
 ```
 
 `/dashboard` é uma tela de apresentação, sem shell de navegação autenticada.

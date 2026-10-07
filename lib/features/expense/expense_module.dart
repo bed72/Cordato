@@ -10,6 +10,7 @@ import 'package:cordato/features/expense/infrastructure/remoto/expense_remote_da
 
 import 'package:cordato/features/expense/presentation/commands/get_expenses_command.dart';
 import 'package:cordato/features/expense/presentation/screens/create_expense/create_expense_screen.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
 
 import 'package:cordato/features/expense/presentation/validators/create_expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_date_validation.dart';
@@ -26,21 +27,30 @@ final expenseDependenciesModule = createModule(
 );
 
 final expenseRoutesModule = createModule(
-  path: RouteEnum.expense.path,
+  path: RouteEnum.app.path,
   register: (context) {
     context
-      ..add(CreateExpenseFormValidator.new)
       ..add(ExpenseDateValidation.new)
       ..add(ExpenseCentsValidation.new)
+      ..add(CreateExpenseFormValidator.new)
       ..add(ExpenseDescriptionValidation.new)
       ..addLazySingleton<CreateExpenseCommand>(CreateExpenseCommand.new)
       ..route(
-        RouteEnum.app.path,
-        child: (context, _) => CreateExpenseScreen(
-          onBackPressed: context.pop,
+        RouteEnum.expenses.path,
+        child: (context, _) => ExpensesScreen(
+          command: inject<GetExpensesCommand>(),
           moneyFormatter: inject<IMoneyFormatter>(),
           dateFormatter: inject<IDateFormatter>(),
+          onBackPressed: context.pop,
+        ),
+      )
+      ..route(
+        RouteEnum.expense.path,
+        child: (context, _) => CreateExpenseScreen(
+          onBackPressed: context.pop,
           command: inject<CreateExpenseCommand>(),
+          dateFormatter: inject<IDateFormatter>(),
+          moneyFormatter: inject<IMoneyFormatter>(),
           validator: inject<CreateExpenseFormValidator>(),
           onExpenseCreated: (context) =>
               context.navigate(RouteEnum.dashboard.path),
