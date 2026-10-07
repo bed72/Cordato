@@ -37,6 +37,133 @@ void main() {
     );
   });
 
+  test('deletes the expense and accepts 204 without a body', () async {
+    when(
+      () => client.delete(parameter: any(named: 'parameter')),
+    ).thenAnswer((_) async => const Right(Reponse(statusCode: 204, body: {})));
+
+    expect((await dataSource.delete(id: '1')).right, isTrue);
+
+    final request =
+        verify(() => client.delete(parameter: captureAny(named: 'parameter')))
+                .captured
+                .single
+            as Requests;
+    expect(request.path, 'expenses/1');
+    expect(request.body, isNull);
+    expect(request.query, isNull);
+    expect(request.headers, isNull);
+  });
+
+  test('encodes the expense id as a single resource path segment', () async {
+    when(
+      () => client.delete(parameter: any(named: 'parameter')),
+    ).thenAnswer((_) async => const Right(Reponse(statusCode: 204, body: {})));
+
+    await dataSource.delete(id: 'a/b?c#d');
+
+    final request =
+        verify(() => client.delete(parameter: captureAny(named: 'parameter')))
+                .captured
+                .single
+            as Requests;
+    expect(request.path, 'expenses/a%2Fb%3Fc%23d');
+  });
+
+  test('does not confirm deletion for other successful statuses', () async {
+    for (final status in [200, 202]) {
+      when(
+        () => client.delete(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => Right(Reponse(statusCode: status, body: {})));
+
+      expect((await dataSource.delete(id: '1')).right, isFalse);
+    }
+  });
+
+  test('preserves every JSON:API deletion error', () async {
+    when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
+      (_) async => const Left(
+        Reponse(
+          statusCode: 403,
+          body: {
+            'errors': [
+              {
+                'title': 'Acesso negado',
+                'detail': 'Sem permissão para excluir a despesa.',
+                'status': '403',
+                'source': {'pointer': '/data/id'},
+              },
+              {'title': 'Outro erro', 'status': '403'},
+            ],
+          },
+        ),
+      ),
+    );
+
+    final errors = (await dataSource.delete(id: '1')).left.errors;
+
+    expect(errors, hasLength(2));
+    expect(errors.first.title, 'Acesso negado');
+    expect(errors.first.detail, 'Sem permissão para excluir a despesa.');
+    expect(errors.first.status, '403');
+    expect(errors.first.pointer, '/data/id');
+    expect(errors.last.title, 'Outro erro');
+    expect(errors.last.status, '403');
+  });
+
+  test(
+    'preserves deletion authentication, not found and transport errors',
+    () async {
+      for (final status in [401, 404, 0]) {
+        when(() => client.delete(parameter: any(named: 'parameter')))
+            .thenAnswer(
+              (_) async => Left(
+                Reponse(
+                  statusCode: status,
+                  body: {
+                    'errors': [
+                      {'title': 'Falha na exclusão', 'status': '$status'},
+                    ],
+                  },
+                ),
+              ),
+            );
+
+        final error = (await dataSource.delete(id: '1')).left.errors.single;
+
+        expect(error.title, 'Falha na exclusão');
+        expect(error.status, '$status');
+      }
+    },
+  );
+
+  test('translates malformed deletion errors to generic errors', () async {
+    for (final errorBody in <Map<String, dynamic>>[
+      {},
+      {'errors': []},
+      {'errors': 'invalid'},
+    ]) {
+      when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => Left(Reponse(statusCode: 500, body: errorBody)),
+      );
+
+      expect(
+        (await dataSource.delete(id: '1')).left.errors.single.title,
+        'Erro desconhecido',
+      );
+    }
+  });
+
+  test('translates unexpected deletion exceptions to generic errors', () async {
+    when(() => client.delete(parameter: any(named: 'parameter')))
+        .thenThrow(StateError('unexpected failure'));
+
+    expect(
+      (await dataSource.delete(id: '1')).left.errors.single.title,
+      'Erro desconhecido',
+    );
+  });
+
   test(
     'gets the first page with an explicit size and preserves order',
     () async {

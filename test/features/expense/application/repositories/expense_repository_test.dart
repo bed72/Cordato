@@ -27,6 +27,89 @@ void main() {
     );
   });
 
+  for (final deleted in [true, false]) {
+    test(
+      'delegates the expense id and preserves deletion result $deleted',
+      () async {
+        const id = 'a/b?c#d';
+        when(() => dataSource.delete(id: id))
+            .thenAnswer((_) async => Right(deleted));
+        final IExpenseRepository contract = repository;
+
+        final result = await contract.delete(id: id);
+
+        expect(result.right, deleted);
+        verify(() => dataSource.delete(id: id)).called(1);
+        verifyNoMoreInteractions(dataSource);
+      },
+    );
+  }
+
+  test('preserves all deletion error details as domain errors', () async {
+    when(() => dataSource.delete(id: '1')).thenAnswer(
+      (_) async => const Left(
+        ErrorsResponse(
+          errors: [
+            ErrorResponse(
+              status: '403',
+              title: 'Acesso negado',
+              detail: 'Sem permissão para excluir a despesa.',
+              pointer: '/data/id',
+            ),
+            ErrorResponse(status: '403', title: 'Outro erro'),
+          ],
+        ),
+      ),
+    );
+
+    final errors = (await repository.delete(id: '1')).left.errors;
+
+    expect(errors, hasLength(2));
+    expect(errors.first.status, '403');
+    expect(errors.first.title, 'Acesso negado');
+    expect(errors.first.detail, 'Sem permissão para excluir a despesa.');
+    expect(errors.first.pointer, '/data/id');
+    expect(errors.last.status, '403');
+    expect(errors.last.title, 'Outro erro');
+    verify(() => dataSource.delete(id: '1')).called(1);
+    verifyNoMoreInteractions(dataSource);
+  });
+
+  test('returns a generic error for an empty deletion error list', () async {
+    when(() => dataSource.delete(id: '1'))
+        .thenAnswer((_) async => const Left(ErrorsResponse(errors: [])));
+
+    expect(
+      (await repository.delete(id: '1')).left.errors.single.title,
+      'Erro desconhecido',
+    );
+  });
+
+  test(
+    'translates synchronous deletion exceptions into a generic error',
+    () async {
+      when(() => dataSource.delete(id: '1')).thenThrow(StateError('failure'));
+
+      expect(
+        (await repository.delete(id: '1')).left.errors.single.title,
+        'Erro desconhecido',
+      );
+    },
+  );
+
+  test(
+    'translates asynchronous deletion exceptions into a generic error',
+    () async {
+      when(() => dataSource.delete(id: '1'))
+          .thenAnswer((_) async => throw StateError('failure'));
+
+      expect(
+        (await repository.delete(id: '1')).left.errors.single.title,
+        'Erro desconhecido',
+      );
+    },
+  );
+
   test(
     'delegates pagination and maps an immutable page in API order',
     () async {
@@ -111,7 +194,10 @@ void main() {
         when(() => dataSource.get(pageSize: 30, pageLink: link))
             .thenAnswer((_) async => Right(response));
 
-        final page = (await repository.get(pageSize: size, pageLink: link)).right;
+        final page = (await repository.get(
+          pageSize: size,
+          pageLink: link,
+        )).right;
 
         expect(page.items, isEmpty);
         expect(page.next, response.next);
@@ -125,7 +211,8 @@ void main() {
   test('preserves positive sizes below and above the default', () async {
     for (final size in [1, 20, 60]) {
       when(() => dataSource.get(pageSize: size)).thenAnswer(
-        (_) async => Right(ExpensePageResponse(items: [], next: null, prev: null)),
+        (_) async =>
+            Right(ExpensePageResponse(items: [], next: null, prev: null)),
       );
 
       expect((await repository.get(pageSize: size)).right.items, isEmpty);

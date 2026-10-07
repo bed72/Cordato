@@ -8,6 +8,8 @@ import 'package:cordato/features/core/presentation/formatters/interface_money_fo
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_item_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_dismissible_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/commands/delete_expense_command.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_skeleton_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_app_bar_widget.dart';
@@ -18,6 +20,7 @@ final class const ExpensesScreen({
   super.key,
   required final VoidCallback onBackPressed,
   required final GetExpensesCommand command,
+  required final DeleteExpenseCommand deleteCommand,
   required final IDateFormatter dateFormatter,
   required final IMoneyFormatter moneyFormatter,
 }) extends StatefulWidget {
@@ -28,21 +31,23 @@ final class const ExpensesScreen({
 final class _ExpensesScreenState extends State<ExpensesScreen>
     with ExpensesScreenStateMixin {
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: ExpensesAppBarWidget(onBackPressed: widget.onBackPressed),
-    body: SafeArea(
-      child:
-          CommandBuilder<
-            ({int pageSize, String? pageLink}),
-            GetRepositoryType?
-          >(
-            command: widget.command.execute,
-            onSuccess: (_, _) => _content(),
-            onError: (_, _, _, _) => _content(),
-            whileRunning: (_, _, _) => _content(),
-          ),
-    ),
-  );
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: ExpensesAppBarWidget(onBackPressed: widget.onBackPressed),
+      body: SafeArea(
+        child:
+            CommandBuilder<
+              ({int pageSize, String? pageLink}),
+              GetRepositoryType?
+            >(
+              command: widget.command.execute,
+              onSuccess: (_, _) => _content(),
+              onError: (_, _, _, _) => _content(),
+              whileRunning: (_, _, _) => _content(),
+            ),
+      ),
+    );
+  }
 
   RefreshIndicator _content() => RefreshIndicator(
     onRefresh: refreshExpenses,
@@ -64,14 +69,27 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
           itemBuilder: (_, index) {
             final expense = expenses[index];
 
-            return ExpenseItemWidget(
-              category: expense.category,
-              description: expense.description,
-              formattedDate: widget.dateFormatter.formatLongDate(
-                expense.occurredOn,
-              ),
-              formattedValue: widget.moneyFormatter.formatCents(
-                expense.cents.cents,
+            return ExpenseDismissibleWidget(
+              key: ValueKey(expense.id),
+              id: expense.id,
+              enabled:
+                  !isLoading &&
+                  (pendingDeleteId == null || pendingDeleteId == expense.id),
+              isDeleting: deletingExpenseId == expense.id,
+              onConfirmDelete: () => confirmDeleteExpense(expense.id),
+              onDeleted: () => removeDeletedExpense(expense.id),
+              onAccessibleDelete: isLoading || pendingDeleteId != null
+                  ? null
+                  : () => deleteExpenseAccessibly(expense.id),
+              child: ExpenseItemWidget(
+                category: expense.category,
+                description: expense.description,
+                formattedDate: widget.dateFormatter.formatLongDate(
+                  expense.occurredOn,
+                ),
+                formattedValue: widget.moneyFormatter.formatCents(
+                  expense.cents.cents,
+                ),
               ),
             );
           },

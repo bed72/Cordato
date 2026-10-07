@@ -111,6 +111,27 @@ exceções e respostas malformadas em erro genérico. POST `expenses` usa
 os componentes do input sem conversão de fuso; o horário é omitido. Headers e
 Bearer são aplicados pelos interceptors compartilhados, sem leitura de storage
 no data source.
+`IExpenseRemoteDataSource.delete({required String id})` retorna
+`Future<DeleteDataSourceType>`, com `Either<ErrorsResponse, bool>`. Executa DELETE
+relativo `expenses/<id>`, codificando o ID com `Uri.encodeComponent`, sem corpo
+ou query. O `SessionInterceptor` reconhece tanto `expenses` quanto
+`expenses/<id>` como endpoints relativos protegidos e aplica o Bearer; URLs
+absolutas e caminhos com segmentos adicionais continuam sem token. Retorna
+`true` em 204 sem corpo e `false` para outros status de sucesso.
+As regras de segmentos de ID ficam declaradas em `HttpPathEnum`: User usa
+`requiresId: true` e Expense usa `acceptsId: true`. Os demais endpoints mantêm
+o caminho exato, com ambos os campos falsos por padrão. O interceptor compara
+segmentos completos, sem regras específicas por feature; um ID deve ser um
+único segmento não vazio e diferente de `.` e `..`.
+Reutiliza `response<T>` para preservar erros JSON:API e traduzir exceções ou
+erros malformados em erro genérico.
+`IExpenseRepository.delete({required String id})` retorna
+`Future<DeleteRepositoryType>`, com `Either<ErrorsEntity, bool>`.
+`ExpenseRepository.delete` delega o ID sem normalização ao data source, preserva
+o booleano de sucesso, converte todos os erros remotos para `ErrorsEntity` e
+traduz exceções inesperadas em `ErrorsEntity.unknown()`. A codificação do ID e
+o tratamento do status HTTP pertencem ao data source. A exclusão está integrada
+à listagem completa em `/expenses`.
 `ExpenseResponse`, em `expense/infrastructure/responses/expense_response.dart`,
 faz parsing de `id`, `amount` inteiro, `description`, `occurred_on` e `category`.
 Usa casts e `DateTime.parse`; categorias desconhecidas falham sem fallback para
@@ -165,8 +186,20 @@ que obtiver uma instância é responsável por descartá-la ao encerrar seu life
 `expenseDependenciesModule` registra o data source e o repository como lazy
 singletons pelos contratos, com o HTTP do core, e é composto por `appModule`.
 
-`ExpensesScreen`, em `expense/presentation/screens/expenses/`, recebe uma instância
-própria de `GetExpensesCommand`, formatters e callback de retorno. Usa
+`DeleteExpenseCommand`, em
+`expense/presentation/screens/expenses/commands/delete_expense_command.dart`,
+recebe `IExpenseRepository` e delega o ID sem normalização a `delete`.
+Seu `execute` é `Command<String, DeleteRepositoryType?>`, inicialmente nulo,
+preservando `Either<ErrorsEntity, bool>`, inclusive `Right(false)` e os erros
+de domínio. Cada execução substitui o resultado anterior; o estado de execução
+bloqueia novas chamadas enquanto uma exclusão está pendente e permite nova
+tentativa após falha. Exceções inesperadas do repository são erros observáveis
+do command. Implementa `ICommand` e descarta `execute` em `dispose`.
+É registrado por factory em `expenseDependenciesModule`; cada consumidor deve
+descartar sua instância. O command não remove itens da listagem nem navega.
+
+`ExpensesScreen`, em `expense/presentation/screens/expenses/`, recebe instâncias
+próprias de `GetExpensesCommand` e `DeleteExpenseCommand`, formatters e callback de retorno. Usa
 `ExpensesAppBarWidget`, `HeaderWidget`, `ExpenseItemWidget` e
 `ExpensesFeedbackWidget`, com `CommandBuilder` para acompanhar a consulta.
 `ExpensesSkeletonWidget`, em `expense/presentation/widgets/`, é compartilhado
@@ -184,6 +217,19 @@ somente após sucesso da primeira página. Falhas preservam os itens e a continu
 “Tentar novamente” repete a operação que falhou, incluindo atualização.
 O mixin descarta o controller e o command e ignora respostas após descarte ou
 troca do command. A listagem não acessa repository, HTTP ou storage diretamente.
+`ExpenseDismissibleWidget` envolve cada item da listagem, com chave pelo ID,
+gesto para a esquerda, fundo `error`, lixeira `onError` e conteúdo com raio
+`cornerRadius300`. Ao atingir o limiar de 30%, abre a confirmação compartilhada
+`showConfirmationBottomSheetWidget`, também usada em exclusão da conta e logout.
+Cancelar ou dispensar restaura o item sem requisição. A ação de acessibilidade
+“Excluir despesa” abre a mesma confirmação. Somente confirmar executa o
+`DeleteExpenseCommand`; a remoção ocorre após `Right(true)`, com toast de sucesso.
+Erros e `Right(false)` preservam o item e mostram toast. O mixin coordena a
+confirmação e a execução, bloqueia exclusões simultâneas e consultas enquanto a
+exclusão está pendente, e bloqueia exclusões durante carregamento de páginas.
+O gesto conclui a animação antes de remover o item da lista; depois, a verificação
+de paginação pode preencher a área visível. O mixin descarta os dois commands e
+ignora resultados obsoletos. As despesas recentes da Dashboard não possuem esse gesto.
 `expenseRoutesModule`, em `expense_module.dart`, reúne `/expense` e `/expenses`
 sob o path `/` e é composto por `appModule`. “Ver tudo” na Dashboard abre `/expenses`.
 

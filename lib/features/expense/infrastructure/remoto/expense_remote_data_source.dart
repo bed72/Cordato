@@ -8,10 +8,13 @@ import 'package:cordato/features/expense/application/data/create_expense_input.d
 import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_page_response.dart';
 
+typedef DeleteDataSourceType = Either<ErrorsResponse, bool>;
 typedef CreateDataSourceType = Either<ErrorsResponse, ExpenseResponse>;
 typedef GetDataSourceType = Either<ErrorsResponse, ExpensePageResponse>;
 
 abstract interface class IExpenseRemoteDataSource {
+  Future<DeleteDataSourceType> delete({required String id});
+
   Future<GetDataSourceType> get({required int pageSize, String? pageLink});
 
   Future<CreateDataSourceType> create({required CreateExpenseInput input});
@@ -19,6 +22,16 @@ abstract interface class IExpenseRemoteDataSource {
 
 final class ExpenseRemoteDataSource({required final IHttpClient _client})
     implements IExpenseRemoteDataSource {
+  @override
+  Future<DeleteDataSourceType> delete({required String id}) => response(
+    from: (response) => response.statusCode == 204,
+    execute: () => _client.delete(
+      parameter: Requests(
+        path: '${HttpPathEnum.expenses.path}/${Uri.encodeComponent(id)}',
+      ),
+    ),
+  );
+
   @override
   Future<GetDataSourceType> get({required int pageSize, String? pageLink}) =>
       response(

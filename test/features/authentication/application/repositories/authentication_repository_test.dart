@@ -46,9 +46,9 @@ void main() {
       test(
         'revokes remotely before clearing local storage and returning success',
         () async {
-          final result = await repository.logout();
+          final data = await repository.logout();
 
-          expect(result.right, isTrue);
+          expect(data.right, isTrue);
           verifyInOrder([
             () => dataSource.logout(),
             () => localDataSource.clear(),
@@ -77,16 +77,13 @@ void main() {
           ),
         );
 
-        final result = await repository.logout();
+        final data = await repository.logout();
 
-        expect(result.left.errors, hasLength(2));
-        expect(result.left.errors.first.status, '403');
-        expect(result.left.errors.first.title, 'Não autorizado');
-        expect(result.left.errors.first.detail, 'Conta bloqueada.');
-        expect(
-          result.left.errors.last.detail,
-          'Entre em contato com o suporte.',
-        );
+        expect(data.left.errors, hasLength(2));
+        expect(data.left.errors.first.status, '403');
+        expect(data.left.errors.first.title, 'Não autorizado');
+        expect(data.left.errors.first.detail, 'Conta bloqueada.');
+        expect(data.left.errors.last.detail, 'Entre em contato com o suporte.');
         verifyZeroInteractions(localDataSource);
       });
 
@@ -134,11 +131,11 @@ void main() {
         final revoked = Completer<LogoutDataSourceType>();
         when(() => dataSource.logout()).thenAnswer((_) => revoked.future);
 
-        final result = repository.logout();
+        final data = repository.logout();
         verifyZeroInteractions(localDataSource);
         revoked.complete(const Right(true));
 
-        expect((await result).right, isTrue);
+        expect((await data).right, isTrue);
         verify(() => localDataSource.clear()).called(1);
       });
 
@@ -150,14 +147,14 @@ void main() {
           return removed.future;
         });
 
-        var completed = false;
-        final result = repository.logout()..then((_) => completed = true);
+        bool completed = false;
+        final data = repository.logout()..then((_) => completed = true);
         await removing.future;
         expect(completed, isFalse);
         removed.complete();
 
-        expect((await result).right, isTrue);
         expect(completed, isTrue);
+        expect((await data).right, isTrue);
       });
     });
 
@@ -233,8 +230,8 @@ void main() {
       expect(data.right.userId, 'user-1');
       expect(data.right.expiresAt, expiresAt);
       expect(data.right.token, 'example-token');
-      verify(() => localDataSource.saveToken('example-token')).called(1);
       verify(() => localDataSource.saveUserId('user-1')).called(1);
+      verify(() => localDataSource.saveToken('example-token')).called(1);
       verify(() => dataSource.signIn(email: email, password: password))
           .called(1);
     });
@@ -340,7 +337,7 @@ void main() {
           return userIdSaved.future;
         });
 
-        var completed = false;
+        bool completed = false;
         final signIn = repository.signIn(email: email, password: password)
           ..then((_) => completed = true);
         await saving.future;
@@ -351,8 +348,9 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         expect(completed, isFalse);
         userIdSaved.complete();
-        expect((await signIn).right.token, 'opaque-token');
+
         expect(completed, isTrue);
+        expect((await signIn).right.token, 'opaque-token');
       },
     );
 
@@ -380,7 +378,7 @@ void main() {
     });
 
     test(
-      'resend forwards a non-accepted result without creating a session',
+      'resend forwards a non-accepted data without creating a session',
       () async {
         when(() => dataSource.resendEmail(email: email))
             .thenAnswer((_) async => const Right(false));

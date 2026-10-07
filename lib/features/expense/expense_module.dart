@@ -9,6 +9,7 @@ import 'package:cordato/features/expense/domain/repositories/interface_expense_r
 import 'package:cordato/features/expense/infrastructure/remoto/expense_remote_data_source.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/commands/delete_expense_command.dart';
 import 'package:cordato/features/expense/presentation/screens/create_expense/create_expense_screen.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
 
@@ -23,7 +24,8 @@ final expenseDependenciesModule = createModule(
   register: (context) => context
     ..addLazySingleton<IExpenseRemoteDataSource>(ExpenseRemoteDataSource.new)
     ..addLazySingleton<IExpenseRepository>(ExpenseRepository.new)
-    ..add(GetExpensesCommand.new),
+    ..add(GetExpensesCommand.new)
+    ..add(DeleteExpenseCommand.new),
 );
 
 final expenseRoutesModule = createModule(
@@ -38,10 +40,11 @@ final expenseRoutesModule = createModule(
       ..route(
         RouteEnum.expenses.path,
         child: (context, _) => ExpensesScreen(
-          command: inject<GetExpensesCommand>(),
-          moneyFormatter: inject<IMoneyFormatter>(),
-          dateFormatter: inject<IDateFormatter>(),
           onBackPressed: context.pop,
+          command: inject<GetExpensesCommand>(),
+          dateFormatter: inject<IDateFormatter>(),
+          moneyFormatter: inject<IMoneyFormatter>(),
+          deleteCommand: inject<DeleteExpenseCommand>(),
         ),
       )
       ..route(

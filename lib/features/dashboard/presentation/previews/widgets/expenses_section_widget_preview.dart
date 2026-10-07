@@ -2,17 +2,21 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+
+import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
-import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
-import 'package:cordato/features/dashboard/presentation/previews/fakes/expenses_preview_repository.dart';
+
 import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_section_widget.dart';
+import 'package:cordato/features/dashboard/presentation/previews/fakes/expenses_preview_repository.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
-import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/value_objects/amount_value_object.dart';
+import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 
 @CordatoPreview(
@@ -64,7 +68,7 @@ Widget _sectionPreview({
   create: () {
     final command = GetExpensesCommand(
       repository: ExpensesPreviewRepository(
-        result:
+        type:
             result ??
             Right(ExpensePageEntity(items: [], next: null, prev: null)),
       ),

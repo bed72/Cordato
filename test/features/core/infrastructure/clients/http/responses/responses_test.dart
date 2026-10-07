@@ -11,8 +11,8 @@ void main() {
       'waits for the request and exposes body and status to the converter',
       () async {
         final pending = Completer<Responses>();
-        var executions = 0;
-        var conversions = 0;
+        int executions = 0;
+        int conversions = 0;
         final data = response<String>(
           execute: () {
             executions++;
@@ -30,8 +30,8 @@ void main() {
           const Right(Reponse(statusCode: 200, body: {'name': 'Gabriel'})),
         );
 
-        expect((await data).right, '200: Gabriel');
         expect(conversions, 1);
+        expect((await data).right, '200: Gabriel');
       },
     );
 

@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
-
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 
 final class SessionInterceptor({required final IStorageClient storage})
     extends Interceptor {
@@ -56,29 +56,34 @@ final class SessionInterceptor({required final IStorageClient storage})
 
   bool _requiresToken(RequestOptions options) {
     final base = Uri.parse(options.baseUrl);
+
     if (Uri.parse(options.path).isAbsolute) return false;
     if (options.uri.origin != base.origin) return false;
-    final actual = options.uri.pathSegments;
-    for (final endpoint in HttpPathEnum.values) {
-      if (!endpoint.authenticated) continue;
-      final expected = base.resolve(endpoint.path).pathSegments;
-      final hasId = endpoint == HttpPathEnum.user;
-      if (actual.length != expected.length + (hasId ? 1 : 0)) continue;
-      var matches = true;
-      for (var index = 0; index < expected.length; index++) {
-        if (actual[index] != expected[index]) {
-          matches = false;
-          break;
-        }
-      }
-      if (matches &&
-          (!hasId ||
-              (actual.last.isNotEmpty &&
-                  actual.last != '.' &&
-                  actual.last != '..'))) {
-        return true;
-      }
-    }
-    return false;
+
+    return HttpPathEnum.values.any(
+      (endpoint) =>
+          endpoint.authenticated &&
+          _matches(
+            endpoint: endpoint,
+            actual: options.uri.pathSegments,
+            expected: base.resolve(endpoint.path).pathSegments,
+          ),
+    );
+  }
+
+  bool _matches({
+    required List<String> actual,
+    required HttpPathEnum endpoint,
+    required List<String> expected,
+  }) {
+    if (!endpoint.requiresId && listEquals(actual, expected)) return true;
+    if (!endpoint.requiresId && !endpoint.acceptsId) return false;
+    if (actual.length != expected.length + 1) return false;
+
+    final id = actual.last;
+    return id.isNotEmpty &&
+        id != '.' &&
+        id != '..' &&
+        listEquals(actual.sublist(0, expected.length), expected);
   }
 }

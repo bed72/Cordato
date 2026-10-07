@@ -15,6 +15,20 @@ final class ExpenseRepository({
   required final IExpenseRemoteDataSource _remoteDataSource,
 }) implements IExpenseRepository {
   @override
+  Future<DeleteRepositoryType> delete({required String id}) async {
+    try {
+      final response = await _remoteDataSource.delete(id: id);
+
+      return response.either(
+        (errors) => errors.toEntity(),
+        (deleted) => deleted,
+      );
+    } catch (_) {
+      return Left(.unknown());
+    }
+  }
+
+  @override
   Future<CreateRepositoryType> create({
     required CreateExpenseInput input,
   }) async {

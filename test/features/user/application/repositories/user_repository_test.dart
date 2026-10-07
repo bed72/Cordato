@@ -251,7 +251,7 @@ void main() {
           return pending.future;
         });
 
-        var completed = false;
+        bool completed = false;
         final response = repository.delete().then((result) {
           completed = true;
           return result;
@@ -260,8 +260,8 @@ void main() {
         expect(completed, isFalse);
         pending.complete();
 
-        expect((await response).right, isTrue);
         expect(completed, isTrue);
+        expect((await response).right, isTrue);
       },
     );
 

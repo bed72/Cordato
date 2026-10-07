@@ -129,8 +129,8 @@ void main() {
     });
 
     test('condLazy evaluates only the selected branch', () {
-      var leftCalled = false;
-      var rightCalled = false;
+      bool leftCalled = false;
+      bool rightCalled = false;
 
       final right = Either.condLazy(
         true,

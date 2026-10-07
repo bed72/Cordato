@@ -7,8 +7,11 @@ import 'package:cordato/features/expense/application/data/create_expense_input.d
 
 typedef CreateRepositoryType = Either<ErrorsEntity, ExpenseEntity>;
 typedef GetRepositoryType = Either<ErrorsEntity, ExpensePageEntity>;
+typedef DeleteRepositoryType = Either<ErrorsEntity, bool>;
 
 abstract interface class IExpenseRepository {
+  Future<DeleteRepositoryType> delete({required String id});
+
   Future<GetRepositoryType> get({int pageSize = 30, String? pageLink});
 
   Future<CreateRepositoryType> create({required CreateExpenseInput input});
