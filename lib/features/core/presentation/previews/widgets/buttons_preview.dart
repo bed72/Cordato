@@ -32,15 +32,6 @@ Widget previewElevatedButtonWidget() =>
 
 @CordatoPreview(
   group: 'Core / Botões',
-  name: 'Elevado carregando',
-  size: Size(390.0, 160.0),
-)
-Widget previewLoadingElevatedButtonWidget() => _buttonShell(
-  ElevatedButtonWidget(label: 'Continuar', isLoading: true, onTap: () {}),
-);
-
-@CordatoPreview(
-  group: 'Core / Botões',
   name: 'Contornado',
   size: Size(390.0, 160.0),
 )

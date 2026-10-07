@@ -5,6 +5,7 @@ import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/hold_button_widget.dart';
 import 'package:cordato/features/authentication/presentation/widgets/date_field_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/authentication/presentation/widgets/amount_field_widget.dart';
 
 import 'package:cordato/features/expense/application/data/create_expense_input.dart';
@@ -18,6 +19,7 @@ import 'package:cordato/features/expense/presentation/widgets/fields/expense_des
 final class const ExpenseFormWidget({
   super.key,
   required final IMoneyFormatter formatter,
+  required final IDateFormatter dateFormatter,
   required final CreateExpenseCommand command,
   required final ExpenseFormValidator validator,
   required final ValueChanged<BuildContext> onExpenseCreated,
@@ -70,6 +72,7 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
                   onTap: isLoading ? null : selectAmount,
                 ),
                 DateFieldWidget(
+                  formatter: widget.dateFormatter,
                   label: 'Data',
                   enabled: !isLoading,
                   failure: dateFailure,

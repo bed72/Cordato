@@ -45,7 +45,9 @@ O app já possui:
   cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
   verificação após uma espera de 60 segundos e feedback da API;
 - dashboard com nome e inicial do avatar consultados na API por `UserCommand`,
-  skeleton, opção de tentar novamente em caso de erro e conteúdo financeiro placeholder;
+  e seção de despesas recentes com as seis primeiras despesas da API, skeleton,
+  estado vazio, erro com título e descrição e atualização por gesto ou
+  ao retornar do formulário de gasto;
 - formulário de gasto integrado à API, com descrição obrigatória, calculadora
   de valor em centavos, seleção de data, validação, loading, erros por campo e
   toast de sucesso; toque simples cadastra e retorna ao dashboard, enquanto
@@ -131,8 +133,14 @@ flutter test
 Para abrir os previews de telas e componentes no Widget Previewer do Flutter:
 
 ```bash
-flutter widget-preview start
+dart run tool/widget_preview.dart
 ```
+
+Abra no navegador a URL impressa pelo comando. O launcher usa
+`flutter widget-preview start --web-server` e dispara uma atualização após o
+servidor iniciar para contornar a descoberta vazia na abertura do Flutter 3.47.6.
+A atualização cria um arquivo Dart temporário em `tool/`, removido ao encerrar o
+comando, sem reescrever os arquivos da aplicação.
 
 Para executar o app, use `flutter run`. A autenticação usa por padrão
 `https://api.cordato.cloud/api/`. Para apontá-la a outra API:

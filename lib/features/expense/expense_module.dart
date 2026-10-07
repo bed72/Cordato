@@ -2,11 +2,13 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 
 import 'package:cordato/features/expense/data/repositories/expense_repository.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/infrastructure/remoto/expense_remote_data_source.dart';
 
+import 'package:cordato/features/expense/presentation/commands/get_expenses_command.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/expense_screen.dart';
 
 import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';
@@ -19,7 +21,8 @@ import 'package:cordato/features/expense/presentation/screens/expense/commands/c
 final expenseDependenciesModule = createModule(
   register: (context) => context
     ..addLazySingleton<IExpenseRemoteDataSource>(ExpenseRemoteDataSource.new)
-    ..addLazySingleton<IExpenseRepository>(ExpenseRepository.new),
+    ..addLazySingleton<IExpenseRepository>(ExpenseRepository.new)
+    ..add(GetExpensesCommand.new),
 );
 
 final expenseRoutesModule = createModule(
@@ -36,6 +39,7 @@ final expenseRoutesModule = createModule(
         child: (context, _) => ExpenseScreen(
           onBackPressed: context.pop,
           formatter: inject<IMoneyFormatter>(),
+          dateFormatter: inject<IDateFormatter>(),
           command: inject<CreateExpenseCommand>(),
           validator: inject<ExpenseFormValidator>(),
           onExpenseCreated: (context) =>

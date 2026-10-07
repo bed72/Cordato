@@ -55,14 +55,19 @@ implementa `ICommand`. `expenseDependenciesModule` registra data source e
 repository pelos contratos; `expenseRoutesModule` registra command e validators
 e os injeta na tela. O formulário executa o cadastro pela API.
 `IExpenseRepository.get({required int pageSize, String? pageLink})` e o data source
-remoto oferecem consulta paginada, ainda sem UI ou command de listagem.
+remoto oferecem consulta paginada, consumida pela seção de recentes da Dashboard.
 `ExpensePageEntity` e `ExpensePageResponse` copiam os itens para listas não
 modificáveis e preservam `next` e `prev` como continuações opacas anuláveis.
 O repository valida tamanho positivo e os centavos de todos os itens, sem
 resultado parcial. O data source usa GET relativo `expenses`, `page[size]` na
 query e extrai a query do link de continuação, sem acessar seu destino absoluto.
 O tamanho solicitado prevalece sobre o do link; ordem e datas da API são preservadas.
-O recorte de seis despesas da Dashboard é uma decisão do consumidor futuro.
+O recorte de seis despesas pertence ao consumidor Dashboard.
+`GetExpensesCommand`, em `expense/presentation/commands/`, recebe o record
+`({int pageSize, String? pageLink})`, delega a `IExpenseRepository.get` e preserva
+`Either` em `GetRepositoryType?`, inicialmente nulo. Não acumula páginas nem
+define o limite da Dashboard. Implementa `ICommand` e é registrado por factory
+em `expenseDependenciesModule`; cada consumidor deve descartar sua instância.
 `ExpenseFormValidator` reúne os resultados de valor, descrição e data pelo padrão
 `ValidationResult` do core. Reutiliza os validators existentes de descrição e
 data, e `ExpenseCentsValidation` exige centavos positivos. Retorna um record
@@ -76,7 +81,14 @@ simples ou hold: após sucesso, ambos exibem toast; o toque simples chama o call
 de navegação injetado para Dashboard, e o hold limpa descrição, valor e erros,
 redefine a data para hoje e permanece na tela. Falhas preservam os dados nos dois
 modos; hold interrompido não envia. Cancelar pickers preserva a entrada.
-Dashboard consulta nome e inicial do avatar por `UserCommand` e mantém conteúdo financeiro placeholder.
+Dashboard consulta nome e inicial do avatar por `UserCommand` e as seis primeiras
+despesas por uma instância própria de `GetExpensesCommand`, descartada pela tela.
+`DashboardScreenStateMixin` concentra consulta inicial, atualização por gesto e
+retorno assíncrono do formulário. `ExpensesSectionWidget` usa `CommandBuilder`
+para loading, erro com título e descrição sem ação de retry, vazio e sucesso, sem paginação na UI.
+Reutiliza `ExpenseItemWidget` de Expense, `IMoneyFormatter` e datas pt-BR sem
+conversão de fuso. “Ver tudo” requer itens e callback de navegação disponível;
+a rota atual não fornece destino porque a tela completa ainda não existe.
 `budget`, `family` e `insight` não têm feature Flutter
 implementada. Não descreva recursos planejados como código existente nem crie
 um contexto `identity` para reproduzir o backend antigo. O contexto `chat` não

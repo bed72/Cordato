@@ -4,6 +4,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/factories/dio_factory.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
@@ -25,5 +27,6 @@ final coreDependenciesModule = createModule(
     )
     ..addLazySingleton<IHttpClient>(HttpClient.new)
     ..addLazySingleton<IStorageClient>(StorageClient.new)
-    ..addLazySingleton<IMoneyFormatter>(MoneyFormatter.new),
+    ..addLazySingleton<IMoneyFormatter>(MoneyFormatter.new)
+    ..addLazySingleton<IDateFormatter>(() => DateFormatter()),
 );

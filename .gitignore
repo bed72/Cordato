@@ -45,6 +45,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+tool/.widget_preview_refresh*.dart
 
 # Supabase local state and environment values
 supabase/.temp/

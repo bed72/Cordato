@@ -36,7 +36,7 @@ Os contextos financeiros e seu estado atual são:
 
 - `expense`: cadastro integrado à API por formulário, validators, command,
   repository e data source HTTP, além de consulta paginada no repository e data
-  source, ainda sem apresentação da listagem. Possui entidade de domínio, value object
+  source, consumida pela seção de recentes da Dashboard. Possui entidade de domínio, value object
   monetário, categorias, input de criação e response DTO. Seleção de valor e
   data usa bottom sheets. `HoldButtonWidget` permite cadastrar e voltar ao
   dashboard com toque simples ou cadastrar e continuar com um novo formulário
@@ -140,8 +140,23 @@ como lista, reutiliza `ExpenseResponse` por item e lê `links.next` e `links.pre
 como strings anuláveis. Parsing inválido e exceções usam o erro genérico de
 `response<T>`; erros JSON:API são preservados. O DTO também copia sua lista.
 O limite de seis despesas previsto para a Dashboard pertence ao consumidor;
-o repository não conhece telas nem aplica esse limite globalmente. Ainda não há
-command de listagem, seção de recentes ou tela completa implementados.
+o repository não conhece telas nem aplica esse limite globalmente. A seção de
+recentes está integrada à Dashboard; a tela completa ainda não está implementada.
+
+`GetExpensesCommand`, em `expense/presentation/commands/get_expenses_command.dart`,
+recebe `IExpenseRepository` e delega a `get` os campos do record
+`({int pageSize, String? pageLink})`. Seu `execute` começa em `null` e preserva
+`Either<ErrorsEntity, ExpensePageEntity>` em `GetRepositoryType?`; lista vazia é
+sucesso e `Left` permanece resultado de negócio. A primeira página usa
+`(pageSize: 6, pageLink: null)` no futuro consumidor Dashboard. Continuações
+repassam `next` ou `prev` sem interpretação. Cada execução substitui o resultado
+da consulta anterior, sem acumular itens, definir limite por tela ou avançar
+automaticamente. Durante a execução, o estado do `command_it` bloqueia novas
+chamadas; após erro permite tentativa novamente. Exceções inesperadas são erros
+observáveis do command. Implementa `ICommand` e descarta `execute` em `dispose`.
+`expenseDependenciesModule` registra o command por factory (`add`), permitindo
+instâncias independentes para Dashboard e a futura listagem completa. O consumidor
+que obtiver uma instância é responsável por descartá-la ao encerrar seu lifecycle.
 
 `expenseDependenciesModule` registra o data source e o repository como lazy
 singletons pelos contratos, com o HTTP do core, e é composto por `appModule`.
@@ -298,7 +313,8 @@ storage do core, sem dependência entre as duas features e sem ler o token.
 O data source remoto acessa somente HTTP; o local propaga falhas ao repository.
 
 `dashboard` é uma feature de apresentação e composição, com nome e inicial do
-avatar consultados por `UserCommand` e conteúdo financeiro placeholder. `settings` é uma feature
+avatar consultados por `UserCommand` e até seis despesas consultadas por
+`GetExpensesCommand`. `settings` é uma feature
 de apresentação que consome o logout de Authentication. `authentication`
 encapsula sign-in, sign-up, reenvio e
 confirmação de e-mail via API JSON:API; não recria o contexto `identity` nem
@@ -403,6 +419,8 @@ Direções de dependência aprovadas:
   apresentação; o command conhece somente `IAuthenticationRepository`;
 - Dashboard recebe o `UserCommand` compartilhado de User como dependência de
   apresentação, sem acessar repository, HTTP ou storage diretamente;
+- Dashboard recebe uma instância própria de `GetExpensesCommand` de Expense e
+  reutiliza `ExpenseItemWidget`, sem acessar repository ou data source diretamente;
 - `root` compõe a apresentação global e consome `SessionCommand`, sem assumir
   a escrita do token ou as operações de autenticação;
 - `expense` e `budget` não importam contextos financeiros irmãos; `family`
@@ -651,9 +669,25 @@ appModule
     / -> AppScreen
 ```
 
+`IDateFormatter` e `DateFormatter`, em `core/presentation/formatters/`, centralizam
+a formatação de datas em `pt_BR`, recebendo `DateTime` e preservando seus componentes
+civis sem conversão de fuso. A implementação recebe um callback `now` opcional,
+com `DateTime.now` como padrão, para ano atual e rótulos relativos testáveis.
+`formatShortDate` usa `dd/MM/yyyy`; `formatLongDate` usa dia com dois dígitos e
+mês abreviado capitalizado sem ponto, incluindo o ano quando diferente do atual.
+`formatMonth` retorna o mês por extenso capitalizado. `formatShortPeriod` usa
+datas numéricas completas; `formatPeriod` usa o formato textual com ano opcional
+em cada ponta. Ambos colapsam intervalos do mesmo dia civil em uma data.
+`relativeGroupHeader` retorna Hoje, Ontem, dia da semana com data entre dois e seis
+dias atrás, ou mês e ano para datas antigas e futuras. A diferença é calculada
+entre componentes civis em UTC, sem depender da duração de um dia local.
+O formatter não faz parsing/serialização da API nem cálculos de expiração.
+`DateFieldWidget` recebe o contrato e usa `formatShortPeriod`, substituindo a antiga
+`DateTimeRangeExtension` e preservando o formato numérico do formulário.
+
 Registros importantes:
 
-- `coreDependenciesModule`: registra `IMoneyFormatter`, `IStorageClient` com
+- `coreDependenciesModule`: registra `IMoneyFormatter`, `IDateFormatter`, `IStorageClient` com
   `FlutterSecureStorage`, `IHttpClient` e o Dio compartilhado. A factory instala
   `HeadersInterceptor`, `SessionInterceptor` e, apenas em debug, o logger.
 - `userDependenciesModule`: registra `IUserRemoteDataSource`, `IUserLocalDataSource`
@@ -684,13 +718,37 @@ Registros importantes:
   também o AppBar, pois as telas observam a mesma instância do command.
   O avatar reutiliza `BounceWidget` e abre `/user` ao tocar, com navegação
   injetada por callback e sem acesso ao router no widget.
-  O corpo exibe `Dashboard`. Menu abre `/settings`
-  e a ação de gasto abre `/expense`; orçamento e notificações não têm integração.
+  Também injeta uma instância por factory de `GetExpensesCommand` e o
+  `IMoneyFormatter` e o `IDateFormatter` do core. `DashboardScreenStateMixin` consulta a primeira
+  página com `pageSize: 6` ao montar, recarrega após o retorno do formulário e
+  descarta o command de despesas ao sair. O `UserCommand` compartilhado não é
+  descartado pela tela. A ação de gasto recebe um callback assíncrono para aguardar
+  o retorno da rota; após navegação que removeu a Dashboard, o handler não consulta
+  novamente a instância descartada. A nova Dashboard carrega ao montar.
+  O corpo usa `ListView` com rolagem sempre habilitada, padding inferior para o FAB
+  e `RefreshIndicator` para recarregar a primeira página, inclusive com lista vazia.
+  `ExpensesSectionWidget` usa `CommandBuilder` para skeleton de seis itens,
+  erro localizado com título e descrição sem ação de retry, vazio com “Ainda sem despesas” e sucesso.
+  Exibe no máximo seis itens, preservando a ordem e as datas da API. Valores usam
+  `IMoneyFormatter.formatCents` e datas usam `IDateFormatter.formatLongDate`, como
+  `07 de Out`, incluindo o ano quando diferente do atual, em `pt_BR` e sem conversão
+  de fuso. Não acumula páginas nem carrega continuações. Erros de execução da
+  atualização permanecem visíveis pelo builder, sem toast adicional.
+  `ExpenseItemWidget`, em `expense/presentation/widgets/`, recebe descrição,
+  categoria e textos formatados de valor e data, sem estado ou acesso a rede.
+  Reutiliza `BackgroundIconWidget` e os rótulos, ícones e cores semânticas de
+  `ExpenseCategoryExtension`. Descrição e textos longos usam ellipsis.
+  O callback opcional `onSeeAllExpensesPressed` fica preparado para a listagem
+  completa: “Ver tudo” aparece somente com itens e callback disponível. A rota
+  atual não fornece esse callback, pois o destino ainda não está implementado.
+  Menu abre `/settings` e a ação de gasto abre `/expense`; orçamento e notificações
+  não têm integração.
 - `expenseDependenciesModule`: registra `IExpenseRemoteDataSource` e
-  `IExpenseRepository` como lazy singletons, sem `path`.
+  `IExpenseRepository` como lazy singletons, sem `path`, e `GetExpensesCommand`
+  por factory para consultas com estados independentes por consumidor.
 - `expenseRoutesModule`: registra os validators de centavos, descrição e data,
   `ExpenseFormValidator` e `CreateExpenseCommand`. Compõe `ExpenseScreen` com
-  command, validator e `IMoneyFormatter` do core; após cadastro confirmado por
+  command, validator, `IMoneyFormatter` e `IDateFormatter` do core; após cadastro confirmado por
   toque simples, o callback injetado navega para `/dashboard`. O hold permanece
   na tela com o formulário limpo para o próximo cadastro.
 - `welcomeRoutesModule`: tela e navegação de entrada.
@@ -874,8 +932,14 @@ paralelos quando houver um papel semântico do tema.
 O tema acompanha o sistema (`ThemeMode.system`) e a aplicação usa `pt_BR`.
 Previews nativos usam `@CordatoPreview`, em
 `core/presentation/previews/preview.dart`, com tema real, localização e toast.
-O catálogo atual contém componentes compartilhados do core e Welcome;
-execute-o com `flutter widget-preview start`. `PreviewResourceWidget` cuida
+O catálogo atual contém componentes compartilhados do core, Welcome e os estados
+dos widgets de despesas da Dashboard. Execute-o com `dart run tool/widget_preview.dart`
+e abra a URL impressa no navegador. O launcher inicia o previewer nativo com
+`--web-server` e cria um arquivo Dart temporário em `tool/` após o servidor estar
+disponível. Isso contorna a condição de corrida do Flutter 3.47.6, que consulta
+os previews antes do fim da análise inicial e mantém o catálogo vazio até uma
+mudança de arquivo. O arquivo temporário é removido ao encerrar o launcher, sem
+reescrita dos arquivos da aplicação. `PreviewResourceWidget` cuida
 do descarte de recursos no catálogo, e `.widget_preview/` não é versionado.
 
 ## Testes E Verificação
