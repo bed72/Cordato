@@ -2,7 +2,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
-import 'package:cordato/features/user/data/repositories/user_repository.dart';
+import 'package:cordato/features/user/application/repositories/user_repository.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';
@@ -33,8 +33,8 @@ final userRoutesModule = createModule(
       RouteEnum.app.path,
       child: (context, _) => UserScreen(
         command: inject<UserCommand>(),
-        deleteCommand: inject<DeleteUserCommand>(),
         onBackPressed: (context) => context.pop(),
+        deleteCommand: inject<DeleteUserCommand>(),
         onNamePressed: (name) => context.pushNamed<UserEntity>(
           RouteEnum.userEdit.path,
           arguments: name,

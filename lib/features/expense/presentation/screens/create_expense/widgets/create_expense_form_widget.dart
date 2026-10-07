@@ -11,10 +11,10 @@ import 'package:cordato/features/authentication/presentation/widgets/amount_fiel
 import 'package:cordato/features/expense/application/data/create_expense_input.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
-import 'package:cordato/features/expense/presentation/validators/create_expense_form_validator.dart';
-import 'package:cordato/features/expense/presentation/mixins/create_expense_form_widget_state_mixin.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/validators/create_expense_form_validator.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/mixins/create_expense_form_widget_state_mixin.dart';
 import 'package:cordato/features/expense/presentation/screens/create_expense/commands/create_expense_command.dart';
-import 'package:cordato/features/expense/presentation/widgets/fields/expense_description_field_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/widgets/fields/expense_description_field_widget.dart';
 
 final class const CreateExpenseFormWidget({
   super.key,
@@ -25,7 +25,8 @@ final class const CreateExpenseFormWidget({
   required final ValueChanged<BuildContext> onExpenseCreated,
 }) extends StatefulWidget {
   @override
-  State<CreateExpenseFormWidget> createState() => _CreateExpenseFormWidgetState();
+  State<CreateExpenseFormWidget> createState() =>
+      _CreateExpenseFormWidgetState();
 }
 
 final class _CreateExpenseFormWidgetState extends State<CreateExpenseFormWidget>

@@ -1,19 +1,21 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+
 import 'package:cordato/features/expense/application/data/create_expense_input.dart';
-import 'package:cordato/features/expense/data/repositories/expense_repository.dart';
+import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
+import 'package:cordato/features/expense/application/repositories/expense_repository.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_page_response.dart';
 
 import '../../../../support/expense/mocks/expense_remote_data_source_mock.dart';
 
 void main() {
-  late ExpenseRemoteDataSourceMock dataSource;
-  late ExpenseRepository repository;
   late CreateExpenseInput input;
+  late ExpenseRepository repository;
+  late ExpenseRemoteDataSourceMock dataSource;
 
   setUp(() {
     dataSource = ExpenseRemoteDataSourceMock();
@@ -33,15 +35,15 @@ void main() {
           id: '9',
           amount: 301,
           description: 'Game',
-          occurredOn: DateTime(2026, 10, 7),
           category: .leisure,
+          occurredOn: DateTime(2026, 10, 7),
         ),
         ExpenseResponse(
           id: '2',
           amount: 80,
+          category: .other,
           description: 'Passeio',
           occurredOn: DateTime(2026, 10, 5),
-          category: .other,
         ),
       ];
       const link = '?page[after]=10';
@@ -57,14 +59,14 @@ void main() {
 
       final page = (await repository.get(pageSize: 6, pageLink: link)).right;
 
-      expect(page.items.map((item) => item.id), ['9', '2']);
-      expect(page.items.map((item) => item.cents.cents), [301, 80]);
-      expect(page.items.first.occurredOn, responses.first.occurredOn);
-      expect(page.items.first.description, 'Game');
-      expect(page.items.first.category, responses.first.category);
       expect(page.next, '?page[after]=2');
       expect(page.prev, '?page[before]=9');
+      expect(page.items.first.description, 'Game');
+      expect(page.items.map((item) => item.id), ['9', '2']);
       expect(() => page.items.clear(), throwsUnsupportedError);
+      expect(page.items.first.category, responses.first.category);
+      expect(page.items.map((item) => item.cents.cents), [301, 80]);
+      expect(page.items.first.occurredOn, responses.first.occurredOn);
       verify(() => dataSource.get(pageSize: 6, pageLink: link)).called(1);
       verifyNoMoreInteractions(dataSource);
     },
@@ -75,22 +77,63 @@ void main() {
       (_) async =>
           Right(ExpensePageResponse(items: [], next: null, prev: null)),
     );
+
     final page = (await repository.get(pageSize: 6)).right;
-    expect(page.items, isEmpty);
+
     expect(page.next, isNull);
     expect(page.prev, isNull);
+    expect(page.items, isEmpty);
   });
 
-  test(
-    'rejects nonpositive page sizes without querying the data source',
-    () async {
-      for (final size in [0, -6]) {
-        final result = await repository.get(pageSize: size);
-        expect(result.left.errors.single.title, 'Paginação inválida');
-      }
-      verifyNoMoreInteractions(dataSource);
-    },
-  );
+  test('requests 30 items when the page size is omitted', () async {
+    final response = ExpensePageResponse(items: [], next: null, prev: null);
+    when(() => dataSource.get(pageSize: 30))
+        .thenAnswer((_) async => Right(response));
+
+    final IExpenseRepository contract = repository;
+    final page = (await contract.get()).right;
+
+    expect(page.items, isEmpty);
+    verify(() => dataSource.get(pageSize: 30)).called(1);
+    verifyNoMoreInteractions(dataSource);
+  });
+
+  for (final size in [0, -6]) {
+    test(
+      'requests 30 items for page size $size and preserves continuation',
+      () async {
+        const link = '?page[after]=10';
+        final response = ExpensePageResponse(
+          items: [],
+          next: '?page[after]=20',
+          prev: '?page[before]=10',
+        );
+        when(() => dataSource.get(pageSize: 30, pageLink: link))
+            .thenAnswer((_) async => Right(response));
+
+        final page = (await repository.get(pageSize: size, pageLink: link)).right;
+
+        expect(page.items, isEmpty);
+        expect(page.next, response.next);
+        expect(page.prev, response.prev);
+        verify(() => dataSource.get(pageSize: 30, pageLink: link)).called(1);
+        verifyNoMoreInteractions(dataSource);
+      },
+    );
+  }
+
+  test('preserves positive sizes below and above the default', () async {
+    for (final size in [1, 20, 60]) {
+      when(() => dataSource.get(pageSize: size)).thenAnswer(
+        (_) async => Right(ExpensePageResponse(items: [], next: null, prev: null)),
+      );
+
+      expect((await repository.get(pageSize: size)).right.items, isEmpty);
+
+      verify(() => dataSource.get(pageSize: size)).called(1);
+    }
+    verifyNoMoreInteractions(dataSource);
+  });
 
   test(
     'preserves listing errors and translates unexpected exceptions',
@@ -100,18 +143,20 @@ void main() {
           ErrorsResponse(
             errors: [
               ErrorResponse(
+                status: '401',
                 title: 'Não autorizado',
                 detail: 'Sessão inválida',
-                status: '401',
               ),
             ],
           ),
         ),
       );
+
       final errors = (await repository.get(pageSize: 6)).left.errors;
+
+      expect(errors.single.status, '401');
       expect(errors.single.title, 'Não autorizado');
       expect(errors.single.detail, 'Sessão inválida');
-      expect(errors.single.status, '401');
       when(() => dataSource.get(pageSize: 6)).thenThrow(StateError('failure'));
       expect(
         (await repository.get(pageSize: 6)).left.errors.single.title,
@@ -119,6 +164,7 @@ void main() {
       );
       when(() => dataSource.get(pageSize: 6))
           .thenAnswer((_) async => throw StateError('failure'));
+
       expect((await repository.get(pageSize: 6)).isLeft, isTrue);
     },
   );
@@ -132,16 +178,16 @@ void main() {
               ExpenseResponse(
                 id: '9',
                 amount: 300,
+                category: .other,
                 description: 'Game',
                 occurredOn: DateTime(2026, 10, 5),
-                category: .other,
               ),
               ExpenseResponse(
                 id: '2',
                 amount: amount,
+                category: .other,
                 description: 'Inválido',
                 occurredOn: DateTime(2026, 10, 5),
-                category: .other,
               ),
             ],
             next: null,
@@ -162,20 +208,20 @@ void main() {
       final response = ExpenseResponse(
         id: '9',
         amount: 301,
+        category: .leisure,
         description: 'Game atualizado',
         occurredOn: DateTime(2026, 10, 6),
-        category: .leisure,
       );
       when(() => dataSource.create(input: input))
           .thenAnswer((_) async => Right(response));
 
-      final result = await repository.create(input: input);
+      final data = await repository.create(input: input);
 
-      expect(result.right.id, '9');
-      expect(result.right.cents.cents, 301);
-      expect(result.right.description, 'Game atualizado');
-      expect(result.right.occurredOn, response.occurredOn);
-      expect(result.right.category, response.category);
+      expect(data.right.id, '9');
+      expect(data.right.cents.cents, 301);
+      expect(data.right.category, response.category);
+      expect(data.right.description, 'Game atualizado');
+      expect(data.right.occurredOn, response.occurredOn);
       verify(() => dataSource.create(input: input)).called(1);
       verifyNoMoreInteractions(dataSource);
     },
@@ -185,15 +231,15 @@ void main() {
     const errors = ErrorsResponse(
       errors: [
         ErrorResponse(
+          status: '422',
           title: 'Descrição inválida',
           detail: 'Informe uma descrição.',
-          status: '422',
           pointer: '/data/attributes/description',
         ),
         ErrorResponse(
+          status: '422',
           title: 'Valor inválido',
           detail: 'Informe um valor positivo.',
-          status: '422',
           pointer: '/data/attributes/amount',
         ),
       ],
@@ -201,23 +247,23 @@ void main() {
     when(() => dataSource.create(input: input))
         .thenAnswer((_) async => const Left(errors));
 
-    final result = await repository.create(input: input);
+    final data = await repository.create(input: input);
 
-    expect(result.left.errors, hasLength(2));
-    expect(result.left.errors.first.title, 'Descrição inválida');
-    expect(result.left.errors.first.detail, 'Informe uma descrição.');
-    expect(result.left.errors.first.status, '422');
-    expect(result.left.errors.first.pointer, '/data/attributes/description');
-    expect(result.left.errors.last.pointer, '/data/attributes/amount');
+    expect(data.left.errors, hasLength(2));
+    expect(data.left.errors.first.status, '422');
+    expect(data.left.errors.first.title, 'Descrição inválida');
+    expect(data.left.errors.first.detail, 'Informe uma descrição.');
+    expect(data.left.errors.last.pointer, '/data/attributes/amount');
+    expect(data.left.errors.first.pointer, '/data/attributes/description');
   });
 
   test('returns a generic error when the remote error list is empty', () async {
     when(() => dataSource.create(input: input))
         .thenAnswer((_) async => const Left(ErrorsResponse(errors: [])));
 
-    final result = await repository.create(input: input);
+    final data = await repository.create(input: input);
 
-    expect(result.left.errors.single.title, 'Erro desconhecido');
+    expect(data.left.errors.single.title, 'Erro desconhecido');
   });
 
   for (final cents in [0, -300]) {
@@ -236,10 +282,10 @@ void main() {
           ),
         );
 
-        final result = await repository.create(input: input);
+        final data = await repository.create(input: input);
 
-        expect(result.isLeft, isTrue);
-        expect(result.left.errors.single.title, 'Valor inválido');
+        expect(data.isLeft, isTrue);
+        expect(data.left.errors.single.title, 'Valor inválido');
       },
     );
   }
@@ -250,9 +296,9 @@ void main() {
       when(() => dataSource.create(input: input))
           .thenThrow(StateError('failure'));
 
-      final result = await repository.create(input: input);
+      final data = await repository.create(input: input);
 
-      expect(result.left.errors.single.title, 'Erro desconhecido');
+      expect(data.left.errors.single.title, 'Erro desconhecido');
     },
   );
 
@@ -262,9 +308,9 @@ void main() {
       when(() => dataSource.create(input: input))
           .thenAnswer((_) async => throw StateError('failure'));
 
-      final result = await repository.create(input: input);
+      final data = await repository.create(input: input);
 
-      expect(result.left.errors.single.title, 'Erro desconhecido');
+      expect(data.left.errors.single.title, 'Erro desconhecido');
     },
   );
 }

@@ -3,7 +3,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
-import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
+import 'package:cordato/features/authentication/application/repositories/authentication_repository.dart';
 
 import 'package:cordato/features/authentication/infrastructure/local/authentication_local_data_source.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';

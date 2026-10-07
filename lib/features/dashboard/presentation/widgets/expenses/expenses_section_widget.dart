@@ -7,15 +7,15 @@ import 'package:cordato/features/core/presentation/widgets/buttons/text_button_w
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
-import 'package:cordato/features/expense/presentation/widgets/expense_item_widget.dart';
-import 'package:cordato/features/expense/presentation/commands/get_expenses_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_item_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_empty_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_failure_widget.dart';
-import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_skeleton_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_skeleton_widget.dart';
 
 final class const ExpensesSectionWidget({
   super.key,

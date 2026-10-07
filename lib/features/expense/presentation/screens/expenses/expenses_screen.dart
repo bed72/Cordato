@@ -2,15 +2,14 @@ import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
-import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
-import 'package:cordato/features/core/presentation/widgets/circular_progress_indicator_widget.dart';
 
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
-import 'package:cordato/features/expense/presentation/widgets/expense_item_widget.dart';
-import 'package:cordato/features/expense/presentation/commands/get_expenses_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_item_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_skeleton_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_app_bar_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_feedback_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/mixins/expenses_screen_state_mixin.dart';
@@ -85,12 +84,9 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
 
   Widget _feedback() {
     if (isLoading) {
-      return Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Semantics(
-          label: 'Carregando despesas',
-          child: CircularProgressIndicatorWidget(color: context.colors.primary),
-        ),
+      return Semantics(
+        label: 'Carregando despesas',
+        child: ExpensesSkeletonWidget(count: expenses.isEmpty ? 8 : 3),
       );
     }
     if (hasFailure) {

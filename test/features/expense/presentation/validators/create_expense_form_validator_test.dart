@@ -1,37 +1,38 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/presentation/validators/validation.dart';
-import 'package:cordato/features/expense/presentation/validators/expense_cents_validation.dart';
-import 'package:cordato/features/expense/presentation/validators/expense_date_validation.dart';
-import 'package:cordato/features/expense/presentation/validators/expense_description_validation.dart';
-import 'package:cordato/features/expense/presentation/validators/create_expense_form_validator.dart';
+
+import 'package:cordato/features/expense/presentation/screens/create_expense/validators/expense_date_validation.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/validators/expense_cents_validation.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/validators/create_expense_form_validator.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/validators/expense_description_validation.dart';
 
 void main() {
   const validator = CreateExpenseFormValidator(
-    centsValidation: ExpenseCentsValidation(),
     dateValidation: ExpenseDateValidation(),
+    centsValidation: ExpenseCentsValidation(),
     descriptionValidation: ExpenseDescriptionValidation(),
   );
 
   test('returns validated data for each field of a complete form', () {
     final date = DateTime(2026, 10, 5);
 
-    final result = validator(
+    final data = validator(
       cents: 300,
-      description: '  Game  ',
       occurredOn: date,
+      description: '  Game  ',
     );
 
     expect(
-      result.cents,
+      data.cents,
       isA<Valid<int>>().having((field) => field.value, 'value', 300),
     );
     expect(
-      result.description,
+      data.description,
       isA<Valid<String>>().having((field) => field.value, 'value', 'Game'),
     );
     expect(
-      result.occurredOn,
+      data.occurredOn,
       isA<Valid<DateTime?>>().having(
         (field) => field.value,
         'value',
@@ -41,10 +42,10 @@ void main() {
   });
 
   test('reports all invalid fields in a single validation', () {
-    final result = validator(cents: 0, description: '   ', occurredOn: null);
+    final data = validator(cents: 0, description: '   ', occurredOn: null);
 
     expect(
-      result.cents,
+      data.cents,
       isA<Invalid<int>>().having(
         (field) => field.message,
         'message',
@@ -52,7 +53,7 @@ void main() {
       ),
     );
     expect(
-      result.description,
+      data.description,
       isA<Invalid<String>>().having(
         (field) => field.message,
         'message',
@@ -60,7 +61,7 @@ void main() {
       ),
     );
     expect(
-      result.occurredOn,
+      data.occurredOn,
       isA<Invalid<DateTime?>>().having(
         (field) => field.message,
         'message',
@@ -70,15 +71,15 @@ void main() {
   });
 
   test('keeps valid fields when only the description is invalid', () {
-    final result = validator(
+    final data = validator(
       cents: 1,
       description: 'a',
       occurredOn: DateTime(2026, 10, 5),
     );
 
-    expect(result.cents, isA<Valid<int>>());
-    expect(result.description, isA<Invalid<String>>());
-    expect(result.occurredOn, isA<Valid<DateTime?>>());
+    expect(data.cents, isA<Valid<int>>());
+    expect(data.description, isA<Invalid<String>>());
+    expect(data.occurredOn, isA<Valid<DateTime?>>());
   });
 
   test('allows correcting invalid fields and validating the form again', () {

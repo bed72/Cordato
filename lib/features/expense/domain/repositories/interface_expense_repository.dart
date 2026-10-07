@@ -9,7 +9,7 @@ typedef CreateRepositoryType = Either<ErrorsEntity, ExpenseEntity>;
 typedef GetRepositoryType = Either<ErrorsEntity, ExpensePageEntity>;
 
 abstract interface class IExpenseRepository {
-  Future<GetRepositoryType> get({required int pageSize, String? pageLink});
+  Future<GetRepositoryType> get({int pageSize = 30, String? pageLink});
 
   Future<CreateRepositoryType> create({required CreateExpenseInput input});
 }

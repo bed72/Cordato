@@ -7,7 +7,7 @@ import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
-import 'package:cordato/features/user/data/repositories/user_repository.dart';
+import 'package:cordato/features/user/application/repositories/user_repository.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';

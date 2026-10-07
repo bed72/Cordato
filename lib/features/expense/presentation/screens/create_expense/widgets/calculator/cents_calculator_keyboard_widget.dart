@@ -2,9 +2,9 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/expense/presentation/widgets/calculator/amount_calculator_key_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/widgets/calculator/cents_calculator_key_widget.dart';
 
-final class const AmountCalculatorKeyboardWidget({
+final class const CentsCalculatorKeyboardWidget({
   super.key,
   required final VoidCallback onClear,
   required final VoidCallback onDelete,
@@ -48,13 +48,13 @@ final class const AmountCalculatorKeyboardWidget({
                         children: [
                           Expanded(
                             flex: 2,
-                            child: AmountCalculatorKeyWidget(
+                            child: CentsCalculatorKeyWidget(
                               label: '0',
                               onTap: () => onDigit('0'),
                             ),
                           ),
                           Expanded(
-                            child: AmountCalculatorKeyWidget(
+                            child: CentsCalculatorKeyWidget(
                               label: ',',
                               onTap: onDecimalSeparator,
                             ),
@@ -70,14 +70,14 @@ final class const AmountCalculatorKeyboardWidget({
                   spacing: _keySpacing,
                   children: [
                     Expanded(
-                      child: AmountCalculatorKeyWidget(
+                      child: CentsCalculatorKeyWidget(
                         label: 'DEL',
                         isAction: true,
                         onTap: onDelete,
                       ),
                     ),
                     Expanded(
-                      child: AmountCalculatorKeyWidget(
+                      child: CentsCalculatorKeyWidget(
                         label: 'AC',
                         isAction: true,
                         onTap: onClear,
@@ -85,7 +85,7 @@ final class const AmountCalculatorKeyboardWidget({
                     ),
                     Expanded(
                       flex: 2,
-                      child: AmountCalculatorKeyWidget(
+                      child: CentsCalculatorKeyWidget(
                         label: '✓',
                         isAction: true,
                         onTap: onSubmit,
@@ -107,7 +107,7 @@ final class const AmountCalculatorKeyboardWidget({
       children: [
         for (final digit in digits)
           Expanded(
-            child: AmountCalculatorKeyWidget(
+            child: CentsCalculatorKeyWidget(
               label: digit,
               onTap: () => onDigit(digit),
             ),

@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
 
-final class const AmountCalculatorFieldWidget({
+final class const CentsCalculatorFieldWidget({
   super.key,
   required final String value,
 }) extends StatelessWidget {

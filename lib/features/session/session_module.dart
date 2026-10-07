@@ -1,6 +1,6 @@
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/features/session/data/repositories/session_repository.dart';
+import 'package:cordato/features/session/application/repositories/session_repository.dart';
 
 import 'package:cordato/features/session/presentation/commands/session_command.dart';
 

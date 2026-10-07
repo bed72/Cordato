@@ -9,9 +9,9 @@ import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
-import 'package:cordato/features/expense/presentation/commands/get_expenses_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 
-import '../../../../support/expense/mocks/expense_repository_mock.dart';
+import '../../../../../../support/expense/mocks/expense_repository_mock.dart';
 
 void main() {
   late ExpensePageEntity page;
@@ -92,23 +92,23 @@ void main() {
     const errors = ErrorsEntity(
       errors: [
         ErrorEntity(
-          title: 'Paginação inválida',
-          detail: 'Informe um tamanho positivo.',
+          title: 'Valor inválido',
+          detail: 'O valor da despesa deve ser maior que zero.',
         ),
         ErrorEntity(title: 'Falha na consulta', status: '401'),
       ],
     );
-    when(() => repository.get(pageSize: 0))
+    when(() => repository.get(pageSize: 6))
         .thenAnswer((_) async => const Left(errors));
 
     final result = await command.execute.runAsync((
-      pageSize: 0,
+      pageSize: 6,
       pageLink: null,
     ));
 
     expect(result?.left, same(errors));
     expect(command.execute.value?.left, same(errors));
-    verify(() => repository.get(pageSize: 0)).called(1);
+    verify(() => repository.get(pageSize: 6)).called(1);
     verifyNoMoreInteractions(repository);
   });
 

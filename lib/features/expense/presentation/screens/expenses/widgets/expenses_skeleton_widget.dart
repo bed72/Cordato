@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
-import 'package:cordato/features/expense/presentation/widgets/expense_item_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_item_widget.dart';
 
 final class const ExpensesSkeletonWidget({super.key, required final int count})
     extends StatelessWidget {

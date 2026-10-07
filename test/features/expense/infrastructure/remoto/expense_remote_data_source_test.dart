@@ -133,10 +133,7 @@ void main() {
     });
   });
 
-  test('rejects invalid pagination without making a request', () async {
-    for (final size in [0, -1]) {
-      expect((await dataSource.get(pageSize: size)).isLeft, isTrue);
-    }
+  test('rejects invalid continuation links without making a request', () async {
     for (final link in ['', 'expenses', '?page[number]=2#fragment']) {
       expect(
         (await dataSource.get(pageSize: 6, pageLink: link)).isLeft,

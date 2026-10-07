@@ -4,7 +4,7 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
-import 'package:cordato/features/expense/presentation/commands/get_expenses_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
 

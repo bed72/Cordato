@@ -13,7 +13,7 @@ import 'package:cordato/features/expense/domain/entities/expense_page_entity.dar
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/domain/value_objects/amount_value_object.dart';
-import 'package:cordato/features/expense/presentation/commands/get_expenses_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 
 @CordatoPreview(
   group: 'Dashboard / Despesas',

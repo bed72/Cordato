@@ -50,7 +50,7 @@ O app já possui:
   estado vazio, erro com título e descrição e atualização por gesto ou
   ao retornar do formulário de gasto;
 - listagem completa em `/expenses`, aberta por “Ver tudo” da Dashboard, com
-  rolagem infinita em páginas de 20 itens, atualização por gesto, loading, vazio
+  rolagem infinita em páginas de 20 itens, atualização por gesto, skeleton, vazio
   e nova tentativa após erro, preservando os itens já carregados;
 - formulário de gasto integrado à API, com descrição obrigatória, calculadora
   de valor em centavos, seleção de data, validação, loading, erros por campo e
@@ -90,16 +90,54 @@ O código é organizado por feature e por camadas:
 
 ```text
 Screen/Widget -> Command -> contrato de repository (domain)
-  -> repository (data) -> data source (infrastructure) -> HTTP/storage
+  -> repository (application) -> data source (infrastructure) -> HTTP/storage
 ```
 
 `presentation` não conhece SDKs externos. `domain` contém contratos e regras
-independentes de framework, `data` implementa os repositórios e
+independentes de framework, `application/repositories/` implementa os repositórios,
+`application/data/` reúne tipos puros de entrada e
 `infrastructure` contém data sources que acessam HTTP, storage e plugins. Na
 autenticação, o data source remoto usa o `IHttpClient` compartilhado do core
 diretamente; `session` encapsula a leitura e a observação do token para a
-entrada do app. Esse é o fluxo implementado para autenticação e leitura de
-sessão; features exclusivamente visuais não precisam de camadas vazias.
+entrada do app. Essas camadas estão implementadas em Authentication, User,
+Session e Expense; features exclusivamente visuais não precisam de camadas vazias.
+
+```text
+lib/features/<feature>/
+  <feature>_module.dart
+  domain/
+    entities/
+    repositories/
+  application/
+    data/
+    repositories/
+  infrastructure/
+    local/
+    remoto/
+    responses/
+  presentation/
+    commands/
+    screens/
+    widgets/
+```
+
+A árvore representa as localizações aprovadas; cada feature contém somente
+diretórios necessários às suas implementações. Os contratos de repository ficam
+em `domain/repositories/`, enquanto as implementações ficam em
+`application/repositories/` e seus testes em
+`test/features/<feature>/application/repositories/`. O input `CreateExpenseInput`
+fica em `expense/application/data/`; é um tipo Dart puro consumido pelo contrato
+de Expense, pela apresentação e pelo data source remoto.
+
+Dashboard compõe User e Expense pelos commands e widgets de apresentação.
+Expense organiza os commands e mixins por tela em
+`presentation/screens/create_expense/` e `presentation/screens/expenses/`.
+Os validators do formulário ficam em `screens/create_expense/validators/`.
+`GetExpensesCommand` pertence a `screens/expenses/commands/` e continua sendo
+consumido pela Dashboard por uma instância própria registrada por factory.
+`ExpensesSkeletonWidget`, de `expense/presentation/widgets/`, é reutilizado nas
+duas telas: seis placeholders na Dashboard, oito na listagem sem itens e três
+no rodapé durante consultas com despesas já carregadas.
 
 Decisões técnicas atuais:
 
@@ -210,8 +248,9 @@ protegido remove somente o token enviado, sem limpar o ID do usuário.
 caminho relativo coincide com a origem e o endpoint da API. `Bearer` é o esquema
 HTTP, não o formato do token. A validade é controlada pelo backend; o app não
 implementa refresh nem bloqueia chamadas por `expiresAt`. A confirmação por
-link usa uma URL absoluta. URLs absolutas não recebem token e o cliente HTTP
-desabilita seus redirecionamentos e logs automaticamente. Um 401 de
+link usa uma URL absoluta. URLs absolutas não recebem token. O cliente HTTP
+atual não configura uma política específica de redirecionamentos ou logging
+para essas URLs. Um 401 de
 requisição protegida remove o token somente se ele ainda for o token enviado;
 `SessionCommand` observa a mudança e o app volta à welcome se estiver em uma
 rota protegida.
@@ -220,20 +259,26 @@ A integração HTTP atual inclui os fluxos de autenticação e o data source e
 repository de User, registrados em `userDependenciesModule` e compostos por
 `appModule`, com atualização de nome consumida por `UpdateUserCommand` na edição.
 As operações `getById()`, `update({String? name})` e `delete()` de `UserRepository`
-leem o ID por `UserLocalDataSource.getUserId()` e chamam o data source remoto
+leem o ID por `UserLocalDataSource.getId()` e chamam o data source remoto
 com o ID explícito; ID ausente impede a requisição. `UserRepository` converte
 respostas e erros remotos para os tipos de domínio nas operações de consulta,
 atualização do nome e exclusão. Após exclusão de User confirmada com status 204,
 o repository aguarda a limpeza de todo o storage seguro por `UserLocalDataSource`,
 que delega a `IStorageClient.clear()`. `expenses` consta
-no catálogo de endpoints protegidos e é usado por `ExpenseRemoteDataSource.create`.
+no catálogo de endpoints protegidos e é usado por `ExpenseRemoteDataSource.create`
+e `get`.
 O POST envia centavos inteiros, descrição e data civil como `yyyy-MM-dd`, e retorna
 `ExpenseResponse`; sua conversão à entidade valida o valor pelo VO. O data source
 é registrado em DI e consumido por `ExpenseRepository` e `CreateExpenseCommand`
-no formulário. O logger Dio
-de debug registra headers e payloads usuais, inclusive credenciais e resposta
-de sign-in; requisições com URLs absolutas, como a confirmação assinada, são
-omitidas. Em release esse logger não é instalado.
+no formulário. A consulta preserva a ordem da API e entrega páginas imutáveis
+com `next` e `prev` opacos. `ExpenseRepository.get` usa `pageSize = 30` por
+padrão e substitui tamanhos menores ou iguais a zero por 30 antes da consulta.
+`GetExpensesCommand` não acumula páginas. Dashboard
+solicita seis itens, enquanto `ExpensesScreenStateMixin` acumula páginas de 20
+e preserva os itens após falhas. O logger Dio
+de debug registra headers e payloads, inclusive credenciais e resposta de
+sign-in e URLs absolutas como a confirmação assinada. Em release esse logger
+não é instalado.
 
 Os data sources de Authentication, User e Expense reutilizam a função top-level
 `response<T>` em `core/infrastructure/clients/http/responses/responses.dart`.

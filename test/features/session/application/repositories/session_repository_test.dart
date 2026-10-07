@@ -1,7 +1,7 @@
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/session/data/repositories/session_repository.dart';
+import 'package:cordato/features/session/application/repositories/session_repository.dart';
 
 import '../../../../support/session/mocks/session_local_data_source_mock.dart';
 

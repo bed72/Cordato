@@ -15,13 +15,13 @@ independente de clientes HTTP, storage e plugins.
 
 ```text
 Screen/Widget -> Command -> contrato de repository (domain)
-  -> repository (data) -> data source (infrastructure) -> HTTP/storage
+  -> repository (application) -> data source (infrastructure) -> HTTP/storage
 ```
 
 Uma screen conhece commands e contratos de repositório, nunca `Dio`,
 `FlutterSecureStorage` ou clientes de rede diretamente.
 O diagrama descreve o fluxo de execução, não uma cadeia de imports entre
-camadas: `domain` não importa `data` ou `infrastructure`. Os módulos fazem a
+camadas: `domain` não importa `application/repositories` ou `infrastructure`. Os módulos fazem a
 composição das implementações. Features exclusivamente visuais não precisam
 de repositories, commands ou camadas vazias.
 
@@ -93,7 +93,7 @@ define `create({required CreateExpenseInput input})`, retornando
 domínio de Expense pode importar esse input de `application/data` da própria
 feature; esses tipos de entrada permanecem independentes de frameworks,
 apresentação e infraestrutura. `ExpenseRepository`, em
-`expense/data/repositories/expense_repository.dart`, implementa esse contrato e
+`expense/application/repositories/expense_repository.dart`, implementa esse contrato e
 recebe `IExpenseRemoteDataSource`. Delega o mesmo input, converte `ErrorsResponse`
 em `ErrorsEntity` e usa `ExpenseResponse.toEntity()` para validar e converter o
 sucesso, preservando falhas do VO. Exceções inesperadas retornam
@@ -117,16 +117,18 @@ Usa casts e `DateTime.parse`; categorias desconhecidas falham sem fallback para
 `other`. `created_at` e os metadados JSON:API não integram a entidade atual.
 `ExpenseResponseToEntity.toEntity()` retorna `Either<ErrorsEntity, ExpenseEntity>`
 para preservar a falha de validação do VO quando o valor recebido não é positivo.
-`IExpenseRepository.get({required int pageSize, String? pageLink})` retorna
+`IExpenseRepository.get({int pageSize = 30, String? pageLink})` retorna
 `Future<GetRepositoryType>`, com `Either<ErrorsEntity, ExpensePageEntity>`.
-O tamanho deve ser positivo; valores inválidos retornam erro de domínio sem
-chamada remota. `ExpensePageEntity` mantém uma cópia não modificável de `items`
+O tamanho padrão é 30. O repository substitui valores menores ou iguais a zero
+por 30 antes de chamar o data source; valores positivos são preservados.
+`ExpensePageEntity` mantém uma cópia não modificável de `items`
 e as continuações opacas anuláveis `next` e `prev`. A ordem da API é preservada,
 sem ordenação, filtro de datas futuras ou truncamento local. Lista vazia é sucesso.
 O repository converte todos os itens com `ExpenseResponse.toEntity()`;
 qualquer falha de validação monetária invalida a página inteira, sem resultado parcial.
 
-`IExpenseRemoteDataSource.get` recebe os mesmos parâmetros e retorna
+`IExpenseRemoteDataSource.get` recebe o tamanho efetivo obrigatório e a
+continuação opcional e retorna
 `Either<ErrorsResponse, ExpensePageResponse>`. GET relativo `expenses` usa
 `page[size]` em `Requests.query`. Sem `pageLink`, solicita a primeira página.
 Para continuar, o consumidor repassa `next` ou `prev` sem interpretá-los.
@@ -144,12 +146,13 @@ o repository não conhece telas nem aplica esse limite globalmente. A seção de
 recentes está integrada à Dashboard; a listagem completa usa rolagem infinita em
 `ExpensesScreen`, na rota autenticada `/expenses`.
 
-`GetExpensesCommand`, em `expense/presentation/commands/get_expenses_command.dart`,
+`GetExpensesCommand`, em
+`expense/presentation/screens/expenses/commands/get_expenses_command.dart`,
 recebe `IExpenseRepository` e delega a `get` os campos do record
 `({int pageSize, String? pageLink})`. Seu `execute` começa em `null` e preserva
 `Either<ErrorsEntity, ExpensePageEntity>` em `GetRepositoryType?`; lista vazia é
 sucesso e `Left` permanece resultado de negócio. A primeira página usa
-`(pageSize: 6, pageLink: null)` no futuro consumidor Dashboard. Continuações
+`(pageSize: 6, pageLink: null)` no consumidor Dashboard. Continuações
 repassam `next` ou `prev` sem interpretação. Cada execução substitui o resultado
 da consulta anterior, sem acumular itens, definir limite por tela ou avançar
 automaticamente. Durante a execução, o estado do `command_it` bloqueia novas
@@ -166,6 +169,11 @@ singletons pelos contratos, com o HTTP do core, e é composto por `appModule`.
 própria de `GetExpensesCommand`, formatters e callback de retorno. Usa
 `ExpensesAppBarWidget`, `HeaderWidget`, `ExpenseItemWidget` e
 `ExpensesFeedbackWidget`, com `CommandBuilder` para acompanhar a consulta.
+`ExpensesSkeletonWidget`, em `expense/presentation/widgets/`, é compartilhado
+com a Dashboard e usa `Skeletonizer` sobre o layout real de `ExpenseItemWidget`.
+A listagem mostra oito placeholders quando não há itens e três no rodapé
+durante consultas com itens já carregados, preservando a lista visível e a
+semântica “Carregando despesas”, sem expor textos fictícios à acessibilidade.
 `ExpensesScreenStateMixin` mantém os itens acumulados, a continuação opaca `next`
 e os estados locais de loading, vazio e falha. Solicita páginas de 20 itens ao
 montar e ao restarem menos de 240 pixels de conteúdo; após uma página, também
@@ -190,7 +198,8 @@ nova tentativa. Implementa `ICommand` e descarta `execute` em `dispose`. O comma
 é registrado como lazy singleton em `expenseRoutesModule`, com descarte pelo
 módulo, e é recebido por `CreateExpenseScreen` e `CreateExpenseFormWidget` via construtor.
 
-`CreateExpenseFormValidator`, em `expense/presentation/validators/`, compõe
+`CreateExpenseFormValidator`, em
+`expense/presentation/screens/create_expense/validators/`, compõe
 `ExpenseCentsValidation`, `ExpenseDescriptionValidation` e
 `ExpenseDateValidation`. Seu `call` recebe `cents`, `description` e `occurredOn`
 e retorna um record com `ValidationResult` para cada campo, validando todos em
@@ -205,11 +214,12 @@ não executa commands e não realiza navegação ou requisições.
 `CreateExpenseScreen`, em `expense/presentation/screens/create_expense/`, mantém
 a composição de `CreateExpenseAppBarWidget` e `CreateExpenseFormWidget` e recebe
 command, validator, formatter e callbacks de navegação. A rota permanece `/expense`.
-`CreateExpenseFormWidgetStateMixin`, restrito a `State<CreateExpenseFormWidget>`,
+`CreateExpenseFormWidgetStateMixin`, em `screens/create_expense/mixins/`,
+restrito a `State<CreateExpenseFormWidget>`,
 possui o controller de descrição, centavos,
 data civil inicial de hoje, erros por campo e handlers. Cria e descarta o
 controller, registra e remove o listener do command, inclusive quando a instância
-recebida muda. `selectAmount` e `selectDate` abrem `AmountCalculatorWidget` e
+recebida muda. `selectAmount` e `selectDate` abrem `CentsCalculatorWidget` e
 `ExpenseDatePickerWidget` por `showBottomSheetWidget`; cancelar preserva a entrada.
 Seleções confirmadas atualizam somente o campo correspondente e limpam seu erro.
 O submit valida todos os campos e, somente com resultados válidos, monta
@@ -232,8 +242,8 @@ cadastro.
 
 `user` é o bounded context dos dados do usuário. `UserEntity`, em
 `domain/entities/user_entity.dart`, é imutável e possui
-`id`, `name`, `email` e `status` como `String`, além de `createdAt`
-como `DateTime`. O identificador preserva a representação textual da API;
+`id`, `name`, `email` e `status` como `String`, sem datas.
+O identificador preserva a representação textual da API;
 `status` preserva o valor informado, pois o contrato disponível não define todos
 os estados possíveis. O envelope JSON:API (`data`, `type` e `links`) não faz
 parte da entidade. `IUserRepository`, em
@@ -258,11 +268,11 @@ para GET, PATCH e DELETE de `users/<id>`. GET e PATCH retornam
 de sucesso. PATCH envia `data.type: users`, `data.id` e
 somente o nome informado em `data.attributes`. Erros JSON:API são preservados;
 respostas malformadas e exceções inesperadas recebem erro genérico.
-`UserResponse.fromJson` extrai os campos do modelo com casts e `DateTime.parse`,
-e `UserResponseToEntity.toEntity()` os converte para `UserEntity`. `updated_at`
+`UserResponse.fromJson` extrai os campos do modelo com casts Dart,
+e `UserResponseToEntity.toEntity()` os converte para `UserEntity`. As datas
 e os metadados JSON:API não são incorporados ao modelo atual. O id devolvido
 pela API é preservado, sem substituição pelo id solicitado. `UserRepository`, em
-`data/repositories/user_repository.dart`, implementa `IUserRepository` e recebe
+`application/repositories/user_repository.dart`, implementa `IUserRepository` e recebe
 `IUserRemoteDataSource` e `IUserLocalDataSource`. Delega os parâmetros, converte `ErrorsResponse` em
 `ErrorsEntity` e `UserResponse` em `UserEntity`, preserva o booleano da exclusão
 e traduz exceções inesperadas em `ErrorsEntity.unknown()`. `userDependenciesModule`,
@@ -272,7 +282,7 @@ singletons pelos contratos e é composto por `appModule`, sem `path`.
 `UserScreen` lista nome e e-mail em `MenuCardWidget`, reutiliza a app bar de
 Settings e exibe `DangerButtonWidget` com “Excluir conta” no rodapé. Nome abre
 `/user/edit`, passando o nome exibido como argumento; e-mail fica desativado,
-sem chevron. `UserCommand`, em `user/commands/`, consulta `IUserRepository.getById()`
+sem chevron. `UserCommand`, em `presentation/screens/user/commands/`, consulta `IUserRepository.getById()`
 e preserva `Either<ErrorsEntity, UserEntity>`. A tela recebe esse command por
 construtor e usa `CommandBuilder` para consultar a API ao montar, renderizar
 loading com `UserSkeletonWidget`, nome e e-mail reais e erros com botão “Tentar
@@ -281,8 +291,10 @@ visuais e `Skeletonizer`, que bloqueia interação durante o carregamento.
 `UserScreenStateMixin`, restrito a `State<UserScreen>`, inicia a consulta,
 encapsula recarregamento, edição de nome e descrição dos erros; a screen mantém
 a composição visual. O avatar usa o nome retornado.
-`userDependenciesModule` registra `UserCommand` como lazy singleton compartilhado
-entre User e Dashboard, com descarte pelo módulo. “Excluir conta” abre a bottom sheet de confirmação
+`userDependenciesModule` registra `UserCommand` por factory, fornecendo instâncias
+independentes para User e Dashboard. Os mixins atuais dessas telas não descartam
+suas instâncias de `UserCommand`; esse lifecycle permanece uma pendência.
+“Excluir conta” abre a bottom sheet de confirmação
 com título “Deseja apagar sua conta?”, aviso de ação irreversível e botões
 “Voltar” e “Confirmar”, seguindo o layout do logout. O handler fica em
 `UserScreenStateMixin`; somente a confirmação executa `DeleteUserCommand`,
@@ -323,7 +335,7 @@ singleton, com descarte pelo módulo. O contexto não realiza autenticação ou 
 de sessão. `IUserLocalDataSource` e `UserLocalDataSource` ficam no mesmo arquivo,
 `infrastructure/local/user_local_data_source.dart`; a implementação recebe
 `IStorageClient` e delega `clear()` para limpar todo o storage seguro.
-Também oferece `getUserId()`, que lê `StorageKeyEnum.userId` e preserva o resultado
+Também oferece `getId()`, que lê `StorageKeyEnum.userId` e preserva o resultado
 anulável do storage. Authentication grava esse ID no sign-in; User o lê pelo
 storage do core, sem dependência entre as duas features e sem ler o token.
 `UserRepository.delete` lê o ID persistido, aguarda a exclusão remota e, somente em `Right(true)`
@@ -377,13 +389,17 @@ lib/
           mixins/app_screen_state_mixin.dart
     core/
     session/
+      application/
+        repositories/session_repository.dart
     authentication/
+      application/
+        repositories/authentication_repository.dart
     user/
       user_module.dart
       domain/
         entities/user_entity.dart
         repositories/interface_user_repository.dart
-      data/
+      application/
         repositories/user_repository.dart
       infrastructure/
         local/user_local_data_source.dart
@@ -392,10 +408,43 @@ lib/
     welcome/
     dashboard/
     expense/
+      application/
+        data/create_expense_input.dart
+        repositories/expense_repository.dart
+      presentation/
+        screens/create_expense/
+          create_expense_screen.dart
+          commands/create_expense_command.dart
+          mixins/create_expense_form_widget_state_mixin.dart
+          validators/
+        screens/expenses/
+          expenses_screen.dart
+          commands/get_expenses_command.dart
+          mixins/expenses_screen_state_mixin.dart
+          widgets/
+        widgets/expense_item_widget.dart
+        widgets/expenses_skeleton_widget.dart
     settings/
 ```
 
-Cada feature pode conter `domain`, `data`, `infrastructure` e `presentation`.
+Cada feature pode conter `domain`, `application`, `infrastructure` e `presentation`.
+`application/repositories/` contém as implementações dos contratos do domínio em
+Authentication, User, Session e Expense. `application/data/` contém tipos Dart
+puros de entrada, como `CreateExpenseInput`; não contém data sources ou DTOs HTTP.
+Os testes espelham esses caminhos em `test/features/<feature>/application/`.
+Crie somente os diretórios que tiverem implementações reais.
+
+| Localização | Responsabilidade |
+|---|---|
+| `domain/entities`, `domain/value_objects`, `domain/enums` | Modelos e regras independentes de Flutter e SDKs |
+| `domain/repositories` | Contratos consumidos pelos commands |
+| `application/data` | Inputs Dart puros e imutáveis, sem parsing HTTP |
+| `application/repositories` | Coordenação dos data sources e conversão de resultados para domínio |
+| `infrastructure/local`, `infrastructure/remoto` | Interfaces e implementações de data source, com acesso a storage ou HTTP |
+| `infrastructure/responses` | Parsing de respostas e conversão de DTOs |
+| `presentation/commands`, `presentation/screens`, `presentation/widgets` | Operações observáveis, estado de UI e composição visual |
+| `<feature>_module.dart` | Composição de dependências e rotas reais da feature |
+
 `core` contém capacidades compartilhadas, como tema, formatação monetária,
 widgets, animações, imagens e storage; não deve receber regras de uma
 feature.
@@ -426,10 +475,10 @@ User mantém itens de 64 pixels, valores à direita e e-mail desativado sem chev
 Direções de dependência aprovadas:
 
 - `presentation` consome contratos de `domain`; não importa repositories de
-  `data`, data sources ou clients de `infrastructure`;
-- `data` implementa contratos de `domain` e consome interfaces de data source e
+  `application/repositories`, data sources ou clients de `infrastructure`;
+- `application/repositories` implementa contratos de `domain` e consome interfaces de data source e
   DTOs de `infrastructure`, sem acessar SDKs diretamente;
-- `domain` é independente de frameworks, implementações de `data`,
+- `domain` é independente de frameworks, implementações de `application/repositories`,
   `infrastructure` e `presentation`; o contrato de Expense pode consumir
   `CreateExpenseInput` de `application/data` da própria feature, conforme a
   decisão documentada acima;
@@ -437,7 +486,7 @@ Direções de dependência aprovadas:
   escrita e observação de `StorageKeyEnum.opaqueToken` no storage do core;
 - Settings recebe `LogoutCommand` de Authentication como dependência de
   apresentação; o command conhece somente `IAuthenticationRepository`;
-- Dashboard recebe o `UserCommand` compartilhado de User como dependência de
+- Dashboard recebe uma instância de `UserCommand` de User como dependência de
   apresentação, sem acessar repository, HTTP ou storage diretamente;
 - Dashboard recebe uma instância própria de `GetExpensesCommand` de Expense e
   reutiliza `ExpenseItemWidget`, sem acessar repository ou data source diretamente;
@@ -450,7 +499,7 @@ Direções de dependência aprovadas:
 Responsabilidades e implementações atuais:
 
 - `domain` define entidades, failures e contratos sem Flutter ou SDKs.
-- `data` implementa contratos de repository do domínio e converte resultados
+- `application/repositories` implementa contratos de repository do domínio e converte resultados
   dos data sources em `Either`. Na autenticação, importa as interfaces de data
   source e response DTOs definidos em `infrastructure`.
 - `infrastructure` define data sources que acessam HTTP, storage ou plugins;
@@ -540,8 +589,8 @@ Responsabilidades e implementações atuais:
   `String` não nula e chama `IAuthenticationRepository.confirmEmail`, que
   rejeita uma string vazia e encaminha as demais URLs ao
   `IAuthenticationRemoteDataSource` sem validar host, caminho ou assinatura.
-  A requisição não envia Bearer, não segue
-  redirecionamentos e omite a URL dos logs. O resultado 204, 403 ou falha de
+  A requisição não envia Bearer e usa as opções padrão do cliente HTTP.
+  O resultado 204, 403 ou falha de
   conexão aparece em toast e a tela reconstrói a pilha como Welcome → Sign In;
   Voltar no sign-in retorna a Welcome mesmo após um deep link com o app fechado.
   A API não cria sessão nesse fluxo.
@@ -557,6 +606,10 @@ Screen/widget -> Command -> IAuthenticationRepository -> AuthenticationRepositor
 ```
 
 Commands usam `command_it` e implementam `ICommand` quando precisam de descarte.
+Em Expense, cada fluxo reúne seus commands, mixins e validators sob a tela
+proprietária em `presentation/screens/`. `GetExpensesCommand` pertence a
+`screens/expenses/commands/`, mesmo sendo consumido também pela Dashboard;
+o compartilhamento mantém o registro por factory em `expenseDependenciesModule`.
 Commands específicos de uma tela ficam em `presentation/screens/<tela>/commands/`,
 junto da screen, com testes no caminho espelhado. O command do fluxo principal
 usa o nome-base da tela (`CallbackScreen` → `CallbackCommand`); operações
@@ -714,9 +767,10 @@ Registros importantes:
   `HeadersInterceptor`, `SessionInterceptor` e, apenas em debug, o logger.
 - `userDependenciesModule`: registra `IUserRemoteDataSource`, `IUserLocalDataSource`
   e `IUserRepository` como lazy singletons, usando o HTTP e o storage do core;
-  também registra `UserCommand`, compartilhado entre Dashboard e dados pessoais.
-- `userRoutesModule`: compõe a UI de edição de dados pessoais, sem dependências
-  assíncronas ou integração HTTP, recebendo a navegação por callback.
+  também registra `UserCommand` por factory para Dashboard e dados pessoais.
+- `userRoutesModule`: registra `/user` e `/user/edit`, compõe consulta, edição
+  e exclusão com commands e callbacks de navegação e registra `DeleteUserCommand`
+  e `UpdateUserCommand` como lazy singletons, com descarte pelo módulo.
 - `sessionDependenciesModule`: registra `ISessionLocalDataSource`, `ISessionRepository` e
   `SessionCommand` como dependências do app inteiro (módulo sem `path`), para
   continuar observando mudanças depois que `AppScreen` sair da pilha.
@@ -736,14 +790,15 @@ Registros importantes:
   o usuário ao montar. O AppBar recebe o command e `UserNameWidget` usa
   `CommandBuilder` para mostrar nome e inicial da API, skeleton durante a consulta
   e “Tentar novamente” em caso de erro. Nomes longos usam ellipsis. A saudação
-  continua baseada na hora local. A consulta após editar o nome em User atualiza
-  também o AppBar, pois as telas observam a mesma instância do command.
+  continua baseada na hora local. Dashboard e User recebem instâncias distintas
+  do command; a atualização feita em User não propaga o resultado diretamente
+  ao AppBar da Dashboard.
   O avatar reutiliza `BounceWidget` e abre `/user` ao tocar, com navegação
   injetada por callback e sem acesso ao router no widget.
   Também injeta uma instância por factory de `GetExpensesCommand` e o
   `IMoneyFormatter` e o `IDateFormatter` do core. `DashboardScreenStateMixin` consulta a primeira
   página com `pageSize: 6` ao montar, recarrega após o retorno do formulário e
-  descarta o command de despesas ao sair. O `UserCommand` compartilhado não é
+  descarta o command de despesas ao sair. O `UserCommand` da Dashboard não é
   descartado pela tela. A ação de gasto recebe um callback assíncrono para aguardar
   o retorno da rota; após navegação que removeu a Dashboard, o handler não consulta
   novamente a instância descartada. A nova Dashboard carrega ao montar.
@@ -779,7 +834,7 @@ Registros importantes:
 - `settingsRoutesModule`: registra localmente o `LogoutCommand` definido em
   `authentication/presentation/commands/`, injetado na tela e
   dependente somente de `IAuthenticationRepository`. “Sair” abre
-  `showBottomSheetWidget<bool>`; cancelar ou dispensar não executa o command.
+  `showConfirmationBottomSheetWidget`; cancelar ou dispensar não executa o command.
   Confirmar fecha a modal pelo `Navigator` e executa o command. O estado do
   `command_it` mostra loading, bloqueia novas execuções e entrega erros em toast.
   Settings não navega no sucesso nem acessa adapters de Authentication.
@@ -900,18 +955,17 @@ revoga o token atual e retorna 204 sem corpo, convertido em `Right(true)`.
 O data source remoto não manipula storage.
 
 A confirmação de e-mail usa `IHttpClient.get` no Dio compartilhado com a URL
-assinada original em `Requests(path: url)`. O cliente HTTP identifica URLs
-absolutas e desabilita redirecionamentos, definindo `HttpExtraKeyEnum.skipLogging`
-para omitir URL, resposta e erro dos logs. O interceptor não envia Bearer para
-URLs absolutas. Essas opções são política do cliente, não campos de Requests. O data
+assinada original em `Requests(path: url)`. O interceptor não envia Bearer para
+URLs absolutas. O cliente HTTP atual não configura redirecionamentos ou filtros
+de logging específicos para esses caminhos; usa as opções padrão do Dio. O data
 source remoto entrega o status (`null` quando é `0`) ao repository, que traduz
 204 em sucesso, 403 em link inválido e os demais resultados em falha de
 conexão, sem verificar host, caminho ou assinatura localmente.
 
 `TalkerDioLogger` é instalado apenas em debug e, nas requisições usuais,
 registra headers e payloads de request, response e error (inclusive senha no
-sign-in e token na resposta); o filtro de logging da confirmação assinada é
-aplicado aos três tipos de evento. Não há logger Dio em release.
+sign-in e token na resposta). URLs absolutas, incluindo a confirmação assinada,
+também são registradas nessa configuração. Não há logger Dio em release.
 
 O sign-up ainda envia `name: 'Trocado'` fixo e repete a senha em
 `password_confirmation`; o formulário não coleta nome. Isso não fornece um
@@ -932,8 +986,8 @@ vez de estilizar botões Material diretamente.
 O dashboard usa um botão de ação expansível para acessar o formulário de gasto;
 não há barra inferior de navegação ou shell autenticado na composição atual.
 
-O teclado `AmountCalculatorWidget`, em
-`expense/presentation/widgets/calculator/`, recebe dígitos em reais:
+O teclado `CentsCalculatorWidget`, em
+`expense/presentation/screens/create_expense/widgets/calculator/`, recebe dígitos em reais:
 `80` representa `R$ 80,00`. A tecla de vírgula permite informar até dois
 dígitos de centavos (`80,5` representa `R$ 80,50`). A entrada permite até sete
 dígitos inteiros; `DEL` remove a última entrada e `AC` limpa o valor. O estado
@@ -969,7 +1023,7 @@ do descarte de recursos no catálogo, e `.widget_preview/` não é versionado.
 
 ## Testes E Verificação
 
-Testes unitários cobrem `Either`, autenticação e sessão em data/infrastructure,
+Testes unitários cobrem `Either`, autenticação e sessão em application/infrastructure,
 entidade, DTO e data source de User, cliente HTTP, interceptors, storage,
 `response<T>`, validators de autenticação, formatters, helpers,
 commands e limites arquiteturais. Use `mocktail` para doubles. A política atual
@@ -995,14 +1049,22 @@ O check de dependências de Settings permite os contratos do domínio de
 Authentication e o arquivo específico de `LogoutCommand`; os demais imports
 de Authentication continuam bloqueados nessa feature.
 
+Os testes de repositories de Authentication, User, Session e Expense ficam em
+`test/features/<feature>/application/repositories/`; os testes de inputs puros
+ficam em `application/data/`, como `create_expense_input_test.dart`. Essa estrutura
+espelha a produção, mantendo os doubles compartilhados em `test/support/`.
+
+Os checks de camadas bloqueiam imports de `application/repositories/` pelo
+domínio e pela apresentação e imports de apresentação por `application/`.
+Tipos puros de `application/data/` continuam acessíveis às camadas consumidoras.
+
 Limitações conhecidas da suíte arquitetural:
 
 - ainda há listas e checks históricos de Supabase e escrita via RPC; a
   integração atual usa HTTP JSON:API, e esses checks não validam esse contrato;
 - `_contextFrom` reconhece apenas contextos financeiros, de modo que o teste
   de isolamento entre `authentication` e `session` não inspeciona seus imports;
-- o check de import de presentation em `data` fica depois de um filtro que
-  descarta arquivos de `data`, e as listas de SDKs não incluem Dio.
+- as listas de SDKs proibidos não incluem Dio.
 
 O teste de `ResendEmailCommand` permanece no caminho histórico
 `test/features/authentication/presentation/screens/resend_email_verification/commands/resend_email_verification_command_test.dart`,

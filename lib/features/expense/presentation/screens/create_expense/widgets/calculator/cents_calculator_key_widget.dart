@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-final class const AmountCalculatorKeyWidget({
+final class const CentsCalculatorKeyWidget({
   super.key,
   required final String label,
   required final VoidCallback onTap,

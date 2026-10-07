@@ -7,7 +7,7 @@ final class ExpensesPreviewRepository({required final GetRepositoryType result})
     implements IExpenseRepository {
   @override
   Future<GetRepositoryType> get({
-    required int pageSize,
+    int pageSize = 30,
     String? pageLink,
   }) async => result;
 

@@ -3,10 +3,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
-import 'package:cordato/features/expense/presentation/widgets/create_expense_form_widget.dart';
-import 'package:cordato/features/expense/presentation/widgets/create_expense_app_bar_widget.dart';
-import 'package:cordato/features/expense/presentation/validators/create_expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/screens/create_expense/commands/create_expense_command.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/widgets/create_expense_form_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/widgets/create_expense_app_bar_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/validators/create_expense_form_validator.dart';
 
 final class const CreateExpenseScreen({
   super.key,

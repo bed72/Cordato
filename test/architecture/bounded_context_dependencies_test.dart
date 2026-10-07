@@ -106,27 +106,28 @@ void main() {
       final pathSegments = file.uri.pathSegments;
       final isDomain = pathSegments.contains('domain');
       final isPresentation = pathSegments.contains('presentation');
-      if (!isDomain && !isPresentation) continue;
+      final isApplication = pathSegments.contains('application');
+      if (!isDomain && !isPresentation && !isApplication) continue;
 
       final source = file.readAsStringSync();
       if (isDomain &&
           RegExp(
-            r'''package:cordato/features/[^/'"]+/(?:data|infrastructure|presentation)/''',
+            r'''package:cordato/features/[^/'"]+/(?:application/repositories|data|infrastructure|presentation)/''',
           ).hasMatch(source)) {
         violations.add('${file.path}: domain imports an outer layer');
       }
 
       if (isPresentation &&
           RegExp(
-            r'''package:cordato/features/[^/'"]+/(?:data|infrastructure)/''',
+            r'''package:cordato/features/[^/'"]+/(?:application/repositories|data|infrastructure)/''',
           ).hasMatch(source)) {
         violations.add('${file.path}: presentation imports an outer adapter');
       }
 
-      if (pathSegments.contains('data') &&
+      if (isApplication &&
           RegExp(r'''package:cordato/features/[^/'"]+/presentation/''')
               .hasMatch(source)) {
-        violations.add('${file.path}: data imports presentation');
+        violations.add('${file.path}: application imports presentation');
       }
 
       if (isDomain && _forbiddenDomainImports.any(source.contains)) {

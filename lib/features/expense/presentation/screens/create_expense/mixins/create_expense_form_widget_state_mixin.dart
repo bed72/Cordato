@@ -7,9 +7,9 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
 
 import 'package:cordato/features/expense/application/data/create_expense_input.dart';
-import 'package:cordato/features/expense/presentation/widgets/expense_date_picker_widget.dart';
-import 'package:cordato/features/expense/presentation/widgets/create_expense_form_widget.dart';
-import 'package:cordato/features/expense/presentation/widgets/calculator/amount_calculator_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/widgets/create_expense_date_picker_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/widgets/create_expense_form_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/widgets/calculator/cents_calculator_widget.dart';
 
 mixin CreateExpenseFormWidgetStateMixin on State<CreateExpenseFormWidget> {
   final descriptionController = TextEditingController();
@@ -61,7 +61,7 @@ mixin CreateExpenseFormWidgetStateMixin on State<CreateExpenseFormWidget> {
       final value = await showBottomSheetWidget<int>(
         context: context,
         title: 'Valor do gasto',
-        child: AmountCalculatorWidget(
+        child: CentsCalculatorWidget(
           value: cents,
           formatter: widget.formatter,
         ),
@@ -87,7 +87,7 @@ mixin CreateExpenseFormWidgetStateMixin on State<CreateExpenseFormWidget> {
       final date = await showBottomSheetWidget<DateTime>(
         context: context,
         title: 'Data do gasto',
-        child: ExpenseDatePickerWidget(date: occurredOn),
+        child: CreateExpenseDatePickerWidget(date: occurredOn),
       );
 
       if (!mounted) return;

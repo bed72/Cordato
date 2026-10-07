@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 
-import 'package:cordato/features/expense/presentation/commands/get_expenses_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';

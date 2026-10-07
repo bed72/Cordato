@@ -22,7 +22,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
   @override
   Future<GetDataSourceType> get({required int pageSize, String? pageLink}) =>
       response(
-        from: (response) => ExpensePageResponse.fromJson(response.body),
+        from: (response) => .fromJson(response.body),
         execute: () => _client.get(
           parameter: Requests(
             path: HttpPathEnum.expenses.path,
@@ -58,8 +58,6 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
       '${date.day.toString().padLeft(2, '0')}';
 
   Map<String, dynamic> _pageQuery(int pageSize, String? pageLink) {
-    if (pageSize <= 0) throw ArgumentError.value(pageSize, 'pageSize');
-
     final query = <String, dynamic>{};
 
     if (pageLink != null) {

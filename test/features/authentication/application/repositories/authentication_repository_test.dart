@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
-import 'package:cordato/features/authentication/data/repositories/authentication_repository.dart';
+import 'package:cordato/features/authentication/application/repositories/authentication_repository.dart';
 import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
 
 import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
