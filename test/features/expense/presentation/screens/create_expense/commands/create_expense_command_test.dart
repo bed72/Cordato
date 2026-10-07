@@ -11,7 +11,7 @@ import 'package:cordato/features/expense/application/data/create_expense_input.d
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
-import 'package:cordato/features/expense/presentation/screens/expense/commands/create_expense_command.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/commands/create_expense_command.dart';
 
 import '../../../../../../support/expense/mocks/expense_repository_mock.dart';
 

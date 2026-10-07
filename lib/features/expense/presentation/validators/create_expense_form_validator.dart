@@ -4,7 +4,7 @@ import 'package:cordato/features/expense/presentation/validators/expense_date_va
 import 'package:cordato/features/expense/presentation/validators/expense_cents_validation.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_description_validation.dart';
 
-final class const ExpenseFormValidator({
+final class const CreateExpenseFormValidator({
   required final ExpenseDateValidation _dateValidation,
   required final ExpenseCentsValidation _centsValidation,
   required final ExpenseDescriptionValidation _descriptionValidation,

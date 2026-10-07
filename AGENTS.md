@@ -49,7 +49,7 @@ rótulos pt-BR em `ExpenseCategoryExtension` na apresentação, estrutura visual
 formulário, validators e estado de apresentação. Também possui `CreateExpenseInput`
 em `application/data/`, o contrato `IExpenseRepository.create`, `ExpenseResponse`
 e data source HTTP de criação, além de `CreateExpenseCommand` em
-`presentation/screens/expense/commands/`, e `ExpenseRepository` em `data/`.
+`presentation/screens/create_expense/commands/`, e `ExpenseRepository` em `data/`.
 O command delega o input a `IExpenseRepository.create`, preserva `Either` e
 implementa `ICommand`. `expenseDependenciesModule` registra data source e
 repository pelos contratos; `expenseRoutesModule` registra command e validators
@@ -68,12 +68,12 @@ O recorte de seis despesas pertence ao consumidor Dashboard.
 `Either` em `GetRepositoryType?`, inicialmente nulo. Não acumula páginas nem
 define o limite da Dashboard. Implementa `ICommand` e é registrado por factory
 em `expenseDependenciesModule`; cada consumidor deve descartar sua instância.
-`ExpenseFormValidator` reúne os resultados de valor, descrição e data pelo padrão
+`CreateExpenseFormValidator` reúne os resultados de valor, descrição e data pelo padrão
 `ValidationResult` do core. Reutiliza os validators existentes de descrição e
 data, e `ExpenseCentsValidation` exige centavos positivos. Retorna um record
 com resultado por campo, sem interromper na primeira falha. Os validators estão registrados
 no módulo de rotas de Expense e são consumidos pelo formulário.
-`ExpenseFormWidgetStateMixin` concentra controller, campos, seleção de valor e
+`CreateExpenseFormWidgetStateMixin` concentra controller, campos, seleção de valor e
 data, validação e listener do command, descartando os recursos que cria.
 `CommandBuilder` controla loading e desabilita campos e envio. Erros da API são
 mostrados nos campos pelo pointer ou por toast. `HoldButtonWidget` envia por toque
@@ -827,7 +827,7 @@ Rotas atuais:
 - `/authentication/confirm-email` para confirmação pelo link recebido.
 - `/dashboard` para a tela inicial de dashboard, ainda sem guard de sessão.
 - `/settings` para configurações.
-- `/expense` para o formulário de gasto.
+- `/expense` para `CreateExpenseScreen`, o formulário de cadastro de gasto.
 
 `RouteEnum.authenticatedPaths()` lista Dashboard, Settings e Expense. A flag
 `authenticated` classifica rotas; não instala um guard. `AppWidget` encaminha

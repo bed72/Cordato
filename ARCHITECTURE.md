@@ -162,7 +162,7 @@ que obtiver uma instância é responsável por descartá-la ao encerrar seu life
 singletons pelos contratos, com o HTTP do core, e é composto por `appModule`.
 
 `CreateExpenseCommand`, em
-`expense/presentation/screens/expense/commands/create_expense_command.dart`,
+`expense/presentation/screens/create_expense/commands/create_expense_command.dart`,
 recebe `IExpenseRepository` e delega `CreateExpenseInput` diretamente a `create`.
 Seu `execute` é `Command<CreateExpenseInput, CreateRepositoryType?>`, com valor
 inicial `null`, preservando `Either<ErrorsEntity, ExpenseEntity>` para a
@@ -170,9 +170,9 @@ apresentação tratar sucesso e erros. O estado observável acompanha a execuç�
 impede chamadas adicionais enquanto uma criação está pendente; após erro permite
 nova tentativa. Implementa `ICommand` e descarta `execute` em `dispose`. O command
 é registrado como lazy singleton em `expenseRoutesModule`, com descarte pelo
-módulo, e é recebido por `ExpenseScreen` e `ExpenseFormWidget` via construtor.
+módulo, e é recebido por `CreateExpenseScreen` e `CreateExpenseFormWidget` via construtor.
 
-`ExpenseFormValidator`, em `expense/presentation/validators/`, compõe
+`CreateExpenseFormValidator`, em `expense/presentation/validators/`, compõe
 `ExpenseCentsValidation`, `ExpenseDescriptionValidation` e
 `ExpenseDateValidation`. Seu `call` recebe `cents`, `description` e `occurredOn`
 e retorna um record com `ValidationResult` para cada campo, validando todos em
@@ -184,9 +184,11 @@ validators e o agregador estão registrados em `expenseRoutesModule` e são
 consumidos pelo formulário. O validator não cria inputs,
 não executa commands e não realiza navegação ou requisições.
 
-`ExpenseScreen` mantém a composição de app bar e formulário e recebe command,
-validator, formatter e callbacks de navegação. `ExpenseFormWidgetStateMixin`,
-restrito a `State<ExpenseFormWidget>`, possui o controller de descrição, centavos,
+`CreateExpenseScreen`, em `expense/presentation/screens/create_expense/`, mantém
+a composição de `CreateExpenseAppBarWidget` e `CreateExpenseFormWidget` e recebe
+command, validator, formatter e callbacks de navegação. A rota permanece `/expense`.
+`CreateExpenseFormWidgetStateMixin`, restrito a `State<CreateExpenseFormWidget>`,
+possui o controller de descrição, centavos,
 data civil inicial de hoje, erros por campo e handlers. Cria e descarta o
 controller, registra e remove o listener do command, inclusive quando a instância
 recebida muda. `selectAmount` e `selectDate` abrem `AmountCalculatorWidget` e
@@ -747,7 +749,7 @@ Registros importantes:
   `IExpenseRepository` como lazy singletons, sem `path`, e `GetExpensesCommand`
   por factory para consultas com estados independentes por consumidor.
 - `expenseRoutesModule`: registra os validators de centavos, descrição e data,
-  `ExpenseFormValidator` e `CreateExpenseCommand`. Compõe `ExpenseScreen` com
+  `CreateExpenseFormValidator` e `CreateExpenseCommand`. Compõe `CreateExpenseScreen` com
   command, validator, `IMoneyFormatter` e `IDateFormatter` do core; após cadastro confirmado por
   toque simples, o callback injetado navega para `/dashboard`. O hold permanece
   na tela com o formulário limpo para o próximo cadastro.

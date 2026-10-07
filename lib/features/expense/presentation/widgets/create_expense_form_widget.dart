@@ -11,25 +11,25 @@ import 'package:cordato/features/authentication/presentation/widgets/amount_fiel
 import 'package:cordato/features/expense/application/data/create_expense_input.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
-import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';
-import 'package:cordato/features/expense/presentation/mixins/expense_form_widget_state_mixin.dart';
-import 'package:cordato/features/expense/presentation/screens/expense/commands/create_expense_command.dart';
+import 'package:cordato/features/expense/presentation/validators/create_expense_form_validator.dart';
+import 'package:cordato/features/expense/presentation/mixins/create_expense_form_widget_state_mixin.dart';
+import 'package:cordato/features/expense/presentation/screens/create_expense/commands/create_expense_command.dart';
 import 'package:cordato/features/expense/presentation/widgets/fields/expense_description_field_widget.dart';
 
-final class const ExpenseFormWidget({
+final class const CreateExpenseFormWidget({
   super.key,
   required final IMoneyFormatter formatter,
   required final IDateFormatter dateFormatter,
   required final CreateExpenseCommand command,
-  required final ExpenseFormValidator validator,
+  required final CreateExpenseFormValidator validator,
   required final ValueChanged<BuildContext> onExpenseCreated,
 }) extends StatefulWidget {
   @override
-  State<ExpenseFormWidget> createState() => _ExpenseFormWidgetState();
+  State<CreateExpenseFormWidget> createState() => _CreateExpenseFormWidgetState();
 }
 
-final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
-    with ExpenseFormWidgetStateMixin {
+final class _CreateExpenseFormWidgetState extends State<CreateExpenseFormWidget>
+    with CreateExpenseFormWidgetStateMixin {
   @override
   Widget build(BuildContext context) {
     return CommandBuilder<CreateExpenseInput, CreateRepositoryType?>(

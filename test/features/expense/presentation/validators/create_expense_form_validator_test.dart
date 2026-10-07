@@ -4,10 +4,10 @@ import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_cents_validation.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_date_validation.dart';
 import 'package:cordato/features/expense/presentation/validators/expense_description_validation.dart';
-import 'package:cordato/features/expense/presentation/validators/expense_form_validator.dart';
+import 'package:cordato/features/expense/presentation/validators/create_expense_form_validator.dart';
 
 void main() {
-  const validator = ExpenseFormValidator(
+  const validator = CreateExpenseFormValidator(
     centsValidation: ExpenseCentsValidation(),
     dateValidation: ExpenseDateValidation(),
     descriptionValidation: ExpenseDescriptionValidation(),

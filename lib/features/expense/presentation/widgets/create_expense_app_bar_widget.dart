@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
 
-final class const ExpenseAppBarWidget({
+final class const CreateExpenseAppBarWidget({
   super.key,
   required final VoidCallback onBackPressed,
 }) extends StatelessWidget implements PreferredSizeWidget {
