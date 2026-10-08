@@ -251,13 +251,25 @@ semântica “Carregando despesas”, sem expor textos fictícios à acessibilid
 `ExpensesScreenStateMixin` mantém os itens acumulados, a continuação opaca `next`
 e os estados locais de loading, vazio e falha. Solicita páginas de 20 itens ao
 montar e ao restarem menos de 240 pixels de conteúdo; após uma página, também
-verifica se é preciso preencher a área visível. A ordem da API é preservada e
+verifica se é preciso preencher a área visível. A apresentação mantém ordem
+decrescente pela data civil, preservando a ordem recebida entre itens do mesmo dia, e
 `next: null` encerra a paginação. Não carrega automaticamente após uma falha.
 Requisições simultâneas são bloqueadas. Atualização por gesto substitui os itens
 somente após sucesso da primeira página. Falhas preservam os itens e a continuação;
 “Tentar novamente” repete a operação que falhou, incluindo atualização.
 O mixin descarta o controller e o command e ignora respostas após descarte ou
 troca do command. A listagem não acessa repository, HTTP ou storage diretamente.
+Uma única `SliverList.builder` apresenta cabeçalhos acessíveis por período:
+Hoje, Esta semana (segunda-feira até ontem, somente no mês corrente), Este mês
+(dias anteriores à semana corrente) e mês/ano para os outros meses e datas futuras.
+Cada item pertence a um único grupo; grupos vazios não geram cabeçalhos.
+`ExpensesGroupHeaderWidget` fica fora do conteúdo arrastável. Cada item construído
+compara seu rótulo com o do item anterior em tempo constante, inclusive entre páginas,
+sem agrupar toda a lista no build nem construir antecipadamente os itens de um mês.
+Páginas cronológicas acrescentam itens no fim em tempo linear no tamanho da página;
+itens fora de ordem usam busca binária para encontrar a posição de inserção.
+Edição de data reposiciona o item entre as despesas já carregadas; exclusão do último
+item de um grupo remove seu cabeçalho naturalmente. A continuação da API permanece opaca.
 `ExpenseDismissibleWidget` envolve cada item da listagem, com chave pelo ID,
 gesto para a esquerda, fundo `error`, lixeira `onError` e conteúdo com raio
 `cornerRadius300`. O arraste é limitado a 88 pixels lógicos ou 25% da largura,
@@ -367,8 +379,9 @@ somente os atributos alterados, mantendo os demais nulos. Não há hold na ediç
 a operação. Falhas preservam a entrada e usam pointers ou toast. Sucesso mostra
 “Gasto atualizado” e devolve a entidade por `context.pop`, pelo callback da rota.
 Arrastar um item de `ExpensesScreen` para a direita abre `/expense` com o ID. Ao retornar com
-sucesso, a listagem substitui somente o item correspondente, preservando ordem,
-rolagem e continuações da paginação. Cancelar não altera a lista. O mixin bloqueia
+sucesso, a listagem substitui somente o item correspondente, reposicionando-o
+quando a data civil muda e preservando a posição quando somente valor ou descrição mudam.
+Mantém rolagem e continuações da paginação. Cancelar não altera a lista. O mixin bloqueia
 edição duplicada, consultas e exclusões enquanto o editor está aberto.
 Ao retornar da listagem completa, Dashboard consulta novamente suas despesas
 recentes, refletindo as edições e exclusões realizadas. O callback de “Ver tudo”
@@ -891,9 +904,11 @@ mês abreviado capitalizado sem ponto, incluindo o ano quando diferente do atual
 `formatMonth` retorna o mês por extenso capitalizado. `formatShortPeriod` usa
 datas numéricas completas; `formatPeriod` usa o formato textual com ano opcional
 em cada ponta. Ambos colapsam intervalos do mesmo dia civil em uma data.
-`relativeGroupHeader` retorna Hoje, Ontem, dia da semana com data entre dois e seis
-dias atrás, ou mês e ano para datas antigas e futuras. A diferença é calculada
-entre componentes civis em UTC, sem depender da duração de um dia local.
+`relativeGroupHeader` retorna Hoje, Esta semana ou Este mês para datas até hoje no
+mês corrente, aplicando os grupos nessa precedência. A semana começa na segunda-feira
+e não inclui dias de outro mês. Outros meses e datas futuras usam mês e ano
+(como Setembro de 2026). Comparações usam componentes civis em UTC, sem depender
+da duração de um dia local.
 O formatter não faz parsing/serialização da API nem cálculos de expiração.
 `DateFieldWidget` recebe o contrato e usa `formatShortPeriod`, substituindo a antiga
 `DateTimeRangeExtension` e preservando o formato numérico do formulário.

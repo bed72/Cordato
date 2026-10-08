@@ -84,7 +84,8 @@ Na edição, header, botão e toasts mudam para atualização; a data pode ser a
 pelo mesmo picker do cadastro. Somente atributos alterados são enviados,
 comparando a data civil por ano, mês e dia.
 O botão habilita com alterações válidas e não possui hold. Sucesso retorna a
-entidade à listagem, que substitui o item preservando paginação e rolagem.
+entidade à listagem, que substitui o item preservando paginação e rolagem e
+reposiciona a despesa quando a data civil muda.
 A listagem abre a edição por arraste da esquerda para a direita no mesmo
 `ExpenseDismissibleWidget` da exclusão. O fundo usa `primaryContainer` e um lápis
 `onPrimaryContainer`; limite, threshold e spring são compartilhados pelos dois
@@ -131,11 +132,19 @@ conversão de fuso. “Ver tudo” requer itens e callback de navegação dispon
 a rota fornece o destino `/expenses` para a listagem completa.
 `ExpensesScreen`, em `expense/presentation/screens/expenses/`, usa uma instância
 própria de `GetExpensesCommand` e reutiliza `ExpenseItemWidget` e os formatters
-do core. `ExpensesScreenStateMixin` acumula páginas de 20 itens em ordem da API,
+do core. `ExpensesScreenStateMixin` acumula páginas de 20 itens em ordem
+decrescente pela data civil, preservando a ordem da API entre itens do mesmo dia,
 repassa `next` sem interpretação e carrega ao se aproximar do fim da rolagem.
 Atualização por gesto substitui os itens somente após sucesso. Falhas preservam
 os itens e permitem repetir a operação que falhou por “Tentar novamente”. O mixin
-descarta controller e command e ignora respostas obsoletas. A tela compõe
+descarta controller e command e ignora respostas obsoletas.
+A tela mantém uma única lista lazy com cabeçalhos Hoje, Esta semana e Este mês
+para o mês corrente, sem repetir despesas. A semana começa na segunda-feira e
+exclui hoje e dias de outro mês. Os demais meses e datas futuras usam mês e ano.
+Cada item compara seu período com o do item anterior, inclusive entre páginas,
+sem reagrupar toda a lista durante o build. Grupos vazios não aparecem.
+Cabeçalhos ficam fora do conteúdo arrastável; edição de data reposiciona o item
+e exclusão do último item de um grupo remove o cabeçalho. A tela compõe
 `ExpensesSkeletonWidget` de `expense/presentation/widgets/`,
 compartilhado com a Dashboard. O skeleton reutiliza `ExpenseItemWidget` com
 `Skeletonizer`: oito placeholders sem itens e três no rodapé com itens já

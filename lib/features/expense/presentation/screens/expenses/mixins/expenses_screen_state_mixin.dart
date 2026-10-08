@@ -8,12 +8,13 @@ import 'package:cordato/features/expense/presentation/screens/expenses/expenses_
 
 mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   String? nextPageLink;
+  String? pendingDeleteId;
+  String? deletingExpenseId;
+
   bool isLoading = false;
   bool hasLoaded = false;
   bool hasFailure = false;
   bool _retryRefresh = true;
-  String? pendingDeleteId;
-  String? deletingExpenseId;
   bool isEditingExpense = false;
 
   final List<ExpenseEntity> expenses = [];
@@ -31,13 +32,15 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   @override
   void didUpdateWidget(covariant ExpensesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (oldWidget.deleteCommand != widget.deleteCommand) {
       oldWidget.deleteCommand.dispose();
       pendingDeleteId = null;
       deletingExpenseId = null;
     }
-    if (oldWidget.command != widget.command) {
-      oldWidget.command.dispose();
+
+    if (oldWidget.getCommand != widget.getCommand) {
+      oldWidget.getCommand.dispose();
       expenses.clear();
       nextPageLink = null;
       isLoading = false;
@@ -53,7 +56,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   void dispose() {
     scrollController.removeListener(loadNearEnd);
     scrollController.dispose();
-    widget.command.dispose();
+    widget.getCommand.dispose();
     widget.deleteCommand.dispose();
     super.dispose();
   }
@@ -76,20 +79,31 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
 
   Future<void> editExpense(String id) async {
     final navigate = widget.onExpensePressed;
+
     if (navigate == null ||
         isLoading ||
         pendingDeleteId != null ||
         isEditingExpense) {
       return;
     }
-    final command = widget.command;
+
+    final command = widget.getCommand;
     setState(() => isEditingExpense = true);
+
     try {
       final updated = await navigate(id);
-      if (!mounted || widget.command != command || updated == null) return;
+      if (!mounted || widget.getCommand != command || updated == null) return;
       final index = expenses.indexWhere((expense) => expense.id == id);
       if (index < 0) return;
-      setState(() => expenses[index] = updated);
+      setState(() {
+        if (_civilDay(expenses[index].occurredOn) ==
+            _civilDay(updated.occurredOn)) {
+          expenses[index] = updated;
+        } else {
+          expenses.removeAt(index);
+          _insertExpense(updated);
+        }
+      });
     } finally {
       if (mounted) setState(() => isEditingExpense = false);
     }
@@ -104,7 +118,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     }
 
     final command = widget.deleteCommand;
-    final queryCommand = widget.command;
+    final queryCommand = widget.getCommand;
     bool deleted = false;
     bool confirmed = false;
 
@@ -118,9 +132,10 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
         title: 'Deseja excluir esta despesa?',
         subtitle: 'Esta ação não pode ser desfeita.',
       );
+
       if (!mounted ||
           widget.deleteCommand != command ||
-          widget.command != queryCommand ||
+          widget.getCommand != queryCommand ||
           !confirmed) {
         return false;
       }
@@ -129,7 +144,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       final data = await command.execute.runAsync(id);
       if (!mounted ||
           widget.deleteCommand != command ||
-          widget.command != queryCommand) {
+          widget.getCommand != queryCommand) {
         return false;
       }
 
@@ -163,7 +178,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     } catch (_) {
       if (mounted &&
           widget.deleteCommand == command &&
-          widget.command == queryCommand) {
+          widget.getCommand == queryCommand) {
         showDeleteFailure();
       }
 
@@ -188,11 +203,37 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     if (await confirmDeleteExpense(id) && mounted) removeDeletedExpense(id);
   }
 
+  DateTime _civilDay(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day);
+
+  void _insertExpense(ExpenseEntity expense) {
+    final day = _civilDay(expense.occurredOn);
+
+    if (expenses.isEmpty || !day.isAfter(_civilDay(expenses.last.occurredOn))) {
+      expenses.add(expense);
+      return;
+    }
+
+    int start = 0;
+    int end = expenses.length;
+
+    while (start < end) {
+      final middle = (start + end) ~/ 2;
+
+      day.isAfter(_civilDay(expenses[middle].occurredOn))
+          ? end = middle
+          : start = middle + 1;
+    }
+
+    expenses.insert(start, expense);
+  }
+
   void removeDeletedExpense(String id) {
     setState(() {
       expenses.removeWhere((expense) => expense.id == id);
       pendingDeleteId = null;
     });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) loadNearEnd();
     });
@@ -202,10 +243,10 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     if (isLoading ||
         isEditingExpense ||
         pendingDeleteId != null ||
-        widget.command.execute.isRunning.value) {
+        widget.getCommand.execute.isRunning.value) {
       return;
     }
-    final command = widget.command;
+    final command = widget.getCommand;
 
     setState(() {
       isLoading = true;
@@ -219,12 +260,14 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
         pageLink: refresh ? null : nextPageLink,
       ));
 
-      if (!mounted || widget.command != command) return;
+      if (!mounted || widget.getCommand != command) return;
 
       setState(() {
         if (result case Right(:final value)) {
           if (refresh) expenses.clear();
-          expenses.addAll(value.items);
+          for (final expense in value.items) {
+            _insertExpense(expense);
+          }
           nextPageLink = value.next;
           hasLoaded = true;
         } else {
@@ -232,17 +275,17 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
         }
       });
     } catch (_) {
-      if (!mounted || widget.command != command) return;
+      if (!mounted || widget.getCommand != command) return;
       setState(() => hasFailure = true);
     } finally {
-      if (mounted && widget.command == command) {
+      if (mounted && widget.getCommand == command) {
         setState(() => isLoading = false);
       }
     }
 
-    if (!mounted || widget.command != command || hasFailure) return;
+    if (!mounted || widget.getCommand != command || hasFailure) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.command == command) loadNearEnd();
+      if (mounted && widget.getCommand == command) loadNearEnd();
     });
   }
 }

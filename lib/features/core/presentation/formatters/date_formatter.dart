@@ -7,25 +7,24 @@ final class DateFormatter({DateTime Function()? now})
   static const _locale = 'pt_BR';
 
   final DateTime Function() _now = now ?? DateTime.now;
-  final DateFormat _shortDate = DateFormat('dd/MM/yyyy', _locale);
   final DateFormat _month = DateFormat('MMMM', _locale);
   final DateFormat _monthAbbrev = DateFormat('MMM', _locale);
-  final DateFormat _weekday = DateFormat('EEEE', _locale);
-  final DateFormat _monthYear = DateFormat('MMMM y', _locale);
+  final DateFormat _shortDate = DateFormat('dd/MM/yyyy', _locale);
+  final DateFormat _monthYear = DateFormat("MMMM 'de' y", _locale);
 
   @override
   String formatShortDate(DateTime date) => _shortDate.format(date);
 
   @override
-  String formatLongDate(DateTime date) => _withOptionalYear(date, _now().year);
-
-  @override
   String formatMonth(DateTime date) => _capitalize(_month.format(date));
 
   @override
+  String formatLongDate(DateTime date) => _withOptionalYear(date, _now().year);
+
+  @override
   String formatShortPeriod(DateTime start, DateTime end) {
-    final startLabel = formatShortDate(start);
     final endLabel = formatShortDate(end);
+    final startLabel = formatShortDate(start);
 
     return startLabel == endLabel ? startLabel : '$startLabel até $endLabel';
   }
@@ -33,8 +32,8 @@ final class DateFormatter({DateTime Function()? now})
   @override
   String formatPeriod(DateTime start, DateTime end) {
     final currentYear = _now().year;
-    final startLabel = _withOptionalYear(start, currentYear);
     final endLabel = _withOptionalYear(end, currentYear);
+    final startLabel = _withOptionalYear(start, currentYear);
 
     return _civilDay(start) == _civilDay(end)
         ? startLabel
@@ -43,15 +42,20 @@ final class DateFormatter({DateTime Function()? now})
 
   @override
   String relativeGroupHeader(DateTime date) {
-    final days = _civilDay(_now()).difference(_civilDay(date)).inDays;
+    final day = _civilDay(date);
+    final today = _civilDay(_now());
 
-    return switch (days) {
-      0 => 'Hoje',
-      1 => 'Ontem',
-      >= 2 && < 7 =>
-        '${_capitalize(_weekday.format(date))}, ${_dayMonthLabel(date)}',
-      _ => _capitalize(_monthYear.format(date)),
-    };
+    if (day == today) return 'Hoje';
+
+    if (day.year != today.year ||
+        day.month != today.month ||
+        day.isAfter(today)) {
+      return _capitalize(_monthYear.format(date));
+    }
+
+    final weekStart = today.subtract(Duration(days: today.weekday - 1));
+
+    return day.isBefore(weekStart) ? 'Este mês' : 'Esta semana';
   }
 
   DateTime _civilDay(DateTime date) =>

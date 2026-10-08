@@ -25,9 +25,9 @@ void main() {
         DateTime(2026, 10, 7, 23, 59),
         DateTime.utc(2026, 10, 7, 0, 1),
       ]) {
-        expect(formatter.formatShortDate(date), '07/10/2026');
         expect(formatter.formatLongDate(date), '07 de Out');
         expect(formatter.relativeGroupHeader(date), 'Hoje');
+        expect(formatter.formatShortDate(date), '07/10/2026');
       }
     });
 
@@ -56,10 +56,11 @@ void main() {
     });
 
     test('collapses periods on the same civil day despite different times', () {
-      final start = DateTime.utc(2026, 10, 7, 0, 1);
       final end = DateTime(2026, 10, 7, 23, 59);
-      expect(formatter.formatShortPeriod(start, end), '07/10/2026');
+      final start = DateTime.utc(2026, 10, 7, 0, 1);
+
       expect(formatter.formatPeriod(start, end), '07 de Out');
+      expect(formatter.formatShortPeriod(start, end), '07/10/2026');
     });
 
     test('formats numeric periods with both complete dates', () {
@@ -87,35 +88,87 @@ void main() {
       );
     });
 
-    test('groups recent dates by civil day rather than elapsed hours', () {
+    test('assigns each current-month date to its most specific period', () {
       expect(formatter.relativeGroupHeader(DateTime(2026, 10, 7, 23)), 'Hoje');
+      expect(formatter.relativeGroupHeader(DateTime(2026, 10, 1)), 'Este mês');
       expect(
         formatter.relativeGroupHeader(DateTime(2026, 10, 6, 23, 59)),
-        'Ontem',
+        'Esta semana',
       );
       expect(
         formatter.relativeGroupHeader(DateTime(2026, 10, 5, 23, 59)),
-        'Segunda-feira, 05 de Out',
-      );
-      expect(
-        formatter.relativeGroupHeader(DateTime(2026, 10, 1)),
-        'Quinta-feira, 01 de Out',
+        'Esta semana',
       );
       expect(
         formatter.relativeGroupHeader(DateTime(2026, 9, 30)),
-        'Setembro 2026',
+        'Setembro de 2026',
       );
     });
 
     test('groups future and older dates by month and year', () {
       expect(
         formatter.relativeGroupHeader(DateTime(2026, 10, 8)),
-        'Outubro 2026',
+        'Outubro de 2026',
       );
       expect(
         formatter.relativeGroupHeader(DateTime(2025, 10, 7)),
-        'Outubro 2025',
+        'Outubro de 2025',
       );
+    });
+
+    test('starts the calendar week on Monday rather than seven days ago', () {
+      now = DateTime(2026, 10, 12);
+      expect(formatter.relativeGroupHeader(DateTime(2026, 10, 12)), 'Hoje');
+      expect(formatter.relativeGroupHeader(DateTime(2026, 10, 11)), 'Este mês');
+
+      now = DateTime(2026, 10, 18);
+      expect(
+        formatter.relativeGroupHeader(DateTime.utc(2026, 10, 12, 23, 59)),
+        'Esta semana',
+      );
+      expect(formatter.relativeGroupHeader(DateTime(2026, 10, 11)), 'Este mês');
+    });
+
+    test('keeps the previous month monthly when a week crosses months', () {
+      now = DateTime(2026, 10, 1);
+      expect(formatter.relativeGroupHeader(DateTime(2026, 10, 1)), 'Hoje');
+      expect(
+        formatter.relativeGroupHeader(DateTime(2026, 9, 30)),
+        'Setembro de 2026',
+      );
+    });
+
+    test(
+      'distinguishes the same month in different years at the year boundary',
+      () {
+        now = DateTime(2027, 1, 2);
+        expect(
+          formatter.relativeGroupHeader(DateTime(2027, 1, 1)),
+          'Esta semana',
+        );
+        expect(
+          formatter.relativeGroupHeader(DateTime(2026, 12, 31)),
+          'Dezembro de 2026',
+        );
+        expect(
+          formatter.relativeGroupHeader(DateTime(2026, 1, 2)),
+          'Janeiro de 2026',
+        );
+      },
+    );
+
+    test('updates relative groups when the current civil date changes', () {
+      final date = DateTime(2026, 10, 7);
+      expect(formatter.relativeGroupHeader(date), 'Hoje');
+
+      now = DateTime(2026, 10, 8);
+      expect(formatter.relativeGroupHeader(date), 'Esta semana');
+
+      now = DateTime(2026, 10, 12);
+      expect(formatter.relativeGroupHeader(date), 'Este mês');
+
+      now = DateTime(2026, 11, 1);
+      expect(formatter.relativeGroupHeader(date), 'Outubro de 2026');
     });
   });
 }

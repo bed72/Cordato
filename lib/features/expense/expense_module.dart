@@ -47,7 +47,7 @@ final expenseRoutesModule = createModule(
         RouteEnum.expenses.path,
         child: (context, _) => ExpensesScreen(
           onBackPressed: context.pop,
-          command: inject<GetExpensesCommand>(),
+          getCommand: inject<GetExpensesCommand>(),
           dateFormatter: inject<IDateFormatter>(),
           moneyFormatter: inject<IMoneyFormatter>(),
           deleteCommand: inject<DeleteExpenseCommand>(),
