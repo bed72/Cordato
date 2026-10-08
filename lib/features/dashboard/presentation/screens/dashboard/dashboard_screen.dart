@@ -22,7 +22,7 @@ final class const DashboardScreen({
   final VoidCallback? onAvatarPressed,
   final VoidCallback? onBudgetPressed,
   final VoidCallback? onNotificationsPressed,
-  final VoidCallback? onSeeAllExpensesPressed,
+  final Future<void> Function()? onSeeAllExpensesPressed,
   final Future<void> Function()? onExpensePressed,
 }) extends StatefulWidget {
   @override
@@ -52,7 +52,9 @@ final class _DashboardScreenState extends State<DashboardScreen>
                 command: widget.expensesCommand,
                 moneyFormatter: widget.formatter,
                 dateFormatter: widget.dateFormatter,
-                onSeeAllExpensesPressed: widget.onSeeAllExpensesPressed,
+                onSeeAllExpensesPressed: widget.onSeeAllExpensesPressed == null
+                    ? null
+                    : openExpenses,
               ),
             ],
           ),

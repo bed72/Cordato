@@ -4,17 +4,17 @@ import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
-final class const CreateExpenseDatePickerWidget({
+final class const ExpenseDatePickerWidget({
   super.key,
   required final DateTime date,
 }) extends StatefulWidget {
   @override
-  State<CreateExpenseDatePickerWidget> createState() =>
-      _CreateExpenseDatePickerWidgetState();
+  State<ExpenseDatePickerWidget> createState() =>
+      _ExpenseDatePickerWidgetState();
 }
 
-final class _CreateExpenseDatePickerWidgetState
-    extends State<CreateExpenseDatePickerWidget> {
+final class _ExpenseDatePickerWidgetState
+    extends State<ExpenseDatePickerWidget> {
   late DateTime _selectedDate;
 
   @override

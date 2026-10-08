@@ -47,7 +47,7 @@ final class _SignUpScreenState extends State<SignUpScreen>
                       crossAxisAlignment: .stretch,
                       children: [
                         const HeaderWidget(
-                          title: 'Continuar',
+                          title: 'Vamos lá',
                           description: 'Cadastre-se com seu e-mail e senha',
                         ),
                         FormSignUpWidget(

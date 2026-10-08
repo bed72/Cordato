@@ -2,8 +2,8 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/presentation/mixins/cents_calculator_widget_state_mixin.dart';
-import 'package:cordato/features/expense/presentation/screens/create_expense/widgets/calculator/cents_calculator_field_widget.dart';
-import 'package:cordato/features/expense/presentation/screens/create_expense/widgets/calculator/cents_calculator_keyboard_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/widgets/calculator/cents_calculator_field_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/widgets/calculator/cents_calculator_keyboard_widget.dart';
 
 final class const CentsCalculatorWidget({
   super.key,

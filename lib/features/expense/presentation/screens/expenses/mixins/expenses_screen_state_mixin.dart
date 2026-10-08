@@ -14,6 +14,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   bool _retryRefresh = true;
   String? pendingDeleteId;
   String? deletingExpenseId;
+  bool isEditingExpense = false;
 
   final List<ExpenseEntity> expenses = [];
   final scrollController = ScrollController();
@@ -73,8 +74,30 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     _retryRefresh ? refreshExpenses() : loadNextPage();
   }
 
+  Future<void> editExpense(String id) async {
+    final navigate = widget.onExpensePressed;
+    if (navigate == null ||
+        isLoading ||
+        pendingDeleteId != null ||
+        isEditingExpense) {
+      return;
+    }
+    final command = widget.command;
+    setState(() => isEditingExpense = true);
+    try {
+      final updated = await navigate(id);
+      if (!mounted || widget.command != command || updated == null) return;
+      final index = expenses.indexWhere((expense) => expense.id == id);
+      if (index < 0) return;
+      setState(() => expenses[index] = updated);
+    } finally {
+      if (mounted) setState(() => isEditingExpense = false);
+    }
+  }
+
   Future<bool> confirmDeleteExpense(String id) async {
     if (isLoading ||
+        isEditingExpense ||
         pendingDeleteId != null ||
         widget.deleteCommand.execute.isRunning.value) {
       return false;
@@ -177,6 +200,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
 
   Future<void> _loadPage({required bool refresh}) async {
     if (isLoading ||
+        isEditingExpense ||
         pendingDeleteId != null ||
         widget.command.execute.isRunning.value) {
       return;

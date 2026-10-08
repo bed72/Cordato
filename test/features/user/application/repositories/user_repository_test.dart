@@ -260,8 +260,9 @@ void main() {
         expect(completed, isFalse);
         pending.complete();
 
+        final result = await response;
         expect(completed, isTrue);
-        expect((await response).right, isTrue);
+        expect(result.right, isTrue);
       },
     );
 
@@ -376,8 +377,8 @@ void main() {
           expect(response.left.errors, hasLength(2));
           expect(response.left.errors.first.status, '422');
           expect(response.left.errors.first.title, 'Nome inválido');
-          expect(response.left.errors.first.detail, 'Informe um nome válido.');
           expect(response.left.errors.first.pointer, '/data/attributes/name');
+          expect(response.left.errors.first.detail, 'Informe um nome válido.');
           expect(
             response.left.errors.last.detail,
             'Não foi possível atualizar o usuário.',

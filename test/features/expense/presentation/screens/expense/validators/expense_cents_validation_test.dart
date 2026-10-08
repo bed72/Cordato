@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/presentation/validators/validation.dart';
-import 'package:cordato/features/expense/presentation/screens/create_expense/validators/expense_cents_validation.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_cents_validation.dart';
 
 void main() {
   const validator = ExpenseCentsValidation();

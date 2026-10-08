@@ -11,6 +11,7 @@ final class const ExpenseDismissibleWidget({
   required final Widget child,
   required final VoidCallback onDeleted,
   required final Future<bool> Function() onConfirmDelete,
+  final Future<void> Function()? onEdit,
   final bool enabled = true,
   final bool isDeleting = false,
   required final VoidCallback? onAccessibleDelete,
@@ -33,6 +34,9 @@ final class _ExpenseDismissibleWidgetState
       customSemanticsActions: {
         const CustomSemanticsAction(label: 'Excluir despesa'): ?(canSwipe
             ? widget.onAccessibleDelete
+            : null),
+        const CustomSemanticsAction(label: 'Editar despesa'): ?(canSwipe
+            ? widget.onEdit
             : null),
       },
       child: LayoutBuilder(
@@ -60,11 +64,31 @@ final class _ExpenseDismissibleWidgetState
                 ),
               ),
               builder: (_, child) {
-                final offset = swipeController.value.clamp(-8.0, maxDistance);
+                final offset = isEditingSwipe
+                    ? swipeController.value.clamp(-maxDistance, 8.0)
+                    : swipeController.value.clamp(-8.0, maxDistance);
                 return ClipRect(
                   child: Stack(
                     children: [
-                      if (offset > 0)
+                      if (isEditingSwipe && offset < 0)
+                        Positioned(
+                          top: 0,
+                          bottom: 0,
+                          left: 0,
+                          width: -offset,
+                          child: ColoredBox(
+                            color: context.colors.primaryContainer,
+                            child: ExcludeSemantics(
+                              child: Center(
+                                child: IconWidget(
+                                  icon: Icons.edit_outlined,
+                                  color: context.colors.onPrimaryContainer,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (!isEditingSwipe && offset > 0)
                         Positioned(
                           top: 0,
                           bottom: 0,

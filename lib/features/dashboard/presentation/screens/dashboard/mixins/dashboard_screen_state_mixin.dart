@@ -55,4 +55,10 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     if (!mounted) return;
     loadExpenses();
   }
+
+  Future<void> openExpenses() async {
+    await widget.onSeeAllExpensesPressed?.call();
+    if (!mounted) return;
+    loadExpenses();
+  }
 }

@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/expense/presentation/screens/create_expense/widgets/calculator/cents_calculator_key_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/widgets/calculator/cents_calculator_key_widget.dart';
 
 final class const CentsCalculatorKeyboardWidget({
   super.key,

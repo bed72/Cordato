@@ -10,6 +10,10 @@ mixin ExpenseDismissibleWidgetStateMixin
         AutomaticKeepAliveClientMixin<ExpenseDismissibleWidget> {
   late final swipeController = AnimationController.unbounded(vsync: this);
   bool _isHandlingSwipe = false;
+  bool _returningFromEdit = false;
+
+  bool get isEditingSwipe =>
+      _isHandlingSwipe ? _returningFromEdit : swipeController.value < 0;
 
   bool get canSwipe =>
       widget.enabled && !widget.isDeleting && !_isHandlingSwipe;
@@ -27,27 +31,31 @@ mixin ExpenseDismissibleWidgetStateMixin
 
   void updateSwipe(DragUpdateDetails details, double maxDistance) {
     swipeController.value = (swipeController.value - details.delta.dx).clamp(
-      0.0,
+      widget.onEdit == null ? 0.0 : -maxDistance,
       maxDistance,
     );
   }
 
   Future<void> finishSwipe(DragEndDetails details, double maxDistance) =>
       _returnToRest(
-        confirm: swipeController.value >= maxDistance * 0.65,
+        activate: swipeController.value.abs() >= maxDistance * 0.65,
         velocity: -details.velocity.pixelsPerSecond.dx,
       );
 
-  Future<void> cancelSwipe() => _returnToRest(confirm: false);
+  Future<void> cancelSwipe() => _returnToRest(activate: false);
 
   Future<void> _returnToRest({
-    required bool confirm,
+    required bool activate,
     double velocity = 0,
   }) async {
     if (_isHandlingSwipe) return;
 
     final id = widget.id;
-    setState(() => _isHandlingSwipe = true);
+    final editing = swipeController.value < 0;
+    setState(() {
+      _isHandlingSwipe = true;
+      _returningFromEdit = editing;
+    });
     updateKeepAlive();
 
     try {
@@ -65,15 +73,17 @@ mixin ExpenseDismissibleWidgetStateMixin
             ),
           )
           .orCancel;
-      final confirmation = confirm && widget.enabled
-          ? widget.onConfirmDelete()
+      final action = activate && widget.enabled
+          ? editing
+                ? widget.onEdit!().then((_) => false)
+                : widget.onConfirmDelete()
           : Future<bool>.value(false);
 
       await returning;
       if (!mounted || widget.id != id) return;
       swipeController.value = 0.0;
 
-      final deleted = await confirmation;
+      final deleted = await action;
       if (mounted && widget.id == id && deleted) widget.onDeleted();
     } on TickerCanceled {
       return;

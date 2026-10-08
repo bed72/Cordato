@@ -37,7 +37,7 @@ Os contextos financeiros e seu estado atual são:
 - `expense`: cadastro integrado à API por formulário, validators, command,
   repository e data source HTTP, além de consulta paginada no repository e data
   source, consumida pela seção de recentes da Dashboard. Possui entidade de domínio, value object
-  monetário, categorias, input de criação e response DTO. Seleção de valor e
+  monetário, categorias, parâmetros diretos de criação e response DTO. Seleção de valor e
   data usa bottom sheets. `HoldButtonWidget` permite cadastrar e voltar ao
   dashboard com toque simples ou cadastrar e continuar com um novo formulário
   após completar o hold; ambos exibem toast de sucesso.
@@ -61,8 +61,8 @@ zero e valores negativos retornam erro de domínio com mensagem pt-BR; valores
 positivos são preservados sem conversão ou arredondamento. O campo `cents` é
 imutável, e igualdade e hash são definidos pelo valor em centavos. Não aceita
 `double`, não faz parsing ou formatação e não depende de HTTP. O VO pertence
-ao domínio e é usado em `ExpenseEntity`, não no input de criação. O data source
-envia `input.cents` como inteiro em centavos no atributo `amount` do payload.
+ao domínio e é usado em `ExpenseEntity`, não nos parâmetros de criação. O data source
+envia `cents` como inteiro em centavos no atributo `amount` do payload.
 `ExpenseResponse.toEntity()` converte o valor recebido em `AmountValueObject`
 antes de construir a entidade.
 
@@ -75,42 +75,63 @@ Transporte, Educação, Assinaturas e Outros. A tradução pertence à apresenta
 o domínio não depende de idioma. Parsing e serialização ficam para infrastructure,
 sem conversão silenciosa de categorias desconhecidas para `other`.
 
-`CreateExpenseInput`, em `expense/application/data/create_expense_input.dart`,
-agrupa os dados de criação em um tipo Dart puro, imutável, com primary constructor:
-`cents` como `int` em centavos de BRL e `description` como `String` são
-obrigatórios e não nulos.
-O input transporta valores primitivos, sem depender do value object ou validar
-as regras de domínio.
-`occurredOn` é opcional na construção e usa `DateTime.now()` quando omitido ou nulo;
-o campo resultante é um `DateTime` não nulo que representa a data civil do gasto.
-O construtor não é `const` por calcular esse valor em runtime. Não faz validação,
-parsing ou serialização JSON. Categoria, identificador e instante de criação
-pertencem ao resultado retornado pelo backend no contrato apresentado.
 `IExpenseRepository`, em `expense/domain/repositories/interface_expense_repository.dart`,
-define `create({required CreateExpenseInput input})`, retornando
-`Future<CreateRepositoryType>`. O typedef representa
-`Either<ErrorsEntity, ExpenseEntity>`. Por decisão arquitetural, o contrato de
-domínio de Expense pode importar esse input de `application/data` da própria
-feature; esses tipos de entrada permanecem independentes de frameworks,
-apresentação e infraestrutura. `ExpenseRepository`, em
+define `create({required int cents, required String description, DateTime? occurredOn})`,
+retornando `Future<CreateRepositoryType>`, com `Either<ErrorsEntity, ExpenseEntity>`.
+Os parâmetros são primitivos, sem wrapper de input: centavos inteiros de BRL e
+descrição são obrigatórios; a data civil é opcional. `ExpenseRepository`, em
 `expense/application/repositories/expense_repository.dart`, implementa esse contrato e
-recebe `IExpenseRemoteDataSource`. Delega o mesmo input, converte `ErrorsResponse`
+recebe `IExpenseRemoteDataSource`. Delega os mesmos parâmetros, inclusive a data
+anulável sem aplicar default, converte `ErrorsResponse`
 em `ErrorsEntity` e usa `ExpenseResponse.toEntity()` para validar e converter o
 sucesso, preservando falhas do VO. Exceções inesperadas retornam
 `ErrorsEntity.unknown()`. Não acessa HTTP ou storage diretamente e não substitui
-os dados devolvidos pelo backend pelos valores do input.
+os dados devolvidos pelo backend pelos parâmetros enviados.
 
 `IExpenseRemoteDataSource` e `ExpenseRemoteDataSource`, no mesmo arquivo em
-`expense/infrastructure/remoto/expense_remote_data_source.dart`, recebem o input
-em `create({required CreateExpenseInput input})`. O retorno `CreateDataSourceType`
+`expense/infrastructure/remoto/expense_remote_data_source.dart`, recebem parâmetros
+nomeados em `create({required int cents, required String description, DateTime? occurredOn})`.
+O retorno `CreateDataSourceType`
 é `Either<ErrorsResponse, ExpenseResponse>`. A implementação recebe `IHttpClient`
 do core e reutiliza `response<T>` para preservar erros JSON:API e converter
 exceções e respostas malformadas em erro genérico. POST `expenses` usa
-`HttpPathEnum.expenses.path` e `data.type: expenses`, com `amount: input.cents`,
+`HttpPathEnum.expenses.path` e `data.type: expenses`, com `amount: cents`,
 `description` sem normalização e `occurred_on` como `yyyy-MM-dd`. A data utiliza
-os componentes do input sem conversão de fuso; o horário é omitido. Headers e
+os componentes da data informada sem conversão de fuso; o horário é omitido.
+Quando `occurredOn` é omitido ou nulo, o data source usa `DateTime.now()`.
+Headers e
 Bearer são aplicados pelos interceptors compartilhados, sem leitura de storage
 no data source.
+`IExpenseRemoteDataSource.update({required String id, int? cents, String? description, DateTime? occurredOn})`
+retorna `Future<UpdateDataSourceType>`, com `Either<ErrorsResponse, ExpenseResponse>`.
+Executa PATCH relativo `expenses/<id>`, codificando o ID com `Uri.encodeComponent`.
+O payload contém `data.type: expenses` e apenas os atributos não nulos
+`amount` (centavos inteiros), `description` e `occurred_on`, sem normalização.
+A data civil usa `yyyy-MM-dd` pelos componentes informados, sem conversão de fuso
+ou horário. Não envia `data.id` ou categoria. Campos omitidos não são substituídos por defaults;
+sem atributos informados, envia um mapa vazio e deixa a validação para a API.
+Reutiliza `ExpenseResponse` e `response<T>`, preservando os dados retornados e
+os erros JSON:API; respostas malformadas e exceções resultam em erro genérico.
+Headers e Bearer seguem os interceptors compartilhados.
+`IExpenseRepository.update({required String id, int? cents, String? description, DateTime? occurredOn})`
+retorna `Future<UpdateRepositoryType>`, com `Either<ErrorsEntity, ExpenseEntity>`.
+`ExpenseRepository.update` delega ID e atributos ao data source sem normalização,
+validação local de entrada ou substituição de campos nulos por defaults.
+Converte todos os erros remotos para `ErrorsEntity` e usa
+`ExpenseResponse.toEntity()` para validar os centavos retornados e construir a
+entidade, preservando as falhas do VO e todos os dados da resposta da API.
+Exceções inesperadas retornam `ErrorsEntity.unknown()`. O repository não acessa
+HTTP ou storage. A edição está disponível no repository e no data source;
+a tela compartilhada de cadastro e edição usa essa operação.
+`IExpenseRemoteDataSource.getById({required String id})` retorna
+`Future<GetByIdDataSourceType>`, com `Either<ErrorsResponse, ExpenseResponse>`.
+Executa GET relativo `expenses/<id>` com ID codificado, sem corpo, query ou
+headers próprios, reutilizando o parsing e tratamento de erro de `response<T>`.
+`IExpenseRepository.getById({required String id})` retorna
+`Future<GetByIdRepositoryType>`, com `Either<ErrorsEntity, ExpenseEntity>`.
+O repository delega o ID sem normalização, preserva a resposta da API, valida os
+centavos por `ExpenseResponse.toEntity()` e converte erros e exceções como na
+criação e atualização. A autorização permanece na API.
 `IExpenseRemoteDataSource.delete({required String id})` retorna
 `Future<DeleteDataSourceType>`, com `Either<ErrorsResponse, bool>`. Executa DELETE
 relativo `expenses/<id>`, codificando o ID com `Uri.encodeComponent`, sem corpo
@@ -118,10 +139,10 @@ ou query. O `SessionInterceptor` reconhece tanto `expenses` quanto
 `expenses/<id>` como endpoints relativos protegidos e aplica o Bearer; URLs
 absolutas e caminhos com segmentos adicionais continuam sem token. Retorna
 `true` em 204 sem corpo e `false` para outros status de sucesso.
-As regras de segmentos de ID ficam declaradas em `HttpPathEnum`: User usa
-`requiresId: true` e Expense usa `acceptsId: true`. Os demais endpoints mantêm
-o caminho exato, com ambos os campos falsos por padrão. O interceptor compara
-segmentos completos, sem regras específicas por feature; um ID deve ser um
+`HttpPathEnum` declara somente o caminho e a classificação de autenticação.
+O `SessionInterceptor` reconhece o recurso `users/<id>` e os caminhos `expenses`
+e `expenses/<id>`; os demais endpoints mantêm o caminho exato.
+O interceptor compara segmentos completos; um ID deve ser um
 único segmento não vazio e diferente de `.` e `..`.
 Reutiliza `response<T>` para preservar erros JSON:API e traduzir exceções ou
 erros malformados em erro genérico.
@@ -186,6 +207,26 @@ que obtiver uma instância é responsável por descartá-la ao encerrar seu life
 `expenseDependenciesModule` registra o data source e o repository como lazy
 singletons pelos contratos, com o HTTP do core, e é composto por `appModule`.
 
+`UpdateExpenseCommand`, em
+`expense/presentation/screens/expense/commands/update_expense_command.dart`,
+recebe `IExpenseRepository` e delega os campos do record
+`({String id, int? cents, String? description, DateTime? occurredOn})` a `update` sem normalização,
+validação ou defaults. Seu `execute` começa em `null` e preserva
+`Either<ErrorsEntity, ExpenseEntity>` em `UpdateRepositoryType?`, incluindo os
+erros de domínio e seus pointers. Cada execução substitui o resultado anterior;
+o estado de execução bloqueia novas chamadas enquanto uma atualização está
+pendente e permite nova tentativa após falha. Exceções inesperadas do repository
+são erros observáveis do command. Implementa `ICommand` e descarta `execute` em
+`dispose`. É registrado por factory em `expenseDependenciesModule`; cada consumidor
+deve descartar sua instância. Não atualiza listas nem navega. É consumido pelo
+modo de edição de `ExpenseScreen` na rota `/expense`.
+
+`GetExpenseCommand`, em `screens/expense/commands/get_expense_command.dart`, recebe
+um ID textual e delega a `IExpenseRepository.getById`, preservando o `Either`
+em `GetByIdRepositoryType?`, inicialmente nulo. Bloqueia consultas simultâneas e
+permite repetir após falha. Implementa `ICommand` e é registrado por factory em
+`expenseDependenciesModule`; `ExpenseScreen` descarta a instância recebida.
+
 `DeleteExpenseCommand`, em
 `expense/presentation/screens/expenses/commands/delete_expense_command.dart`,
 recebe `IExpenseRepository` e delega o ID sem normalização a `delete`.
@@ -225,6 +266,14 @@ original com `SpringSimulation`, usando massa 0.5, damping 14 e stiffness 280,
 como o retorno de `BounceWidget`. A confirmação abre assim que o spring começa,
 em paralelo com o retorno do item;
 arrastes curtos ou cancelados apenas retornam à posição original.
+O mesmo componente aceita arraste da esquerda para a direita para editar: o item
+se desloca para a direita e revela à esquerda um fundo `primaryContainer` com
+lápis `onPrimaryContainer`. O limite e o threshold são os mesmos da exclusão;
+soltar após o threshold inicia o spring de retorno e abre o editor em paralelo,
+sem confirmação ou remoção do item. A direção da ação permanece fixada durante
+o retorno para o overshoot do spring não exibir a ação oposta. Não há abertura
+por toque simples. A ação de acessibilidade “Editar despesa” abre o mesmo editor.
+Sem callback de edição, somente o arraste de exclusão fica disponível.
 `ExpenseDismissibleWidgetStateMixin` concentra controller, gesto e lifecycle,
 mantendo o item vivo durante o retorno e a confirmação, e descartando o controller.
 Abre a confirmação compartilhada
@@ -243,34 +292,46 @@ ignora resultados obsoletos. As despesas recentes da Dashboard não possuem esse
 sob o path `/` e é composto por `appModule`. “Ver tudo” na Dashboard abre `/expenses`.
 
 `CreateExpenseCommand`, em
-`expense/presentation/screens/create_expense/commands/create_expense_command.dart`,
-recebe `IExpenseRepository` e delega `CreateExpenseInput` diretamente a `create`.
-Seu `execute` é `Command<CreateExpenseInput, CreateRepositoryType?>`, com valor
+`expense/presentation/screens/expense/commands/create_expense_command.dart`,
+recebe `IExpenseRepository` e delega os campos do record
+`({int cents, String description, DateTime? occurredOn})` a `create`.
+Seu `execute` é `Command<({int cents, String description, DateTime? occurredOn}), CreateRepositoryType?>`, com valor
 inicial `null`, preservando `Either<ErrorsEntity, ExpenseEntity>` para a
 apresentação tratar sucesso e erros. O estado observável acompanha a execução e
 impede chamadas adicionais enquanto uma criação está pendente; após erro permite
 nova tentativa. Implementa `ICommand` e descarta `execute` em `dispose`. O command
-é registrado como lazy singleton em `expenseRoutesModule`, com descarte pelo
-módulo, e é recebido por `CreateExpenseScreen` e `CreateExpenseFormWidget` via construtor.
+é registrado por factory em `expenseDependenciesModule`, e é recebido por
+`ExpenseScreen` e `ExpenseFormWidget` via construtor. A tela descarta a instância.
 
-`CreateExpenseFormValidator`, em
-`expense/presentation/screens/create_expense/validators/`, compõe
+`ExpenseFormValidator`, em
+`expense/presentation/screens/expense/validators/`, compõe
 `ExpenseCentsValidation`, `ExpenseDescriptionValidation` e
 `ExpenseDateValidation`. Seu `call` recebe `cents`, `description` e `occurredOn`
 e retorna um record com `ValidationResult` para cada campo, validando todos em
 uma chamada. Valor deve ser positivo em centavos inteiros. A descrição reutiliza
 a regra existente: `trim()` e entre 2 e 128 caracteres Unicode. A data deve estar
-selecionada no formulário, mesmo que o input de criação ofereça `now()` como
+selecionada no formulário, mesmo que o data source de criação ofereça `now()` como
 default. Valores válidos são preservados, exceto pelo trim da descrição. Esses
-validators e o agregador estão registrados em `expenseRoutesModule` e são
+validators e o agregador estão registrados em `expenseDependenciesModule` e são
 consumidos pelo formulário. O validator não cria inputs,
 não executa commands e não realiza navegação ou requisições.
 
-`CreateExpenseScreen`, em `expense/presentation/screens/create_expense/`, mantém
-a composição de `CreateExpenseAppBarWidget` e `CreateExpenseFormWidget` e recebe
-command, validator, formatter e callbacks de navegação. A rota permanece `/expense`.
-`CreateExpenseFormWidgetStateMixin`, em `screens/create_expense/mixins/`,
-restrito a `State<CreateExpenseFormWidget>`,
+`ExpenseScreen`, em `expense/presentation/screens/expense/`, mantém
+a composição de `ExpenseAppBarWidget` e `ExpenseFormWidget` e recebe
+commands, validator, formatters, ID opcional e callbacks de navegação.
+A rota permanece `/expense`: sem argumento abre criação; com argumento `String`
+abre edição. Nenhuma entidade é passada pela rota para preencher o formulário.
+`ExpenseScreenStateMixin` executa `GetExpenseCommand` ao abrir com ID e mantém
+loading, entidade consultada e erros, ignorando respostas obsoletas. Durante a
+consulta, `CommandBuilder` compõe `ExpenseSkeletonWidget` sobre o formulário real
+com valores fictícios e interação bloqueada. A semântica anuncia “Carregando
+despesa” e exclui os placeholders. Falhas exibem título, detalhes e “Tentar
+novamente”; nenhum formulário editável vazio é apresentado. Sucesso preenche
+descrição, centavos e data civil da API. A tela descarta seus commands de criação,
+consulta e atualização. Os commands mantêm os nomes das operações; componentes,
+mixins e validator usam o nome Expense, compartilhado pelos dois modos.
+`ExpenseFormWidgetStateMixin`, em `screens/expense/mixins/`,
+restrito a `State<ExpenseFormWidget>`,
 possui o controller de descrição, centavos,
 data civil inicial de hoje, erros por campo e handlers. Cria e descarta o
 controller, registra e remove o listener do command, inclusive quando a instância
@@ -278,7 +339,7 @@ recebida muda. `selectAmount` e `selectDate` abrem `CentsCalculatorWidget` e
 `ExpenseDatePickerWidget` por `showBottomSheetWidget`; cancelar preserva a entrada.
 Seleções confirmadas atualizam somente o campo correspondente e limpam seu erro.
 O submit valida todos os campos e, somente com resultados válidos, monta
-`CreateExpenseInput` com a descrição normalizada pelo validator e executa o
+o record de parâmetros com a descrição normalizada pelo validator e executa o
 command. O estado local não contém valores monetários em `double` ou acesso a
 repository, rede ou storage.
 `CommandBuilder` controla o loading: campos e botão ficam desabilitados durante
@@ -291,9 +352,29 @@ toast de sucesso e chama `onExpenseCreated`, cuja navegação para `/dashboard`
 é injetada pela rota. `onHoldComplete` usa a mesma validação e command, mas após
 sucesso exibe o toast, limpa descrição, valor e erros, redefine a data para hoje
 e permanece na tela. A escolha pertence ao estado local de apresentação e não
-altera `CreateExpenseInput` ou o command. Falhas em qualquer modo preservam o
+altera os parâmetros de criação ou o command. Falhas em qualquer modo preservam o
 formulário; cancelar o hold antes de completá-lo não cadastra. Voltar não executa
 cadastro.
+
+Na edição, o header mostra “Editar gasto” e “Atualize as informações do seu
+gasto.”. A data é preenchida e pode ser alterada pelo mesmo picker do cadastro.
+O botão `ElevatedButtonWidget` mostra “Atualizar” e habilita
+somente com alteração válida de centavos, descrição ou data. Comparações de descrição
+consideram o trim e as de data comparam somente ano, mês e dia;
+o envio usa `UpdateExpenseCommand` com o ID solicitado e
+somente os atributos alterados, mantendo os demais nulos. Não há hold na edição.
+`CommandBuilder` acompanha o command ativo e bloqueia os campos e o envio durante
+a operação. Falhas preservam a entrada e usam pointers ou toast. Sucesso mostra
+“Gasto atualizado” e devolve a entidade por `context.pop`, pelo callback da rota.
+Arrastar um item de `ExpensesScreen` para a direita abre `/expense` com o ID. Ao retornar com
+sucesso, a listagem substitui somente o item correspondente, preservando ordem,
+rolagem e continuações da paginação. Cancelar não altera a lista. O mixin bloqueia
+edição duplicada, consultas e exclusões enquanto o editor está aberto.
+Ao retornar da listagem completa, Dashboard consulta novamente suas despesas
+recentes, refletindo as edições e exclusões realizadas. O callback de “Ver tudo”
+em `DashboardScreen` é assíncrono para aguardar o retorno da navegação.
+O catálogo de previews de Expense inclui cadastro, edição e skeleton do formulário,
+com commands descartados por `PreviewResourceWidget` e repository fake sem rede.
 
 `user` é o bounded context dos dados do usuário. `UserEntity`, em
 `domain/entities/user_entity.dart`, é imutável e possui
@@ -464,13 +545,15 @@ lib/
     dashboard/
     expense/
       application/
-        data/create_expense_input.dart
         repositories/expense_repository.dart
       presentation/
-        screens/create_expense/
-          create_expense_screen.dart
+        screens/expense/
+          expense_screen.dart
           commands/create_expense_command.dart
-          mixins/create_expense_form_widget_state_mixin.dart
+          commands/update_expense_command.dart
+          commands/get_expense_command.dart
+          mixins/expense_form_widget_state_mixin.dart
+          mixins/expense_screen_state_mixin.dart
           validators/
         screens/expenses/
           expenses_screen.dart
@@ -485,7 +568,8 @@ lib/
 Cada feature pode conter `domain`, `application`, `infrastructure` e `presentation`.
 `application/repositories/` contém as implementações dos contratos do domínio em
 Authentication, User, Session e Expense. `application/data/` contém tipos Dart
-puros de entrada, como `CreateExpenseInput`; não contém data sources ou DTOs HTTP.
+puros de entrada quando necessários; não contém data sources ou DTOs HTTP.
+Expense usa parâmetros nomeados de criação e não possui um wrapper de input.
 Os testes espelham esses caminhos em `test/features/<feature>/application/`.
 Crie somente os diretórios que tiverem implementações reais.
 
@@ -534,9 +618,8 @@ Direções de dependência aprovadas:
 - `application/repositories` implementa contratos de `domain` e consome interfaces de data source e
   DTOs de `infrastructure`, sem acessar SDKs diretamente;
 - `domain` é independente de frameworks, implementações de `application/repositories`,
-  `infrastructure` e `presentation`; o contrato de Expense pode consumir
-  `CreateExpenseInput` de `application/data` da própria feature, conforme a
-  decisão documentada acima;
+  `infrastructure` e `presentation`; os contratos de Expense recebem parâmetros
+  primitivos diretamente;
 - `authentication` e `session` não importam uma à outra: comunicam-se pela
   escrita e observação de `StorageKeyEnum.opaqueToken` no storage do core;
 - Settings recebe `LogoutCommand` de Authentication como dependência de
@@ -876,15 +959,16 @@ Registros importantes:
   Menu abre `/settings` e a ação de gasto abre `/expense`; orçamento e notificações
   não têm integração.
 - `expenseDependenciesModule`: registra `IExpenseRemoteDataSource` e
-  `IExpenseRepository` como lazy singletons, sem `path`, e `GetExpensesCommand`
-  por factory para consultas com estados independentes por consumidor.
-- `expenseRoutesModule`: registra os validators de centavos, descrição e data,
-  `CreateExpenseFormValidator` e `CreateExpenseCommand`. Compõe `CreateExpenseScreen` com
-  command, validator, `IMoneyFormatter` e `IDateFormatter` do core; após cadastro confirmado por
+  `IExpenseRepository` como lazy singletons, sem `path`, e os commands de criação,
+  atualização, consulta por ID, listagem e exclusão por factory para estados
+  independentes por consumidor. Também registra os validators do formulário.
+- `expenseRoutesModule`: compõe `ExpenseScreen` com
+  commands, `ExpenseFormValidator`, `IMoneyFormatter` e `IDateFormatter` do core;
+  recebe o ID opcional por argumento de `/expense`. Após cadastro confirmado por
   toque simples, o callback injetado navega para `/dashboard`. O hold permanece
   na tela com o formulário limpo para o próximo cadastro.
   Também compõe `ExpensesScreen` em `/expenses`, com uma instância própria de
-  `GetExpensesCommand`, os formatters do core e callback de retorno.
+   `GetExpensesCommand`, os formatters do core e callbacks de retorno e edição.
 - `welcomeRoutesModule`: tela e navegação de entrada.
 - `settingsRoutesModule`: registra localmente o `LogoutCommand` definido em
   `authentication/presentation/commands/`, injetado na tela e
@@ -1042,7 +1126,7 @@ O dashboard usa um botão de ação expansível para acessar o formulário de ga
 não há barra inferior de navegação ou shell autenticado na composição atual.
 
 O teclado `CentsCalculatorWidget`, em
-`expense/presentation/screens/create_expense/widgets/calculator/`, recebe dígitos em reais:
+`expense/presentation/screens/expense/widgets/calculator/`, recebe dígitos em reais:
 `80` representa `R$ 80,00`. A tecla de vírgula permite informar até dois
 dígitos de centavos (`80,5` representa `R$ 80,50`). A entrada permite até sete
 dígitos inteiros; `DEL` remove a última entrada e `AC` limpa o valor. O estado
@@ -1105,8 +1189,8 @@ Authentication e o arquivo específico de `LogoutCommand`; os demais imports
 de Authentication continuam bloqueados nessa feature.
 
 Os testes de repositories de Authentication, User, Session e Expense ficam em
-`test/features/<feature>/application/repositories/`; os testes de inputs puros
-ficam em `application/data/`, como `create_expense_input_test.dart`. Essa estrutura
+`test/features/<feature>/application/repositories/`; quando houver inputs puros,
+seus testes ficam em `application/data/`. Essa estrutura
 espelha a produção, mantendo os doubles compartilhados em `test/support/`.
 
 Os checks de camadas bloqueiam imports de `application/repositories/` pelo

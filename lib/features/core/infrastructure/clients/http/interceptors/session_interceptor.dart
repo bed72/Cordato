@@ -76,8 +76,10 @@ final class SessionInterceptor({required final IStorageClient storage})
     required HttpPathEnum endpoint,
     required List<String> expected,
   }) {
-    if (!endpoint.requiresId && listEquals(actual, expected)) return true;
-    if (!endpoint.requiresId && !endpoint.acceptsId) return false;
+    if (listEquals(actual, expected)) return endpoint != HttpPathEnum.user;
+    if (endpoint != HttpPathEnum.user && endpoint != HttpPathEnum.expenses) {
+      return false;
+    }
     if (actual.length != expected.length + 1) return false;
 
     final id = actual.last;

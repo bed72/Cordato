@@ -6,6 +6,7 @@ import 'package:cordato/features/core/presentation/formatters/interface_date_for
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_item_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_dismissible_widget.dart';
@@ -23,6 +24,7 @@ final class const ExpensesScreen({
   required final DeleteExpenseCommand deleteCommand,
   required final IDateFormatter dateFormatter,
   required final IMoneyFormatter moneyFormatter,
+  final Future<ExpenseEntity?> Function(String id)? onExpensePressed,
 }) extends StatefulWidget {
   @override
   State<ExpensesScreen> createState() => _ExpensesScreenState();
@@ -74,10 +76,18 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
               id: expense.id,
               enabled:
                   !isLoading &&
+                  !isEditingExpense &&
                   (pendingDeleteId == null || pendingDeleteId == expense.id),
               isDeleting: deletingExpenseId == expense.id,
               onConfirmDelete: () => confirmDeleteExpense(expense.id),
               onDeleted: () => removeDeletedExpense(expense.id),
+              onEdit:
+                  widget.onExpensePressed == null ||
+                      isLoading ||
+                      pendingDeleteId != null ||
+                      isEditingExpense
+                  ? null
+                  : () => editExpense(expense.id),
               onAccessibleDelete: isLoading || pendingDeleteId != null
                   ? null
                   : () => deleteExpenseAccessibly(expense.id),

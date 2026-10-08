@@ -5,7 +5,6 @@ import 'package:cordato/features/core/infrastructure/clients/http/responses/resp
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 
-import 'package:cordato/features/expense/application/data/create_expense_input.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
@@ -14,6 +13,20 @@ import 'package:cordato/features/expense/infrastructure/remoto/expense_remote_da
 final class ExpenseRepository({
   required final IExpenseRemoteDataSource _remoteDataSource,
 }) implements IExpenseRepository {
+  @override
+  Future<GetByIdRepositoryType> getById({required String id}) async {
+    try {
+      final response = await _remoteDataSource.getById(id: id);
+
+      return response.fold<GetByIdRepositoryType>(
+        (errors) => Left(errors.toEntity()),
+        (expense) => expense.toEntity(),
+      );
+    } catch (_) {
+      return Left(.unknown());
+    }
+  }
+
   @override
   Future<DeleteRepositoryType> delete({required String id}) async {
     try {
@@ -29,11 +42,41 @@ final class ExpenseRepository({
   }
 
   @override
-  Future<CreateRepositoryType> create({
-    required CreateExpenseInput input,
+  Future<UpdateRepositoryType> update({
+    required String id,
+    int? cents,
+    String? description,
+    DateTime? occurredOn,
   }) async {
     try {
-      final response = await _remoteDataSource.create(input: input);
+      final response = await _remoteDataSource.update(
+        id: id,
+        cents: cents,
+        description: description,
+        occurredOn: occurredOn,
+      );
+
+      return response.fold<UpdateRepositoryType>(
+        (errors) => Left(errors.toEntity()),
+        (expense) => expense.toEntity(),
+      );
+    } catch (_) {
+      return Left(.unknown());
+    }
+  }
+
+  @override
+  Future<CreateRepositoryType> create({
+    required int cents,
+    required String description,
+    DateTime? occurredOn,
+  }) async {
+    try {
+      final response = await _remoteDataSource.create(
+        cents: cents,
+        occurredOn: occurredOn,
+        description: description,
+      );
 
       return response.fold<CreateRepositoryType>(
         (errors) => Left(errors.toEntity()),

@@ -1,10 +1,10 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
-import 'package:cordato/features/expense/application/data/create_expense_input.dart';
+
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/infrastructure/remoto/expense_remote_data_source.dart';
 
@@ -13,27 +13,355 @@ import '../../../../support/core/mocks/http_client_mock.dart';
 void main() {
   const attributes = {
     'amount': 300,
-    'occurred_on': '2026-10-05',
-    'description': 'Game',
     'category': 'other',
+    'description': 'Game',
+    'occurred_on': '2026-10-05',
     'created_at': '2026-10-06T19:24:29+00:00',
   };
+
   const body = {
     'data': {'id': '9', 'type': 'expenses', 'attributes': attributes},
   };
 
   late HttpClientMock client;
   late IExpenseRemoteDataSource dataSource;
-  late CreateExpenseInput input;
+  late DateTime occurredOn;
 
   setUpAll(() => registerFallbackValue(const Requests(path: '')));
   setUp(() {
     client = HttpClientMock();
+    occurredOn = DateTime(2026, 10, 5, 23, 30);
     dataSource = ExpenseRemoteDataSource(client: client);
-    input = CreateExpenseInput(
-      cents: 300,
-      description: '',
-      occurredOn: DateTime(2026, 10, 5, 23, 30),
+  });
+
+  group('getById', () {
+    test(
+      'gets a protected relative resource and preserves every response field',
+      () async {
+        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+          (_) async => const Right(Reponse(statusCode: 200, body: body)),
+        );
+        final expense = (await dataSource.getById(id: 'a/b?c#d')).right;
+        expect(expense.id, '9');
+        expect(expense.amount, 300);
+        expect(expense.description, 'Game');
+        expect(expense.occurredOn, DateTime(2026, 10, 5));
+        expect(expense.category, ExpenseCategoryEnum.other);
+        final request =
+            verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                    .captured
+                    .single
+                as Requests;
+        expect(request.path, 'expenses/a%2Fb%3Fc%23d');
+        expect(request.body, isNull);
+        expect(request.query, isNull);
+        expect(request.headers, isNull);
+      },
+    );
+    test(
+      'preserves authentication, authorization, not found and transport errors',
+      () async {
+        for (final status in [401, 403, 404, 0]) {
+          when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+            (_) async => Left(
+              Reponse(
+                statusCode: status,
+                body: {
+                  'errors': [
+                    {
+                      'title': 'Despesa indisponível',
+                      'detail': 'Tente novamente.',
+                      'status': '$status',
+                      'source': {'pointer': '/data/id'},
+                    },
+                    {'title': 'Outro erro', 'status': '$status'},
+                  ],
+                },
+              ),
+            ),
+          );
+          final errors = (await dataSource.getById(id: '8')).left.errors;
+          expect(errors, hasLength(2));
+          expect(errors.first.title, 'Despesa indisponível');
+          expect(errors.first.detail, 'Tente novamente.');
+          expect(errors.first.status, '$status');
+          expect(errors.first.pointer, '/data/id');
+          expect(errors.last.title, 'Outro erro');
+        }
+      },
+    );
+    test('translates malformed error envelopes to generic errors', () async {
+      for (final invalid in <Map<String, dynamic>>[
+        {},
+        {'errors': []},
+        {'errors': 'invalid'},
+      ]) {
+        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+          (_) async => Left(Reponse(statusCode: 500, body: invalid)),
+        );
+        expect(
+          (await dataSource.getById(id: '8')).left.errors.single.title,
+          'Erro desconhecido',
+        );
+      }
+    });
+    test(
+      'rejects malformed resources and unexpected client exceptions',
+      () async {
+        for (final invalid in <Map<String, dynamic>>[
+          {},
+          {'data': null},
+          for (final value in [
+            {...attributes, 'amount': 3.0},
+            {...attributes, 'description': null},
+            {...attributes, 'occurred_on': 'invalid'},
+            {...attributes, 'category': 'unknown'},
+          ])
+            {
+              'data': {'id': '8', 'attributes': value},
+            },
+        ]) {
+          when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+            (_) async => Right(Reponse(statusCode: 200, body: invalid)),
+          );
+          expect(
+            (await dataSource.getById(id: '8')).left.errors.single.title,
+            'Erro desconhecido',
+          );
+        }
+        when(() => client.get(parameter: any(named: 'parameter')))
+            .thenThrow(StateError('failure'));
+        expect(
+          (await dataSource.getById(id: '8')).left.errors.single.title,
+          'Erro desconhecido',
+        );
+      },
+    );
+  });
+
+  test(
+    'patches JSON:API attributes and preserves the returned expense',
+    () async {
+      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(Reponse(statusCode: 200, body: body)),
+      );
+
+      final expense = (await dataSource.update(
+        id: '8',
+        cents: 1500,
+        description: ' Ônibus e metrô ',
+        occurredOn: DateTime.utc(2026, 10, 6, 23, 30),
+      )).right;
+
+      expect(expense.id, '9');
+      expect(expense.amount, 300);
+      expect(expense.description, 'Game');
+      expect(expense.occurredOn, DateTime(2026, 10, 5));
+      expect(expense.category, ExpenseCategoryEnum.other);
+
+      final request =
+          verify(() => client.patch(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+
+      expect(request.query, isNull);
+      expect(request.headers, isNull);
+      expect(request.path, 'expenses/8');
+      expect(request.body, {
+        'data': {
+          'type': 'expenses',
+          'attributes': {
+            'amount': 1500,
+            'description': ' Ônibus e metrô ',
+            'occurred_on': '2026-10-06',
+          },
+        },
+      });
+    },
+  );
+
+  test('encodes the update id as a single resource path segment', () async {
+    when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+      (_) async => const Right(Reponse(statusCode: 200, body: body)),
+    );
+
+    await dataSource.update(id: 'a/b?c#d', cents: 1500);
+
+    final request =
+        verify(() => client.patch(parameter: captureAny(named: 'parameter')))
+                .captured
+                .single
+            as Requests;
+    expect(request.path, 'expenses/a%2Fb%3Fc%23d');
+  });
+
+  test('omits null update attributes and preserves supplied values', () async {
+    when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+      (_) async => const Right(Reponse(statusCode: 200, body: body)),
+    );
+
+    for (final scenario in [
+      (
+        cents: 0,
+        description: null,
+        occurredOn: null,
+        expected: <String, dynamic>{'amount': 0},
+      ),
+      (
+        cents: null,
+        description: '',
+        occurredOn: null,
+        expected: <String, dynamic>{'description': ''},
+      ),
+      (
+        cents: null,
+        description: null,
+        occurredOn: null,
+        expected: <String, dynamic>{},
+      ),
+      (
+        cents: null,
+        description: null,
+        occurredOn: DateTime(2026, 1, 2, 12, 45),
+        expected: <String, dynamic>{'occurred_on': '2026-01-02'},
+      ),
+    ]) {
+      await dataSource.update(
+        id: '8',
+        cents: scenario.cents,
+        description: scenario.description,
+        occurredOn: scenario.occurredOn,
+      );
+
+      final request =
+          verify(() => client.patch(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      expect((request.body!['data'] as Map)['attributes'], scenario.expected);
+    }
+  });
+
+  test('preserves all JSON:API update errors and field pointers', () async {
+    when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+      (_) async => const Left(
+        Reponse(
+          statusCode: 422,
+          body: {
+            'errors': [
+              {
+                'status': '422',
+                'title': 'Valor inválido',
+                'detail': 'Informe um valor positivo.',
+                'source': {'pointer': '/data/attributes/amount'},
+              },
+              {
+                'status': '422',
+                'title': 'Descrição inválida',
+                'source': {'pointer': '/data/attributes/description'},
+              },
+              {
+                'status': '422',
+                'title': 'Data inválida',
+                'source': {'pointer': '/data/attributes/occurred_on'},
+              },
+            ],
+          },
+        ),
+      ),
+    );
+
+    final errors = (await dataSource.update(id: '8', cents: 0)).left.errors;
+
+    expect(errors, hasLength(3));
+
+    expect(errors.first.status, '422');
+    expect(errors.first.title, 'Valor inválido');
+    expect(errors.first.pointer, '/data/attributes/amount');
+    expect(errors.first.detail, 'Informe um valor positivo.');
+
+    expect(errors[1].status, '422');
+    expect(errors[1].title, 'Descrição inválida');
+    expect(errors[1].pointer, '/data/attributes/description');
+    expect(errors.last.title, 'Data inválida');
+    expect(errors.last.pointer, '/data/attributes/occurred_on');
+  });
+
+  test(
+    'preserves update authentication, permission and transport errors',
+    () async {
+      for (final status in [401, 403, 404, 0]) {
+        when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+          (_) async => Left(
+            Reponse(
+              statusCode: status,
+              body: {
+                'errors': [
+                  {'title': 'Falha na edição', 'status': '$status'},
+                ],
+              },
+            ),
+          ),
+        );
+
+        final error = (await dataSource.update(id: '8')).left.errors.single;
+
+        expect(error.status, '$status');
+        expect(error.title, 'Falha na edição');
+      }
+    },
+  );
+
+  test('translates malformed update errors to generic errors', () async {
+    for (final errorBody in <Map<String, dynamic>>[
+      {},
+      {'errors': []},
+      {'errors': 'invalid'},
+    ]) {
+      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => Left(Reponse(statusCode: 500, body: errorBody)),
+      );
+
+      expect(
+        (await dataSource.update(id: '8')).left.errors.single.title,
+        'Erro desconhecido',
+      );
+    }
+  });
+
+  test('translates malformed update responses to generic errors', () async {
+    for (final invalidBody in <Map<String, dynamic>>[
+      {},
+      {'data': null},
+      for (final invalidAttributes in [
+        {...attributes, 'amount': 15.0},
+        {...attributes, 'description': null},
+        {...attributes, 'category': 'unknown'},
+        {...attributes, 'occurred_on': 'invalid'},
+      ])
+        {
+          'data': {'id': '8', 'attributes': invalidAttributes},
+        },
+    ]) {
+      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => Right(Reponse(statusCode: 200, body: invalidBody)),
+      );
+
+      expect(
+        (await dataSource.update(id: '8')).left.errors.single.title,
+        'Erro desconhecido',
+      );
+    }
+  });
+
+  test('translates unexpected update exceptions to generic errors', () async {
+    when(() => client.patch(parameter: any(named: 'parameter')))
+        .thenThrow(StateError('unexpected failure'));
+
+    expect(
+      (await dataSource.update(id: '8')).left.errors.single.title,
+      'Erro desconhecido',
     );
   });
 
@@ -49,10 +377,11 @@ void main() {
                 .captured
                 .single
             as Requests;
-    expect(request.path, 'expenses/1');
+
     expect(request.body, isNull);
     expect(request.query, isNull);
     expect(request.headers, isNull);
+    expect(request.path, 'expenses/1');
   });
 
   test('encodes the expense id as a single resource path segment', () async {
@@ -67,6 +396,7 @@ void main() {
                 .captured
                 .single
             as Requests;
+
     expect(request.path, 'expenses/a%2Fb%3Fc%23d');
   });
 
@@ -87,13 +417,13 @@ void main() {
           statusCode: 403,
           body: {
             'errors': [
-              {
-                'title': 'Acesso negado',
-                'detail': 'Sem permissão para excluir a despesa.',
-                'status': '403',
-                'source': {'pointer': '/data/id'},
-              },
               {'title': 'Outro erro', 'status': '403'},
+              {
+                'status': '403',
+                'title': 'Acesso negado',
+                'source': {'pointer': '/data/id'},
+                'detail': 'Sem permissão para excluir a despesa.',
+              },
             ],
           },
         ),
@@ -103,12 +433,12 @@ void main() {
     final errors = (await dataSource.delete(id: '1')).left.errors;
 
     expect(errors, hasLength(2));
-    expect(errors.first.title, 'Acesso negado');
-    expect(errors.first.detail, 'Sem permissão para excluir a despesa.');
-    expect(errors.first.status, '403');
-    expect(errors.first.pointer, '/data/id');
-    expect(errors.last.title, 'Outro erro');
     expect(errors.last.status, '403');
+    expect(errors.first.status, '403');
+    expect(errors.first.title, 'Outro erro');
+    expect(errors.last.pointer, '/data/id');
+    expect(errors.last.title, 'Acesso negado');
+    expect(errors.last.detail, 'Sem permissão para excluir a despesa.');
   });
 
   test(
@@ -131,8 +461,8 @@ void main() {
 
         final error = (await dataSource.delete(id: '1')).left.errors.single;
 
-        expect(error.title, 'Falha na exclusão');
         expect(error.status, '$status');
+        expect(error.title, 'Falha na exclusão');
       }
     },
   );
@@ -184,18 +514,20 @@ void main() {
 
       final page = (await dataSource.get(pageSize: 6)).right;
 
-      expect(page.items.map((item) => item.id), ['9', '2']);
-      expect(page.next, '?page%5Bafter%5D=2');
       expect(page.prev, isNull);
+      expect(page.next, '?page%5Bafter%5D=2');
+      expect(page.items.map((item) => item.id), ['9', '2']);
+
       final request =
           verify(() => client.get(parameter: captureAny(named: 'parameter')))
                   .captured
                   .single
               as Requests;
+
+      expect(request.body, isNull);
+      expect(request.headers, isNull);
       expect(request.path, 'expenses');
       expect(request.query, {'page[size]': 6});
-      expect(request.headers, isNull);
-      expect(request.body, isNull);
     },
   );
 
@@ -225,6 +557,7 @@ void main() {
                     .captured
                     .single
                 as Requests;
+
         expect(request.path, 'expenses');
         expect(request.query, {'page[after]': 'abc+123', 'page[size]': 6});
       }
@@ -284,9 +617,11 @@ void main() {
           ),
         ),
       );
+
       final errors = (await dataSource.get(pageSize: 6)).left.errors;
-      expect(errors.single.title, 'Falha na consulta');
+
       expect(errors.single.status, '$status');
+      expect(errors.single.title, 'Falha na consulta');
     }
   });
 
@@ -323,34 +658,40 @@ void main() {
   );
 
   test(
-    'posts the input as JSON:API and preserves the returned expense',
+    'posts creation parameters as JSON:API and preserves the returned expense',
     () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(Reponse(statusCode: 201, body: body)),
       );
 
-      final expense = (await dataSource.create(input: input)).right;
+      final expense = (await dataSource.create(
+        cents: 300,
+        description: '',
+        occurredOn: occurredOn,
+      )).right;
 
       expect(expense.id, '9');
       expect(expense.amount, 300);
       expect(expense.description, 'Game');
       expect(expense.occurredOn, DateTime(2026, 10, 5));
       expect(expense.category, ExpenseCategoryEnum.other);
+
       final request =
           verify(() => client.post(parameter: captureAny(named: 'parameter')))
                   .captured
                   .single
               as Requests;
-      expect(request.path, 'expenses');
-      expect(request.headers, isNull);
+
       expect(request.query, isNull);
+      expect(request.headers, isNull);
+      expect(request.path, 'expenses');
       expect(request.body, {
         'data': {
           'type': 'expenses',
           'attributes': {
             'amount': 300,
-            'occurred_on': '2026-10-05',
             'description': '',
+            'occurred_on': '2026-10-05',
           },
         },
       });
@@ -363,11 +704,9 @@ void main() {
     );
 
     await dataSource.create(
-      input: CreateExpenseInput(
-        cents: 1,
-        description: ' Game ',
-        occurredOn: DateTime.utc(2026, 1, 2, 23, 59),
-      ),
+      cents: 1,
+      description: ' Game ',
+      occurredOn: .utc(2026, 1, 2, 23, 59),
     );
 
     final request =
@@ -375,39 +714,47 @@ void main() {
                 .captured
                 .single
             as Requests;
+
     expect((request.body!['data'] as Map)['attributes'], {
       'amount': 1,
-      'occurred_on': '2026-01-02',
       'description': ' Game ',
+      'occurred_on': '2026-01-02',
     });
   });
 
-  test(
-    'sends the default occurrence date already provided by the input',
-    () async {
-      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 201, body: body)),
-      );
-      final input = CreateExpenseInput(cents: 300, description: 'Game');
-
-      await dataSource.create(input: input);
-
+  test('defaults the occurrence date to today when omitted or null', () async {
+    when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
+      (_) async => const Right(Reponse(statusCode: 201, body: body)),
+    );
+    for (final explicitNull in [false, true]) {
+      final before = DateTime.now();
+      if (explicitNull) {
+        await dataSource.create(
+          cents: 300,
+          occurredOn: null,
+          description: 'Game',
+        );
+      } else {
+        await dataSource.create(cents: 300, description: 'Game');
+      }
+      final after = DateTime.now();
       final request =
           verify(() => client.post(parameter: captureAny(named: 'parameter')))
                   .captured
                   .single
               as Requests;
+
       final sent = (request.body!['data'] as Map)['attributes'] as Map;
+
       expect(
         DateTime.parse(sent['occurred_on'] as String),
-        DateTime(
-          input.occurredOn.year,
-          input.occurredOn.month,
-          input.occurredOn.day,
+        anyOf(
+          DateTime(before.year, before.month, before.day),
+          DateTime(after.year, after.month, after.day),
         ),
       );
-    },
-  );
+    }
+  });
 
   test('preserves all JSON:API error details and field pointers', () async {
     when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
@@ -417,14 +764,14 @@ void main() {
           body: {
             'errors': [
               {
+                'status': '422',
                 'title': 'Descrição inválida',
                 'detail': 'Informe uma descrição.',
-                'status': '422',
                 'source': {'pointer': '/data/attributes/description'},
               },
               {
-                'title': 'Valor inválido',
                 'status': '422',
+                'title': 'Valor inválido',
                 'source': {'pointer': '/data/attributes/amount'},
               },
             ],
@@ -433,13 +780,19 @@ void main() {
       ),
     );
 
-    final errors = (await dataSource.create(input: input)).left.errors;
+    final errors = (await dataSource.create(
+      cents: 300,
+      description: '',
+      occurredOn: occurredOn,
+    )).left.errors;
 
     expect(errors, hasLength(2));
+
+    expect(errors.first.status, '422');
     expect(errors.first.title, 'Descrição inválida');
     expect(errors.first.detail, 'Informe uma descrição.');
-    expect(errors.first.status, '422');
     expect(errors.first.pointer, '/data/attributes/description');
+
     expect(errors.last.pointer, '/data/attributes/amount');
   });
 
@@ -460,7 +813,11 @@ void main() {
           ),
         );
 
-        final result = await dataSource.create(input: input);
+        final result = await dataSource.create(
+          cents: 300,
+          description: '',
+          occurredOn: occurredOn,
+        );
 
         expect(result.left.errors.single.title, 'Falha');
         expect(result.left.errors.single.status, '$status');
@@ -472,7 +829,11 @@ void main() {
     when(() => client.post(parameter: any(named: 'parameter')))
         .thenThrow(StateError('unexpected failure'));
 
-    final result = await dataSource.create(input: input);
+    final result = await dataSource.create(
+      cents: 300,
+      description: '',
+      occurredOn: occurredOn,
+    );
 
     expect(result.left.errors.single.title, 'Erro desconhecido');
   });
@@ -488,7 +849,11 @@ void main() {
           (_) async => Left(Reponse(statusCode: 500, body: errorBody)),
         );
 
-        final result = await dataSource.create(input: input);
+        final result = await dataSource.create(
+          cents: 300,
+          description: '',
+          occurredOn: occurredOn,
+        );
 
         expect(result.left.errors.single.title, 'Erro desconhecido');
       },
@@ -530,7 +895,11 @@ void main() {
           (_) async => Right(Reponse(statusCode: 201, body: invalidBody)),
         );
 
-        final result = await dataSource.create(input: input);
+        final result = await dataSource.create(
+          cents: 300,
+          description: '',
+          occurredOn: occurredOn,
+        );
 
         expect(result.left.errors.single.title, 'Erro desconhecido');
       },

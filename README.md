@@ -125,14 +125,20 @@ A árvore representa as localizações aprovadas; cada feature contém somente
 diretórios necessários às suas implementações. Os contratos de repository ficam
 em `domain/repositories/`, enquanto as implementações ficam em
 `application/repositories/` e seus testes em
-`test/features/<feature>/application/repositories/`. O input `CreateExpenseInput`
-fica em `expense/application/data/`; é um tipo Dart puro consumido pelo contrato
-de Expense, pela apresentação e pelo data source remoto.
+`test/features/<feature>/application/repositories/`. A criação de Expense recebe
+`cents`, `description` e `occurredOn` como parâmetros nomeados no repository e
+no data source; o command transporta esses campos em um record.
 
 Dashboard compõe User e Expense pelos commands e widgets de apresentação.
 Expense organiza os commands e mixins por tela em
-`presentation/screens/create_expense/` e `presentation/screens/expenses/`.
-Os validators do formulário ficam em `screens/create_expense/validators/`.
+`presentation/screens/expense/` e `presentation/screens/expenses/`.
+Os validators do formulário ficam em `screens/expense/validators/`.
+`ExpenseScreen` compartilha cadastro e edição na rota `/expense`: sem argumento
+abre cadastro; com ID textual consulta a API e mostra skeleton até preencher o
+formulário. A listagem abre a edição ao arrastar o item da esquerda para a direita,
+revelando o lápis; o gesto oposto mantém a exclusão. Recebe a entidade atualizada
+ao retornar, preservando paginação e rolagem. O PATCH altera valor, descrição e
+data civil, enviando somente os atributos alterados. O envio e os toasts refletem o modo ativo.
 `GetExpensesCommand` pertence a `screens/expenses/commands/` e continua sendo
 consumido pela Dashboard por uma instância própria registrada por factory.
 `ExpensesSkeletonWidget`, de `expense/presentation/widgets/`, é reutilizado nas
@@ -266,7 +272,7 @@ atualização do nome e exclusão. Após exclusão de User confirmada com status
 o repository aguarda a limpeza de todo o storage seguro por `UserLocalDataSource`,
 que delega a `IStorageClient.clear()`. `expenses` consta
 no catálogo de endpoints protegidos e é usado por `ExpenseRemoteDataSource.create`
-e `get`.
+e `get`, além dos endpoints de recurso usados por `getById`, `update` e `delete`.
 O POST envia centavos inteiros, descrição e data civil como `yyyy-MM-dd`, e retorna
 `ExpenseResponse`; sua conversão à entidade valida o valor pelo VO. O data source
 é registrado em DI e consumido por `ExpenseRepository` e `CreateExpenseCommand`

@@ -4,24 +4,48 @@ import 'package:cordato/features/core/infrastructure/clients/http/requests/reque
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 
-import 'package:cordato/features/expense/application/data/create_expense_input.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_page_response.dart';
 
 typedef DeleteDataSourceType = Either<ErrorsResponse, bool>;
 typedef CreateDataSourceType = Either<ErrorsResponse, ExpenseResponse>;
+typedef UpdateDataSourceType = Either<ErrorsResponse, ExpenseResponse>;
 typedef GetDataSourceType = Either<ErrorsResponse, ExpensePageResponse>;
+typedef GetByIdDataSourceType = Either<ErrorsResponse, ExpenseResponse>;
 
 abstract interface class IExpenseRemoteDataSource {
   Future<DeleteDataSourceType> delete({required String id});
 
+  Future<GetByIdDataSourceType> getById({required String id});
+
   Future<GetDataSourceType> get({required int pageSize, String? pageLink});
 
-  Future<CreateDataSourceType> create({required CreateExpenseInput input});
+  Future<CreateDataSourceType> create({
+    required int cents,
+    required String description,
+    DateTime? occurredOn,
+  });
+
+  Future<UpdateDataSourceType> update({
+    required String id,
+    int? cents,
+    String? description,
+    DateTime? occurredOn,
+  });
 }
 
 final class ExpenseRemoteDataSource({required final IHttpClient _client})
     implements IExpenseRemoteDataSource {
+  @override
+  Future<GetByIdDataSourceType> getById({required String id}) => response(
+    from: (response) => .fromJson(response.body),
+    execute: () => _client.get(
+      parameter: Requests(
+        path: '${HttpPathEnum.expenses.path}/${Uri.encodeComponent(id)}',
+      ),
+    ),
+  );
+
   @override
   Future<DeleteDataSourceType> delete({required String id}) => response(
     from: (response) => response.statusCode == 204,
@@ -45,25 +69,54 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
       );
 
   @override
-  Future<CreateDataSourceType> create({required CreateExpenseInput input}) =>
-      response(
-        from: (response) => .fromJson(response.body),
-        execute: () => _client.post(
-          parameter: Requests(
-            path: HttpPathEnum.expenses.path,
-            body: {
-              'data': {
-                'type': 'expenses',
-                'attributes': {
-                  'amount': input.cents,
-                  'description': input.description,
-                  'occurred_on': _formatOccurredOn(input.occurredOn),
-                },
-              },
+  Future<UpdateDataSourceType> update({
+    required String id,
+    int? cents,
+    String? description,
+    DateTime? occurredOn,
+  }) => response(
+    from: (response) => .fromJson(response.body),
+    execute: () => _client.patch(
+      parameter: Requests(
+        path: '${HttpPathEnum.expenses.path}/${Uri.encodeComponent(id)}',
+        body: {
+          'data': {
+            'type': 'expenses',
+            'attributes': {
+              'amount': ?cents,
+              'description': ?description,
+              if (occurredOn != null)
+                'occurred_on': _formatOccurredOn(occurredOn),
             },
-          ),
-        ),
-      );
+          },
+        },
+      ),
+    ),
+  );
+
+  @override
+  Future<CreateDataSourceType> create({
+    required int cents,
+    required String description,
+    DateTime? occurredOn,
+  }) => response(
+    from: (response) => .fromJson(response.body),
+    execute: () => _client.post(
+      parameter: Requests(
+        path: HttpPathEnum.expenses.path,
+        body: {
+          'data': {
+            'type': 'expenses',
+            'attributes': {
+              'amount': cents,
+              'description': description,
+              'occurred_on': _formatOccurredOn(occurredOn ?? .now()),
+            },
+          },
+        },
+      ),
+    ),
+  );
 
   String _formatOccurredOn(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-'

@@ -113,6 +113,24 @@ void main() {
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');
   });
 
+  test('authenticates GET, PATCH and DELETE of an expense resource', () async {
+    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async => 'opaque-token');
+    const parameter = Requests(path: 'expenses/8');
+
+    await client.get(parameter: parameter);
+    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
+    expect(captured!.uri.path, '/api/expenses/8');
+
+    await client.patch(parameter: parameter);
+    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
+
+    await client.delete(parameter: parameter);
+    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
+    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(3);
+    verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
+  });
+
   test('does not authenticate unrelated or absolute expense paths', () async {
     for (final path in [
       'expenses/',

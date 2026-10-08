@@ -20,8 +20,8 @@ final dashboardRoutesModule = createModule(
         formatter: inject<IMoneyFormatter>(),
         dateFormatter: inject<IDateFormatter>(),
         expensesCommand: inject<GetExpensesCommand>(),
-        onSeeAllExpensesPressed: () =>
-            context.pushNamed(RouteEnum.expenses.path),
+        onSeeAllExpensesPressed: () async =>
+            await context.pushNamed(RouteEnum.expenses.path),
         onAvatarPressed: () => context.pushNamed(RouteEnum.user.path),
         onMenuPressed: () => context.pushNamed(RouteEnum.settings.path),
         onExpensePressed: () async =>
