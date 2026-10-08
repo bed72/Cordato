@@ -70,10 +70,8 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
             statusBarIconBrightness: iconBrightness,
             systemNavigationBarContrastEnforced: false,
             systemNavigationBarColor: navigationBarBackground,
+            statusBarBrightness: iconBrightness == .dark ? .light : .dark,
             systemNavigationBarIconBrightness: navigationBarIconBrightness,
-            statusBarBrightness: iconBrightness == Brightness.dark
-                ? Brightness.light
-                : Brightness.dark,
           ),
           child: Stack(
             fit: .expand,
@@ -90,8 +88,8 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
                   transitionBuilder: (child, animation) => SlideTransition(
                     position:
                         Tween<Offset>(
-                          begin: const Offset(0.0, -1.0),
                           end: .zero,
+                          begin: const Offset(0.0, -1.0),
                         ).animate(
                           CurvedAnimation(
                             parent: animation,
@@ -109,10 +107,20 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
                   ),
                   child: toast == null
                       ? const SizedBox.shrink(key: ValueKey('empty-toast'))
-                      : ToastWidget(
+                      : Stack(
                           key: ValueKey(toast.id),
-                          data: toast,
-                          onDismiss: _notifier.hide,
+                          clipBehavior: .none,
+                          children: [
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: FractionalTranslation(
+                                  translation: const Offset(0.0, -1.0),
+                                  child: ColoredBox(color: background),
+                                ),
+                              ),
+                            ),
+                            ToastWidget(data: toast, onDismiss: _notifier.hide),
+                          ],
                         ),
                 ),
               ),
