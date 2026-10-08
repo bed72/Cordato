@@ -17,8 +17,8 @@ final dashboardRoutesModule = createModule(
         onBudgetPressed: () {},
         onNotificationsPressed: () {},
         userCommand: inject<UserCommand>(),
-        formatter: inject<IMoneyFormatter>(),
         dateFormatter: inject<IDateFormatter>(),
+        moneyFormatter: inject<IMoneyFormatter>(),
         expensesCommand: inject<GetExpensesCommand>(),
         onSeeAllExpensesPressed: () async =>
             await context.pushNamed(RouteEnum.expenses.path),

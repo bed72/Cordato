@@ -15,15 +15,15 @@ import 'package:cordato/features/dashboard/presentation/widgets/action_button_da
 final class const DashboardScreen({
   super.key,
   required final UserCommand userCommand,
-  required final IMoneyFormatter formatter,
   required final IDateFormatter dateFormatter,
+  required final IMoneyFormatter moneyFormatter,
   required final GetExpensesCommand expensesCommand,
   final VoidCallback? onMenuPressed,
   final VoidCallback? onAvatarPressed,
   final VoidCallback? onBudgetPressed,
   final VoidCallback? onNotificationsPressed,
-  final Future<void> Function()? onSeeAllExpensesPressed,
   final Future<void> Function()? onExpensePressed,
+  final Future<void> Function()? onSeeAllExpensesPressed,
 }) extends StatefulWidget {
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -50,8 +50,8 @@ final class _DashboardScreenState extends State<DashboardScreen>
               ExpensesSectionWidget(
                 limit: recentExpensesLimit,
                 command: widget.expensesCommand,
-                moneyFormatter: widget.formatter,
                 dateFormatter: widget.dateFormatter,
+                moneyFormatter: widget.moneyFormatter,
                 onSeeAllExpensesPressed: widget.onSeeAllExpensesPressed == null
                     ? null
                     : openExpenses,
