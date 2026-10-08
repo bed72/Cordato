@@ -9,3 +9,11 @@ import 'package:cordato/features/welcome/presentation/screens/welcome_screen.dar
   size: cordatoPhonePreviewSize,
 )
 Widget previewWelcomeScreen() => WelcomeScreen(onContinueWithEmail: (_) {});
+
+@CordatoPreview(
+  group: 'Boas-vindas / Telas',
+  name: 'Boas-vindas em tela dividida',
+  size: Size(412.0, 400.0),
+)
+Widget previewWelcomeSplitScreen() =>
+    WelcomeScreen(onContinueWithEmail: (_) {});

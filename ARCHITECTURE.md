@@ -219,7 +219,15 @@ O mixin descarta o controller e o command e ignora respostas após descarte ou
 troca do command. A listagem não acessa repository, HTTP ou storage diretamente.
 `ExpenseDismissibleWidget` envolve cada item da listagem, com chave pelo ID,
 gesto para a esquerda, fundo `error`, lixeira `onError` e conteúdo com raio
-`cornerRadius300`. Ao atingir o limiar de 30%, abre a confirmação compartilhada
+`cornerRadius300`. O arraste é limitado a 88 pixels lógicos ou 25% da largura,
+o que for menor. Soltar após 65% desse deslocamento retorna o item à posição
+original com `SpringSimulation`, usando massa 0.5, damping 14 e stiffness 280,
+como o retorno de `BounceWidget`. A confirmação abre assim que o spring começa,
+em paralelo com o retorno do item;
+arrastes curtos ou cancelados apenas retornam à posição original.
+`ExpenseDismissibleWidgetStateMixin` concentra controller, gesto e lifecycle,
+mantendo o item vivo durante o retorno e a confirmação, e descartando o controller.
+Abre a confirmação compartilhada
 `showConfirmationBottomSheetWidget`, também usada em exclusão da conta e logout.
 Cancelar ou dispensar restaura o item sem requisição. A ação de acessibilidade
 “Excluir despesa” abre a mesma confirmação. Somente confirmar executa o
@@ -227,7 +235,8 @@ Cancelar ou dispensar restaura o item sem requisição. A ação de acessibilida
 Erros e `Right(false)` preservam o item e mostram toast. O mixin coordena a
 confirmação e a execução, bloqueia exclusões simultâneas e consultas enquanto a
 exclusão está pendente, e bloqueia exclusões durante carregamento de páginas.
-O gesto conclui a animação antes de remover o item da lista; depois, a verificação
+O item permanece na posição original durante a confirmação e a requisição,
+com indicador de progresso durante a exclusão. Após sucesso, a verificação
 de paginação pode preencher a área visível. O mixin descarta os dois commands e
 ignora resultados obsoletos. As despesas recentes da Dashboard não possuem esse gesto.
 `expenseRoutesModule`, em `expense_module.dart`, reúne `/expense` e `/expenses`

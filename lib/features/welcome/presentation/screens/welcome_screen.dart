@@ -15,19 +15,22 @@ class const WelcomeScreen({
       body: SafeArea(
         child: Padding(
           padding: const .symmetric(horizontal: 16.0, vertical: 32.0),
-          child: Column(
-            children: [
-              const Expanded(
-                child: Align(
-                  alignment: .bottomCenter,
-                  child: Column(
-                    mainAxisSize: .min,
-                    children: [WelcomeIconWidget(), WelcomeSloganWidget()],
-                  ),
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  mainAxisAlignment: .end,
+                  children: [
+                    const WelcomeIconWidget(),
+                    const WelcomeSloganWidget(),
+                    WelcomeFooterWidget(
+                      onContinueWithEmail: onContinueWithEmail,
+                    ),
+                  ],
                 ),
               ),
-              WelcomeFooterWidget(onContinueWithEmail: onContinueWithEmail),
-            ],
+            ),
           ),
         ),
       ),
