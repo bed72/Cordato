@@ -25,64 +25,75 @@ final class _ExpenseDatePickerWidgetState
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 424.0,
-      child: Column(
-        spacing: 16.0,
-        children: [
-          Expanded(
-            child: SfDateRangePicker(
-              view: .month,
-              selectionMode: .single,
-              showNavigationArrow: true,
-              selectionShape: .rectangle,
-              initialDisplayDate: _selectedDate,
-              initialSelectedDate: _selectedDate,
-              selectionColor: context.colors.primary,
-              backgroundColor: context.colors.surface,
-              todayHighlightColor: context.colors.primary,
-              selectionTextStyle: context.typography.bodyMedium?.copyWith(
-                color: context.colors.onPrimary,
-              ),
-              headerStyle: DateRangePickerHeaderStyle(
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      child: SizedBox(
+        height: 424.0,
+        child: Column(
+          spacing: 16.0,
+          children: [
+            Expanded(
+              child: SfDateRangePicker(
+                view: .month,
+                selectionMode: .single,
+                showNavigationArrow: true,
+                selectionShape: .rectangle,
+                initialDisplayDate: _selectedDate,
+                initialSelectedDate: _selectedDate,
+                selectionColor: context.colors.primary,
                 backgroundColor: context.colors.surface,
-                textStyle: context.typography.titleMedium?.copyWith(
-                  fontWeight: .w600,
-                  color: context.colors.onSurface,
+                todayHighlightColor: context.colors.primary,
+                selectionTextStyle: context.typography.bodyMedium?.copyWith(
+                  color: context.colors.onPrimary,
                 ),
-              ),
-              monthCellStyle: DateRangePickerMonthCellStyle(
-                textStyle: context.typography.bodyMedium?.copyWith(
-                  color: context.colors.onSurface,
-                ),
-                todayTextStyle: context.typography.bodyMedium?.copyWith(
-                  color: context.colors.primary,
-                ),
-                leadingDatesTextStyle: context.typography.bodyMedium?.copyWith(
-                  color: context.colors.onSurfaceVariant.withValues(alpha: .7),
-                ),
-                trailingDatesTextStyle: context.typography.bodyMedium?.copyWith(
-                  color: context.colors.onSurfaceVariant.withValues(alpha: .7),
-                ),
-              ),
-              monthViewSettings: DateRangePickerMonthViewSettings(
-                firstDayOfWeek: 1,
-                showTrailingAndLeadingDates: true,
-                viewHeaderStyle: DateRangePickerViewHeaderStyle(
-                  textStyle: context.typography.labelMedium?.copyWith(
+                headerStyle: DateRangePickerHeaderStyle(
+                  backgroundColor: context.colors.surface,
+                  textStyle: context.typography.titleMedium?.copyWith(
                     fontWeight: .w600,
-                    color: context.colors.onSurfaceVariant,
+                    color: context.colors.onSurface,
                   ),
                 ),
+                monthCellStyle: DateRangePickerMonthCellStyle(
+                  textStyle: context.typography.bodyMedium?.copyWith(
+                    color: context.colors.onSurface,
+                  ),
+                  todayTextStyle: context.typography.bodyMedium?.copyWith(
+                    color: context.colors.primary,
+                  ),
+                  leadingDatesTextStyle: context.typography.bodyMedium
+                      ?.copyWith(
+                        color: context.colors.onSurfaceVariant.withValues(
+                          alpha: .7,
+                        ),
+                      ),
+                  trailingDatesTextStyle: context.typography.bodyMedium
+                      ?.copyWith(
+                        color: context.colors.onSurfaceVariant.withValues(
+                          alpha: .7,
+                        ),
+                      ),
+                ),
+                monthViewSettings: DateRangePickerMonthViewSettings(
+                  firstDayOfWeek: 1,
+                  showTrailingAndLeadingDates: true,
+                  viewHeaderStyle: DateRangePickerViewHeaderStyle(
+                    textStyle: context.typography.labelMedium?.copyWith(
+                      fontWeight: .w600,
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                onSelectionChanged: _selectDate,
               ),
-              onSelectionChanged: _selectDate,
             ),
-          ),
-          SizedBox(
-            width: .infinity,
-            child: ElevatedButtonWidget(label: 'Selecionar', onTap: _confirm),
-          ),
-        ],
+            SizedBox(
+              width: .infinity,
+              child: ElevatedButtonWidget(label: 'Selecionar', onTap: _confirm),
+            ),
+          ],
+        ),
       ),
     );
   }
