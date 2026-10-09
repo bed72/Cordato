@@ -14,7 +14,9 @@ final class DioFactory {
     required String baseUrl,
     required IStorageClient storage,
   }) {
-    final dio = Dio(BaseOptions(baseUrl: baseUrl));
+    final dio = Dio(
+      BaseOptions(baseUrl: baseUrl.endsWith('/') ? baseUrl : '$baseUrl/'),
+    );
 
     dio.interceptors.addAll([
       HeadersInterceptor(),

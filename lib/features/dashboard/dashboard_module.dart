@@ -6,6 +6,7 @@ import 'package:cordato/features/core/presentation/formatters/interface_money_fo
 
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
+import 'package:cordato/features/insight/presentation/commands/get_insights_command.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
 
 final dashboardRoutesModule = createModule(
@@ -20,6 +21,7 @@ final dashboardRoutesModule = createModule(
         dateFormatter: inject<IDateFormatter>(),
         moneyFormatter: inject<IMoneyFormatter>(),
         expensesCommand: inject<GetExpensesCommand>(),
+        insightsCommand: inject<GetInsightsCommand>(),
         onSeeAllExpensesPressed: () async =>
             await context.pushNamed(RouteEnum.expenses.path),
         onAvatarPressed: () => context.pushNamed(RouteEnum.user.path),

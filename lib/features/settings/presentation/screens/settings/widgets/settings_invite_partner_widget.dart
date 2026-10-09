@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/cards/iformation_card_content_widget.dart';
 
 final class const SettingsInvitePartnerWidget({
   super.key,
@@ -22,36 +22,13 @@ final class const SettingsInvitePartnerWidget({
         child: Row(
           spacing: 12.0,
           children: [
-            BackgroundIconWidget(
-              iconSize: 24.0,
-              icon: Icons.person_add_alt,
-              iconColor: context.colors.onPrimaryContainer,
-              backgroundColor: context.colors.primaryContainer,
-            ),
             Expanded(
-              child: Column(
-                spacing: 2.0,
-                mainAxisSize: .min,
-                crossAxisAlignment: .start,
-                children: [
-                  Text(
-                    'Convidar parceiro',
-                    maxLines: 1,
-                    overflow: .ellipsis,
-                    style: context.typography.bodyMedium?.copyWith(
-                      color: context.colors.onSurface,
-                      fontWeight: .w700,
-                    ),
-                  ),
-                  Text(
-                    'Comecem a usar juntos',
-                    maxLines: 2,
-                    overflow: .ellipsis,
-                    style: context.typography.bodySmall?.copyWith(
-                      color: context.colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+              child: IformationCardContentWidget(
+                title: 'Convidar parceiro',
+                icon: Icons.person_add_alt,
+                description: 'Comecem a usar juntos',
+                iconColor: context.colors.onPrimaryContainer,
+                iconBackgroundColor: context.colors.primaryContainer,
               ),
             ),
             Icon(

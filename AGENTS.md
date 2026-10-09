@@ -125,7 +125,11 @@ Dashboard consulta nome e inicial do avatar por `UserCommand` e as seis primeira
 despesas por uma instância própria de `GetExpensesCommand`, descartada pela tela.
 `DashboardScreenStateMixin` concentra consulta inicial, atualização por gesto e
 retorno assíncrono do formulário e da listagem completa, recarregando as despesas
-recentes após ambos. `ExpensesSectionWidget` usa `CommandBuilder`
+recentes e insights após ambos. A Dashboard recebe sua própria instância de
+`GetInsightsCommand`, descartada pela tela, e consulta insights e despesas em
+paralelo na abertura e no refresh. `InsightsSectionWidget` fica acima das
+despesas, com skeleton, erro com retry e seção oculta quando vazia.
+`ExpensesSectionWidget` usa `CommandBuilder`
 para loading, erro com título e descrição sem ação de retry, vazio e sucesso, sem paginação na UI.
 Reutiliza `ExpenseItemWidget` de Expense, `IMoneyFormatter` e datas pt-BR sem
 conversão de fuso. “Ver tudo” requer itens e callback de navegação disponível;
@@ -151,8 +155,29 @@ compartilhado com a Dashboard. O skeleton reutiliza `ExpenseItemWidget` com
 carregados. Os textos fictícios são excluídos da semântica, e a listagem anuncia
 “Carregando despesas”. `expenseRoutesModule` registra a rota autenticada
 `/expenses`, acessível por “Ver tudo” da Dashboard.
-`budget`, `family` e `insight` não têm feature Flutter
-implementada. Não descreva recursos planejados como código existente nem crie
+`insight` possui entidades imutáveis `InsightEntity`, `InsightPeriodEntity` e
+`InsightDateRangeEntity` e o contrato somente leitura `IInsightRepository.get()`,
+com `Either<ErrorsEntity, List<InsightEntity>>`. `type` e `group` preservam strings
+da API, datas são civis e a comparação é opcional. `InsightRepository`, em
+`application/repositories/`, delega a consulta a `IInsightRemoteDataSource`,
+converte DTOs em entidades preservando ordem e conteúdo e traduz erros remotos
+e exceções em `ErrorsEntity`. O contrato remoto e os DTOs de conversão estão em
+`infrastructure`. `InsightRemoteDataSource` executa GET relativo protegido
+`insights` pelo HTTP do core e `response<T>`, convertendo a lista JSON:API em
+DTOs com datas civis e comparação opcional. Parsing inválido invalida a lista
+completa. `insightDependenciesModule` registra data source e repository como
+lazy singletons pelos contratos e o command por factory, composto por `appModule`.
+`GetInsightsCommand`, em `insight/presentation/commands/`, consulta
+`IInsightRepository.get()` sem parâmetros, preserva `Either` em
+`GetRepositoryType?`, inicialmente nulo, e implementa `ICommand`. Cada execução
+substitui o resultado anterior; o consumidor deve descartar sua instância.
+`InsightsListWidget` usa rolagem horizontal, cards de 85% da largura disponível,
+espaçamento de 12 e altura pelo maior conteúdo sem truncamento.
+`InsightCardWidget` compõe `IformationCardWidget` do core e seleciona ícone e
+cor por tipo no mixin de apresentação, com fallback neutro para tipos novos.
+Os cards são informativos, sem ação, e preservam textos e ordem da API.
+`budget` e `family` não têm feature Flutter implementada.
+Não descreva recursos planejados como código existente nem crie
 um contexto `identity` para reproduzir o backend antigo. O contexto `chat` não
 faz parte do escopo atual.
 
@@ -195,7 +220,7 @@ Regras de domínio que devem ser preservadas nas features financeiras:
 - `flutter_modular` 7 para módulos, injeção de dependências e rotas.
 - `command_it` para operações assíncronas observáveis pela apresentação.
 - `listen_it` está declarado, mas não é usado diretamente no código atual.
-- `dio` para integração HTTP JSON:API de Authentication, User e Expense.
+- `dio` para integração HTTP JSON:API de Authentication, User, Expense e Insight.
 - `flutter_secure_storage` para armazenamento seguro.
 - `mocktail` e `flutter_test` para testes.
 - Fonte de aplicação: `Inter-Variable.ttf`.
@@ -266,7 +291,7 @@ imagens, storage e `Either`.
 Também oferece o cliente HTTP, os responses de erro e a função `response<T>`
 compartilhada pelos data sources.
 
-Authentication, User, Session e Expense mantêm as implementações de repository
+Authentication, User, Session, Expense e Insight mantêm as implementações de repository
 em `application/repositories/`. Tipos puros de entrada ficam em
 `application/data/`, e contratos de repository permanecem em
 `domain/repositories/`. Os testes espelham os caminhos de aplicação. Não crie
@@ -852,8 +877,8 @@ confirmação assinada. O cliente HTTP atual não configura uma política espec�
 de redirecionamentos ou logging para URLs absolutas.
 
 O formulário de gastos executa criação por `CreateExpenseCommand`,
-`ExpenseRepository` e data source remoto. `budget`,
-`family` e `insight` não possuem integração Flutter. Não descreva
+`ExpenseRepository` e data source remoto. Insight consulta a API e apresenta
+cards somente leitura na Dashboard. `budget` e `family` não possuem integração Flutter. Não descreva
 regras de autorização do backend como já aplicadas pelo aplicativo. Ao conectar
 uma feature financeira, defina seu contexto proprietário, preserve as
 invariantes no serviço responsável e adicione testes de autorização e domínio.
@@ -887,7 +912,7 @@ Regras:
 - Separe `<feature>DependenciesModule`, sem `path`, de
   `<feature>RoutesModule` quando houver dependências compartilhadas e rotas.
 - `app_module.dart` compõe módulos de alto nível e registra `AppScreen` em `/`.
-  Atualmente os módulos root de dependências são `core`, `user`, `session`, `expense` e
+  Atualmente os módulos root de dependências são `core`, `user`, `session`, `expense`, `insight` e
   `authentication`; `welcome`, `expense`, `settings`, `dashboard` e
   `authentication` fornecem módulos de rotas.
 - Dependências estritamente locais, como validators de Expense e o registro

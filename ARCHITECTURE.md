@@ -6,7 +6,7 @@ Cordato é um aplicativo Flutter de finanças pessoais e familiares organizado
 por feature e por camadas. Cada pessoa é dona dos próprios dados financeiros;
 a família é uma lente de leitura compartilhada, nunca uma dona de dinheiro.
 
-O aplicativo integra o fluxo de autenticação e os data sources de User e Expense à API
+O aplicativo integra o fluxo de autenticação e os data sources de User, Expense e Insight à API
 HTTP JSON:API pelo cliente compartilhado de `coreDependenciesModule` (padrão
 `https://api.cordato.cloud/api/`). Não há schema ou backend financeiro ativo
 versionado neste repositório. O Kotlin legado é
@@ -43,7 +43,75 @@ Os contextos financeiros e seu estado atual são:
   após completar o hold; ambos exibem toast de sucesso.
 - `budget`: planejado; não há feature Flutter de orçamento nesta versão.
 - `family`: planejado. Será uma organização de membros com leitura combinada autorizada.
-- `insight`: planejado; não há feature Flutter, dados ou consultas analíticas.
+- `insight`: consulta somente leitura integrada à API, com entidades imutáveis,
+  repository, DTOs, data source HTTP e command. A Dashboard apresenta os
+  resultados em cards informativos com rolagem horizontal acima das despesas.
+
+`InsightEntity`, em `insight/domain/entities/`, possui `id`, `title`, `type`,
+`group`, `description` e `period`. `type` e `group` são strings que preservam
+os valores da API, inclusive tipos novos; ícones e cores pertencem à futura
+apresentação. A entidade não inclui o envelope JSON:API nem realiza parsing.
+`InsightPeriodEntity` possui `from` e `to` como datas civis em `DateTime`, sem
+normalização ou conversão de fuso, e `comparison` opcional como
+`InsightDateRangeEntity`, que contém somente `from` e `to`.
+`IInsightRepository.get()` retorna `Future<GetRepositoryType>`, com
+`Either<ErrorsEntity, List<InsightEntity>>`. Lista vazia representa sucesso;
+o contrato não oferece escrita, paginação, ordenação local ou persistência.
+Insights são análises derivadas fornecidas pelo serviço, sem cálculo financeiro
+no domínio do aplicativo e sem dependência de outros contextos financeiros.
+
+`InsightRepository`, em `insight/application/repositories/`, implementa
+`IInsightRepository` e recebe `IInsightRemoteDataSource`. Delega `get()` ao
+data source e converte todos os `InsightResponse` em entidades, preservando
+ordem, conteúdo, tipos desconhecidos e datas sem normalização ou conversão de
+fuso. Lista vazia permanece sucesso. Converte `ErrorsResponse` em
+`ErrorsEntity` com os metadados originais; exceções inesperadas retornam
+`ErrorsEntity.unknown()`. Não acessa HTTP, storage ou outros repositories.
+`IInsightRemoteDataSource`, em `infrastructure/remoto/`, define `get()` com
+`Either<ErrorsResponse, List<InsightResponse>>`. `InsightResponse`,
+`InsightPeriodResponse` e `InsightDateRangeResponse`, em
+`infrastructure/responses/`, são DTOs imutáveis com factories `fromJson` e
+extensões `toEntity()`. O parsing usa casts e `DateTime.parse`, preservando
+datas civis e comparação ausente ou nula. `InsightResponse.fromJson` recebe
+um recurso da lista `data`, lendo o tipo de análise de `attributes.type`,
+não de `data.type`.
+`InsightRemoteDataSource` executa GET relativo `insights`, protegido por
+`HttpPathEnum.insights`, com o HTTP do core e `response<T>`. Lista vazia é
+sucesso; parsing inválido em qualquer item invalida a resposta completa.
+Erros JSON:API são preservados e exceções usam o erro genérico compartilhado.
+Headers e Bearer pertencem aos interceptors; um 401 remove somente o token
+enviado seguindo a política de sessão existente.
+`insightDependenciesModule`, sem rota própria, registra data source e repository
+como lazy singletons pelos contratos e `GetInsightsCommand` por factory.
+É composto por `appModule` e consumido pela rota da Dashboard.
+
+`GetInsightsCommand`, em `insight/presentation/commands/`, recebe
+`IInsightRepository` e delega `get()` sem parâmetros. `execute` começa em
+`null` e preserva `Either<ErrorsEntity, List<InsightEntity>>` em
+`GetRepositoryType?`; lista vazia é sucesso e `Left` é resultado de negócio.
+Cada consulta substitui o resultado anterior, sem acumular, ordenar ou limitar
+insights. O command impede novas chamadas durante a execução e permite nova
+tentativa após falha. Exceções inesperadas são erros observáveis do command.
+Implementa `ICommand`, descarta `execute` em `dispose` e deve ser descartado
+pelo consumidor. Não há tela proprietária de Insight, portanto o command fica
+no diretório de commands da feature.
+
+`InsightsSectionWidget`, na Dashboard, usa `CommandBuilder` para estados
+independentes das despesas: skeleton com anúncio “Carregando insights”, erro
+discreto com “Tentar novamente”, lista vazia sem seção nem espaçamento e sucesso.
+`InsightsListWidget`, na apresentação de Insight, preserva a ordem da API em
+`SingleChildScrollView` horizontal e `Row`, com margens de 20 pixels, espaçamento
+de 12 e cards de 85% da largura disponível. `IntrinsicHeight` acompanha o maior
+conteúdo, sem altura fixa ou truncamento de textos, inclusive com fonte ampliada.
+`InsightCardWidget` compõe `IformationCardWidget` do core e usa
+`InsightCardWidgetMixin` para selecionar o visual pelo tipo: tendência com
+`primary` para `registered_amount_increase`, repetição para
+`category_lead_streak` em turquesa vivo no tema escuro e teal escuro no claro,
+e lâmpada com `onSurfaceVariant` para tipos desconhecidos.
+O fundo do ícone usa a mesma cor com opacidade de 12%; não há callback, seta,
+classificação automática de aumento como erro nem interpretação da descrição.
+Os previews cobrem loading, vazio, erro, claro/escuro, tipo desconhecido e texto
+ampliado. A UI não calcula análises ou altera conteúdo fornecido pelo serviço.
 
 `ExpenseEntity`, em `expense/domain/entities/expense_entity.dart`, representa uma
 despesa cadastrada, com primary constructor `const` e campos imutáveis obrigatórios:
@@ -607,6 +675,22 @@ tipografia e cores do tema e espaçamento de 6 pixels. Sign-in, sign-up, reenvio
 de e-mail, gasto, Settings, dados pessoais e edição de nome o compõem diretamente,
 sem wrappers dedicados por feature para essa mesma estrutura.
 
+Cards informativos compartilhados ficam em `core/presentation/widgets/cards/`:
+
+- `IformationCardContentWidget`: ícone decorativo à esquerda por
+  `BackgroundIconWidget`, título e descrição com cores e tipografia do tema.
+  Recebe ícone e suas duas cores explicitamente, sem interpretar tipos ou
+  categorias de features. Os textos podem crescer sem truncamento; o consumidor
+  deve fornecer uma largura limitada.
+- `IformationCardWidget`: compõe esse conteúdo em um `Card` de superfície,
+  com raio `cornerRadius100`, padding de 12 pixels e semântica informativa.
+  Não recebe callback nem elemento à direita e não possui animação de toque.
+
+`SettingsInvitePartnerWidget` reutiliza somente o conteúdo compartilhado,
+mantendo sua própria composição de card, seta, callback, `BounceWidget` e
+semântica de botão. Os cards informativos e o convite possuem previews próprios;
+a Dashboard usa o card informativo por `InsightCardWidget` sem adicionar interação.
+
 Menus compartilhados ficam em `core/presentation/widgets/menu/`:
 
 - `MenuSectionWidget`: título em caixa alta com semântica de heading e conteúdo
@@ -948,15 +1032,19 @@ Registros importantes:
   ao AppBar da Dashboard.
   O avatar reutiliza `BounceWidget` e abre `/user` ao tocar, com navegação
   injetada por callback e sem acesso ao router no widget.
-  Também injeta uma instância por factory de `GetExpensesCommand` e o
+  Também injeta instâncias por factory de `GetExpensesCommand` e
+  `GetInsightsCommand`, além do
   `IMoneyFormatter` e o `IDateFormatter` do core. `DashboardScreenStateMixin` consulta a primeira
-  página com `pageSize: 6` ao montar, recarrega após o retorno do formulário e
-  descarta o command de despesas ao sair. O `UserCommand` da Dashboard não é
+  página com `pageSize: 6` e os insights em paralelo ao montar, recarrega ambos
+  após o retorno do formulário e da listagem completa e
+  descarta os commands de despesas e insights ao sair. O `UserCommand` da Dashboard não é
   descartado pela tela. A ação de gasto recebe um callback assíncrono para aguardar
   o retorno da rota; após navegação que removeu a Dashboard, o handler não consulta
   novamente a instância descartada. A nova Dashboard carrega ao montar.
   O corpo usa `ListView` com rolagem sempre habilitada, padding inferior para o FAB
-  e `RefreshIndicator` para recarregar a primeira página, inclusive com lista vazia.
+  e `RefreshIndicator` para recarregar a primeira página e os insights em paralelo,
+  inclusive com lista vazia. Falhas são independentes; `InsightsSectionWidget`
+  aparece antes de `ExpensesSectionWidget`.
   `ExpensesSectionWidget` usa `CommandBuilder` para skeleton de seis itens,
   erro localizado com título e descrição sem ação de retry, vazio com “Ainda sem despesas” e sucesso.
   Exibe no máximo seis itens, preservando a ordem e as datas da API. Valores usam
@@ -1044,6 +1132,12 @@ preservando o status recebido. O data source remoto traduz os corpos da autentic
 tipadas e erros JSON:API, e o repository expõe
 `Either<ErrorsEntity, SessionEntity>` no sign-in e `Either<ErrorsEntity, bool>`
 no sign-up e no reenvio.
+
+`DioFactory` garante uma barra final na base antes de configurar o cliente,
+preservando o prefixo `/api/` ao concatenar endpoints relativos. Bases informadas
+como `/api` e `/api/` produzem os mesmos destinos e o mesmo reconhecimento de
+endpoints protegidos pelo `SessionInterceptor`, inclusive na remoção do token
+após 401.
 
 O link da API usa o `APP_URL` de produção `https://app.cordato.cloud` para a
 página de entrada e a URL assinada da API em `verification_url`. Esse servidor

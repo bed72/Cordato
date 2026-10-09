@@ -7,7 +7,7 @@ família, oferecer uma visão compartilhada das finanças de seus membros.
 ## Produto
 
 O modelo de negócio tem como referência o backend legado em Kotlin. O app usa
-uma API HTTP JSON:API para autenticação e possui data sources remotos de User e Expense;
+uma API HTTP JSON:API para autenticação e possui data sources remotos de User, Expense e Insight;
 o cadastro de despesas está conectado à API. A regra central é:
 
 > A pessoa é dona dos próprios dados. A família é apenas uma lente de leitura.
@@ -24,7 +24,9 @@ Os bounded contexts do produto são:
   paginada consumida pela Dashboard e pela listagem completa.
 - `budget`: planejado. Tetos por intervalo de datas, com gasto e saldo derivados.
 - `family`: planejado. Organização familiar com acesso combinado somente de leitura.
-- `insight`: planejado. Análises derivadas, somente leitura e sem persistência própria.
+- `insight`: análises derivadas somente leitura consultadas pela API, com domínio,
+  repository, DTOs, data source HTTP e `GetInsightsCommand`. Cards informativos
+  na Dashboard, sem persistência própria.
 
 O contexto `identity` do backend não será reproduzido no app neste momento. A
 autenticação por e-mail e senha usa a API JSON:API; há sign-in, sign-up,
@@ -46,9 +48,12 @@ O app já possui:
   cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
   verificação após uma espera de 60 segundos e feedback da API;
 - dashboard com nome e inicial do avatar consultados na API por `UserCommand`,
+  cards de insights com ícone e cor por tipo em lista horizontal acima das despesas,
   e seção de despesas recentes com as seis primeiras despesas da API, skeleton,
   estado vazio, erro com título e descrição e atualização por gesto ou
-  ao retornar do formulário de gasto;
+  ao retornar do formulário de gasto e da listagem completa; insights e despesas
+  são atualizados em paralelo. Insights possuem skeleton e retry em caso de erro,
+  e a seção é ocultada quando a API retorna lista vazia;
 - listagem completa em `/expenses`, aberta por “Ver tudo” da Dashboard, com
   rolagem infinita em páginas de 20 itens, atualização por gesto, skeleton, vazio
   e nova tentativa após erro, preservando os itens já carregados;
@@ -81,7 +86,7 @@ O app já possui:
 A tela de dados pessoais consulta o perfil ao abrir e novamente após salvar
 o nome, usando o ID persistido no sign-in.
 
-`budget`, `family` e `insight` seguem planejados. Ao implementá-los, o grupo
+`budget` e `family` seguem planejados. Ao integrar esses contextos, o grupo
 familiar não deve se tornar dono dos dados financeiros de seus membros.
 
 ## Arquitetura
@@ -197,7 +202,8 @@ Para executar o app, use `flutter run`. A autenticação usa por padrão
 flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
 ```
 
-O valor de `BASE_URL` deve incluir o prefixo `/api/`.
+O valor de `BASE_URL` deve incluir o prefixo `/api/`. A factory HTTP acrescenta
+a barra final quando omitida, aceitando também bases terminadas em `/api`.
 O domínio de entrada de produção confirmado para `APP_URL` é
 `https://app.cordato.cloud`. Esse servidor precisa oferecer a página
 `/authentication/confirm-email` e os arquivos de associação Android e iOS

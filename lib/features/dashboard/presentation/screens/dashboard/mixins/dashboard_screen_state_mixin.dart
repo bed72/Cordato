@@ -10,6 +10,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     super.initState();
     widget.userCommand.execute.run();
     loadExpenses();
+    loadInsights();
   }
 
   @override
@@ -24,11 +25,17 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
       oldWidget.expensesCommand.dispose();
       loadExpenses();
     }
+
+    if (oldWidget.insightsCommand != widget.insightsCommand) {
+      oldWidget.insightsCommand.dispose();
+      loadInsights();
+    }
   }
 
   @override
   void dispose() {
     widget.expensesCommand.dispose();
+    widget.insightsCommand.dispose();
     super.dispose();
   }
 
@@ -36,6 +43,22 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     pageLink: null,
     pageSize: recentExpensesLimit,
   ));
+
+  void loadInsights() => widget.insightsCommand.execute.run();
+
+  Future<void> refreshDashboard() async {
+    await Future.wait([refreshExpenses(), refreshInsights()]);
+  }
+
+  Future<void> refreshInsights() async {
+    if (widget.insightsCommand.execute.isRunning.value) return;
+
+    try {
+      await widget.insightsCommand.execute.runAsync();
+    } catch (_) {
+      return;
+    }
+  }
 
   Future<void> refreshExpenses() async {
     if (widget.expensesCommand.execute.isRunning.value) return;
@@ -54,11 +77,13 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     await widget.onExpensePressed?.call();
     if (!mounted) return;
     loadExpenses();
+    loadInsights();
   }
 
   Future<void> openExpenses() async {
     await widget.onSeeAllExpensesPressed?.call();
     if (!mounted) return;
     loadExpenses();
+    loadInsights();
   }
 }
