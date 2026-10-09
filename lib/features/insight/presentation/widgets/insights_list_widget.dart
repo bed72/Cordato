@@ -21,7 +21,7 @@ final class const InsightsListWidget({
             for (final insight in insights)
               SizedBox(
                 key: ValueKey(insight.id),
-                width: constraints.maxWidth * 0.85,
+                width: constraints.maxWidth - 40.0,
                 child: InsightCardWidget(insight: insight),
               ),
           ],

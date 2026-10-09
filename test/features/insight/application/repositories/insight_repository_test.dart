@@ -4,11 +4,13 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+
 import 'package:cordato/features/insight/application/repositories/insight_repository.dart';
 import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
-import 'package:cordato/features/insight/infrastructure/responses/insight_date_range_response.dart';
-import 'package:cordato/features/insight/infrastructure/responses/insight_period_response.dart';
+
 import 'package:cordato/features/insight/infrastructure/responses/insight_response.dart';
+import 'package:cordato/features/insight/infrastructure/responses/insight_period_response.dart';
+import 'package:cordato/features/insight/infrastructure/responses/insight_date_range_response.dart';
 
 import '../../../../support/insight/mocks/insight_remote_data_source_mock.dart';
 
@@ -57,23 +59,23 @@ void main() {
       ];
       when(() => dataSource.get()).thenAnswer((_) async => Right(insights));
 
-      final result = await repository.get();
+      final data = await repository.get();
 
-      expect(result.isRight, isTrue);
-      expect(result.right.map((insight) => insight.id), ['z', 'a']);
+      expect(data.isRight, isTrue);
+      expect(data.right.map((insight) => insight.id), ['z', 'a']);
       for (var index = 0; index < insights.length; index++) {
         final source = insights[index];
-        final entity = result.right[index];
+        final entity = data.right[index];
         expect(entity.title, source.title);
         expect(entity.description, source.description);
         expect(entity.type, source.type);
         expect(entity.group, source.group);
-        expect(entity.period.from, same(source.period.from));
-        expect(entity.period.to, same(source.period.to));
+        expect(entity.period!.from, same(source.period!.from));
+        expect(entity.period!.to, same(source.period!.to));
       }
-      expect(result.right.first.period.comparison?.from, same(comparisonFrom));
-      expect(result.right.first.period.comparison?.to, same(comparisonTo));
-      expect(result.right.last.period.comparison, isNull);
+      expect(data.right.first.period!.comparison?.from, same(comparisonFrom));
+      expect(data.right.first.period!.comparison?.to, same(comparisonTo));
+      expect(data.right.last.period!.comparison, isNull);
       verify(() => dataSource.get()).called(1);
       verifyNoMoreInteractions(dataSource);
     });
@@ -102,19 +104,43 @@ void main() {
         expect(insight.group, 'future_group');
         expect(insight.title, ' Novo insight ');
         expect(insight.description, ' Descrição original ');
-        expect(insight.period.from, same(from));
-        expect(insight.period.to, same(to));
-        expect(insight.period.comparison, isNull);
+        expect(insight.period!.from, same(from));
+        expect(insight.period!.to, same(to));
+        expect(insight.period!.comparison, isNull);
       },
     );
+
+    test('preserves onboarding insights with a null period', () async {
+      const insight = InsightResponse(
+        id: 'onboarding',
+        title: 'Cada registro traz contexto',
+        type: 'insufficient_history',
+        group: 'onboarding',
+        description: 'Continue registrando suas despesas. Por enquanto, os registros não sustentam uma observação financeira.',
+        period: null,
+      );
+      when(() => dataSource.get())
+          .thenAnswer((_) async => const Right([insight]));
+
+      final data = await repository.get();
+
+      expect(data.isRight, isTrue);
+      expect(data.right.single.id, insight.id);
+      expect(data.right.single.period, isNull);
+      expect(data.right.single.type, insight.type);
+      expect(data.right.single.title, insight.title);
+      expect(data.right.single.group, insight.group);
+      expect(data.right.single.description, insight.description);
+      verify(() => dataSource.get()).called(1);
+    });
 
     test('returns success for an empty list', () async {
       when(() => dataSource.get()).thenAnswer((_) async => const Right([]));
 
-      final result = await repository.get();
+      final data = await repository.get();
 
-      expect(result.isRight, isTrue);
-      expect(result.right, isEmpty);
+      expect(data.right, isEmpty);
+      expect(data.isRight, isTrue);
       verify(() => dataSource.get()).called(1);
     });
 
@@ -132,13 +158,13 @@ void main() {
       );
       when(() => dataSource.get()).thenAnswer((_) async => const Left(errors));
 
-      final result = await repository.get();
+      final data = await repository.get();
 
-      expect(result.isLeft, isTrue);
-      expect(result.left.errors, hasLength(2));
-      for (var index = 0; index < errors.errors.length; index++) {
+      expect(data.isLeft, isTrue);
+      expect(data.left.errors, hasLength(2));
+      for (int index = 0; index < errors.errors.length; index++) {
         final source = errors.errors[index];
-        final entity = result.left.errors[index];
+        final entity = data.left.errors[index];
         expect(entity.title, source.title);
         expect(entity.detail, source.detail);
         expect(entity.status, source.status);
@@ -153,8 +179,8 @@ void main() {
         when(() => dataSource.get())
             .thenAnswer((_) async => const Left(ErrorsResponse(errors: [])));
 
-        final result = await repository.get();
-        final error = result.left.errors.single;
+        final data = await repository.get();
+        final error = data.left.errors.single;
         final unknown = ErrorsEntity.unknown().errors.single;
 
         expect(error.title, unknown.title);
@@ -168,8 +194,8 @@ void main() {
         when(() => dataSource.get())
             .thenAnswer((_) async => throw StateError('offline'));
 
-        final result = await repository.get();
-        final error = result.left.errors.single;
+        final data = await repository.get();
+        final error = data.left.errors.single;
         final unknown = ErrorsEntity.unknown().errors.single;
 
         expect(error.title, unknown.title);
@@ -184,10 +210,10 @@ void main() {
         when(() => dataSource.get())
             .thenThrow(StateError('unexpected failure'));
 
-        final result = await repository.get();
+        final data = await repository.get();
 
-        expect(result.isLeft, isTrue);
-        expect(result.left.errors.single.title, 'Erro desconhecido');
+        expect(data.isLeft, isTrue);
+        expect(data.left.errors.single.title, 'Erro desconhecido');
         verify(() => dataSource.get()).called(1);
       },
     );

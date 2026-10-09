@@ -48,7 +48,10 @@ Os contextos financeiros e seu estado atual são:
   resultados em cards informativos com rolagem horizontal acima das despesas.
 
 `InsightEntity`, em `insight/domain/entities/`, possui `id`, `title`, `type`,
-`group`, `description` e `period`. `type` e `group` são strings que preservam
+`group`, `description` e `period` anulável. Insights de onboarding como
+`insufficient_history` podem trazer `period: null`, preservado sem datas fictícias.
+Esses itens são apresentados como cards com título e descrição da API.
+`type` e `group` são strings que preservam
 os valores da API, inclusive tipos novos; ícones e cores pertencem à futura
 apresentação. A entidade não inclui o envelope JSON:API nem realiza parsing.
 `InsightPeriodEntity` possui `from` e `to` como datas civis em `DateTime`, sem
@@ -72,7 +75,9 @@ fuso. Lista vazia permanece sucesso. Converte `ErrorsResponse` em
 `InsightPeriodResponse` e `InsightDateRangeResponse`, em
 `infrastructure/responses/`, são DTOs imutáveis com factories `fromJson` e
 extensões `toEntity()`. O parsing usa casts e `DateTime.parse`, preservando
-datas civis e comparação ausente ou nula. `InsightResponse.fromJson` recebe
+datas civis, período nulo e comparação ausente ou nula. Períodos não nulos
+continuam exigindo datas válidas; parsing inválido não gera resultado parcial.
+`InsightResponse.fromJson` recebe
 um recurso da lista `data`, lendo o tipo de análise de `attributes.type`,
 não de `data.type`.
 `InsightRemoteDataSource` executa GET relativo `insights`, protegido por
@@ -101,7 +106,8 @@ independentes das despesas: skeleton com anúncio “Carregando insights”, err
 discreto com “Tentar novamente”, lista vazia sem seção nem espaçamento e sucesso.
 `InsightsListWidget`, na apresentação de Insight, preserva a ordem da API em
 `SingleChildScrollView` horizontal e `Row`, com margens de 20 pixels, espaçamento
-de 12 e cards de 85% da largura disponível. `IntrinsicHeight` acompanha o maior
+de 12 e cards com toda a largura disponível descontando as margens laterais
+de 20 pixels. `IntrinsicHeight` acompanha o maior
 conteúdo, sem altura fixa ou truncamento de textos, inclusive com fonte ampliada.
 `InsightCardWidget` compõe `IformationCardWidget` do core e usa
 `InsightCardWidgetMixin` para selecionar o visual pelo tipo: tendência com
@@ -938,6 +944,11 @@ enquanto lê o token e navega para dashboard ou welcome; erro de leitura também
 welcome. `AppScreenStateMixin` concentra a leitura, o listener e a decisão
 única de rota, recebendo a navegação por callbacks. `session` não possui tela
 nem módulo de rotas. Não há rota `/splash`.
+
+Os listeners de sessão de `AppScreenStateMixin` e `AppWidgetStateMixin` agendam
+a navegação após o frame e solicitam `ensureVisualUpdate()`. Assim, uma leitura
+assíncrona concluída com o scheduler ocioso não deixa o redirecionamento esperando
+um frame que nenhuma mudança visual solicitou.
 
 No primeiro frame, `AppWidget` encaminha uma abertura inicial em Dashboard,
 Settings, User, edição de User, cadastro ou listagem de despesas para `/`,

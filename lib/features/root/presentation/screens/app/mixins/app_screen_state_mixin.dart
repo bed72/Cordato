@@ -47,6 +47,7 @@ mixin AppScreenStateMixin on State<AppScreen> {
           ? widget.onAuthenticated(context)
           : widget.onUnauthenticated(context);
     });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   @override

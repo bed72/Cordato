@@ -158,7 +158,10 @@ carregados. Os textos fictícios são excluídos da semântica, e a listagem anu
 `insight` possui entidades imutáveis `InsightEntity`, `InsightPeriodEntity` e
 `InsightDateRangeEntity` e o contrato somente leitura `IInsightRepository.get()`,
 com `Either<ErrorsEntity, List<InsightEntity>>`. `type` e `group` preservam strings
-da API, datas são civis e a comparação é opcional. `InsightRepository`, em
+da API, datas são civis e a comparação é opcional. `InsightEntity.period` e
+`InsightResponse.period` são anuláveis para preservar `period: null` em insights
+de onboarding como `insufficient_history`; esses itens exibem o título e a
+descrição da API no card existente, sem datas fictícias. `InsightRepository`, em
 `application/repositories/`, delega a consulta a `IInsightRemoteDataSource`,
 converte DTOs em entidades preservando ordem e conteúdo e traduz erros remotos
 e exceções em `ErrorsEntity`. O contrato remoto e os DTOs de conversão estão em
@@ -171,7 +174,8 @@ lazy singletons pelos contratos e o command por factory, composto por `appModule
 `IInsightRepository.get()` sem parâmetros, preserva `Either` em
 `GetRepositoryType?`, inicialmente nulo, e implementa `ICommand`. Cada execução
 substitui o resultado anterior; o consumidor deve descartar sua instância.
-`InsightsListWidget` usa rolagem horizontal, cards de 85% da largura disponível,
+`InsightsListWidget` usa rolagem horizontal, cards com toda a largura disponível
+descontando as margens laterais de 20 pixels,
 espaçamento de 12 e altura pelo maior conteúdo sem truncamento.
 `InsightCardWidget` compõe `IformationCardWidget` do core e seleciona ícone e
 cor por tipo no mixin de apresentação, com fallback neutro para tipos novos.

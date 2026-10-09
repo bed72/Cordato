@@ -7,20 +7,19 @@ final class const InsightResponse({
   required final String title,
   required final String group,
   required final String description,
-  required final InsightPeriodResponse period,
+  required final InsightPeriodResponse? period,
 }) {
   factory InsightResponse.fromJson(Map<String, dynamic> json) {
-    final attributes = json['attributes'] as Map<String, dynamic>;
+    final root = json['attributes'] as Map<String, dynamic>;
+    final period = root['period'] as Map<String, dynamic>?;
 
     return InsightResponse(
       id: json['id'] as String,
-      title: attributes['title'] as String,
-      type: attributes['type'] as String,
-      group: attributes['group'] as String,
-      description: attributes['description'] as String,
-      period: InsightPeriodResponse.fromJson(
-        attributes['period'] as Map<String, dynamic>,
-      ),
+      type: root['type'] as String,
+      title: root['title'] as String,
+      group: root['group'] as String,
+      description: root['description'] as String,
+      period: period == null ? null : .fromJson(period),
     );
   }
 }
@@ -32,6 +31,6 @@ extension InsightResponseToEntity on InsightResponse {
     title: title,
     group: group,
     description: description,
-    period: period.toEntity(),
+    period: period?.toEntity(),
   );
 }

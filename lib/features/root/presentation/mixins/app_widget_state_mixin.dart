@@ -44,6 +44,7 @@ mixin AppWidgetStateMixin on State<AppWidget> {
 
       if (authentication) navigateToWelcome();
     });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   @override

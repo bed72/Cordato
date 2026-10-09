@@ -6,5 +6,5 @@ final class const InsightEntity({
   required final String group,
   required final String title,
   required final String description,
-  required final InsightPeriodEntity period,
+  required final InsightPeriodEntity? period,
 });
