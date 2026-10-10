@@ -831,7 +831,7 @@ Outras features podem ter clients próprios quando isso fizer sentido.
 ## API HTTP E Persistência
 
 `coreDependenciesModule` registra `IStorageClient`, `IHttpClient` e o `Dio` compartilhado
-com `BASE_URL` (padrão `https://api.cordato.cloud/api/`). O
+com `BASE_URL` (padrão `https://app.cordato.cloud/api/`). O
 `HeadersInterceptor` aplica os headers JSON:API. O `HttpClient` devolve
 `Either<HttpResponse, HttpResponse>`, com status HTTP e corpo em mapa;
 falhas de transporte recebem status `0`. `AuthenticationRemoteDataSource`
@@ -1029,7 +1029,7 @@ ser substituída quando necessário:
 flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
 ```
 
-O padrão de `BASE_URL` é `https://api.cordato.cloud/api/`. A configuração e
+O padrão de `BASE_URL` é `https://app.cordato.cloud/api/`. A configuração e
 verificação de release Android estão em `android/README.md`.
 
 ## Checklist De Pull Request

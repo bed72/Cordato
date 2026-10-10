@@ -8,7 +8,7 @@ a família é uma lente de leitura compartilhada, nunca uma dona de dinheiro.
 
 O aplicativo integra o fluxo de autenticação e os data sources de User, Expense, Insight e Metrics à API
 HTTP JSON:API pelo cliente compartilhado de `coreDependenciesModule` (padrão
-`https://api.cordato.cloud/api/`). Não há schema ou backend financeiro ativo
+`https://app.cordato.cloud/api/`). Não há schema ou backend financeiro ativo
 versionado neste repositório. O Kotlin legado é
 referência de domínio, não uma dependência de execução. A apresentação permanece
 independente de clientes HTTP, storage e plugins.
@@ -1265,7 +1265,7 @@ não use `Modular.to`.
 ## API HTTP E Persistência
 
 `coreDependenciesModule` configura `Dio` com `BASE_URL` (padrão
-`https://api.cordato.cloud/api/`) e `HeadersInterceptor`, que usa o media type
+`https://app.cordato.cloud/api/`) e `HeadersInterceptor`, que usa o media type
 `application/vnd.api+json`. `HttpClient` decodifica corpos JSON em mapas e
 retorna `Either<HttpResponse, HttpResponse>`: corpos válidos com 2xx no `Right`, demais status
 no `Left`, com o status e o corpo preservados; falhas de transporte usam

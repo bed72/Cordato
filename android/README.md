@@ -33,6 +33,13 @@ to debug signing.
 
 ## Build And Verify
 
+The default production API is `https://app.cordato.cloud/api/`, matching the
+release launch configuration. To explicitly pin it when building an APK:
+
+```bash
+flutter build apk --release --dart-define=BASE_URL=https://app.cordato.cloud/api/
+```
+
 Android builds require JDK 21. Confirm that Flutter and Gradle are using it:
 
 ```bash

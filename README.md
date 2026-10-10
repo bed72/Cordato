@@ -201,7 +201,7 @@ A atualização cria um arquivo Dart temporário em `tool/`, removido ao encerra
 comando, sem reescrever os arquivos da aplicação.
 
 Para executar o app, use `flutter run`. A autenticação usa por padrão
-`https://api.cordato.cloud/api/`. Para apontá-la a outra API:
+`https://app.cordato.cloud/api/`. Para apontá-la a outra API:
 
 ```bash
 flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/

@@ -7,7 +7,7 @@ instalado em um dispositivo ou emulador.
 
 1. Inicie um dispositivo Android ou simulador iOS.
 2. Instale ou execute o app (`BASE_URL` e opcional; o padrao e
-   `https://api.cordato.cloud/api/`):
+   `https://app.cordato.cloud/api/`):
 
 ```bash
 flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/

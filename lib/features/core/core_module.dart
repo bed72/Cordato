@@ -12,7 +12,7 @@ import 'package:cordato/features/core/infrastructure/clients/storage/storage_cli
 
 const _baseUrl = String.fromEnvironment(
   'BASE_URL',
-  defaultValue: 'https://api.cordato.cloud/api/',
+  defaultValue: 'https://app.cordato.cloud/api/',
 );
 
 final coreDependenciesModule = createModule(
