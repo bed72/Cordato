@@ -43,7 +43,7 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
   bool _isFocused = false;
   bool get _isFailure => widget.failure != null;
 
-  Color _color(BuildContext context) {
+  Color _color() {
     final colors = context.colors;
     if (!widget.enabled) {
       return colors.onSurfaceVariant.withValues(alpha: .82);
@@ -108,17 +108,14 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final color = _color(context);
+    final color = _color();
 
     return Column(
       crossAxisAlignment: .start,
       children: [
         _buildLabel(color),
         const SizedBox(height: 4.0),
-        AbsorbPointer(
-          absorbing: widget.absorbing,
-          child: _buildField(context, color),
-        ),
+        AbsorbPointer(absorbing: widget.absorbing, child: _buildField(color)),
         if (_isFailure) ...[const SizedBox(height: 8.0), _buildFailure(color)],
       ],
     );
@@ -132,7 +129,7 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
     ),
   );
 
-  Widget _buildField(BuildContext context, Color color) => TextSelectionTheme(
+  Widget _buildField(Color color) => TextSelectionTheme(
     data: TextSelectionTheme.of(context).copyWith(
       cursorColor: color,
       selectionHandleColor: color,

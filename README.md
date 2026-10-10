@@ -7,7 +7,7 @@ família, oferecer uma visão compartilhada das finanças de seus membros.
 ## Produto
 
 O modelo de negócio tem como referência o backend legado em Kotlin. O app usa
-uma API HTTP JSON:API para autenticação e possui data sources remotos de User, Expense e Insight;
+uma API HTTP JSON:API para autenticação e possui data sources remotos de User, Expense, Insight e Metrics;
 o cadastro de despesas está conectado à API. A regra central é:
 
 > A pessoa é dona dos próprios dados. A família é apenas uma lente de leitura.
@@ -27,6 +27,8 @@ Os bounded contexts do produto são:
 - `insight`: análises derivadas somente leitura consultadas pela API, com domínio,
   repository, DTOs, data source HTTP e `GetInsightsCommand`. Cards informativos
   na Dashboard, sem persistência própria.
+- `metrics`: agregações somente leitura consultadas pela API, com distribuição
+  mensal dos gastos em gráfico horizontal segmentado por categoria na Dashboard.
 
 O contexto `identity` do backend não será reproduzido no app neste momento. A
 autenticação por e-mail e senha usa a API JSON:API; há sign-in, sign-up,
@@ -48,11 +50,14 @@ O app já possui:
   cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
   verificação após uma espera de 60 segundos e feedback da API;
 - dashboard com nome e inicial do avatar consultados na API por `UserCommand`,
+  gráfico compacto de distribuição dos gastos por categoria no topo, com
+  total em BRL, navegação mensal e detalhes por toque, seguido de
   cards de insights com ícone e cor por tipo em lista horizontal acima das despesas,
   e seção de despesas recentes com as seis primeiras despesas da API, skeleton,
   estado vazio, erro com título e descrição e atualização por gesto ou
   ao retornar do formulário de gasto e da listagem completa; insights e despesas
-  são atualizados em paralelo. Insights possuem skeleton e retry em caso de erro,
+  são atualizados em paralelo com as métricas. O seletor mensal altera somente
+  o gráfico. Métricas e insights possuem skeleton e retry em caso de erro,
   e a seção é ocultada quando a API retorna lista vazia;
 - listagem completa em `/expenses`, aberta por “Ver tudo” da Dashboard, com
   rolagem infinita em páginas de 20 itens, atualização por gesto, skeleton, vazio

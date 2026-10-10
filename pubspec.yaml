@@ -40,6 +40,7 @@ dependencies:
   flutter_modular: ^7.1.1
   flutter_secure_storage: ^11.2.0
 
+  fl_chart: ^1.2.0
   material_ui: ^1.5.0
   cupertino_ui: ^1.1.1
   skeletonizer: ^3.0.0

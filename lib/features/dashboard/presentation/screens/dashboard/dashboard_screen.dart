@@ -4,6 +4,8 @@ import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
 import 'package:cordato/features/insight/presentation/commands/get_insights_command.dart';
+import 'package:cordato/features/metrics/presentation/commands/get_expense_metrics_command.dart';
+import 'package:cordato/features/dashboard/presentation/widgets/metrics/metrics_section_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/insights/insights_section_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
@@ -21,6 +23,7 @@ final class const DashboardScreen({
   required final IMoneyFormatter moneyFormatter,
   required final GetExpensesCommand expensesCommand,
   required final GetInsightsCommand insightsCommand,
+  required final GetExpenseMetricsCommand metricsCommand,
   final VoidCallback? onMenuPressed,
   final VoidCallback? onAvatarPressed,
   final VoidCallback? onBudgetPressed,
@@ -50,6 +53,15 @@ final class _DashboardScreenState extends State<DashboardScreen>
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const .only(top: 24.0, bottom: 96.0),
             children: [
+              MetricsSectionWidget(
+                command: widget.metricsCommand,
+                selectedMonth: metricsMonth,
+                dateFormatter: widget.dateFormatter,
+                moneyFormatter: widget.moneyFormatter,
+                onPreviousMonth: previousMetricsMonth,
+                onNextMonth: nextMetricsMonth,
+                onRetry: loadMetrics,
+              ),
               InsightsSectionWidget(command: widget.insightsCommand),
               ExpensesSectionWidget(
                 limit: recentExpensesLimit,

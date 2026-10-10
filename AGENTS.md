@@ -570,6 +570,12 @@ entrada, loading local, feedback visual e os métodos `initState` e `dispose`.
 Ele deve descartar todo recurso que criar. A screen deve manter somente a
 composição visual e repassar os membros públicos do mixin aos widgets.
 
+Métodos auxiliares de `State` e mixins restritos a `State<Widget>` devem usar
+o getter `context` do próprio estado, sem receber ou repassar `BuildContext`
+redundante. Preserve parâmetros de contexto exigidos por overrides do Flutter,
+callbacks de navegação e operações que precisem de um contexto de outro escopo,
+como o contexto do Navigator ou de um builder descendente.
+
 Não use mixins de estado em `StatelessWidget`; para lógica de apresentação sem
 estado, siga o padrão abaixo. Não crie mixins genéricos, nem mova
 regras de domínio, acesso a repositórios, data sources, storage ou SDKs para um

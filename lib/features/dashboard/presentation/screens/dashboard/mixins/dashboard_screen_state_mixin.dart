@@ -5,12 +5,17 @@ import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashbo
 mixin DashboardScreenStateMixin on State<DashboardScreen> {
   int get recentExpensesLimit => 6;
 
+  late DateTime metricsMonth;
+
   @override
   void initState() {
     super.initState();
+    final today = DateTime.now();
+    metricsMonth = DateTime(today.year, today.month);
     widget.userCommand.execute.run();
     loadExpenses();
     loadInsights();
+    loadMetrics();
   }
 
   @override
@@ -30,12 +35,18 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
       oldWidget.insightsCommand.dispose();
       loadInsights();
     }
+
+    if (oldWidget.metricsCommand != widget.metricsCommand) {
+      oldWidget.metricsCommand.dispose();
+      loadMetrics();
+    }
   }
 
   @override
   void dispose() {
     widget.expensesCommand.dispose();
     widget.insightsCommand.dispose();
+    widget.metricsCommand.dispose();
     super.dispose();
   }
 
@@ -46,8 +57,40 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
   void loadInsights() => widget.insightsCommand.execute.run();
 
+  void loadMetrics() => widget.metricsCommand.execute.run((
+    startDate: metricsMonth,
+    endDate: DateTime(metricsMonth.year, metricsMonth.month + 1, 0),
+    groupBy: .category,
+  ));
+
+  void previousMetricsMonth() => _changeMetricsMonth(-1);
+
+  void nextMetricsMonth() => _changeMetricsMonth(1);
+
+  void _changeMetricsMonth(int offset) {
+    if (widget.metricsCommand.execute.isRunning.value) return;
+    setState(() {
+      metricsMonth = DateTime(metricsMonth.year, metricsMonth.month + offset);
+    });
+    loadMetrics();
+  }
+
+  Future<void> refreshMetrics() async {
+    if (widget.metricsCommand.execute.isRunning.value) return;
+
+    try {
+      await widget.metricsCommand.execute.runAsync((
+        startDate: metricsMonth,
+        endDate: DateTime(metricsMonth.year, metricsMonth.month + 1, 0),
+        groupBy: .category,
+      ));
+    } catch (_) {
+      return;
+    }
+  }
+
   Future<void> refreshDashboard() async {
-    await Future.wait([refreshExpenses(), refreshInsights()]);
+    await Future.wait([refreshExpenses(), refreshInsights(), refreshMetrics()]);
   }
 
   Future<void> refreshInsights() async {
@@ -78,6 +121,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     if (!mounted) return;
     loadExpenses();
     loadInsights();
+    loadMetrics();
   }
 
   Future<void> openExpenses() async {
@@ -85,5 +129,6 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     if (!mounted) return;
     loadExpenses();
     loadInsights();
+    loadMetrics();
   }
 }

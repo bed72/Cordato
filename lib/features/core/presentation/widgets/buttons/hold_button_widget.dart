@@ -77,16 +77,14 @@ class HoldButtonWidgetState extends State<HoldButtonWidget>
           width: double.infinity,
           child: ClipRRect(
             borderRadius: .circular(16.0),
-            child: Stack(
-              children: [_buildBase(context), _buildOverlay(context)],
-            ),
+            child: Stack(children: [_buildBase(), _buildOverlay()]),
           ),
         ),
       ),
     );
   }
 
-  SizedBox _buildBase(BuildContext context) => SizedBox(
+  SizedBox _buildBase() => SizedBox(
     width: double.infinity,
     child: ElevatedButton(
       onPressed: _enabled ? _onTap : null,
@@ -105,7 +103,7 @@ class HoldButtonWidgetState extends State<HoldButtonWidget>
     ),
   );
 
-  Widget _buildOverlay(BuildContext context) => Positioned.fill(
+  Widget _buildOverlay() => Positioned.fill(
     child: IgnorePointer(
       child: AnimatedBuilder(
         animation: _controller,

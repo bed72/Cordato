@@ -48,7 +48,8 @@ Os contextos financeiros e seu estado atual são:
   resultados em cards informativos com rolagem horizontal acima das despesas.
 - `metrics`: agregações somente leitura, com entidades de métricas de despesas,
   contrato e implementação de repository, data source HTTP, DTOs de resposta
-  e command de consulta. Ainda não possui módulo ou gráficos na Dashboard.
+  e command de consulta. A Dashboard apresenta a distribuição mensal em um
+  gráfico horizontal segmentado por categoria, sem card ao redor.
 
 `ExpenseMetricsEntity`, em `metrics/domain/entities/`, preserva `id`,
 `startDate` e `endDate` como datas civis e `totalAmount` como centavos inteiros
@@ -132,6 +133,51 @@ impede execuções concorrentes e permite nova tentativa após falha; exceções
 inesperadas permanecem erros observáveis do command. `dispose` descarta
 `execute`; cada consumidor deve possuir e descartar sua instância. Não há
 tela proprietária em Metrics, portanto o command fica no diretório da feature.
+
+`metricsDependenciesModule` registra `IMetricsRemoteDataSource` e
+`IMetricsRepository` como lazy singletons e `GetExpenseMetricsCommand` por
+factory, composto por `appModule`. A rota da Dashboard injeta uma instância
+própria do command, descartada por `DashboardScreenStateMixin`. O mixin inicia
+no mês atual e consulta o primeiro e último dia civil do mês com
+`groupBy: category`. O seletor de meses altera somente as métricas, não os
+insights ou as despesas recentes. As setas ficam desabilitadas durante a
+consulta para evitar filtros concorrentes. Métricas, insights e despesas são
+consultados em paralelo na abertura e no refresh; o retorno do formulário e
+da listagem completa recarrega as três seções, preservando o mês selecionado.
+
+`MetricsSectionWidget`, na Dashboard, fica antes dos insights. Usa
+`CommandBuilder` para skeleton, falha com retry, total zero e sucesso. O total
+é formatado pelo `IMoneyFormatter` e o mês exibido preserva a data retornada
+pela API. A troca de período substitui o gráfico por skeleton para não exibir
+valores antigos sob o novo mês. Total positivo sem categorias mostra uma
+mensagem de distribuição indisponível; total zero não produz segmentos fictícios.
+
+`ExpenseMetricsChartWidget`, em Metrics, usa `fl_chart` para uma barra
+horizontal empilhada de 36 pixels, sem eixos, grade ou fundo de card.
+Os segmentos preservam a ordem da API e têm largura proporcional aos totais
+em centavos; a conversão para `double` e a soma são somente geometria visual.
+As cores são estáveis por nome da categoria e derivadas do tema. Os segmentos
+não exibem texto ou percentuais. O detalhe abaixo do
+gráfico mostra somente a categoria selecionada em uma linha com indicador
+de cor, nome completo, valor em BRL e percentual da API com duas casas decimais
+seguido de “do total”. Em larguras menores ou com texto ampliado, o conteúdo
+pode quebrar linha sem truncamento. A maior categoria começa
+selecionada, preservando a ordem da API entre empates. Toques nos segmentos
+mudam a seleção; não há navegação por setas entre categorias.
+A seleção é local e volta à maior
+categoria quando os dados mudam. Categorias desconhecidas preservam seu nome
+e usam cor neutra. Os detalhes são anunciados. A legenda completa não é exibida.
+`ExpenseMetricsChartWidgetStateMixin`, restrito a `State<ExpenseMetricsChartWidget>`,
+concentra a seleção inicial e sua atualização no lifecycle, o handler de
+toque e os cálculos de segmentos e a formatação de percentuais.
+`ExpenseCategoryMetricsExtension`, em `metrics/presentation/extensions/`,
+isola os rótulos pt-BR e as cores por categoria, incluindo o fallback para
+valores desconhecidos. O mixin consome `label` e `color(context)` dessa
+extension. As cores do gráfico e do texto vêm de `context.colors`.
+O widget mantém somente a composição do gráfico e do detalhe inline.
+O gráfico respeita a preferência de redução de animações. Previews da seção
+na Dashboard usam o fake de Metrics para claro, escuro, loading, erro, vazio,
+texto ampliado e categorias novas.
 
 `InsightEntity`, em `insight/domain/entities/`, possui `id`, `title`, `type`,
 `group`, `description` e `period` anulável. Insights de onboarding como
