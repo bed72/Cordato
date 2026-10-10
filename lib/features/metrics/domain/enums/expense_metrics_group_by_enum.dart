@@ -1,0 +1,1 @@
+enum ExpenseMetricsGroupByEnum { category }

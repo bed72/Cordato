@@ -1,9 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
+
 import 'package:cordato/features/dashboard/presentation/widgets/user/user_name_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/menu_button_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/notification_button_dashboard_widget.dart';
-import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
 
 final class const AppBarDashboardWidget({
   super.key,
@@ -13,7 +14,7 @@ final class const AppBarDashboardWidget({
   final VoidCallback? onNotificationsPressed,
 }) extends StatelessWidget implements PreferredSizeWidget {
   @override
-  Size get preferredSize => const Size.fromHeight(90.0);
+  Size get preferredSize => const Size.fromHeight(64.0);
 
   @override
   Widget build(BuildContext context) {

@@ -6,7 +6,7 @@ Cordato é um aplicativo Flutter de finanças pessoais e familiares organizado
 por feature e por camadas. Cada pessoa é dona dos próprios dados financeiros;
 a família é uma lente de leitura compartilhada, nunca uma dona de dinheiro.
 
-O aplicativo integra o fluxo de autenticação e os data sources de User, Expense e Insight à API
+O aplicativo integra o fluxo de autenticação e os data sources de User, Expense, Insight e Metrics à API
 HTTP JSON:API pelo cliente compartilhado de `coreDependenciesModule` (padrão
 `https://api.cordato.cloud/api/`). Não há schema ou backend financeiro ativo
 versionado neste repositório. O Kotlin legado é
@@ -46,6 +46,92 @@ Os contextos financeiros e seu estado atual são:
 - `insight`: consulta somente leitura integrada à API, com entidades imutáveis,
   repository, DTOs, data source HTTP e command. A Dashboard apresenta os
   resultados em cards informativos com rolagem horizontal acima das despesas.
+- `metrics`: agregações somente leitura, com entidades de métricas de despesas,
+  contrato e implementação de repository, data source HTTP, DTOs de resposta
+  e command de consulta. Ainda não possui módulo ou gráficos na Dashboard.
+
+`ExpenseMetricsEntity`, em `metrics/domain/entities/`, preserva `id`,
+`startDate` e `endDate` como datas civis e `totalAmount` como centavos inteiros
+de BRL. Zero representa um período sem gastos. Não reutiliza o value object
+de Expense, que exige um gasto positivo, nem importa outro contexto financeiro.
+Não inclui o tipo fixo ou os links do envelope JSON:API e não faz parsing,
+formatação, conversão de fuso ou cálculo de agregações.
+
+`categories` é uma lista anulável de `ExpenseCategoryMetricsEntity`: `null`
+representa agrupamento ausente e lista vazia representa um agrupamento sem
+itens. A entidade copia a lista para um snapshot não modificável, preservando
+a ordem recebida. Cada categoria possui `category` como string, inclusive
+valores futuros, `totalAmount` como centavos inteiros e `percentage` como
+`double` em escala de 0 a 100, não como fração. Percentuais não são valores
+monetários; os valores fornecidos são preservados sem recálculo ou arredondamento.
+As entidades são dados imutáveis, sem validação ou normalização de entrada.
+
+`IMetricsRepository.getExpenses({DateTime? startDate, DateTime? endDate,
+ExpenseMetricsGroupByEnum? groupBy})` retorna
+`Future<GetExpensesRepositoryType>`, com `Either<ErrorsEntity, ExpenseMetricsEntity>`.
+`ExpenseMetricsGroupByEnum` oferece somente `category`, o agrupamento conhecido
+do contrato atual. `groupBy: null` solicita apenas o total. As datas são
+opcionais para permitir o período padrão definido pelo serviço; um período
+explícito deve informar ambas. A validação dos parâmetros pertence à API e
+será representada por `Left`, sem defaults locais ou nova regra de calendário
+no domínio. O contrato não oferece escrita, paginação ou persistência.
+
+`MetricsRepository`, em `metrics/application/repositories/`, implementa
+`IMetricsRepository` e recebe `IMetricsRemoteDataSource`. Delega as datas e o
+agrupamento sem validação, normalização ou defaults, inclusive quando somente
+uma data foi informada. Converte a resposta em `ExpenseMetricsEntity`, preservando
+o período retornado pelo serviço, total zero, agrupamento ausente ou vazio,
+ordem das categorias e percentuais. Converte `ErrorsResponse` em `ErrorsEntity`
+pelo helper compartilhado; exceções inesperadas retornam `ErrorsEntity.unknown()`.
+Não acessa HTTP, storage ou outros repositories. Os parâmetros nomeados são
+suficientes para esta consulta; não há wrapper em `application/data/`.
+
+`IMetricsRemoteDataSource`, em `metrics/infrastructure/remoto/`, define
+`getExpenses` com os mesmos parâmetros opcionais e retorno
+`Either<ErrorsResponse, ExpenseMetricsResponse>`. `MetricsRemoteDataSource`,
+no mesmo arquivo, recebe `IHttpClient` e executa GET relativo `metrics/expenses`,
+marcado como protegido em `HttpPathEnum.expenseMetrics`. Serializa somente os
+filtros informados: `start_date` e `end_date` em `yyyy-MM-dd` pelos componentes
+civis, sem horário ou conversão de fuso, e `group_by: category`. Sem filtros,
+não envia query. Períodos incompletos são enviados à API sem inventar a outra
+data; a resposta de validação é preservada. Headers JSON:API e Bearer ficam
+nos interceptors compartilhados. URLs absolutas ou subcaminhos não recebem
+token; um 401 remove somente o token enviado conforme a política de sessão.
+Expense e Metrics reutilizam `formatCivilDate`, em
+`core/infrastructure/serializers/civil_date_serializer.dart`, para serializar
+datas civis em `yyyy-MM-dd` pelos componentes originais. A função não aplica
+defaults, horário ou conversão de fuso; o default de hoje continua pertencendo
+somente ao cadastro no data source de Expense.
+O data source reutiliza `response<T>` para converter o recurso em `data`,
+preservar erros JSON:API e traduzir respostas malformadas e exceções em erro
+genérico. `ExpenseMetricsResponse` e
+`ExpenseCategoryMetricsResponse`, em `infrastructure/responses/`, possuem
+factories `fromJson` e extensões `toEntity`. O DTO principal recebe um recurso
+JSON:API, lê `id` e `attributes` e converte os totais textuais com `int.parse`,
+os percentuais textuais com `double.parse` e as datas com `DateTime.parse`.
+Não converte valores monetários por `double` nem recalcula os percentuais.
+A lista de categorias é copiada e não modificável; ausência ou `null` permanece
+`null`. Parsing inválido lança exceção e não produz resposta parcial; o data
+source HTTP traduz essas falhas pelo `response<T>` do core.
+
+`ErrorResponse` e `ErrorEntity` no core preservam `source.parameter` no campo
+opcional `parameter`, separado de `pointer`. O parser JSON:API e a conversão
+para domínio mantêm ambos quando presentes, permitindo identificar filtros
+inválidos como `start_date` sem tratá-los como pointers do documento.
+
+`GetExpenseMetricsCommand`, em `metrics/presentation/commands/`, recebe
+`IMetricsRepository` e implementa `ICommand`. `execute` recebe o record
+`({DateTime? startDate, DateTime? endDate, ExpenseMetricsGroupByEnum? groupBy})`
+e delega seus campos a `getExpenses` sem validação, normalização ou defaults.
+Os três campos do record são informados explicitamente; `null` preserva a
+ausência do filtro. O resultado começa em `null` e preserva o
+`Either<ErrorsEntity, ExpenseMetricsEntity>` em `GetExpensesRepositoryType?`,
+incluindo totais zero e falhas de validação como resultados. Cada consulta
+substitui o resultado anterior, sem cálculo ou acúmulo de métricas. O command
+impede execuções concorrentes e permite nova tentativa após falha; exceções
+inesperadas permanecem erros observáveis do command. `dispose` descarta
+`execute`; cada consumidor deve possuir e descartar sua instância. Não há
+tela proprietária em Metrics, portanto o command fica no diretório da feature.
 
 `InsightEntity`, em `insight/domain/entities/`, possui `id`, `title`, `type`,
 `group`, `description` e `period` anulável. Insights de onboarding como
@@ -1201,6 +1287,7 @@ Endpoints usados pelos data sources atuais:
 | Exclusão de User | DELETE `users/<id>` | `true` | `Either<ErrorsResponse, bool>` |
 | Criação de Expense | POST `expenses` | `true` | `Either<ErrorsResponse, ExpenseResponse>` |
 | Listagem de Expense | GET `expenses` com `page[size]` e query de continuação | `true` | `Either<ErrorsResponse, ExpensePageResponse>` |
+| Métricas de despesas | GET `metrics/expenses` com período e agrupamento opcionais | `true` | `Either<ErrorsResponse, ExpenseMetricsResponse>` |
 
 Confirmação de e-mail usa GET da URL assinada absoluta e retorna `int?` no data
 source. No enum, User guarda `users`; o sufixo de ID é interpolado pelo
