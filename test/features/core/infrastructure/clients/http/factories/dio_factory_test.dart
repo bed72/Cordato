@@ -54,6 +54,7 @@ void main() {
           for (final path in [
             'expenses',
             'expenses/8',
+            'metrics/expenses',
             'users/10',
             'authentication/sign-out',
           ]) {

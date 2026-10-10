@@ -48,12 +48,15 @@ final class const ErrorResponse({
   final String? detail,
   final String? status,
   final String? pointer,
+  final String? parameter,
 }) {
   factory ErrorResponse.fromJson(Map<String, dynamic> json) => ErrorResponse(
     title: json['title'] as String?,
     status: json['status'] as String?,
     detail: json['detail'] as String?,
     pointer: (json['source'] as Map<String, dynamic>?)?['pointer'] as String?,
+    parameter:
+        (json['source'] as Map<String, dynamic>?)?['parameter'] as String?,
   );
 }
 
@@ -68,6 +71,7 @@ extension ErrorsResponseToEntity on ErrorsResponse {
                   detail: error.detail,
                   status: error.status,
                   pointer: error.pointer,
+                  parameter: error.parameter,
                 ),
               )
               .toList(),

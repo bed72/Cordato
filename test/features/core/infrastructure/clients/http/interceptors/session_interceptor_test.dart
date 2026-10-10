@@ -58,6 +58,50 @@ void main() {
     verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
   });
 
+  test('authenticates expense metrics with query filters', () async {
+    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async => 'opaque-token');
+
+    await client.get(
+      parameter: const Requests(
+        path: 'metrics/expenses',
+        query: {'group_by': 'category', 'start_date': '2026-10-01'},
+      ),
+    );
+
+    expect(captured!.uri.path, '/api/metrics/expenses');
+    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
+    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
+  });
+
+  test('does not authenticate absolute or unrelated metrics paths', () async {
+    for (final path in [
+      'metrics',
+      'metrics/expenses/1',
+      'metrics/expenses-other',
+      'https://example.com/api/metrics/expenses',
+      'https://external.example/api/metrics/expenses',
+    ]) {
+      await client.get(parameter: Requests(path: path));
+      expect(captured!.headers.containsKey('Authorization'), isFalse);
+    }
+    verifyZeroInteractions(storage);
+  });
+
+  test('removes only the sent token when metrics returns 401', () async {
+    responseStatus = 401;
+    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async => 'opaque-token');
+    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async {});
+
+    await client.get(parameter: const Requests(path: 'metrics/expenses'));
+
+    verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verifyNever(() => storage.delete(key: StorageKeyEnum.userId.key));
+    verifyNever(() => storage.clear());
+  });
+
   test('authenticates the relative insights endpoint', () async {
     when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async => 'opaque-token');

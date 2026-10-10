@@ -14,4 +14,5 @@ final class const ErrorEntity({
   final String? detail,
   final String? status,
   final String? pointer,
+  final String? parameter,
 });

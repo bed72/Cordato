@@ -7,6 +7,46 @@ import 'package:cordato/features/core/infrastructure/clients/http/responses/resp
 
 void main() {
   group('response', () {
+    test('preserves query parameters separately from JSON pointers', () async {
+      final result = await response<int>(
+        execute: () async => const Left(
+          Reponse(
+            statusCode: 422,
+            body: {
+              'errors': [
+                {
+                  'status': '422',
+                  'title': 'Parâmetro inválido',
+                  'detail':
+                      'As datas inicial e final devem ser informadas juntas.',
+                  'source': {'parameter': 'start_date'},
+                },
+                {
+                  'source': {
+                    'pointer': '/data/attributes/name',
+                    'parameter': 'filter',
+                  },
+                },
+                {'detail': 'Sem origem'},
+              ],
+            },
+          ),
+        ),
+        from: (_) => throw StateError('must not convert an error'),
+      );
+      final errors = result.left.toEntity().errors;
+
+      expect(result.left.errors.first.parameter, 'start_date');
+      expect(errors.first.parameter, 'start_date');
+      expect(errors.first.pointer, isNull);
+      expect(errors.first.status, '422');
+      expect(errors.first.title, 'Parâmetro inválido');
+      expect(errors[1].pointer, '/data/attributes/name');
+      expect(errors[1].parameter, 'filter');
+      expect(errors.last.parameter, isNull);
+      expect(errors.last.pointer, isNull);
+    });
+
     test(
       'waits for the request and exposes body and status to the converter',
       () async {

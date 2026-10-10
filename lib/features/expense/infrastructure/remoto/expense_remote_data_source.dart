@@ -3,6 +3,7 @@ import 'package:cordato/features/core/infrastructure/clients/http/http_client.da
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
+import 'package:cordato/features/core/infrastructure/serializers/civil_date_serializer.dart';
 
 import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_page_response.dart';
@@ -86,7 +87,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
               'amount': ?cents,
               'description': ?description,
               if (occurredOn != null)
-                'occurred_on': _formatOccurredOn(occurredOn),
+                'occurred_on': formatDateSerializer(occurredOn),
             },
           },
         },
@@ -110,18 +111,13 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
             'attributes': {
               'amount': cents,
               'description': description,
-              'occurred_on': _formatOccurredOn(occurredOn ?? .now()),
+              'occurred_on': formatDateSerializer(occurredOn ?? .now()),
             },
           },
         },
       ),
     ),
   );
-
-  String _formatOccurredOn(DateTime date) =>
-      '${date.year.toString().padLeft(4, '0')}-'
-      '${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
 
   Map<String, dynamic> _pageQuery(int pageSize, String? pageLink) {
     final query = <String, dynamic>{};
