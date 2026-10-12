@@ -213,12 +213,19 @@ escala de texto vigente. O carrossel calcula a maior altura necessária entre
 todas as páginas e a aplica igualmente, incluindo páginas com um ou dois cards.
 Larguras
 estreitas, valores extensos ou texto ampliado adaptam a grade para uma coluna,
-sem truncar dados financeiros. `ExpenseMetricsCarouselWidget` usa rolagem
-horizontal com altura uniforme suficiente para todas as páginas e indicador
-quando há mais de uma. Seu mixin restrito gerencia posição e controller,
-reinicia na substituição dos dados e descarta listeners e controller.
+sem truncar dados financeiros. `ExpenseMetricsCarouselWidget` usa
+`PageView.builder` com `PageController`, altura uniforme suficiente para todas
+as páginas e indicador quando há mais de uma. A paginação nativa encaixa uma
+página completa ao finalizar o gesto e constrói os widgets sob demanda.
+Seu mixin restrito atualiza o índice por `onPageChanged`, reinicia com
+`jumpToPage(0)` na substituição dos dados e descarta o controller. Não há
+listener manual de offset nem divisão de pixels para estimar a página.
+Cada página utiliza toda a largura disponível da seção, sem padding lateral
+adicional no carrossel, alinhando a grade aos demais widgets da Dashboard.
 A seção renova a identidade pelo resultado; a Dashboard renova a chave pelo
-mês. A redução de animações desativa o snap animado. O skeleton reutiliza a
+mês. O reinício é imediato, sem animação programática; o encaixe nativo do gesto
+permanece ativo, inclusive com redução de animações, para evitar parada entre
+páginas. O skeleton reutiliza a
 grade de três cards e a mesma altura-base adaptativa, exclui placeholders da semântica e anuncia o loading.
 Previews cobrem 1, 2, 3, 4, 5, 6, 7, 8 e 10 categorias, empates, fallback, estados,
 temas e texto ampliado.
@@ -685,17 +692,17 @@ com commands descartados por `PreviewResourceWidget` e repository fake sem rede.
 
 `user` é o bounded context dos dados do usuário. `UserEntity`, em
 `domain/entities/user_entity.dart`, é imutável e possui
-`id`, `name`, `email` e `status` como `String` e `avatarSeed` como `String?`, sem datas.
+`id`, `name`, `email` e `status` como `String` e `avatar` como `String?`, sem datas.
 O identificador preserva a representação textual da API;
 `status` preserva o valor informado, pois o contrato disponível não define todos
 os estados possíveis. O envelope JSON:API (`data`, `type` e `links`) não faz
 parte da entidade. `IUserRepository`, em
 `domain/repositories/interface_user_repository.dart`, define `getById()`,
-`delete()` e `update({String? name, String? avatarSeed})`. As três operações obtêm o ID
+`delete()` e `update({String? name, String? avatar})`. As três operações obtêm o ID
 persistido pelo data source local. Os typedefs `GetByIdRepositoryType`
 e `UpdateRepositoryType` representam `Either<ErrorsEntity, UserEntity>`;
 `DeleteRepositoryType` representa `Either<ErrorsEntity, bool>`. `update` permite
-atualizar `name` e `avatarSeed`, opcionais; campos nulos são omitidos do payload.
+atualizar `name` e `avatar`, opcionais; campos nulos são omitidos do payload.
 Em cada operação, `UserRepository` lê o ID pelo data source local e chama
 o método correspondente de `IUserRemoteDataSource` com esse ID explícito.
 ID ausente, vazio ou composto apenas de espaços retorna o erro de domínio
@@ -709,7 +716,7 @@ para GET, PATCH e DELETE de `users/<id>`. GET e PATCH retornam
 `Either<ErrorsResponse, UserResponse>`; DELETE retorna
 `Either<ErrorsResponse, bool>`, com `true` em 204 e `false` para outros status
 de sucesso. PATCH envia `data.type: users`, `data.id` e
-somente os atributos informados (`name` e `avatar_seed`) em `data.attributes`. Erros JSON:API são preservados;
+somente os atributos informados (`name` e `avatar`) em `data.attributes`. Erros JSON:API são preservados;
 respostas malformadas e exceções inesperadas recebem erro genérico.
 `UserResponse.fromJson` extrai os campos do modelo com casts Dart,
 e `UserResponseToEntity.toEntity()` os converte para `UserEntity`. As datas
@@ -762,17 +769,17 @@ refresh. `GeneratedUserAvatarWidget`, em `user/presentation/widgets/`, encapsula
 `AnimatedBoringAvatar` de `flutter_boring_avatars` com estilo `marble`, transição
 de 300 ms e paleta fixa dos tokens do tema claro, compartilhada nos dois temas.
 Perfil e Dashboard usam a mesma semente, com fallback `cordato-user-<id>` quando
-`avatar_seed` estiver ausente ou nulo. Alterar o nome não altera o desenho.
+`avatar` estiver ausente ou nulo. Alterar o nome não altera o desenho.
 `UserScreenStateMixin` gera sementes aleatórias locais de 32 caracteres hexadecimais
 e mantém a escolha temporária. “Salvar avatar” aparece somente com alteração;
 sair sem salvar descarta a escolha. `UpdateAvatarCommand`, em
-`screens/user/commands/`, recebe `String`, delega a `update(avatarSeed: ...)`, preserva
+`screens/user/commands/`, recebe `String`, delega a `update(avatar: ...)`, preserva
 `Either` e é registrado por factory em `userRoutesModule`, com descarte pela tela.
 `CommandBuilder` preserva o formulário durante o envio, desabilitando geração,
 edição de nome e salvamento. Sucesso usa o usuário retornado e exibe toast;
 falhas preservam a escolha para retry. A tela só confirma sucesso se a resposta
 contiver a semente enviada, evitando anunciar persistência quando a API ignora
-o atributo. O backend precisa aceitar `avatar_seed` em PATCH e retorná-lo em GET
+o atributo. O backend aceita `avatar` em PATCH e o retorna em GET
 e PATCH; a implementação Flutter não provisiona esse campo no servidor.
 Previews de User em `presentation/previews/screens/` usam repository fake sem
 rede para experimentar geração, salvamento e erro, nos temas claro e escuro.
@@ -1468,9 +1475,18 @@ registra headers e payloads de request, response e error (inclusive senha no
 sign-in e token na resposta). URLs absolutas, incluindo a confirmação assinada,
 também são registradas nessa configuração. Não há logger Dio em release.
 
-O sign-up ainda envia `name: 'Trocado'` fixo e repete a senha em
-`password_confirmation`; o formulário não coleta nome. Isso não fornece um
-perfil ao Dashboard.
+O contrato `IAuthenticationRepository.signUp` e o data source remoto recebem
+`email` e `password` obrigatórios e `name` e `avatar` opcionais. O repository
+delega os parâmetros sem normalização. O POST relativo
+`authentication/sign-up` envia `data.type: sign-ups`, nome, e-mail, senha e
+`password_confirmation` igual à senha. O data source preserva o nome informado
+e usa `Trocado` quando ele é nulo, mantendo o formulário atual de e-mail e senha.
+`avatar` transporta uma seed textual e é omitido quando ausente ou nulo;
+não é necessário gerar ou enviar avatar no cadastro. Quando informado, é
+enviado como `data.attributes.avatar`, sem conversão ou validação local.
+`SignUpResponse` preserva `data.id`; a resposta pode incluir a relação `user`,
+sem criar sessão ou gravar token/ID no storage. O perfil é consultado
+posteriormente por User, preservando `avatar` nulo ou ausente.
 
 O formulário de Expense executa o cadastro pela API através do command e repository.
 Dashboard consulta o perfil pelo `UserCommand`, mas não existe feature Flutter de orçamento.

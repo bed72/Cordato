@@ -360,17 +360,17 @@ exclusão e atualização do nome como lazy singletons.
 ### Contexto User
 
 - `UserEntity` é imutável, com `id`, `name`, `email` e `status` como `String`.
-  `avatarSeed` é `String?`, preservando `avatar_seed` ausente ou nulo da API.
+  `avatar` é `String?`, preservando `avatar` ausente ou nulo da API.
   Não inclui datas, `type` ou `links`.
 - `status` preserva o valor textual da API; não invente estados de enum sem
   contrato definido.
-- `IUserRepository` define `getById()`, `delete()` e `update({String? name, String? avatarSeed})`.
+- `IUserRepository` define `getById()`, `delete()` e `update({String? name, String? avatar})`.
   As três operações leem o ID persistido por `IUserLocalDataSource.getId()`;
   ID ausente ou vazio retorna erro sem chamada remota. O data source remoto
   continua recebendo o ID explicitamente.
   Os resultados usam typedefs `Either<ErrorsEntity, UserEntity>` para consulta
   e atualização e `Either<ErrorsEntity, bool>` para exclusão.
-- Atualização permite `name` e `avatarSeed` (`avatar_seed`), omitidos do payload quando nulos. Não
+- Atualização permite `name` e `avatar`, omitidos do payload quando nulos. Não
   inclua atualização de e-mail, status ou datas sem uma nova decisão.
 - `IUserRemoteDataSource` e `UserRemoteDataSource` ficam no mesmo arquivo em
   `infrastructure/remoto/`, seguindo o padrão de Authentication. O DTO
@@ -399,10 +399,16 @@ exclusão e atualização do nome como lazy singletons.
 - O refresh do avatar gera uma escolha temporária; “Salvar avatar” executa
   `UpdateAvatarCommand`, registrado por factory em `userRoutesModule` e descartado
   pela tela. Falhas preservam a escolha; sucesso exige que a API devolva a semente
-  enviada. O backend precisa aceitar e devolver `avatar_seed`; não simule
+  enviada. O atributo HTTP é `avatar`; não simule
   persistência caso o atributo seja ignorado.
 - User e Dashboard descartam `UserCommand`. Dashboard aguarda o retorno de User
   e Settings para recarregar nome e avatar, ignorando retornos obsoletos.
+
+O sign-up aceita `name` e `avatar` opcionais nos contratos de repository e
+data source. O repository delega sem normalização. O data source mantém
+`Trocado` quando o nome é nulo e omite `avatar` quando nulo, preservando o
+formulário atual de e-mail e senha. Não gere uma seed obrigatória para cadastro.
+O atributo HTTP é `avatar`, e a confirmação da senha mantém o valor da senha.
 
 ## Imports
 

@@ -44,6 +44,11 @@ Os cards ilustrados SHALL reservar espaço para sua ilustração. Os cards compa
 - **THEN** a primeira ocupa o card alto à esquerda
 - **AND** a segunda e a terceira ocupam, nessa ordem, os cards superior e inferior à direita
 
+#### Scenario: Largura alinhada à Dashboard
+- **WHEN** a grade é exibida em uma ou mais páginas
+- **THEN** cada página ocupa toda a largura disponível da seção, sem padding lateral adicional no carrossel
+- **AND** os limites esquerdo e direito ficam alinhados aos demais widgets da Dashboard
+
 #### Scenario: Página com duas categorias
 - **WHEN** uma página contém duas categorias
 - **THEN** ambas ocupam uma coluna pela altura completa da página
@@ -62,6 +67,12 @@ Os cards ilustrados SHALL reservar espaço para sua ilustração. Os cards compa
 - **WHEN** a pessoa navega de uma página com três categorias para uma página com uma ou duas
 - **THEN** a altura da grade permanece igual, suficiente para os dados e ilustrações de todas as páginas
 - **AND** texto ampliado pode aumentar essa altura para todas as páginas sem truncar dados
+
+#### Scenario: Encaixe ao finalizar o arraste
+- **WHEN** a pessoa termina um arraste horizontal, inclusive com redução de animações habilitada
+- **THEN** a paginação encaixa uma página completa na largura disponível
+- **AND** não permanece mostrando partes de duas páginas como posição final
+- **AND** o indicador acompanha o índice informado pela paginação nativa
 
 ### Requirement: Carrossel horizontal de páginas
 

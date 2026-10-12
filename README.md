@@ -86,7 +86,7 @@ O app já possui:
   a limpeza da sessão redireciona para as boas-vindas;
 - avatar gerado com `flutter_boring_avatars`, estilo `marble`, compartilhado entre
   Dados pessoais e Dashboard; refresh permite experimentar opções e “Salvar avatar”
-  envia `avatar_seed` à API. A persistência exige suporte desse campo no backend;
+  envia a seed em `avatar` à API e usa o mesmo campo da resposta;
   falhas preservam a escolha, e sair sem salvar a descarta. A Dashboard recarrega
   nome e avatar ao retornar de Dados pessoais ou Settings;
 - tela de edição de nome em `/user/edit`, aberta pelo item Nome, seguindo a UI
@@ -311,7 +311,7 @@ rota protegida.
 A integração HTTP atual inclui os fluxos de autenticação e o data source e
 repository de User, registrados em `userDependenciesModule` e compostos por
 `appModule`, com atualização de nome consumida por `UpdateUserCommand` na edição.
-As operações `getById()`, `update({String? name, String? avatarSeed})` e `delete()` de `UserRepository`
+As operações `getById()`, `update({String? name, String? avatar})` e `delete()` de `UserRepository`
 leem o ID por `UserLocalDataSource.getId()` e chamam o data source remoto
 com o ID explícito; ID ausente impede a requisição. `UserRepository` converte
 respostas e erros remotos para os tipos de domínio nas operações de consulta,

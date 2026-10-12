@@ -44,6 +44,8 @@ Badge e card usam raios do tema; ícones permanecem quadrados arredondados. Fund
 
 Usar navegação horizontal com páginas identificáveis, indicador discreto quando necessário e posição reiniciada na troca do mês ou dados. Calcular a altura necessária de cada grade com base na largura disponível, conteúdo e escala de texto, e aplicar a maior altura a todas as páginas. Em duas categorias, ambos os cards ocupam a altura completa; em uma, o card largo também ocupa essa altura. A altura permanece constante ao navegar horizontalmente, sem cortar conteúdo nas páginas seguintes.
 
+Usar `PageView.builder` com `PageController`, altura explícita calculada pelo conteúdo e largura completa por página. `onPageChanged` fornece o índice do indicador. O reinício usa `jumpToPage(0)`, sem animação programática; não desativar o encaixe nativo do gesto quando houver redução de animações. Isso evita posições intermediárias permanentes e substitui o cálculo manual de offset do `SingleChildScrollView`.
+
 Se forem necessários controller, listeners e índice de página, usar widget stateful e mixin restrito ao widget conforme as convenções do projeto, descartando recursos e sem operações financeiras. Não adicionar gerenciamento global de estado. Manter semântica única por card e excluir ícone, badge duplicado e ilustração do anúncio. Respeitar redução de animações.
 
 ### 5. Integração e validação

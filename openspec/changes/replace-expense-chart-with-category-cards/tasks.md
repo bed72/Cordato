@@ -32,8 +32,10 @@
 ## Registro de verificação
 
 - `flutter pub get`: concluído; `fl_chart` removido do lockfile.
-- `flutter analyze`: um warning preexistente de `unused_import` em `lib/features/expense/presentation/previews/screens/expenses_screen_preview.dart:3`, fora do escopo. Nenhum finding nos arquivos alterados.
-- `flutter test`: 619 testes passaram após o ajuste para três categorias por página, incluindo limites de paginação, preparação das páginas e mapeamento de rótulos, ícones e assets.
+- `flutter analyze`: execução final sem erros ou warnings (`No issues found`), incluindo as correções presentes nos fluxos Dashboard e User.
+- `flutter test`: execução final com 630 testes passando, incluindo limites de paginação, preparação das páginas e mapeamento de rótulos, ícones e assets.
 - O erro de altura infinita foi reproduzido e corrigido fixando `axisDirection: AxisDirection.down` na grade, evitando herdar a orientação da rolagem horizontal.
 - Houve inspeção dos previews claro/escuro, texto ampliado, valores extensos, estados vazio/indisponível e da navegação horizontal no navegador antes dos últimos ajustes. O simulador também expôs a terceira página real da Dashboard. A validação completa de 4.4 e a revisão visual final de 4.5 permanecem pendentes: o driver iOS retornou `Device became unreachable during deviceInfo`, e o navegador perdeu seu alvo CDP (`No CDP page target available`).
 - Os ajustes finais incluem três cards por página, altura-base de 320 pixels ampliada pela maior necessidade entre todas as páginas, ambas as imagens em páginas duplas e skeleton de três itens. O recorte interno usa o raio do tema descontando a espessura da borda. A arte de 220 pixels ocupa uma área decorativa de 180 pixels no canto inferior direito, sem corte superior; os intervalos entre categoria, valor e percentual são de 8 pixels.
+- Removido o padding extra de 8 pixels à direita das páginas. A medição e a renderização da grade usam a largura integral disponível da seção.
+- Substituída a rolagem adaptada por `PageView.builder` e `PageController`, com encaixe nativo, indicador por `onPageChanged` e reinício imediato por `jumpToPage(0)`. O encaixe permanece ativo com redução de animações; a altura uniforme e a largura completa são preservadas.
