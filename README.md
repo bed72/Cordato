@@ -217,9 +217,12 @@ dart run tool/widget_preview.dart
 
 Abra no navegador a URL impressa pelo comando. O launcher usa
 `flutter widget-preview start --web-server` e dispara uma atualização após o
-servidor iniciar para contornar a descoberta vazia na abertura do Flutter 3.47.6.
+servidor iniciar para contornar a descoberta vazia na abertura do Flutter 3.47.6
+e 3.47.7.
 A atualização cria um arquivo Dart temporário em `tool/`, removido ao encerrar o
 comando, sem reescrever os arquivos da aplicação.
+Se o painel de preview do editor mostrar “No previews detected”, use a ação de
+atualização do painel após a análise inicial.
 
 O catálogo mensal inclui a Dashboard completa em claro/escuro, carregamento
 agregado, mês vazio e falha parcial; o seletor inclui fevereiro bissexto e

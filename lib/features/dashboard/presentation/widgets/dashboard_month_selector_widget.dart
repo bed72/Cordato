@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
+import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 
 final class const DashboardMonthSelectorWidget({
   super.key,
@@ -35,6 +35,7 @@ final class const DashboardMonthSelectorWidget({
             icon: Icons.chevron_left,
             onPress: onPreviousMonth,
           ),
+          const SizedBox(width: 8.0),
           _buildMonthButton(
             context: context,
             label: 'Próximo mês',
@@ -46,7 +47,7 @@ final class const DashboardMonthSelectorWidget({
     );
   }
 
-  Widget _buildMonthButton({
+  Tooltip _buildMonthButton({
     required BuildContext context,
     required String label,
     required IconData icon,
@@ -57,12 +58,17 @@ final class const DashboardMonthSelectorWidget({
     child: Semantics(
       container: true,
       label: label,
+      enabled: onPress != null,
       child: IconButtonWidget(
         icon: icon,
+        iconSize: 26.0,
         onPress: onPress,
-        withoutBackground: true,
-        backgroundColor: Colors.transparent,
-        iconColor: context.colors.onSurfaceVariant,
+        withoutBackground: false,
+        borderRadius: context.radius.cornerRadius100,
+        backgroundColor: context.colors.onSurface.withValues(alpha: .04),
+        iconColor: onPress == null
+            ? context.colors.onSurface.withValues(alpha: .38)
+            : context.colors.onSurface,
       ),
     ),
   );

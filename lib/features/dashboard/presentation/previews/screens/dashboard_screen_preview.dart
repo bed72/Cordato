@@ -24,6 +24,7 @@ import 'package:cordato/features/expense/presentation/previews/fakes/expenses_li
 
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
 import 'package:cordato/features/dashboard/presentation/previews/fakes/dashboard_user_preview_repository.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/commands/get_first_expense_month_command.dart';
 
 @CordatoPreview(
   group: 'Dashboard / Telas',
@@ -77,6 +78,22 @@ Widget _screenPreview({
       userCommand: userCommand,
       dateFormatter: DateFormatter(),
       moneyFormatter: MoneyFormatter(),
+      firstExpenseMonthCommand: GetFirstExpenseMonthCommand(
+        repository: ExpensesListPreviewRepository(
+          loading: loading,
+          items: empty
+              ? []
+              : [
+                  ExpenseEntity(
+                    id: 'first-expense',
+                    category: .food,
+                    description: 'Primeiro gasto',
+                    cents: .create(cents: 1500).right,
+                    occurredOn: DateTime(month.year, month.month - 2),
+                  ),
+                ],
+        ),
+      ),
       expensesCommand: GetExpensesCommand(
         repository: ExpensesListPreviewRepository(
           loading: loading,

@@ -145,6 +145,24 @@ e recentes com intervalo e tamanho seis. Abertura, troca pelas setas, refresh e
 retorno à instância existente da Dashboard usam esse contexto; refresh não muda
 a seleção. `DashboardMonthSelectorWidget` pertence à Dashboard, permanece visível
 em todos os estados e impede avanço além do mês atual, sem swipe mensal.
+As setas reutilizam o fundo, raio e tamanho do botão de voltar do core e
+mostram o ícone com opacidade reduzida quando desabilitadas.
+O retorno é limitado ao mês da primeira despesa; meses vazios intermediários
+continuam navegáveis. Sem despesas, ambas as setas ficam desabilitadas no mês atual.
+`GetFirstExpenseMonthCommand`, em `dashboard/presentation/screens/dashboard/commands/`,
+consulta o histórico geral por `IExpenseRepository.get`, com o tamanho padrão
+de página, seguindo `next` como continuação opaca e calculando o menor mês civil
+sem acumular despesas. Não pressupõe ordenação nem encerra em uma página vazia
+que ainda tenha continuação. Falhas invalidam o limite inteiro e continuações
+repetidas retornam erro. O command é registrado por factory no módulo de rotas
+da Dashboard e descartado pela tela, interrompendo novas páginas após descarte.
+O limite é consultado na abertura, refresh e retorno de cadastro/listagem;
+trocas de mês reutilizam o resultado. Durante a consulta, as setas ficam
+desabilitadas; falha mantém o retorno bloqueado até uma nova consulta por refresh.
+Se a primeira despesa for removida ou mudar de mês, a recarga ajusta uma seleção
+anterior ao novo limite antes de consultar as seções, sem avançar além do mês atual.
+Essa consulta percorre todo o histórico porque o contrato atual não fornece
+metadados do primeiro mês nem ordenação ascendente.
 As setas ficam desabilitadas enquanto qualquer command de seção estiver rodando,
 inclusive retry. O mixin observa `isRunning` dos três commands, removendo os
 listeners antes de substituir ou descartar instâncias. Retornos de navegação
@@ -1472,11 +1490,16 @@ Esses cenários são catálogo visual, não evidência de validação da API ou 
 Execute-o com `dart run tool/widget_preview.dart`
 e abra a URL impressa no navegador. O launcher inicia o previewer nativo com
 `--web-server` e cria um arquivo Dart temporário em `tool/` após o servidor estar
-disponível. Isso contorna a condição de corrida do Flutter 3.47.6, que consulta
+disponível. Isso contorna a condição de corrida observada no Flutter 3.47.6 e
+3.47.7, que consulta
 os previews antes do fim da análise inicial e mantém o catálogo vazio até uma
 mudança de arquivo. O arquivo temporário é removido ao encerrar o launcher, sem
 reescrita dos arquivos da aplicação. `PreviewResourceWidget` cuida
 do descarte de recursos no catálogo, e `.widget_preview/` não é versionado.
+No painel do editor, uma abertura com “No previews detected” também requer
+atualização após a análise inicial. Essa falha de descoberta não exige converter
+o primary constructor de `CordatoPreview`; a anotação mantém a sintaxe padrão
+do projeto.
 
 ## Testes E Verificação
 

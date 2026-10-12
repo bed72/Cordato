@@ -9,10 +9,12 @@ import 'package:cordato/features/user/presentation/screens/user/commands/user_co
 import 'package:cordato/features/metrics/presentation/commands/get_expense_metrics_command.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/commands/get_first_expense_month_command.dart';
 
 final dashboardRoutesModule = createModule(
   path: RouteEnum.dashboard.path,
   register: (context) {
+    context.add(GetFirstExpenseMonthCommand.new);
     context.route(
       RouteEnum.app.path,
       child: (context, _) => DashboardScreen(
@@ -23,6 +25,7 @@ final dashboardRoutesModule = createModule(
         expensesCommand: inject<GetExpensesCommand>(),
         insightsCommand: inject<GetInsightsCommand>(),
         metricsCommand: inject<GetExpenseMetricsCommand>(),
+        firstExpenseMonthCommand: inject<GetFirstExpenseMonthCommand>(),
         onSeeAllExpensesPressed: (month) async => await context.pushNamed(
           RouteEnum.expenses.path,
           arguments: (

@@ -580,8 +580,12 @@ acessar rede, storage ou plugins. Previews compartilhados ficam em
 - Não importe `mocktail` em previews; ele é dependência exclusiva de testes.
 - Não crie dados financeiros com `double`; fixtures monetárias usam centavos inteiros.
 
-Execute os previews com `flutter widget-preview start`. O diretório gerado
-`.widget_preview/` é local e não deve ser versionado.
+Execute os previews com `dart run tool/widget_preview.dart` e abra a URL
+impressa no navegador. O launcher contorna a descoberta inicial vazia observada
+no Flutter 3.47.6 e 3.47.7, disparando uma atualização após a abertura do servidor.
+Se o painel do editor abrir sem previews, use a ação de atualização do painel
+após a análise inicial. O diretório gerado `.widget_preview/` é local e não deve
+ser versionado.
 
 ## Screens
 

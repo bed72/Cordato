@@ -13,9 +13,16 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
       DateTime(selectedMonth.year, selectedMonth.month + 1, 0);
 
   bool get isLoading =>
+      widget.firstExpenseMonthCommand.execute.isRunning.value ||
       widget.expensesCommand.execute.isRunning.value ||
       widget.insightsCommand.execute.isRunning.value ||
       widget.metricsCommand.execute.isRunning.value;
+
+  bool get canGoToPreviousMonth {
+    final result = widget.firstExpenseMonthCommand.execute.value;
+    if (result == null || result.isLeft || result.right == null) return false;
+    return selectedMonth.isAfter(result.right!);
+  }
 
   bool get canGoToNextMonth {
     final today = DateTime.now();
@@ -31,6 +38,10 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     widget.expensesCommand.execute.isRunning.addListener(_loadingChanged);
     widget.insightsCommand.execute.isRunning.addListener(_loadingChanged);
     widget.metricsCommand.execute.isRunning.addListener(_loadingChanged);
+    widget.firstExpenseMonthCommand.execute.isRunning.addListener(
+      _loadingChanged,
+    );
+    widget.firstExpenseMonthCommand.execute.run();
     widget.userCommand.execute.run();
     loadExpenses();
     loadInsights();
@@ -43,13 +54,25 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
     if (oldWidget.expensesCommand != widget.expensesCommand ||
         oldWidget.insightsCommand != widget.insightsCommand ||
-        oldWidget.metricsCommand != widget.metricsCommand) {
+        oldWidget.metricsCommand != widget.metricsCommand ||
+        oldWidget.firstExpenseMonthCommand != widget.firstExpenseMonthCommand) {
       _dependenciesVersion++;
       _refreshPendingAfterNavigation = false;
     }
 
     if (oldWidget.userCommand != widget.userCommand) {
       widget.userCommand.execute.run();
+    }
+
+    if (oldWidget.firstExpenseMonthCommand != widget.firstExpenseMonthCommand) {
+      oldWidget.firstExpenseMonthCommand.execute.isRunning.removeListener(
+        _loadingChanged,
+      );
+      oldWidget.firstExpenseMonthCommand.dispose();
+      widget.firstExpenseMonthCommand.execute.isRunning.addListener(
+        _loadingChanged,
+      );
+      widget.firstExpenseMonthCommand.execute.run();
     }
 
     if (oldWidget.expensesCommand != widget.expensesCommand) {
@@ -85,6 +108,10 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     widget.expensesCommand.execute.isRunning.removeListener(_loadingChanged);
     widget.insightsCommand.execute.isRunning.removeListener(_loadingChanged);
     widget.metricsCommand.execute.isRunning.removeListener(_loadingChanged);
+    widget.firstExpenseMonthCommand.execute.isRunning.removeListener(
+      _loadingChanged,
+    );
+    widget.firstExpenseMonthCommand.dispose();
     widget.expensesCommand.dispose();
     widget.insightsCommand.dispose();
     widget.metricsCommand.dispose();
@@ -127,7 +154,11 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   void nextMonth() => _changeMonth(1);
 
   void _changeMonth(int offset) {
-    if (isLoading || (offset > 0 && !canGoToNextMonth)) return;
+    if (isLoading ||
+        (offset > 0 && !canGoToNextMonth) ||
+        (offset < 0 && !canGoToPreviousMonth)) {
+      return;
+    }
     setState(() {
       selectedMonth = DateTime(
         selectedMonth.year,
@@ -155,6 +186,26 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
   Future<void> refreshDashboard() async {
     if (isLoading) return;
+    final version = _dependenciesVersion;
+    try {
+      final data = await widget.firstExpenseMonthCommand.execute.runAsync();
+
+      if (!mounted || version != _dependenciesVersion) return;
+      if (data != null && data.isRight) {
+        final today = DateTime.now();
+        final currentMonth = DateTime(today.year, today.month);
+        final firstMonth = data.right ?? currentMonth;
+        if (selectedMonth.isBefore(firstMonth)) {
+          setState(() {
+            selectedMonth = firstMonth.isAfter(currentMonth)
+                ? currentMonth
+                : firstMonth;
+          });
+        }
+      }
+    } catch (_) {
+      if (!mounted || version != _dependenciesVersion) return;
+    }
     await Future.wait([refreshExpenses(), refreshInsights(), refreshMetrics()]);
   }
 

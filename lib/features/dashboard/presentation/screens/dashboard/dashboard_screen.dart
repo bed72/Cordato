@@ -15,6 +15,7 @@ import 'package:cordato/features/dashboard/presentation/widgets/dashboard_month_
 import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_section_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/insights/insights_section_widget.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/mixins/dashboard_screen_state_mixin.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/commands/get_first_expense_month_command.dart';
 
 final class const DashboardScreen({
   super.key,
@@ -24,6 +25,7 @@ final class const DashboardScreen({
   required final GetExpensesCommand expensesCommand,
   required final GetInsightsCommand insightsCommand,
   required final GetExpenseMetricsCommand metricsCommand,
+  required final GetFirstExpenseMonthCommand firstExpenseMonthCommand,
   final VoidCallback? onMenuPressed,
   final VoidCallback? onAvatarPressed,
   final VoidCallback? onNotificationsPressed,
@@ -55,7 +57,9 @@ final class _DashboardScreenState extends State<DashboardScreen>
               DashboardMonthSelectorWidget(
                 selectedMonth: selectedMonth,
                 formatter: widget.dateFormatter,
-                onPreviousMonth: isLoading ? null : previousMonth,
+                onPreviousMonth: isLoading || !canGoToPreviousMonth
+                    ? null
+                    : previousMonth,
                 onNextMonth: isLoading || !canGoToNextMonth ? null : nextMonth,
               ),
               const SizedBox(height: 8.0),
