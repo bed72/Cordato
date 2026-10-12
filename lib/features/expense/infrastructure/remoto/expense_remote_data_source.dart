@@ -19,7 +19,12 @@ abstract interface class IExpenseRemoteDataSource {
 
   Future<GetByIdDataSourceType> getById({required String id});
 
-  Future<GetDataSourceType> get({required int pageSize, String? pageLink});
+  Future<GetDataSourceType> get({
+    required int pageSize,
+    DateTime? to,
+    DateTime? from,
+    String? pageLink,
+  });
 
   Future<CreateDataSourceType> create({
     required int cents,
@@ -58,16 +63,25 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
   );
 
   @override
-  Future<GetDataSourceType> get({required int pageSize, String? pageLink}) =>
-      response(
-        from: (response) => .fromJson(response.body),
-        execute: () => _client.get(
-          parameter: Requests(
-            path: HttpPathEnum.expenses.path,
-            query: _pageQuery(pageSize, pageLink),
-          ),
+  Future<GetDataSourceType> get({
+    required int pageSize,
+    DateTime? to,
+    DateTime? from,
+    String? pageLink,
+  }) => response(
+    from: (response) => .fromJson(response.body),
+    execute: () => _client.get(
+      parameter: Requests(
+        path: HttpPathEnum.expenses.path,
+        query: _pageQuery(
+          to: to,
+          from: from,
+          pageSize: pageSize,
+          pageLink: pageLink,
         ),
-      );
+      ),
+    ),
+  );
 
   @override
   Future<UpdateDataSourceType> update({
@@ -119,7 +133,12 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
     ),
   );
 
-  Map<String, dynamic> _pageQuery(int pageSize, String? pageLink) {
+  Map<String, dynamic> _pageQuery({
+    required int pageSize,
+    DateTime? to,
+    DateTime? from,
+    String? pageLink,
+  }) {
     final query = <String, dynamic>{};
 
     if (pageLink != null) {
@@ -135,6 +154,14 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
       }
     }
     query['page[size]'] = pageSize;
+
+    if (from != null || to != null) {
+      query.remove('filter[year]');
+      query.remove('filter[month]');
+      query.remove('filter[day]');
+    }
+    if (from != null) query['filter[from]'] = formatDateSerializer(from);
+    if (to != null) query['filter[to]'] = formatDateSerializer(to);
 
     return query;
   }

@@ -50,12 +50,14 @@ void main() {
       when(() => repository.get(pageSize: 6))
           .thenAnswer((_) async => Right(page));
 
-      final result = await command.execute.runAsync((
+      final data = await command.execute.runAsync((
+        from: null,
+        to: null,
         pageSize: 6,
         pageLink: null,
       ));
 
-      expect(result?.right, same(page));
+      expect(data?.right, same(page));
       expect(command.execute.value?.right, same(page));
       verify(() => repository.get(pageSize: 6)).called(1);
       verifyNoMoreInteractions(repository);
@@ -67,21 +69,30 @@ void main() {
     () async {
       when(() => repository.get(pageSize: 6))
           .thenAnswer((_) async => Right(page));
-      await command.execute.runAsync((pageSize: 6, pageLink: null));
+      await command.execute.runAsync((
+        pageSize: 6,
+        to: null,
+        from: null,
+        pageLink: null,
+      ));
+
       final continuation = ExpensePageEntity(
         items: [],
         next: null,
         prev: '?page[before]=15',
       );
+
       when(() => repository.get(pageSize: 20, pageLink: page.next))
           .thenAnswer((_) async => Right(continuation));
 
-      final result = await command.execute.runAsync((
+      final data = await command.execute.runAsync((
+        to: null,
+        from: null,
         pageSize: 20,
         pageLink: page.next,
       ));
 
-      expect(result?.right, same(continuation));
+      expect(data?.right, same(continuation));
       expect(command.execute.value?.right.items, isEmpty);
       expect(command.execute.value?.right, same(continuation));
       verify(() => repository.get(pageSize: 20, pageLink: page.next)).called(1);
@@ -101,12 +112,14 @@ void main() {
     when(() => repository.get(pageSize: 6))
         .thenAnswer((_) async => const Left(errors));
 
-    final result = await command.execute.runAsync((
+    final data = await command.execute.runAsync((
+      to: null,
+      from: null,
       pageSize: 6,
       pageLink: null,
     ));
 
-    expect(result?.left, same(errors));
+    expect(data?.left, same(errors));
     expect(command.execute.value?.left, same(errors));
     verify(() => repository.get(pageSize: 6)).called(1);
     verifyNoMoreInteractions(repository);
@@ -120,14 +133,24 @@ void main() {
       return pending.future;
     });
 
-    final result = command.execute.runAsync((pageSize: 6, pageLink: null));
+    final data = command.execute.runAsync((
+      pageSize: 6,
+      to: null,
+      from: null,
+      pageLink: null,
+    ));
     await started.future;
     expect(command.execute.isRunning.value, isTrue);
-    command.execute.run((pageSize: 20, pageLink: page.next));
+    command.execute.run((
+      pageSize: 20,
+      pageLink: page.next,
+      to: null,
+      from: null,
+    ));
     verify(() => repository.get(pageSize: 6)).called(1);
     pending.complete(Right(page));
 
-    expect((await result)?.right, same(page));
+    expect((await data)?.right, same(page));
     expect(command.execute.isRunning.value, isFalse);
     verifyNoMoreInteractions(repository);
   });
@@ -137,14 +160,24 @@ void main() {
     when(() => repository.get(pageSize: 6))
         .thenAnswer((_) async => Left(errors));
     expect(
-      (await command.execute.runAsync((pageSize: 6, pageLink: null)))?.left,
+      (await command.execute.runAsync((
+        pageSize: 6,
+        to: null,
+        from: null,
+        pageLink: null,
+      )))?.left,
       same(errors),
     );
     when(() => repository.get(pageSize: 6))
         .thenAnswer((_) async => Right(page));
 
     expect(
-      (await command.execute.runAsync((pageSize: 6, pageLink: null)))?.right,
+      (await command.execute.runAsync((
+        pageSize: 6,
+        to: null,
+        from: null,
+        pageLink: null,
+      )))?.right,
       same(page),
     );
     expect(command.execute.value?.right, same(page));
@@ -156,7 +189,12 @@ void main() {
     when(() => repository.get(pageSize: 6))
         .thenAnswer((_) async => Right(page));
     try {
-      await command.execute.runAsync((pageSize: 6, pageLink: null));
+      await command.execute.runAsync((
+        pageSize: 6,
+        to: null,
+        from: null,
+        pageLink: null,
+      ));
 
       expect(otherCommand.execute.value, isNull);
       expect(command.execute.value?.right, same(page));
@@ -174,7 +212,12 @@ void main() {
     command.execute.results.addListener(onResult);
     try {
       await expectLater(
-        command.execute.runAsync((pageSize: 6, pageLink: null)),
+        command.execute.runAsync((
+          pageSize: 6,
+          to: null,
+          from: null,
+          pageLink: null,
+        )),
         throwsA(same(failure)),
       );
     } finally {
@@ -198,4 +241,62 @@ void main() {
     );
     verifyZeroInteractions(repository);
   });
+
+  test(
+    'delegates civil limits unchanged on first and subsequent pages',
+    () async {
+      final from = DateTime.utc(2026, 9, 1, 23);
+      final to = DateTime(2026, 9, 30, 12);
+      for (final link in [null, page.next]) {
+        when(
+          () =>
+              repository.get(pageSize: 20, pageLink: link, from: from, to: to),
+        ).thenAnswer((_) async => Right(page));
+
+        final result = await command.execute.runAsync((
+          pageSize: 20,
+          pageLink: link,
+          from: from,
+          to: to,
+        ));
+
+        expect(result?.right, same(page));
+        verify(
+          () =>
+              repository.get(pageSize: 20, pageLink: link, from: from, to: to),
+        ).called(1);
+      }
+      verifyNoMoreInteractions(repository);
+    },
+  );
+
+  test(
+    'preserves incomplete interval errors and their filter pointer',
+    () async {
+      final from = DateTime(2026, 9, 1);
+      const errors = ErrorsEntity(
+        errors: [
+          ErrorEntity(
+            status: '422',
+            pointer: '/filter/from',
+            title: 'Intervalo inválido',
+          ),
+        ],
+      );
+      when(() => repository.get(pageSize: 6, from: from))
+          .thenAnswer((_) async => const Left(errors));
+
+      final data = await command.execute.runAsync((
+        to: null,
+        from: from,
+        pageSize: 6,
+        pageLink: null,
+      ));
+
+      expect(data?.left, same(errors));
+      expect(data?.left.errors.single.pointer, '/filter/from');
+      verify(() => repository.get(pageSize: 6, from: from, to: null)).called(1);
+      verifyNoMoreInteractions(repository);
+    },
+  );
 }

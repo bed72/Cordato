@@ -5,9 +5,9 @@ import 'package:cordato/features/insight/domain/repositories/interface_insight_r
 
 final class GetInsightsCommand({required IInsightRepository repository})
     implements ICommand {
-  final Command<void, GetRepositoryType?> execute =
-      Command.createAsyncNoParam<GetRepositoryType?>(
-        repository.get,
+  final Command<({int? year, int? month}), GetRepositoryType?> execute =
+      Command.createAsync<({int? year, int? month}), GetRepositoryType?>(
+        (filters) => repository.get(year: filters.year, month: filters.month),
         initialValue: null,
       );
 

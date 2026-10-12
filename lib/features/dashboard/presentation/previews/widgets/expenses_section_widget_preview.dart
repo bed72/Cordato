@@ -74,7 +74,12 @@ Widget _sectionPreview({
       ),
     );
     if (result != null) {
-      command.execute.run((pageSize: 6, pageLink: null));
+      command.execute.run((
+        pageSize: 6,
+        pageLink: null,
+        from: DateTime(2026, 10),
+        to: DateTime(2026, 10, 31),
+      ));
     }
     return command;
   },
@@ -87,6 +92,12 @@ Widget _sectionPreview({
         command: command,
         dateFormatter: DateFormatter(now: () => DateTime(2026, 10, 7)),
         moneyFormatter: MoneyFormatter(),
+        onRetry: () => command.execute.run((
+          pageSize: 6,
+          pageLink: null,
+          from: DateTime(2026, 10),
+          to: DateTime(2026, 10, 31),
+        )),
         onSeeAllExpensesPressed: onSeeAllExpensesPressed,
       ),
     ),
@@ -117,9 +128,7 @@ ExpensePageEntity _expensesPage() {
           id: 'preview-expense-$index',
           description: fixture.description,
           cents: AmountValueObject.create(cents: fixture.cents).right,
-          occurredOn: index == fixtures.length - 1
-              ? DateTime(2025, 12, 31)
-              : DateTime(2026, 10, 7 - index),
+          occurredOn: DateTime(2026, 10, 7 - index),
           category: fixture.category,
         ),
     ],

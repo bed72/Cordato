@@ -21,8 +21,8 @@ final class const ExpenseResponse({
       amount: attributes['amount'] as int,
       description: attributes['description'] as String,
       occurredOn: DateTime.parse(attributes['occurred_on'] as String),
-      category: ExpenseCategoryEnum.values.byName(
-        attributes['category'] as String,
+      category: ExpenseCategoryEnum.values.firstWhere(
+        (category) => category.value == attributes['category'] as String,
       ),
     );
   }

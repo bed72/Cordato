@@ -13,7 +13,12 @@ typedef GetByIdRepositoryType = Either<ErrorsEntity, ExpenseEntity>;
 abstract interface class IExpenseRepository {
   Future<DeleteRepositoryType> delete({required String id});
 
-  Future<GetRepositoryType> get({int pageSize = 30, String? pageLink});
+  Future<GetRepositoryType> get({
+    int pageSize = 30,
+    DateTime? to,
+    DateTime? from,
+    String? pageLink,
+  });
 
   Future<GetByIdRepositoryType> getById({required String id});
 

@@ -23,36 +23,39 @@ final class const ExpensesSectionWidget({
   required final GetExpensesCommand command,
   required final IDateFormatter dateFormatter,
   required final IMoneyFormatter moneyFormatter,
+  final VoidCallback? onRetry,
   final VoidCallback? onSeeAllExpensesPressed,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CommandBuilder<
-      ({int pageSize, String? pageLink}),
+      ({int pageSize, String? pageLink, DateTime? from, DateTime? to}),
       GetRepositoryType?
     >(
       command: command.execute,
-      onError: (_, _, _, _) => _section(context, _failure()),
-      whileRunning: (_, _, _) => _section(context, _loading()),
+      onError: (_, _, _, _) =>
+          _buildSection(context: context, child: _buildFailure()),
+      whileRunning: (_, _, _) =>
+          _buildSection(context: context, child: _buildLoading()),
       onSuccess: (_, _) => switch (command.execute.value) {
-        Right(:final value) when value.items.isEmpty => _section(
-          context,
-          const ExpensesEmptyWidget(),
+        Right(:final value) when value.items.isEmpty => _buildSection(
+          context: context,
+          child: const ExpensesEmptyWidget(),
         ),
-        Right(:final value) => _section(
-          context,
-          _items(value.items),
+        Right(:final value) => _buildSection(
+          context: context,
+          child: _buildItems(value.items),
           hasItems: true,
         ),
-        Left() => _section(context, _failure()),
-        null => _section(context, _loading()),
+        Left() => _buildSection(context: context, child: _buildFailure()),
+        null => _buildSection(context: context, child: _buildLoading()),
       },
     );
   }
 
-  Column _section(
-    BuildContext context,
-    Widget child, {
+  Column _buildSection({
+    required BuildContext context,
+    required Widget child,
     bool hasItems = false,
   }) => Column(
     spacing: 8.0,
@@ -88,10 +91,13 @@ final class const ExpensesSectionWidget({
     ],
   );
 
-  ExpensesFailureWidget _failure() => const ExpensesFailureWidget();
-  ExpensesSkeletonWidget _loading() => ExpensesSkeletonWidget(count: limit);
+  ExpensesSkeletonWidget _buildLoading() =>
+      ExpensesSkeletonWidget(count: limit);
 
-  Column _items(List<ExpenseEntity> expenses) => Column(
+  ExpensesFailureWidget _buildFailure() =>
+      ExpensesFailureWidget(onRetry: onRetry);
+
+  Column _buildItems(List<ExpenseEntity> expenses) => Column(
     mainAxisSize: .min,
     children: [
       for (final expense in expenses.take(limit))

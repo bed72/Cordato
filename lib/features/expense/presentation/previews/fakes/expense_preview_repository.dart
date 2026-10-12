@@ -11,7 +11,12 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
       Right(expense);
 
   @override
-  Future<GetRepositoryType> get({int pageSize = 30, String? pageLink}) async =>
+  Future<GetRepositoryType> get({
+    int pageSize = 30,
+    String? pageLink,
+    DateTime? from,
+    DateTime? to,
+  }) async =>
       Right(ExpensePageEntity(items: [expense], next: null, prev: null));
 
   @override

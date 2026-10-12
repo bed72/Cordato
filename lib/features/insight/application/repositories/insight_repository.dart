@@ -9,9 +9,9 @@ final class InsightRepository({
   required final IInsightRemoteDataSource _remoteDataSource,
 }) implements IInsightRepository {
   @override
-  Future<GetRepositoryType> get() async {
+  Future<GetRepositoryType> get({int? year, int? month}) async {
     try {
-      final response = await _remoteDataSource.get();
+      final response = await _remoteDataSource.get(year: year, month: month);
 
       return response.either(
         (errors) => errors.toEntity(),

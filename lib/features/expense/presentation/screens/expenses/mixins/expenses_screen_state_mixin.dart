@@ -1,10 +1,11 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
+
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
-import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
 
 mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   String? nextPageLink;
@@ -21,6 +22,12 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   final scrollController = ScrollController();
 
   int get pageSize => 20;
+
+  String? get monthLabel {
+    final period = widget.period;
+    if (period == null) return null;
+    return '${widget.dateFormatter.formatMonth(period.from)} de ${period.from.year}';
+  }
 
   @override
   void initState() {
@@ -93,20 +100,18 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     try {
       final updated = await navigate(id);
       if (!mounted || widget.getCommand != command || updated == null) return;
+
       final index = expenses.indexWhere((expense) => expense.id == id);
       if (index < 0) return;
-      setState(() {
-        if (_civilDay(expenses[index].occurredOn) ==
-            _civilDay(updated.occurredOn)) {
-          expenses[index] = updated;
-        } else {
-          expenses.removeAt(index);
-          _insertExpense(updated);
-        }
-      });
+
+      setState(() => _applyUpdatedExpense(index, updated));
     } finally {
       if (mounted) setState(() => isEditingExpense = false);
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.getCommand == command) loadNearEnd();
+    });
   }
 
   Future<bool> confirmDeleteExpense(String id) async {
@@ -170,10 +175,10 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
                     )
                     .join('\n'),
         );
-      } else {
-        showDeleteFailure();
+        return false;
       }
 
+      showDeleteFailure();
       return false;
     } catch (_) {
       if (mounted &&
@@ -205,6 +210,31 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
 
   DateTime _civilDay(DateTime date) =>
       DateTime.utc(date.year, date.month, date.day);
+
+  bool _isWithinPeriod(DateTime date) {
+    final period = widget.period;
+    if (period == null) return true;
+
+    final day = _civilDay(date);
+    return !day.isBefore(_civilDay(period.from)) &&
+        !day.isAfter(_civilDay(period.to));
+  }
+
+  void _applyUpdatedExpense(int index, ExpenseEntity updated) {
+    if (!_isWithinPeriod(updated.occurredOn)) {
+      expenses.removeAt(index);
+      return;
+    }
+
+    if (_civilDay(expenses[index].occurredOn) ==
+        _civilDay(updated.occurredOn)) {
+      expenses[index] = updated;
+      return;
+    }
+
+    expenses.removeAt(index);
+    _insertExpense(updated);
+  }
 
   void _insertExpense(ExpenseEntity expense) {
     final day = _civilDay(expense.occurredOn);
@@ -255,24 +285,27 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     });
 
     try {
-      final result = await command.execute.runAsync((
+      final data = await command.execute.runAsync((
         pageSize: pageSize,
+        to: widget.period?.to,
+        from: widget.period?.from,
         pageLink: refresh ? null : nextPageLink,
       ));
 
       if (!mounted || widget.getCommand != command) return;
 
       setState(() {
-        if (result case Right(:final value)) {
+        if (data case Right(:final value)) {
           if (refresh) expenses.clear();
           for (final expense in value.items) {
             _insertExpense(expense);
           }
           nextPageLink = value.next;
           hasLoaded = true;
-        } else {
-          hasFailure = true;
+          return;
         }
+
+        hasFailure = true;
       });
     } catch (_) {
       if (!mounted || widget.getCommand != command) return;

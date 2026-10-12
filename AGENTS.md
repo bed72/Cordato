@@ -56,7 +56,7 @@ esses parâmetros a `IExpenseRepository.create`, preserva `Either` e
 implementa `ICommand`. `expenseDependenciesModule` registra data source e
 repository pelos contratos, commands por factory e validators
 e os injeta na tela. O formulário executa o cadastro pela API.
-`IExpenseRepository.get({int pageSize = 30, String? pageLink})` e o data source
+`IExpenseRepository.get({int pageSize = 30, String? pageLink, DateTime? from, DateTime? to})` e o data source
 remoto oferecem consulta paginada, consumida pela seção de recentes da Dashboard.
 `IExpenseRepository.update({required String id, int? cents, String? description, DateTime? occurredOn})`
 e o data source remoto oferecem edição parcial de valor, descrição e data civil.
@@ -100,9 +100,15 @@ resultado parcial. O data source recebe o tamanho efetivo obrigatório e usa
 GET relativo `expenses`, `page[size]` na
 query e extrai a query do link de continuação, sem acessar seu destino absoluto.
 O tamanho solicitado prevalece sobre o do link; ordem e datas da API são preservadas.
+Repository e command delegam `from`/`to` sem defaults ou normalização, inclusive
+pares incompletos. O data source serializa somente limites não nulos em
+`filter[from]`/`filter[to]` pelo helper civil existente. Limites explícitos
+prevalecem sobre o link e removem `filter[year]`, `filter[month]` e `filter[day]`
+herdados quando ao menos um limite está presente, preservando a continuação e
+os demais parâmetros. Sem intervalo explícito, os filtros do link são mantidos.
 O recorte de seis despesas pertence ao consumidor Dashboard.
 `GetExpensesCommand`, em `expense/presentation/screens/expenses/commands/`, recebe o record
-`({int pageSize, String? pageLink})`, delega a `IExpenseRepository.get` e preserva
+`({int pageSize, String? pageLink, DateTime? from, DateTime? to})`, delega a `IExpenseRepository.get` e preserva
 `Either` em `GetRepositoryType?`, inicialmente nulo. Não acumula páginas nem
 define o limite da Dashboard. Implementa `ICommand` e é registrado por factory
 em `expenseDependenciesModule`; cada consumidor deve descartar sua instância.
@@ -121,22 +127,48 @@ simples ou hold: após sucesso, ambos exibem toast; o toque simples chama o call
 de navegação injetado para Dashboard, e o hold limpa descrição, valor e erros,
 redefine a data para hoje e permanece na tela. Falhas preservam os dados nos dois
 modos; hold interrompido não envia. Cancelar pickers preserva a entrada.
+A Dashboard abre `/expense` com `(returnToPrevious: true)`, record de tipo
+`({bool returnToPrevious})`. Após sucesso por toque simples, a rota usa
+`context.pop()` para preservar a instância da Dashboard e seu mês selecionado.
+Cancelar também retorna à mesma instância. Nos dois retornos, as três seções
+são recarregadas no mês preservado; se alguma consulta ainda estiver rodando,
+a recarga aguarda o fim de todas. Troca de dependências invalida a recarga pendente
+e descarte impede sua execução. Sem argumento ou com `returnToPrevious: false`,
+o cadastro independente mantém a navegação para `/dashboard` após sucesso.
+A data inicial do formulário continua sendo hoje e hold não fecha a rota.
 Dashboard consulta nome e inicial do avatar por `UserCommand` e as seis primeiras
 despesas por uma instância própria de `GetExpensesCommand`, descartada pela tela.
 `DashboardScreenStateMixin` concentra consulta inicial, atualização por gesto e
 retorno assíncrono do formulário e da listagem completa, recarregando as despesas
-recentes e insights após ambos. A Dashboard recebe sua própria instância de
-`GetInsightsCommand`, descartada pela tela, e consulta insights e despesas em
-paralelo na abertura e no refresh. `InsightsSectionWidget` fica acima das
+recentes, insights e métricas após ambos, quando a mesma instância permanece montada.
+A Dashboard recebe instâncias próprias de `GetInsightsCommand` e
+`GetExpenseMetricsCommand`, descartadas pela tela. `selectedMonth` é o contexto
+compartilhado das três seções: intervalo civil para métricas e recentes, ano/mês
+para insights. Consultas são paralelas na abertura, troca, refresh e retorno;
+refresh preserva o mês. `DashboardMonthSelectorWidget` mantém mês/ano visíveis,
+impede meses futuros e desabilita as setas enquanto qualquer seção carrega,
+incluindo retry. Listeners de `isRunning` são removidos no lifecycle; retornos
+obsoletos de navegação são ignorados. A troca ativa skeletons sem dados anteriores
+sob o novo título. Cada seção oferece retry localizado no mês selecionado.
+`InsightsSectionWidget` fica acima das
 despesas, com skeleton, erro com retry e seção oculta quando vazia.
 `ExpensesSectionWidget` usa `CommandBuilder`
-para loading, erro com título e descrição sem ação de retry, vazio e sucesso, sem paginação na UI.
+para loading, erro com título, descrição e retry, vazio mensal e sucesso, sem paginação na UI.
 Reutiliza `ExpenseItemWidget` de Expense, `IMoneyFormatter` e datas pt-BR sem
 conversão de fuso. “Ver tudo” requer itens e callback de navegação disponível;
 a rota fornece o destino `/expenses` para a listagem completa.
 `ExpensesScreen`, em `expense/presentation/screens/expenses/`, usa uma instância
 própria de `GetExpensesCommand` e reutiliza `ExpenseItemWidget` e os formatters
 do core. `ExpensesScreenStateMixin` acumula páginas de 20 itens em ordem
+decrescente pela data civil. A rota `/expenses` recebe o record opcional
+`({DateTime from, DateTime to})` e o repassa como `period`; sem argumento mantém
+a consulta geral. “Ver tudo” recebe o mês selecionado pelo callback
+`Future<void> Function(DateTime month)?` da Dashboard e transporta seu intervalo
+civil completo. Header e semântica identificam mês e ano. Abertura, paginação,
+refresh e retry preservam os limites. Edição para fora do intervalo inclusivo
+remove o item; dentro dele, atualiza ou reposiciona. Edição e exclusão preservam
+controller de rolagem e continuação e verificam se é necessário carregar mais.
+A ordenação permanece
 decrescente pela data civil, preservando a ordem da API entre itens do mesmo dia,
 repassa `next` sem interpretação e carrega ao se aproximar do fim da rolagem.
 Atualização por gesto substitui os itens somente após sucesso. Falhas preservam
@@ -156,7 +188,7 @@ carregados. Os textos fictícios são excluídos da semântica, e a listagem anu
 “Carregando despesas”. `expenseRoutesModule` registra a rota autenticada
 `/expenses`, acessível por “Ver tudo” da Dashboard.
 `insight` possui entidades imutáveis `InsightEntity`, `InsightPeriodEntity` e
-`InsightDateRangeEntity` e o contrato somente leitura `IInsightRepository.get()`,
+`InsightDateRangeEntity` e o contrato somente leitura `IInsightRepository.get({int? year, int? month})`,
 com `Either<ErrorsEntity, List<InsightEntity>>`. `type` e `group` preservam strings
 da API, datas são civis e a comparação é opcional. `InsightEntity.period` e
 `InsightResponse.period` são anuláveis para preservar `period: null` em insights
@@ -168,10 +200,15 @@ e exceções em `ErrorsEntity`. O contrato remoto e os DTOs de conversão estão
 `infrastructure`. `InsightRemoteDataSource` executa GET relativo protegido
 `insights` pelo HTTP do core e `response<T>`, convertendo a lista JSON:API em
 DTOs com datas civis e comparação opcional. Parsing inválido invalida a lista
-completa. `insightDependenciesModule` registra data source e repository como
+completa. Repository e command delegam ano e mês sem defaults ou normalização;
+o data source envia somente valores não nulos em `filter[year]` e `filter[month]`.
+Sem filtros, não envia query. Pares incompletos preservam erros remotos, incluindo
+`source.parameter` e `source.pointer`. O mês é referência da análise: períodos
+de vários meses e períodos nulos não são recortados ou substituídos.
+`insightDependenciesModule` registra data source e repository como
 lazy singletons pelos contratos e o command por factory, composto por `appModule`.
 `GetInsightsCommand`, em `insight/presentation/commands/`, consulta
-`IInsightRepository.get()` sem parâmetros, preserva `Either` em
+`IInsightRepository.get` com o record `({int? year, int? month})`, preserva `Either` em
 `GetRepositoryType?`, inicialmente nulo, e implementa `ICommand`. Cada execução
 substitui o resultado anterior; o consumidor deve descartar sua instância.
 `InsightsListWidget` usa rolagem horizontal, cards com toda a largura disponível
@@ -1060,8 +1097,9 @@ como padrão novo:
 - `UserCommand` é registrado por factory, mas os mixins de Dashboard e User
   ainda não descartam as instâncias recebidas.
 - Não existe suíte `integration_test`.
-- Não há flows Maestro versionados; a política de validação com Maestro não
-  representa cobertura automatizada já implementada.
+- Há um flow legado de Welcome/Authentication em `maestro/`, ainda com textos
+  anteriores ao sign-in atual; a política de validação com Maestro não representa
+  cobertura automatizada completa dos fluxos atuais.
 - Expense ainda importa `AmountFieldWidget` e `DateFieldWidget` de
   `authentication/presentation/widgets/`; essa localização legada não é uma
   convenção para novos componentes compartilhados.

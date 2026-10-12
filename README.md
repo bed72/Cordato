@@ -53,19 +53,29 @@ O app já possui:
   gráfico compacto de distribuição dos gastos por categoria no topo, com
   total em BRL, navegação mensal e detalhes por toque, seguido de
   cards de insights com ícone e cor por tipo em lista horizontal acima das despesas,
-  e seção de despesas recentes com as seis primeiras despesas da API, skeleton,
+  e seção de despesas recentes com as seis primeiras despesas do mês na API, skeleton,
   estado vazio, erro com título e descrição e atualização por gesto ou
   ao retornar do formulário de gasto e da listagem completa; insights e despesas
-  são atualizados em paralelo com as métricas. O seletor mensal altera somente
-  o gráfico. Métricas e insights possuem skeleton e retry em caso de erro,
-  e a seção é ocultada quando a API retorna lista vazia;
+  são atualizados em paralelo com as métricas. O seletor mensal controla as três
+  seções, impede meses futuros e bloqueia as setas enquanto qualquer seção carrega.
+  Cada seção possui skeleton e retry independente no mês selecionado, sem dados
+  do mês anterior sob o novo título. Insights vazios ocultam a seção; recentes
+  vazios indicam ausência de despesas naquele mês. Refresh preserva a seleção;
 - listagem completa em `/expenses`, aberta por “Ver tudo” da Dashboard, com
   rolagem infinita em páginas de 20 itens, atualização por gesto, skeleton, vazio
-  e nova tentativa após erro, preservando os itens já carregados;
+  e nova tentativa após erro, preservando os itens já carregados. Acompanha o mês
+  selecionado, identificado na tela e na acessibilidade, mantendo o filtro em
+  paginação, refresh e retry. Despesas editadas para outro mês saem do recorte;
+  edição dentro do mês e exclusão preservam agrupamentos, paginação e rolagem.
+  A rota sem período continua oferecendo a listagem geral;
 - formulário de gasto integrado à API, com descrição obrigatória, calculadora
   de valor em centavos, seleção de data, validação, loading, erros por campo e
   toast de sucesso; toque simples cadastra e retorna ao dashboard, enquanto
-  completar o hold cadastra e limpa o formulário para adicionar outro gasto;
+  completar o hold cadastra e limpa o formulário para adicionar outro gasto.
+  Quando aberto pela Dashboard, sucesso por toque simples ou cancelamento retorna
+  à mesma tela com o mês selecionado preservado e as três seções recarregadas.
+  A data inicial continua sendo hoje, inclusive ao visualizar um mês passado;
+  acesso independente mantém Dashboard como destino após o cadastro;
 - tela de configurações com confirmação de saída, loading e erros em toast;
   o logout revoga o token na API e limpa o storage seguro, com retorno à welcome
   pelo observador global de sessão;
@@ -145,12 +155,23 @@ Expense organiza os commands e mixins por tela em
 Os validators do formulário ficam em `screens/expense/validators/`.
 `ExpenseScreen` compartilha cadastro e edição na rota `/expense`: sem argumento
 abre cadastro; com ID textual consulta a API e mostra skeleton até preencher o
-formulário. A listagem abre a edição ao arrastar o item da esquerda para a direita,
+formulário. O record opcional `({bool returnToPrevious})` com valor `true`, enviado
+pela Dashboard, faz o sucesso do cadastro fechar o formulário com `pop`, sem
+recriar a Dashboard. Sem argumento, o sucesso navega para `/dashboard`.
+A listagem abre a edição ao arrastar o item da esquerda para a direita,
 revelando o lápis; o gesto oposto mantém a exclusão. Recebe a entidade atualizada
 ao retornar, preservando paginação e rolagem. O PATCH altera valor, descrição e
 data civil, enviando somente os atributos alterados. O envio e os toasts refletem o modo ativo.
 `GetExpensesCommand` pertence a `screens/expenses/commands/` e continua sendo
 consumido pela Dashboard por uma instância própria registrada por factory.
+Os contratos de consulta de Expense aceitam `from`/`to` opcionais, serializados
+como `filter[from]`/`filter[to]` por data civil. A paginação reaplica limites
+explícitos e tamanho, remove filtros herdados de ano/mês/dia incompatíveis e
+preserva a continuação. Insight aceita `year`/`month` opcionais em
+`filter[year]`/`filter[month]`, preservando integralmente as análises retornadas.
+Consultas sem filtros continuam disponíveis na listagem geral e em outros
+consumidores. A Dashboard envia o mês selecionado às três consultas; o intervalo
+civil respeita viradas de ano e fevereiro bissexto.
 `ExpensesSkeletonWidget`, de `expense/presentation/widgets/`, é reutilizado nas
 duas telas: seis placeholders na Dashboard, oito na listagem sem itens e três
 no rodapé durante consultas com despesas já carregadas.
@@ -199,6 +220,13 @@ Abra no navegador a URL impressa pelo comando. O launcher usa
 servidor iniciar para contornar a descoberta vazia na abertura do Flutter 3.47.6.
 A atualização cria um arquivo Dart temporário em `tool/`, removido ao encerrar o
 comando, sem reescrever os arquivos da aplicação.
+
+O catálogo mensal inclui a Dashboard completa em claro/escuro, carregamento
+agregado, mês vazio e falha parcial; o seletor inclui fevereiro bissexto e
+virada de ano. A listagem possui previews de setembro com paginação de 20 itens,
+loading, vazio, falha com retry e entrada geral. Todos usam fakes locais sem
+rede ou storage. Previews não substituem a validação da API e dos fluxos reais
+com Maestro; os resultados são registrados na change OpenSpec.
 
 Para executar o app, use `flutter run`. A autenticação usa por padrão
 `https://app.cordato.cloud/api/`. Para apontá-la a outra API:

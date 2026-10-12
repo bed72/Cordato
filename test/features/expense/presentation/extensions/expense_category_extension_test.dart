@@ -6,15 +6,23 @@ import 'package:cordato/features/expense/presentation/extensions/expense_categor
 void main() {
   group('ExpenseCategoryExtension', () {
     final labels = <ExpenseCategoryEnum, String>{
-      .food: 'Alimentação',
       .health: 'Saúde',
-      .housing: 'Moradia',
       .leisure: 'Lazer',
+      .taxes: 'Impostos',
+      .travel: 'Viagens',
+      .housing: 'Moradia',
       .shopping: 'Compras',
+      .food: 'Alimentação',
+      .insurance: 'Seguros',
       .services: 'Serviços',
-      .transport: 'Transporte',
       .education: 'Educação',
+      .transport: 'Transporte',
+      .financing: 'Financiamentos',
       .subscriptions: 'Assinaturas',
+      .pets: 'Animais de estimação',
+      .investments: 'Investimentos',
+      .personalCare: 'Cuidados pessoais',
+      .giftsAndDonations: 'Presentes e doações',
       .other: 'Outros',
     };
 

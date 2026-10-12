@@ -27,6 +27,7 @@ final class const ExpensesScreen({
   required final GetExpensesCommand getCommand,
   required final IMoneyFormatter moneyFormatter,
   required final DeleteExpenseCommand deleteCommand,
+  final ({DateTime from, DateTime to})? period,
   final Future<ExpenseEntity?> Function(String id)? onExpensePressed,
 }) extends StatefulWidget {
   @override
@@ -42,30 +43,39 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
       body: SafeArea(
         child:
             CommandBuilder<
-              ({int pageSize, String? pageLink}),
+              ({int pageSize, String? pageLink, DateTime? from, DateTime? to}),
               GetRepositoryType?
             >(
               command: widget.getCommand.execute,
-              onSuccess: (_, _) => _content(),
-              onError: (_, _, _, _) => _content(),
-              whileRunning: (_, _, _) => _content(),
+              onSuccess: (_, _) => _buildContent(),
+              onError: (_, _, _, _) => _buildContent(),
+              whileRunning: (_, _, _) => _buildContent(),
             ),
       ),
     );
   }
 
-  RefreshIndicator _content() => RefreshIndicator(
+  RefreshIndicator _buildContent() => RefreshIndicator(
     onRefresh: refreshExpenses,
     child: CustomScrollView(
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        const SliverToBoxAdapter(
+        SliverToBoxAdapter(
           child: Padding(
-            padding: .fromLTRB(16.0, 16.0, 16.0, 24.0),
-            child: HeaderWidget(
-              title: 'Despesas',
-              description: 'Acompanhe todas as suas despesas.',
+            padding: const .fromLTRB(16.0, 16.0, 16.0, 24.0),
+            child: Semantics(
+              header: true,
+              label: monthLabel == null
+                  ? 'Despesas'
+                  : 'Despesas de $monthLabel',
+              excludeSemantics: true,
+              child: HeaderWidget(
+                title: 'Despesas',
+                description: monthLabel == null
+                    ? 'Acompanhe todas as suas despesas.'
+                    : 'Acompanhe suas despesas de $monthLabel.',
+              ),
             ),
           ),
         ),
@@ -98,8 +108,8 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
                       (pendingDeleteId == null ||
                           pendingDeleteId == expense.id),
                   isDeleting: deletingExpenseId == expense.id,
-                  onConfirmDelete: () => confirmDeleteExpense(expense.id),
                   onDeleted: () => removeDeletedExpense(expense.id),
+                  onConfirmDelete: () => confirmDeleteExpense(expense.id),
                   onEdit:
                       widget.onExpensePressed == null ||
                           isLoading ||
@@ -125,19 +135,20 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
             );
           },
         ),
-        SliverToBoxAdapter(child: _feedback()),
+        SliverToBoxAdapter(child: _buildFeedback()),
         const SliverToBoxAdapter(child: SizedBox(height: 24.0)),
       ],
     ),
   );
 
-  Widget _feedback() {
+  Widget _buildFeedback() {
     if (isLoading) {
       return Semantics(
         label: 'Carregando despesas',
         child: ExpensesSkeletonWidget(count: expenses.isEmpty ? 8 : 3),
       );
     }
+
     if (hasFailure) {
       return ExpensesFeedbackWidget(
         title: 'Não foi possível carregar as despesas.',
@@ -145,12 +156,16 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
         onRetry: retry,
       );
     }
+
     if (hasLoaded && expenses.isEmpty) {
-      return const ExpensesFeedbackWidget(
+      return ExpensesFeedbackWidget(
         title: 'Ainda sem despesas',
-        description: 'Seus gastos cadastrados aparecerão aqui.',
+        description: monthLabel == null
+            ? 'Seus gastos cadastrados aparecerão aqui.'
+            : 'Não há despesas em $monthLabel.',
       );
     }
+
     return const SizedBox.shrink();
   }
 }

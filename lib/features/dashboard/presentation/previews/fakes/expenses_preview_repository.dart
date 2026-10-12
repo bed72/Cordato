@@ -13,8 +13,12 @@ final class ExpensesPreviewRepository({required final GetRepositoryType type})
       Left(.unknown());
 
   @override
-  Future<GetRepositoryType> get({int pageSize = 30, String? pageLink}) async =>
-      type;
+  Future<GetRepositoryType> get({
+    int pageSize = 30,
+    DateTime? to,
+    DateTime? from,
+    String? pageLink,
+  }) async => type;
 
   @override
   Future<UpdateRepositoryType> update({

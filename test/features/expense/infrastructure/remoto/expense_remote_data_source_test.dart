@@ -23,9 +23,9 @@ void main() {
     'data': {'id': '9', 'type': 'expenses', 'attributes': attributes},
   };
 
+  late DateTime occurredOn;
   late HttpClientMock client;
   late IExpenseRemoteDataSource dataSource;
-  late DateTime occurredOn;
 
   setUpAll(() => registerFallbackValue(const Requests(path: '')));
   setUp(() {
@@ -41,23 +41,28 @@ void main() {
         when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
           (_) async => const Right(Reponse(statusCode: 200, body: body)),
         );
+
         final expense = (await dataSource.getById(id: 'a/b?c#d')).right;
+
         expect(expense.id, '9');
         expect(expense.amount, 300);
         expect(expense.description, 'Game');
         expect(expense.occurredOn, DateTime(2026, 10, 5));
         expect(expense.category, ExpenseCategoryEnum.other);
+
         final request =
             verify(() => client.get(parameter: captureAny(named: 'parameter')))
                     .captured
                     .single
                 as Requests;
-        expect(request.path, 'expenses/a%2Fb%3Fc%23d');
+
         expect(request.body, isNull);
         expect(request.query, isNull);
         expect(request.headers, isNull);
+        expect(request.path, 'expenses/a%2Fb%3Fc%23d');
       },
     );
+
     test(
       'preserves authentication, authorization, not found and transport errors',
       () async {
@@ -69,9 +74,9 @@ void main() {
                 body: {
                   'errors': [
                     {
-                      'title': 'Despesa indisponível',
-                      'detail': 'Tente novamente.',
                       'status': '$status',
+                      'detail': 'Tente novamente.',
+                      'title': 'Despesa indisponível',
                       'source': {'pointer': '/data/id'},
                     },
                     {'title': 'Outro erro', 'status': '$status'},
@@ -80,16 +85,18 @@ void main() {
               ),
             ),
           );
+
           final errors = (await dataSource.getById(id: '8')).left.errors;
           expect(errors, hasLength(2));
-          expect(errors.first.title, 'Despesa indisponível');
-          expect(errors.first.detail, 'Tente novamente.');
           expect(errors.first.status, '$status');
-          expect(errors.first.pointer, '/data/id');
           expect(errors.last.title, 'Outro erro');
+          expect(errors.first.pointer, '/data/id');
+          expect(errors.first.detail, 'Tente novamente.');
+          expect(errors.first.title, 'Despesa indisponível');
         }
       },
     );
+
     test('translates malformed error envelopes to generic errors', () async {
       for (final invalid in <Map<String, dynamic>>[
         {},
@@ -105,6 +112,7 @@ void main() {
         );
       }
     });
+
     test(
       'rejects malformed resources and unexpected client exceptions',
       () async {
@@ -193,6 +201,7 @@ void main() {
                 .captured
                 .single
             as Requests;
+
     expect(request.path, 'expenses/a%2Fb%3Fc%23d');
   });
 
@@ -204,8 +213,8 @@ void main() {
     for (final scenario in [
       (
         cents: 0,
-        description: null,
         occurredOn: null,
+        description: null,
         expected: <String, dynamic>{'amount': 0},
       ),
       (
@@ -216,8 +225,8 @@ void main() {
       ),
       (
         cents: null,
-        description: null,
         occurredOn: null,
+        description: null,
         expected: <String, dynamic>{},
       ),
       (
@@ -230,8 +239,8 @@ void main() {
       await dataSource.update(
         id: '8',
         cents: scenario.cents,
-        description: scenario.description,
         occurredOn: scenario.occurredOn,
+        description: scenario.description,
       );
 
       final request =
@@ -239,6 +248,7 @@ void main() {
                   .captured
                   .single
               as Requests;
+
       expect((request.body!['data'] as Map)['attributes'], scenario.expected);
     }
   });
@@ -282,9 +292,9 @@ void main() {
     expect(errors.first.detail, 'Informe um valor positivo.');
 
     expect(errors[1].status, '422');
+    expect(errors.last.title, 'Data inválida');
     expect(errors[1].title, 'Descrição inválida');
     expect(errors[1].pointer, '/data/attributes/description');
-    expect(errors.last.title, 'Data inválida');
     expect(errors.last.pointer, '/data/attributes/occurred_on');
   });
 
@@ -435,8 +445,8 @@ void main() {
     expect(errors, hasLength(2));
     expect(errors.last.status, '403');
     expect(errors.first.status, '403');
-    expect(errors.first.title, 'Outro erro');
     expect(errors.last.pointer, '/data/id');
+    expect(errors.first.title, 'Outro erro');
     expect(errors.last.title, 'Acesso negado');
     expect(errors.last.detail, 'Sem permissão para excluir a despesa.');
   });
@@ -545,13 +555,15 @@ void main() {
           ),
         ),
       );
+
       for (final link in [
         'https://trocado.test/api/expenses?page%5Bafter%5D=abc%2B123&page%5Bsize%5D=20',
         'expenses?page%5Bafter%5D=abc%2B123&page%5Bsize%5D=20',
         '?page%5Bafter%5D=abc%2B123&page%5Bsize%5D=20',
       ]) {
-        final result = await dataSource.get(pageSize: 6, pageLink: link);
-        expect(result.right.items, isEmpty);
+        final data = await dataSource.get(pageSize: 6, pageLink: link);
+        expect(data.right.items, isEmpty);
+
         final request =
             verify(() => client.get(parameter: captureAny(named: 'parameter')))
                     .captured
@@ -576,22 +588,182 @@ void main() {
         ),
       ),
     );
+
     await dataSource.get(
       pageSize: 20,
       pageLink:
           '?page[number]=2&filter[category][]=food&filter[category][]=other',
     );
+
     final request =
         verify(() => client.get(parameter: captureAny(named: 'parameter')))
                 .captured
                 .single
             as Requests;
+
     expect(request.query, {
       'page[number]': '2',
       'filter[category][]': ['food', 'other'],
       'page[size]': 20,
     });
   });
+
+  test(
+    'serializes only supplied civil limits without timezone conversion',
+    () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(
+          Reponse(
+            statusCode: 200,
+            body: {
+              'data': [],
+              'links': {'next': null, 'prev': null},
+            },
+          ),
+        ),
+      );
+
+      final to = DateTime(2026, 9, 30, 12);
+      final from = DateTime.utc(2026, 9, 1, 23, 59);
+
+      for (final limits in [
+        (from: from, to: to),
+        (from: from, to: null),
+        (from: null, to: to),
+      ]) {
+        await dataSource.get(pageSize: 6, from: limits.from, to: limits.to);
+        final request =
+            verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                    .captured
+                    .single
+                as Requests;
+
+        expect(request.body, isNull);
+        expect(request.headers, isNull);
+        expect(request.path, 'expenses');
+        expect(request.query, {
+          'page[size]': 6,
+          if (limits.from != null) 'filter[from]': '2026-09-01',
+          if (limits.to != null) 'filter[to]': '2026-09-30',
+        });
+      }
+    },
+  );
+
+  test('reapplies explicit interval and size preserving opaque continuation parameters', () async {
+    when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+      (_) async => const Right(
+        Reponse(
+          statusCode: 200,
+          body: {
+            'data': [],
+            'links': {'next': null, 'prev': null},
+          },
+        ),
+      ),
+    );
+    for (final suffix in [
+      '',
+      '&filter[from]=2025-01-01&filter[to]=2025-01-31&filter[year]=2025&filter[month]=1&filter[day]=2',
+    ]) {
+      await dataSource.get(
+        pageSize: 20,
+        to: DateTime(2026, 9, 30),
+        from: DateTime(2026, 9, 1),
+        pageLink:
+            'https://other.example/ignored?page[after]=abc%2B123&page[size]=6&filter[category][]=food&filter[category][]=other$suffix',
+      );
+
+      final request =
+          verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+
+      expect(request.path, 'expenses');
+      expect(request.query, {
+        'page[after]': 'abc+123',
+        'page[size]': 20,
+        'filter[category][]': ['food', 'other'],
+        'filter[from]': '2026-09-01',
+        'filter[to]': '2026-09-30',
+      });
+    }
+  });
+
+  test(
+    'preserves temporal filters from continuation when no interval is supplied',
+    () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(
+          Reponse(
+            statusCode: 200,
+            body: {
+              'data': [],
+              'links': {'next': null, 'prev': null},
+            },
+          ),
+        ),
+      );
+      await dataSource.get(
+        pageSize: 20,
+        pageLink: '?page[number]=2&filter[year]=2026&filter[month]=9&filter[day]=1&filter[from]=2026-09-01&filter[to]=2026-09-30',
+      );
+      final request =
+          verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+
+      expect(request.query, {
+        'page[number]': '2',
+        'page[size]': 20,
+        'filter[year]': '2026',
+        'filter[month]': '9',
+        'filter[day]': '1',
+        'filter[from]': '2026-09-01',
+        'filter[to]': '2026-09-30',
+      });
+    },
+  );
+
+  test(
+    'preserves filter validation pointers without completing the interval',
+    () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Left(
+          Reponse(
+            statusCode: 422,
+            body: {
+              'errors': [
+                {
+                  'status': '422',
+                  'title': 'Intervalo inválido',
+                  'source': {'pointer': '/filter/from'},
+                },
+              ],
+            },
+          ),
+        ),
+      );
+
+      final data = await dataSource.get(
+        pageSize: 6,
+        from: DateTime(2026, 9, 1),
+      );
+
+      expect(data.left.errors.single.status, '422');
+      expect(data.left.errors.single.pointer, '/filter/from');
+
+      final request =
+          verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+
+      expect(request.query, {'page[size]': 6, 'filter[from]': '2026-09-01'});
+    },
+  );
 
   test('rejects invalid continuation links without making a request', () async {
     for (final link in ['', 'expenses', '?page[number]=2#fragment']) {
@@ -813,14 +985,14 @@ void main() {
           ),
         );
 
-        final result = await dataSource.create(
+        final data = await dataSource.create(
           cents: 300,
           description: '',
           occurredOn: occurredOn,
         );
 
-        expect(result.left.errors.single.title, 'Falha');
-        expect(result.left.errors.single.status, '$status');
+        expect(data.left.errors.single.title, 'Falha');
+        expect(data.left.errors.single.status, '$status');
       }
     },
   );
@@ -829,13 +1001,13 @@ void main() {
     when(() => client.post(parameter: any(named: 'parameter')))
         .thenThrow(StateError('unexpected failure'));
 
-    final result = await dataSource.create(
+    final data = await dataSource.create(
       cents: 300,
       description: '',
       occurredOn: occurredOn,
     );
 
-    expect(result.left.errors.single.title, 'Erro desconhecido');
+    expect(data.left.errors.single.title, 'Erro desconhecido');
   });
 
   for (final errorBody in <Map<String, dynamic>>[
@@ -849,13 +1021,13 @@ void main() {
           (_) async => Left(Reponse(statusCode: 500, body: errorBody)),
         );
 
-        final result = await dataSource.create(
+        final data = await dataSource.create(
           cents: 300,
           description: '',
           occurredOn: occurredOn,
         );
 
-        expect(result.left.errors.single.title, 'Erro desconhecido');
+        expect(data.left.errors.single.title, 'Erro desconhecido');
       },
     );
   }
@@ -895,13 +1067,13 @@ void main() {
           (_) async => Right(Reponse(statusCode: 201, body: invalidBody)),
         );
 
-        final result = await dataSource.create(
+        final data = await dataSource.create(
           cents: 300,
           description: '',
           occurredOn: occurredOn,
         );
 
-        expect(result.left.errors.single.title, 'Erro desconhecido');
+        expect(data.left.errors.single.title, 'Erro desconhecido');
       },
     );
   }

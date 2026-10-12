@@ -4,11 +4,13 @@ import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
+
 import 'package:cordato/features/dashboard/presentation/widgets/insights/insights_section_widget.dart';
+
 import 'package:cordato/features/insight/domain/entities/insight_entity.dart';
 import 'package:cordato/features/insight/domain/entities/insight_period_entity.dart';
-import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
 import 'package:cordato/features/insight/presentation/commands/get_insights_command.dart';
+import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
 import 'package:cordato/features/insight/presentation/previews/fakes/insights_preview_repository.dart';
 
 @CordatoPreview(
@@ -24,7 +26,7 @@ Widget previewLoadingInsightsSectionWidget() => _sectionPreview();
   size: Size(390.0, 160.0),
 )
 Widget previewEmptyInsightsSectionWidget() =>
-    _sectionPreview(result: const Right([]));
+    _sectionPreview(type: const Right([]));
 
 @CordatoPreview(
   group: 'Dashboard / Insights',
@@ -32,7 +34,7 @@ Widget previewEmptyInsightsSectionWidget() =>
   size: Size(390.0, 240.0),
 )
 Widget previewFailureInsightsSectionWidget() =>
-    _sectionPreview(result: Left(ErrorsEntity.unknown()));
+    _sectionPreview(type: Left(ErrorsEntity.unknown()));
 
 @CordatoPreview(
   group: 'Dashboard / Insights',
@@ -47,7 +49,7 @@ Widget previewFailureInsightsSectionWidget() =>
   brightness: Brightness.dark,
 )
 Widget previewInsightsSectionWidget() =>
-    _sectionPreview(result: Right(_insights()));
+    _sectionPreview(type: Right(_insights()));
 
 @CordatoPreview(
   group: 'Dashboard / Insights',
@@ -58,26 +60,27 @@ Widget previewLargeTextInsightsSectionWidget() => Builder(
   builder: (context) => MediaQuery(
     data: MediaQuery.of(context)
         .copyWith(textScaler: const TextScaler.linear(1.6)),
-    child: _sectionPreview(result: Right(_insights())),
+    child: _sectionPreview(type: Right(_insights())),
   ),
 );
 
-Widget _sectionPreview({GetRepositoryType? result}) =>
+Widget _sectionPreview({GetRepositoryType? type}) =>
     PreviewResourceWidget<GetInsightsCommand>(
+      dispose: (command) => command.dispose(),
       create: () {
         final command = GetInsightsCommand(
-          repository: InsightsPreviewRepository(
-            result: result ?? const Right([]),
-          ),
+          repository: InsightsPreviewRepository(type: type ?? const Right([])),
         );
-        if (result != null) command.execute.run();
+        if (type != null) command.execute.run((year: 2026, month: 10));
         return command;
       },
-      dispose: (command) => command.dispose(),
       builder: (command) => Scaffold(
         body: SingleChildScrollView(
           padding: const .symmetric(vertical: 24.0),
-          child: InsightsSectionWidget(command: command),
+          child: InsightsSectionWidget(
+            command: command,
+            onRetry: () => command.execute.run((year: 2026, month: 10)),
+          ),
         ),
       ),
     );
@@ -103,13 +106,13 @@ List<InsightEntity> _insights() => [
   ].indexed)
     InsightEntity(
       id: 'preview-insight-$index',
-      title: fixture.title,
       type: fixture.type,
       group: 'comparison',
+      title: fixture.title,
       description: fixture.description,
       period: InsightPeriodEntity(
-        from: DateTime(2026, 10, 1),
         to: DateTime(2026, 10, 9),
+        from: DateTime(2026, index == 1 ? 8 : 10, 1),
       ),
     ),
 ];

@@ -32,14 +32,14 @@ final class const ExpensesEmptyWidget({super.key}) extends StatelessWidget {
                 crossAxisAlignment: .start,
                 children: [
                   Text(
-                    'Ainda sem despesas',
+                    'Sem despesas neste mês',
                     style: context.typography.labelMedium?.copyWith(
                       fontWeight: .w600,
                       color: context.colors.onSurface,
                     ),
                   ),
                   Text(
-                    'Suas despesas mais recentes aparecerão aqui.',
+                    'Nenhuma despesa registrada no mês selecionado.',
                     style: context.typography.bodySmall?.copyWith(
                       color: context.colors.onSurfaceVariant,
                     ),

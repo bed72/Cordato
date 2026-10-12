@@ -1,9 +1,13 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/widgets/buttons/text_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 
-final class const ExpensesFailureWidget({super.key}) extends StatelessWidget {
+final class const ExpensesFailureWidget({
+  super.key,
+  final VoidCallback? onRetry,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -44,6 +48,8 @@ final class const ExpensesFailureWidget({super.key}) extends StatelessWidget {
                       color: context.colors.onSurfaceVariant,
                     ),
                   ),
+                  if (onRetry != null)
+                    TextButtonWidget(label: 'Tentar novamente', onTap: onRetry),
                 ],
               ),
             ),

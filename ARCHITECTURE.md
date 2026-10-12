@@ -98,7 +98,7 @@ não envia query. Períodos incompletos são enviados à API sem inventar a outr
 data; a resposta de validação é preservada. Headers JSON:API e Bearer ficam
 nos interceptors compartilhados. URLs absolutas ou subcaminhos não recebem
 token; um 401 remove somente o token enviado conforme a política de sessão.
-Expense e Metrics reutilizam `formatCivilDate`, em
+Expense e Metrics reutilizam `formatDateSerializer`, em
 `core/infrastructure/serializers/civil_date_serializer.dart`, para serializar
 datas civis em `yyyy-MM-dd` pelos componentes originais. A função não aplica
 defaults, horário ou conversão de fuso; o default de hoje continua pertencendo
@@ -137,19 +137,30 @@ tela proprietária em Metrics, portanto o command fica no diretório da feature.
 `metricsDependenciesModule` registra `IMetricsRemoteDataSource` e
 `IMetricsRepository` como lazy singletons e `GetExpenseMetricsCommand` por
 factory, composto por `appModule`. A rota da Dashboard injeta uma instância
-própria do command, descartada por `DashboardScreenStateMixin`. O mixin inicia
-no mês atual e consulta o primeiro e último dia civil do mês com
-`groupBy: category`. O seletor de meses altera somente as métricas, não os
-insights ou as despesas recentes. As setas ficam desabilitadas durante a
-consulta para evitar filtros concorrentes. Métricas, insights e despesas são
-consultados em paralelo na abertura e no refresh; o retorno do formulário e
-da listagem completa recarrega as três seções, preservando o mês selecionado.
+própria do command, descartada por `DashboardScreenStateMixin`. O mixin mantém
+`selectedMonth`, iniciado no primeiro dia civil do mês atual, e calcula o último
+dia com `DateTime(year, month + 1, 0)`. As três seções consultam esse mesmo mês
+em paralelo: Metrics com intervalo e `groupBy: category`, Insights com ano/mês
+e recentes com intervalo e tamanho seis. Abertura, troca pelas setas, refresh e
+retorno à instância existente da Dashboard usam esse contexto; refresh não muda
+a seleção. `DashboardMonthSelectorWidget` pertence à Dashboard, permanece visível
+em todos os estados e impede avanço além do mês atual, sem swipe mensal.
+As setas ficam desabilitadas enquanto qualquer command de seção estiver rodando,
+inclusive retry. O mixin observa `isRunning` dos três commands, removendo os
+listeners antes de substituir ou descartar instâncias. Retornos de navegação
+após descarte ou substituição de dependências são ignorados.
+Quando o retorno ocorre durante uma consulta, o mixin adia a recarga das três
+seções até todas terminarem, inclusive com erro, mantendo o mês selecionado.
+A recarga pendente é invalidada na troca de dependências e não executa após
+descarte da tela.
 
 `MetricsSectionWidget`, na Dashboard, fica antes dos insights. Usa
 `CommandBuilder` para skeleton, falha com retry, total zero e sucesso. O total
-é formatado pelo `IMoneyFormatter` e o mês exibido preserva a data retornada
-pela API. A troca de período substitui o gráfico por skeleton para não exibir
-valores antigos sob o novo mês. Total positivo sem categorias mostra uma
+é formatado pelo `IMoneyFormatter`; o mês do seletor vem do estado da Dashboard,
+independentemente da resposta da API. A troca de período inicia loading nas três
+seções e renova suas chaves pelo mês, sem renderizar resultados antigos sob o
+novo título. Cada falha oferece retry somente da seção no mês selecionado.
+Total positivo sem categorias mostra uma
 mensagem de distribuição indisponível; total zero não produz segmentos fictícios.
 
 `ExpenseMetricsChartWidget`, em Metrics, usa `fl_chart` para uma barra
@@ -189,20 +200,21 @@ apresentação. A entidade não inclui o envelope JSON:API nem realiza parsing.
 `InsightPeriodEntity` possui `from` e `to` como datas civis em `DateTime`, sem
 normalização ou conversão de fuso, e `comparison` opcional como
 `InsightDateRangeEntity`, que contém somente `from` e `to`.
-`IInsightRepository.get()` retorna `Future<GetRepositoryType>`, com
+`IInsightRepository.get({int? year, int? month})` retorna `Future<GetRepositoryType>`, com
 `Either<ErrorsEntity, List<InsightEntity>>`. Lista vazia representa sucesso;
 o contrato não oferece escrita, paginação, ordenação local ou persistência.
 Insights são análises derivadas fornecidas pelo serviço, sem cálculo financeiro
 no domínio do aplicativo e sem dependência de outros contextos financeiros.
 
 `InsightRepository`, em `insight/application/repositories/`, implementa
-`IInsightRepository` e recebe `IInsightRemoteDataSource`. Delega `get()` ao
-data source e converte todos os `InsightResponse` em entidades, preservando
+`IInsightRepository` e recebe `IInsightRemoteDataSource`. Delega ano e mês ao
+data source sem defaults, validação ou normalização e converte todos os
+`InsightResponse` em entidades, preservando
 ordem, conteúdo, tipos desconhecidos e datas sem normalização ou conversão de
 fuso. Lista vazia permanece sucesso. Converte `ErrorsResponse` em
 `ErrorsEntity` com os metadados originais; exceções inesperadas retornam
 `ErrorsEntity.unknown()`. Não acessa HTTP, storage ou outros repositories.
-`IInsightRemoteDataSource`, em `infrastructure/remoto/`, define `get()` com
+`IInsightRemoteDataSource`, em `infrastructure/remoto/`, define `get({int? year, int? month})` com
 `Either<ErrorsResponse, List<InsightResponse>>`. `InsightResponse`,
 `InsightPeriodResponse` e `InsightDateRangeResponse`, em
 `infrastructure/responses/`, são DTOs imutáveis com factories `fromJson` e
@@ -213,7 +225,11 @@ continuam exigindo datas válidas; parsing inválido não gera resultado parcial
 um recurso da lista `data`, lendo o tipo de análise de `attributes.type`,
 não de `data.type`.
 `InsightRemoteDataSource` executa GET relativo `insights`, protegido por
-`HttpPathEnum.insights`, com o HTTP do core e `response<T>`. Lista vazia é
+`HttpPathEnum.insights`, com o HTTP do core e `response<T>`. Envia somente os
+filtros não nulos `filter[year]` e `filter[month]`; sem ambos, não envia query.
+Filtros incompletos são enviados sem completar o par, preservando erros remotos
+com `source.parameter` e `source.pointer`. O mês é referência da análise, sem
+recortar períodos de vários meses ou substituir períodos nulos. Lista vazia é
 sucesso; parsing inválido em qualquer item invalida a resposta completa.
 Erros JSON:API são preservados e exceções usam o erro genérico compartilhado.
 Headers e Bearer pertencem aos interceptors; um 401 remove somente o token
@@ -223,7 +239,9 @@ como lazy singletons pelos contratos e `GetInsightsCommand` por factory.
 É composto por `appModule` e consumido pela rota da Dashboard.
 
 `GetInsightsCommand`, em `insight/presentation/commands/`, recebe
-`IInsightRepository` e delega `get()` sem parâmetros. `execute` começa em
+`IInsightRepository` e delega os campos do record `({int? year, int? month})`
+a `get` sem defaults ou normalização. Ambos os campos devem ser explícitos;
+`(year: null, month: null)` preserva a consulta geral. `execute` começa em
 `null` e preserva `Either<ErrorsEntity, List<InsightEntity>>` em
 `GetRepositoryType?`; lista vazia é sucesso e `Left` é resultado de negócio.
 Cada consulta substitui o resultado anterior, sem acumular, ordenar ou limitar
@@ -273,11 +291,16 @@ envia `cents` como inteiro em centavos no atributo `amount` do payload.
 antes de construir a entidade.
 
 `ExpenseCategoryEnum`, em `expense/domain/enums/expense_category_enum.dart`, define
-`food`, `health`, `housing`, `leisure`, `shopping`, `services`, `transport`,
-`education`, `subscriptions` e `other`, com nomes correspondentes ao contrato da API.
+18 categorias com `value` correspondente ao contrato da API: `food`, `pets`,
+`taxes`, `health`, `travel`, `housing`, `leisure`, `shopping`, `services`,
+`transport`, `education`, `financing`, `insurance`, `investments`, `personal_care`,
+`subscriptions`, `gifts_and_donations` e `other`. Os membros Dart `personalCare`
+e `giftsAndDonations` preservam os valores snake_case da API por esse campo;
+`ExpenseResponse` faz parsing por `value`, não pelo nome do membro.
 `ExpenseCategoryExtension`, em `expense/presentation/extensions/`, oferece `label`
-com os rótulos pt-BR: Alimentação, Saúde, Moradia, Lazer, Compras, Serviços,
-Transporte, Educação, Assinaturas e Outros. A tradução pertence à apresentação;
+com rótulos pt-BR, ícones e cores para todas as categorias. Metrics mantém os
+mesmos rótulos em sua própria extension de apresentação, sem importar Expense.
+A tradução pertence à apresentação;
 o domínio não depende de idioma. Parsing e serialização ficam para infrastructure,
 sem conversão silenciosa de categorias desconhecidas para `other`.
 
@@ -365,10 +388,12 @@ Usa casts e `DateTime.parse`; categorias desconhecidas falham sem fallback para
 `other`. `created_at` e os metadados JSON:API não integram a entidade atual.
 `ExpenseResponseToEntity.toEntity()` retorna `Either<ErrorsEntity, ExpenseEntity>`
 para preservar a falha de validação do VO quando o valor recebido não é positivo.
-`IExpenseRepository.get({int pageSize = 30, String? pageLink})` retorna
+`IExpenseRepository.get({int pageSize = 30, String? pageLink, DateTime? from, DateTime? to})` retorna
 `Future<GetRepositoryType>`, com `Either<ErrorsEntity, ExpensePageEntity>`.
 O tamanho padrão é 30. O repository substitui valores menores ou iguais a zero
 por 30 antes de chamar o data source; valores positivos são preservados.
+Os limites civis opcionais `from` e `to` são delegados sem defaults, validação
+ou normalização, inclusive quando somente um limite foi informado.
 `ExpensePageEntity` mantém uma cópia não modificável de `items`
 e as continuações opacas anuláveis `next` e `prev`. A ordem da API é preservada,
 sem ordenação, filtro de datas futuras ou truncamento local. Lista vazia é sucesso.
@@ -376,13 +401,21 @@ O repository converte todos os itens com `ExpenseResponse.toEntity()`;
 qualquer falha de validação monetária invalida a página inteira, sem resultado parcial.
 
 `IExpenseRemoteDataSource.get` recebe o tamanho efetivo obrigatório e a
-continuação opcional e retorna
+continuação e os limites civis opcionais e retorna
 `Either<ErrorsResponse, ExpensePageResponse>`. GET relativo `expenses` usa
 `page[size]` em `Requests.query`. Sem `pageLink`, solicita a primeira página.
+Os limites não nulos usam `filter[from]` e `filter[to]`, serializados pelo
+helper `formatDateSerializer` em `yyyy-MM-dd` pelos componentes civis originais,
+sem horário ou conversão de fuso. Sem limites, a consulta continua geral;
+limites incompletos não recebem defaults e preservam a validação da API.
 Para continuar, o consumidor repassa `next` ou `prev` sem interpretá-los.
 O data source extrai os parâmetros da query do link, preservando valores
-repetidos e sobrescrevendo `page[size]` com o tamanho solicitado. A origem e o
-caminho do link nunca são usados como destino HTTP: a chamada permanece no
+repetidos e sobrescrevendo `page[size]` com o tamanho solicitado. O
+período explícito prevalece: limites não nulos sobrescrevem os do link e,
+quando ao menos um limite é informado, `filter[year]`, `filter[month]` e
+`filter[day]` herdados são removidos. Demais parâmetros de continuação são
+preservados; sem intervalo explícito, os filtros do link permanecem intactos.
+A origem e o caminho do link nunca são usados como destino HTTP: a chamada permanece no
 endpoint relativo protegido da base configurada, inclusive para links absolutos.
 Não presume nomes de cursor ou número de página. Links sem query ou com fragmento
 retornam erro sem requisição. `ExpensePageResponse.fromJson` interpreta `data`
@@ -397,11 +430,13 @@ recentes está integrada à Dashboard; a listagem completa usa rolagem infinita 
 `GetExpensesCommand`, em
 `expense/presentation/screens/expenses/commands/get_expenses_command.dart`,
 recebe `IExpenseRepository` e delega a `get` os campos do record
-`({int pageSize, String? pageLink})`. Seu `execute` começa em `null` e preserva
+`({int pageSize, String? pageLink, DateTime? from, DateTime? to})`, sem defaults
+ou normalização dos limites. Seu `execute` começa em `null` e preserva
 `Either<ErrorsEntity, ExpensePageEntity>` em `GetRepositoryType?`; lista vazia é
 sucesso e `Left` permanece resultado de negócio. A primeira página usa
-`(pageSize: 6, pageLink: null)` no consumidor Dashboard. Continuações
-repassam `next` ou `prev` sem interpretação. Cada execução substitui o resultado
+`pageSize: 6`, `pageLink: null` e o intervalo civil do mês selecionado na Dashboard.
+A listagem geral e consumidores sem recorte continuam informando filtros nulos.
+Continuações repassam `next` ou `prev` sem interpretação. Cada execução substitui o resultado
 da consulta anterior, sem acumular itens, definir limite por tela ou avançar
 automaticamente. Durante a execução, o estado do `command_it` bloqueia novas
 chamadas; após erro permite tentativa novamente. Exceções inesperadas são erros
@@ -446,8 +481,13 @@ do command. Implementa `ICommand` e descarta `execute` em `dispose`.
 descartar sua instância. O command não remove itens da listagem nem navega.
 
 `ExpensesScreen`, em `expense/presentation/screens/expenses/`, recebe instâncias
-próprias de `GetExpensesCommand` e `DeleteExpenseCommand`, formatters e callback de retorno. Usa
-`ExpensesAppBarWidget`, `HeaderWidget`, `ExpenseItemWidget` e
+próprias de `GetExpensesCommand` e `DeleteExpenseCommand`, formatters e callback de retorno.
+Recebe um `period` opcional do tipo `({DateTime from, DateTime to})`, transportado por
+`/expenses`. “Ver tudo” recebe o mês selecionado da Dashboard e a rota calcula
+seu intervalo civil completo. Sem argumento, a consulta permanece geral.
+A listagem identifica mês e ano no header e na semântica, inclusive em loading,
+falha e vazio; abertura, paginação, refresh e retry repassam os mesmos limites.
+Usa `ExpensesAppBarWidget`, `HeaderWidget`, `ExpenseItemWidget` e
 `ExpensesFeedbackWidget`, com `CommandBuilder` para acompanhar a consulta.
 `ExpensesSkeletonWidget`, em `expense/presentation/widgets/`, é compartilhado
 com a Dashboard e usa `Skeletonizer` sobre o layout real de `ExpenseItemWidget`.
@@ -474,7 +514,11 @@ compara seu rótulo com o do item anterior em tempo constante, inclusive entre p
 sem agrupar toda a lista no build nem construir antecipadamente os itens de um mês.
 Páginas cronológicas acrescentam itens no fim em tempo linear no tamanho da página;
 itens fora de ordem usam busca binária para encontrar a posição de inserção.
-Edição de data reposiciona o item entre as despesas já carregadas; exclusão do último
+Edição com data civil fora do intervalo remove o item da listagem filtrada;
+edição dentro do intervalo reposiciona o item entre as despesas já carregadas.
+As comparações usam ano, mês e dia com limites inclusivos, sem conversão de fuso.
+Após edição, a verificação de paginação pode preencher a área visível, preservando
+o controller de rolagem e a continuação. Exclusão do último
 item de um grupo remove seu cabeçalho naturalmente. A continuação da API permanece opaca.
 `ExpenseDismissibleWidget` envolve cada item da listagem, com chave pelo ID,
 gesto para a esquerda, fundo `error`, lixeira `onError` e conteúdo com raio
@@ -538,7 +582,12 @@ não executa commands e não realiza navegação ou requisições.
 a composição de `ExpenseAppBarWidget` e `ExpenseFormWidget` e recebe
 commands, validator, formatters, ID opcional e callbacks de navegação.
 A rota permanece `/expense`: sem argumento abre criação; com argumento `String`
-abre edição. Nenhuma entidade é passada pela rota para preencher o formulário.
+abre edição. O record opcional `({bool returnToPrevious})` abre criação e define
+o destino após sucesso por toque simples. A Dashboard envia
+`(returnToPrevious: true)` ao empilhar o formulário; o callback fecha a rota
+com `context.pop()`, preservando a instância da Dashboard e seu mês selecionado.
+Sem argumento ou com `returnToPrevious: false`, o cadastro independente continua
+navegando para `/dashboard`. Nenhuma entidade é passada pela rota para preencher o formulário.
 `ExpenseScreenStateMixin` executa `GetExpenseCommand` ao abrir com ID e mantém
 loading, entidade consultada e erros, ignorando respostas obsoletas. Durante a
 consulta, `CommandBuilder` compõe `ExpenseSkeletonWidget` sobre o formulário real
@@ -566,8 +615,12 @@ de pickers. Erros com pointers de `amount`, `description` e `occurred_on` são
 agrupados nos respectivos campos; demais erros e exceções recebem toast. O
 formulário preserva os dados para uma nova tentativa.
 O envio usa `HoldButtonWidget`: `onTap` cadastra e, somente em `Right`, exibe o
-toast de sucesso e chama `onExpenseCreated`, cuja navegação para `/dashboard`
-é injetada pela rota. `onHoldComplete` usa a mesma validação e command, mas após
+toast de sucesso e chama `onExpenseCreated`, cujo destino é injetado pela rota:
+retorno à Dashboard existente quando iniciado por ela ou navegação para
+`/dashboard` no acesso independente. Cancelamento fecha o formulário sem
+cadastro; ao retornar à Dashboard existente, as três seções são recarregadas no
+mês preservado. A data inicial continua sendo hoje, mesmo em um mês histórico.
+`onHoldComplete` usa a mesma validação e command, mas após
 sucesso exibe o toast, limpa descrição, valor e erros, redefine a data para hoje
 e permanece na tela. A escolha pertence ao estado local de apresentação e não
 altera os parâmetros de criação ou o command. Falhas em qualquer modo preservam o
@@ -591,7 +644,9 @@ Mantém rolagem e continuações da paginação. Cancelar não altera a lista. O
 edição duplicada, consultas e exclusões enquanto o editor está aberto.
 Ao retornar da listagem completa, Dashboard consulta novamente suas despesas
 recentes, refletindo as edições e exclusões realizadas. O callback de “Ver tudo”
-em `DashboardScreen` é assíncrono para aguardar o retorno da navegação.
+em `DashboardScreen` é `Future<void> Function(DateTime month)?`, assíncrono para
+transportar o mês selecionado e aguardar o retorno da navegação. No retorno,
+as três seções são recarregadas no mês preservado.
 O catálogo de previews de Expense inclui cadastro, edição e skeleton do formulário,
 com commands descartados por `PreviewResourceWidget` e repository fake sem rede.
 
@@ -701,7 +756,10 @@ O data source remoto acessa somente HTTP; o local propaga falhas ao repository.
 
 `dashboard` é uma feature de apresentação e composição, com nome e inicial do
 avatar consultados por `UserCommand` e até seis despesas consultadas por
-`GetExpensesCommand`. `settings` é uma feature
+`GetExpensesCommand`. O botão flutuante da Dashboard usa `FloatingActionButton`
+com `BounceWidget` e abre diretamente o cadastro em `/expense`, sem menu
+expansível. Ao retornar, a Dashboard recarrega despesas, insights e métricas.
+`settings` é uma feature
 de apresentação que consome o logout de Authentication. `authentication`
 encapsula sign-in, sign-up, reenvio e
 confirmação de e-mail via API JSON:API; não recria o contexto `identity` nem
@@ -1189,7 +1247,7 @@ Registros importantes:
   inclusive com lista vazia. Falhas são independentes; `InsightsSectionWidget`
   aparece antes de `ExpensesSectionWidget`.
   `ExpensesSectionWidget` usa `CommandBuilder` para skeleton de seis itens,
-  erro localizado com título e descrição sem ação de retry, vazio com “Ainda sem despesas” e sucesso.
+  erro localizado com título, descrição e retry, vazio com “Sem despesas neste mês” e sucesso.
   Exibe no máximo seis itens, preservando a ordem e as datas da API. Valores usam
   `IMoneyFormatter.formatCents` e datas usam `IDateFormatter.formatLongDate`, como
   `07 de Out`, incluindo o ano quando diferente do atual, em `pt_BR` e sem conversão
@@ -1403,8 +1461,15 @@ paralelos quando houver um papel semântico do tema.
 O tema acompanha o sistema (`ThemeMode.system`) e a aplicação usa `pt_BR`.
 Previews nativos usam `@CordatoPreview`, em
 `core/presentation/previews/preview.dart`, com tema real, localização e toast.
-O catálogo atual contém componentes compartilhados do core, Welcome e os estados
-dos widgets de despesas da Dashboard. Execute-o com `dart run tool/widget_preview.dart`
+O catálogo contém componentes compartilhados do core, Welcome, formulário e
+listagem de Expense e seções e tela completa da Dashboard. Os previews mensais
+cobrem loading agregado, mês vazio, falha parcial, consultas explícitas,
+listagem filtrada ou geral e paginação local de 20 itens. O seletor possui
+cenários de fevereiro bissexto e virada de ano. Fakes de catálogo implementam
+contratos de domínio sem rede ou storage; comandos pertencentes às screens
+são descartados por elas, e recursos externos usam `PreviewResourceWidget`.
+Esses cenários são catálogo visual, não evidência de validação da API ou Maestro.
+Execute-o com `dart run tool/widget_preview.dart`
 e abra a URL impressa no navegador. O launcher inicia o previewer nativo com
 `--web-server` e cria um arquivo Dart temporário em `tool/` após o servidor estar
 disponível. Isso contorna a condição de corrida do Flutter 3.47.6, que consulta
@@ -1433,8 +1498,10 @@ testes do cliente HTTP. Mocks de HTTP e storage de core também são reutilizado
 por Authentication, Session e User. Imports de suporte de teste são relativos;
 imports da aplicação continuam usando `package:cordato/`.
 
-Não há flows Maestro versionados no repositório atual. A decisão de validar
-UI e fluxos com Maestro não significa que esses cenários já estejam cobertos.
+Há um flow legado de Welcome/Authentication em `maestro/`, ainda com textos
+anteriores ao sign-in atual. A decisão de validar UI e fluxos com Maestro não
+significa que todos os cenários já estejam cobertos. Resultados e bloqueios de
+validação mensal ficam no registro da change OpenSpec correspondente.
 O teste de `RouteEnum` verifica strings, não navegação ou integração do Modular.
 
 O check de dependências de Settings permite os contratos do domínio de

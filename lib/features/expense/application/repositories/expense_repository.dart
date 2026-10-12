@@ -52,8 +52,8 @@ final class ExpenseRepository({
       final response = await _remoteDataSource.update(
         id: id,
         cents: cents,
-        description: description,
         occurredOn: occurredOn,
+        description: description,
       );
 
       return response.fold<UpdateRepositoryType>(
@@ -88,9 +88,16 @@ final class ExpenseRepository({
   }
 
   @override
-  Future<GetRepositoryType> get({int pageSize = 30, String? pageLink}) async {
+  Future<GetRepositoryType> get({
+    int pageSize = 30,
+    DateTime? to,
+    DateTime? from,
+    String? pageLink,
+  }) async {
     try {
       final response = await _remoteDataSource.get(
+        to: to,
+        from: from,
         pageLink: pageLink,
         pageSize: pageSize > 0 ? pageSize : 30,
       );

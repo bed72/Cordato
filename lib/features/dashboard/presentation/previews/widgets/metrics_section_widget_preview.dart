@@ -7,6 +7,7 @@ import 'package:cordato/features/core/presentation/formatters/money_formatter.da
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/metrics/metrics_section_widget.dart';
+import 'package:cordato/features/dashboard/presentation/widgets/dashboard_month_selector_widget.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/repositories/interface_metrics_repository.dart';
@@ -51,6 +52,21 @@ Widget previewFailureExpenseMetricsChartWidget() =>
     _sectionPreview(result: Left(ErrorsEntity.unknown()));
 
 @CordatoPreview(
+  group: 'Dashboard / Período',
+  name: 'Fevereiro bissexto',
+  size: Size(390, 340),
+)
+Widget previewLeapFebruaryDashboardMonth() =>
+    _sectionPreview(year: 2024, month: 2);
+
+@CordatoPreview(
+  group: 'Dashboard / Período',
+  name: 'Virada de ano',
+  size: Size(390, 340),
+)
+Widget previewYearBoundaryDashboardMonth() => _sectionPreview(month: 1);
+
+@CordatoPreview(
   group: 'Metrics / Gráfico',
   name: 'Categorias novas',
   size: Size(320, 440),
@@ -75,8 +91,8 @@ Widget previewManyExpenseMetricsCategories() => _sectionPreview(
         ])
           ExpenseCategoryMetricsEntity(
             category: category,
-            totalAmount: 12500,
             percentage: 12.50,
+            totalAmount: 12500,
           ),
       ],
     ),
@@ -100,20 +116,21 @@ Widget _sectionPreview({
   GetExpensesRepositoryType? result,
   bool loading = false,
   int month = 10,
+  int year = 2026,
 }) {
-  DateTime selectedMonth = DateTime(2026, month, 1);
+  DateTime selectedMonth = DateTime(year, month, 1);
   return PreviewResourceWidget<GetExpenseMetricsCommand>(
     create: () {
       final command = GetExpenseMetricsCommand(
         repository: MetricsPreviewRepository(
-          result: result,
+          type: result,
           delay: const Duration(milliseconds: 250),
         ),
       );
       if (!loading) {
         command.execute.run((
           startDate: selectedMonth,
-          endDate: DateTime(2026, month + 1, 0),
+          endDate: DateTime(year, month + 1, 0),
           groupBy: .category,
         ));
       }
@@ -142,14 +159,36 @@ Widget _sectionPreview({
           body: SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(vertical: 24.0),
-              child: MetricsSectionWidget(
-                command: command,
-                selectedMonth: selectedMonth,
-                dateFormatter: DateFormatter(),
-                moneyFormatter: MoneyFormatter(),
-                onPreviousMonth: () => changeMonth(-1),
-                onNextMonth: () => changeMonth(1),
-                onRetry: load,
+              child: Column(
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: command.execute.isRunning,
+                    builder: (_, running, _) => DashboardMonthSelectorWidget(
+                      selectedMonth: selectedMonth,
+                      formatter: DateFormatter(),
+                      onPreviousMonth: loading || running
+                          ? null
+                          : () => changeMonth(-1),
+                      onNextMonth:
+                          loading ||
+                              running ||
+                              !selectedMonth.isBefore(
+                                DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                ),
+                              )
+                          ? null
+                          : () => changeMonth(1),
+                    ),
+                  ),
+                  const SizedBox(height: 8.0),
+                  MetricsSectionWidget(
+                    command: command,
+                    moneyFormatter: MoneyFormatter(),
+                    onRetry: load,
+                  ),
+                ],
               ),
             ),
           ),

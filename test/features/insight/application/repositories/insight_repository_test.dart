@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
@@ -25,58 +25,59 @@ void main() {
 
   group('InsightRepository', () {
     test('converts all insights preserving remote content and order', () async {
-      final from = DateTime(2026, 10, 1);
       final to = DateTime(2026, 10, 8);
-      final comparisonFrom = DateTime(2026, 9, 1);
+      final from = DateTime(2026, 10, 1);
       final comparisonTo = DateTime(2026, 9, 8);
+      final comparisonFrom = DateTime(2026, 9, 1);
       final insights = [
         InsightResponse(
           id: 'z',
+          group: 'comparison',
           title: 'Mais valor registrado',
           type: 'registered_amount_increase',
-          group: 'comparison',
           description: 'De 1 a 8, você registrou 35% mais valor que nos mesmos dias do mês passado.',
           period: InsightPeriodResponse(
-            from: from,
             to: to,
+            from: from,
             comparison: InsightDateRangeResponse(
-              from: comparisonFrom,
               to: comparisonTo,
+              from: comparisonFrom,
             ),
           ),
         ),
         InsightResponse(
           id: 'a',
-          title: 'Uma liderança recorrente',
-          type: 'category_lead_streak',
           group: 'comparison',
+          type: 'category_lead_streak',
+          title: 'Uma liderança recorrente',
           description: 'Moradia segue líder nos registros deste mês.',
           period: InsightPeriodResponse(
-            from: DateTime(2026, 8, 1),
             to: DateTime(2026, 10, 9),
+            from: DateTime(2026, 8, 1),
           ),
         ),
       ];
-      when(() => dataSource.get()).thenAnswer((_) async => Right(insights));
+      when(() => dataSource.get(year: 2026, month: 10))
+          .thenAnswer((_) async => Right(insights));
 
-      final data = await repository.get();
+      final data = await repository.get(year: 2026, month: 10);
 
       expect(data.isRight, isTrue);
       expect(data.right.map((insight) => insight.id), ['z', 'a']);
-      for (var index = 0; index < insights.length; index++) {
+      for (int index = 0; index < insights.length; index++) {
         final source = insights[index];
         final entity = data.right[index];
-        expect(entity.title, source.title);
-        expect(entity.description, source.description);
         expect(entity.type, source.type);
+        expect(entity.title, source.title);
         expect(entity.group, source.group);
-        expect(entity.period!.from, same(source.period!.from));
+        expect(entity.description, source.description);
         expect(entity.period!.to, same(source.period!.to));
+        expect(entity.period!.from, same(source.period!.from));
       }
-      expect(data.right.first.period!.comparison?.from, same(comparisonFrom));
-      expect(data.right.first.period!.comparison?.to, same(comparisonTo));
       expect(data.right.last.period!.comparison, isNull);
-      verify(() => dataSource.get()).called(1);
+      expect(data.right.first.period!.comparison?.to, same(comparisonTo));
+      expect(data.right.first.period!.comparison?.from, same(comparisonFrom));
+      verify(() => dataSource.get(year: 2026, month: 10)).called(1);
       verifyNoMoreInteractions(dataSource);
     });
 
@@ -89,9 +90,9 @@ void main() {
           (_) async => Right([
             InsightResponse(
               id: 'future',
-              title: ' Novo insight ',
               type: 'future_type',
               group: 'future_group',
+              title: ' Novo insight ',
               description: ' Descrição original ',
               period: InsightPeriodResponse(from: from, to: to),
             ),
@@ -101,28 +102,28 @@ void main() {
         final insight = (await repository.get()).right.single;
 
         expect(insight.type, 'future_type');
+        expect(insight.period!.to, same(to));
         expect(insight.group, 'future_group');
         expect(insight.title, ' Novo insight ');
-        expect(insight.description, ' Descrição original ');
         expect(insight.period!.from, same(from));
-        expect(insight.period!.to, same(to));
         expect(insight.period!.comparison, isNull);
+        expect(insight.description, ' Descrição original ');
       },
     );
 
     test('preserves onboarding insights with a null period', () async {
       const insight = InsightResponse(
-        id: 'onboarding',
-        title: 'Cada registro traz contexto',
-        type: 'insufficient_history',
-        group: 'onboarding',
-        description: 'Continue registrando suas despesas. Por enquanto, os registros não sustentam uma observação financeira.',
         period: null,
+        id: 'onboarding',
+        group: 'onboarding',
+        type: 'insufficient_history',
+        title: 'Cada registro traz contexto',
+        description: 'Continue registrando suas despesas. Por enquanto, os registros não sustentam uma observação financeira.',
       );
-      when(() => dataSource.get())
+      when(() => dataSource.get(year: 2026, month: 9))
           .thenAnswer((_) async => const Right([insight]));
 
-      final data = await repository.get();
+      final data = await repository.get(year: 2026, month: 9);
 
       expect(data.isRight, isTrue);
       expect(data.right.single.id, insight.id);
@@ -131,7 +132,7 @@ void main() {
       expect(data.right.single.title, insight.title);
       expect(data.right.single.group, insight.group);
       expect(data.right.single.description, insight.description);
-      verify(() => dataSource.get()).called(1);
+      verify(() => dataSource.get(year: 2026, month: 9)).called(1);
     });
 
     test('returns success for an empty list', () async {
@@ -144,14 +145,48 @@ void main() {
       verify(() => dataSource.get()).called(1);
     });
 
+    test('delegates incomplete filters and preserves parameter and pointer metadata', () async {
+      const errors = ErrorsResponse(
+        errors: [
+          ErrorResponse(
+            status: '422',
+            title: 'Filtro inválido',
+            pointer: '/filter/month',
+            parameter: 'filter[month]',
+            detail: 'Informe os dois filtros.',
+          ),
+        ],
+      );
+      for (final filters in [
+        (year: 2026, month: null),
+        (year: null, month: 13),
+      ]) {
+        when(() => dataSource.get(year: filters.year, month: filters.month))
+            .thenAnswer((_) async => const Left(errors));
+
+        final data = await repository.get(
+          year: filters.year,
+          month: filters.month,
+        );
+
+        expect(data.left.errors.single.status, '422');
+        expect(data.left.errors.single.pointer, '/filter/month');
+        expect(data.left.errors.single.parameter, 'filter[month]');
+        expect(data.left.errors.single.detail, 'Informe os dois filtros.');
+        verify(() => dataSource.get(year: filters.year, month: filters.month))
+            .called(1);
+      }
+      verifyNoMoreInteractions(dataSource);
+    });
+
     test('preserves every remote error and its metadata', () async {
       const errors = ErrorsResponse(
         errors: [
           ErrorResponse(
-            title: 'Consulta indisponível',
-            detail: 'Não foi possível consultar os insights.',
             status: '503',
             pointer: '/data',
+            title: 'Consulta indisponível',
+            detail: 'Não foi possível consultar os insights.',
           ),
           ErrorResponse(detail: 'Tente novamente mais tarde.'),
         ],

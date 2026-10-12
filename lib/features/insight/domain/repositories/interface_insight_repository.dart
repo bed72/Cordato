@@ -5,5 +5,5 @@ import 'package:cordato/features/insight/domain/entities/insight_entity.dart';
 typedef GetRepositoryType = Either<ErrorsEntity, List<InsightEntity>>;
 
 abstract interface class IInsightRepository {
-  Future<GetRepositoryType> get();
+  Future<GetRepositoryType> get({int? year, int? month});
 }

@@ -5,17 +5,19 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+
 import 'package:cordato/features/insight/domain/entities/insight_entity.dart';
 import 'package:cordato/features/insight/domain/entities/insight_period_entity.dart';
 import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
+
 import 'package:cordato/features/insight/presentation/commands/get_insights_command.dart';
 
 import '../../../../support/insight/mocks/insight_repository_mock.dart';
 
 void main() {
-  late InsightRepositoryMock repository;
   late GetInsightsCommand command;
   late List<InsightEntity> insights;
+  late InsightRepositoryMock repository;
 
   setUp(() {
     repository = InsightRepositoryMock();
@@ -23,13 +25,13 @@ void main() {
     insights = [
       InsightEntity(
         id: 'insight-1',
+        group: 'comparison',
         title: 'Mais valor registrado',
         type: 'registered_amount_increase',
-        group: 'comparison',
         description: 'Você registrou 35% mais valor.',
         period: InsightPeriodEntity(
-          from: DateTime(2026, 10, 1),
           to: DateTime(2026, 10, 8),
+          from: DateTime(2026, 10, 1),
         ),
       ),
     ];
@@ -49,7 +51,7 @@ void main() {
       final response = Right<ErrorsEntity, List<InsightEntity>>(insights);
       when(() => repository.get()).thenAnswer((_) async => response);
 
-      final result = await command.execute.runAsync();
+      final result = await command.execute.runAsync((year: null, month: null));
 
       expect(result, same(response));
       expect(command.execute.value, same(response));
@@ -62,10 +64,73 @@ void main() {
   test('publishes an empty list as a successful result', () async {
     when(() => repository.get()).thenAnswer((_) async => const Right([]));
 
-    final result = await command.execute.runAsync();
+    final result = await command.execute.runAsync((year: null, month: null));
 
     expect(result?.isRight, isTrue);
     expect(command.execute.value?.right, isEmpty);
+  });
+
+  test(
+    'delegates reference months and preserves multi-month and null periods',
+    () async {
+      final multiMonth = InsightEntity(
+        id: 'streak',
+        title: 'Liderança recorrente',
+        type: 'category_lead_streak',
+        group: 'comparison',
+        description: 'Moradia liderou por três meses.',
+        period: InsightPeriodEntity(
+          from: DateTime(2026, 7, 1),
+          to: DateTime(2026, 9, 30),
+        ),
+      );
+      const onboarding = InsightEntity(
+        id: 'onboarding',
+        title: 'Continue registrando',
+        type: 'insufficient_history',
+        group: 'onboarding',
+        description: 'Cada registro traz contexto.',
+        period: null,
+      );
+      final response = Right<ErrorsEntity, List<InsightEntity>>([
+        multiMonth,
+        onboarding,
+      ]);
+      when(() => repository.get(year: 2026, month: 9))
+          .thenAnswer((_) async => response);
+
+      final result = await command.execute.runAsync((year: 2026, month: 9));
+
+      expect(result, same(response));
+      expect(result?.right, [multiMonth, onboarding]);
+      expect(result?.right.first.period!.from, DateTime(2026, 7, 1));
+      expect(result?.right.last.period, isNull);
+      verify(() => repository.get(year: 2026, month: 9)).called(1);
+      verifyNoMoreInteractions(repository);
+    },
+  );
+
+  test('preserves incomplete monthly filter errors without defaults', () async {
+    const errors = ErrorsEntity(
+      errors: [
+        ErrorEntity(
+          status: '422',
+          title: 'Mês obrigatório',
+          parameter: 'filter[month]',
+          pointer: '/filter/month',
+        ),
+      ],
+    );
+    when(() => repository.get(year: 2026))
+        .thenAnswer((_) async => const Left(errors));
+
+    final result = await command.execute.runAsync((year: 2026, month: null));
+
+    expect(result?.left, same(errors));
+    expect(result?.left.errors.single.parameter, 'filter[month]');
+    expect(result?.left.errors.single.pointer, '/filter/month');
+    verify(() => repository.get(year: 2026, month: null)).called(1);
+    verifyNoMoreInteractions(repository);
   });
 
   test('preserves repository failures as results', () async {
@@ -74,7 +139,7 @@ void main() {
     );
     when(() => repository.get()).thenAnswer((_) async => response);
 
-    final result = await command.execute.runAsync();
+    final result = await command.execute.runAsync((year: null, month: null));
 
     expect(result, same(response));
     expect(command.execute.value, same(response));
@@ -83,10 +148,13 @@ void main() {
   test('allows another query after a failed load', () async {
     final errors = ErrorsEntity.unknown();
     when(() => repository.get()).thenAnswer((_) async => Left(errors));
-    expect((await command.execute.runAsync())?.left, same(errors));
+    expect(
+      (await command.execute.runAsync((year: null, month: null)))?.left,
+      same(errors),
+    );
     when(() => repository.get()).thenAnswer((_) async => Right(insights));
 
-    final result = await command.execute.runAsync();
+    final result = await command.execute.runAsync((year: null, month: null));
 
     expect(result?.right, same(insights));
     expect(command.execute.value?.right, same(insights));
@@ -97,10 +165,10 @@ void main() {
     'replaces the previous result instead of accumulating insights',
     () async {
       when(() => repository.get()).thenAnswer((_) async => Right(insights));
-      await command.execute.runAsync();
+      await command.execute.runAsync((year: null, month: null));
       when(() => repository.get()).thenAnswer((_) async => const Right([]));
 
-      await command.execute.runAsync();
+      await command.execute.runAsync((year: null, month: null));
 
       expect(command.execute.value?.right, isEmpty);
       verify(() => repository.get()).called(2);
@@ -115,10 +183,10 @@ void main() {
       return pending.future;
     });
 
-    final result = command.execute.runAsync();
+    final result = command.execute.runAsync((year: null, month: null));
     await started.future;
     expect(command.execute.isRunning.value, isTrue);
-    command.execute.run();
+    command.execute.run((year: null, month: null));
     verify(() => repository.get()).called(1);
     pending.complete(Right(insights));
 
@@ -131,7 +199,7 @@ void main() {
     final otherCommand = GetInsightsCommand(repository: repository);
     when(() => repository.get()).thenAnswer((_) async => Right(insights));
     try {
-      await command.execute.runAsync();
+      await command.execute.runAsync((year: null, month: null));
 
       expect(command.execute.value?.right, same(insights));
       expect(otherCommand.execute.value, isNull);
@@ -147,7 +215,10 @@ void main() {
     void onResult() {}
     command.execute.results.addListener(onResult);
     try {
-      await expectLater(command.execute.runAsync(), throwsA(same(failure)));
+      await expectLater(
+        command.execute.runAsync((year: null, month: null)),
+        throwsA(same(failure)),
+      );
     } finally {
       command.execute.results.removeListener(onResult);
     }

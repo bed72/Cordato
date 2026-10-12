@@ -29,19 +29,20 @@ void main() {
         final response = ExpenseResponse(
           id: '9',
           amount: 1500,
-          description: 'Ônibus e metrô',
-          occurredOn: occurredOn,
           category: .transport,
+          occurredOn: occurredOn,
+          description: 'Ônibus e metrô',
         );
         when(() => dataSource.getById(id: 'a/b?c#d'))
             .thenAnswer((_) async => Right(response));
         final IExpenseRepository contract = repository;
         final expense = (await contract.getById(id: 'a/b?c#d')).right;
+
         expect(expense.id, response.id);
-        expect(expense.cents.cents, response.amount);
-        expect(expense.description, response.description);
-        expect(expense.occurredOn, response.occurredOn);
         expect(expense.category, response.category);
+        expect(expense.cents.cents, response.amount);
+        expect(expense.occurredOn, response.occurredOn);
+        expect(expense.description, response.description);
         verify(() => dataSource.getById(id: 'a/b?c#d')).called(1);
         verifyNoMoreInteractions(dataSource);
       },
@@ -52,10 +53,10 @@ void main() {
           ErrorsResponse(
             errors: [
               ErrorResponse(
-                title: 'Despesa não encontrada',
-                detail: 'A despesa não existe.',
                 status: '404',
                 pointer: '/data/id',
+                title: 'Despesa não encontrada',
+                detail: 'A despesa não existe.',
               ),
               ErrorResponse(title: 'Outro erro', status: '404'),
             ],
@@ -64,11 +65,11 @@ void main() {
       );
       final errors = (await repository.getById(id: '8')).left.errors;
       expect(errors, hasLength(2));
+      expect(errors.first.status, '404');
+      expect(errors.last.title, 'Outro erro');
+      expect(errors.first.pointer, '/data/id');
       expect(errors.first.title, 'Despesa não encontrada');
       expect(errors.first.detail, 'A despesa não existe.');
-      expect(errors.first.status, '404');
-      expect(errors.first.pointer, '/data/id');
-      expect(errors.last.title, 'Outro erro');
     });
     test('returns a generic error for an empty remote error list', () async {
       when(() => dataSource.getById(id: '8'))
@@ -85,9 +86,9 @@ void main() {
             ExpenseResponse(
               id: '8',
               amount: amount,
+              category: .other,
               description: 'Game',
               occurredOn: occurredOn,
-              category: .other,
             ),
           ),
         );
@@ -125,16 +126,16 @@ void main() {
         final response = ExpenseResponse(
           id: '9',
           amount: 1600,
-          description: 'Ônibus e metrô atualizado',
-          occurredOn: DateTime(2026, 10, 6),
           category: .transport,
+          occurredOn: DateTime(2026, 10, 6),
+          description: 'Ônibus e metrô atualizado',
         );
         when(
           () => dataSource.update(
             id: id,
             cents: 1500,
-            description: ' Ônibus e metrô ',
             occurredOn: updatedDate,
+            description: ' Ônibus e metrô ',
           ),
         ).thenAnswer((_) async => Right(response));
         final IExpenseRepository contract = repository;
@@ -142,21 +143,21 @@ void main() {
         final expense = (await contract.update(
           id: id,
           cents: 1500,
-          description: ' Ônibus e metrô ',
           occurredOn: updatedDate,
+          description: ' Ônibus e metrô ',
         )).right;
 
         expect(expense.id, response.id);
-        expect(expense.cents.cents, response.amount);
-        expect(expense.description, response.description);
-        expect(expense.occurredOn, response.occurredOn);
         expect(expense.category, response.category);
+        expect(expense.cents.cents, response.amount);
+        expect(expense.occurredOn, response.occurredOn);
+        expect(expense.description, response.description);
         verify(
           () => dataSource.update(
             id: id,
             cents: 1500,
-            description: ' Ônibus e metrô ',
             occurredOn: updatedDate,
+            description: ' Ônibus e metrô ',
           ),
         ).called(1);
         verifyNoMoreInteractions(dataSource);
@@ -185,25 +186,25 @@ void main() {
             () => dataSource.update(
               id: '8',
               cents: parameters.cents,
-              description: parameters.description,
               occurredOn: parameters.occurredOn,
+              description: parameters.description,
             ),
           ).thenAnswer((_) async => Right(response));
 
-          final result = await repository.update(
+          final data = await repository.update(
             id: '8',
             cents: parameters.cents,
-            description: parameters.description,
             occurredOn: parameters.occurredOn,
+            description: parameters.description,
           );
 
-          expect(result.right.cents.cents, 1500);
+          expect(data.right.cents.cents, 1500);
           verify(
             () => dataSource.update(
               id: '8',
               cents: parameters.cents,
-              description: parameters.description,
               occurredOn: parameters.occurredOn,
+              description: parameters.description,
             ),
           ).called(1);
         }
@@ -221,15 +222,15 @@ void main() {
               ErrorsResponse(
                 errors: [
                   ErrorResponse(
-                    title: 'Valor inválido',
-                    detail: 'Informe um valor positivo.',
                     status: '422',
+                    title: 'Valor inválido',
                     pointer: '/data/attributes/amount',
+                    detail: 'Informe um valor positivo.',
                   ),
                   ErrorResponse(
+                    status: '422',
                     title: 'Descrição inválida',
                     detail: 'Informe uma descrição.',
-                    status: '422',
                     pointer: '/data/attributes/description',
                   ),
                 ],
@@ -244,13 +245,13 @@ void main() {
       )).left.errors;
 
       expect(errors, hasLength(2));
-      expect(errors.first.title, 'Valor inválido');
-      expect(errors.first.detail, 'Informe um valor positivo.');
+      expect(errors.last.status, '422');
       expect(errors.first.status, '422');
-      expect(errors.first.pointer, '/data/attributes/amount');
+      expect(errors.first.title, 'Valor inválido');
       expect(errors.last.title, 'Descrição inválida');
       expect(errors.last.detail, 'Informe uma descrição.');
-      expect(errors.last.status, '422');
+      expect(errors.first.pointer, '/data/attributes/amount');
+      expect(errors.first.detail, 'Informe um valor positivo.');
       expect(errors.last.pointer, '/data/attributes/description');
       verify(() => dataSource.update(id: '8', cents: 0, description: ''))
           .called(1);
@@ -266,9 +267,9 @@ void main() {
               ErrorsResponse(
                 errors: [
                   ErrorResponse(
+                    status: status,
                     title: 'Falha na edição',
                     detail: 'Tente novamente.',
-                    status: status,
                   ),
                 ],
               ),
@@ -277,9 +278,9 @@ void main() {
 
           final error = (await repository.update(id: '8')).left.errors.single;
 
+          expect(error.status, status);
           expect(error.title, 'Falha na edição');
           expect(error.detail, 'Tente novamente.');
-          expect(error.status, status);
           verify(() => dataSource.update(id: '8')).called(1);
         }
         verifyNoMoreInteractions(dataSource);
@@ -312,10 +313,10 @@ void main() {
             ),
           );
 
-          final result = await repository.update(id: '8', cents: 1500);
+          final data = await repository.update(id: '8', cents: 1500);
 
-          expect(result.isLeft, isTrue);
-          expect(result.left.errors.single.title, 'Valor inválido');
+          expect(data.isLeft, isTrue);
+          expect(data.left.errors.single.title, 'Valor inválido');
           verify(() => dataSource.update(id: '8', cents: 1500)).called(1);
           verifyNoMoreInteractions(dataSource);
         },
@@ -350,16 +351,16 @@ void main() {
 
   for (final deleted in [true, false]) {
     test(
-      'delegates the expense id and preserves deletion result $deleted',
+      'delegates the expense id and preserves deletion data $deleted',
       () async {
         const id = 'a/b?c#d';
         when(() => dataSource.delete(id: id))
             .thenAnswer((_) async => Right(deleted));
         final IExpenseRepository contract = repository;
 
-        final result = await contract.delete(id: id);
+        final data = await contract.delete(id: id);
 
-        expect(result.right, deleted);
+        expect(data.right, deleted);
         verify(() => dataSource.delete(id: id)).called(1);
         verifyNoMoreInteractions(dataSource);
       },
@@ -489,6 +490,75 @@ void main() {
     expect(page.items, isEmpty);
   });
 
+  test(
+    'delegates complete and incomplete intervals without defaults',
+    () async {
+      final from = DateTime.utc(2026, 9, 1, 23);
+      final to = DateTime(2026, 9, 30, 12);
+      const link = '?page[after]=opaque';
+      for (final limits in [
+        (from: from, to: to),
+        (from: from, to: null),
+        (from: null, to: to),
+      ]) {
+        when(
+          () => dataSource.get(
+            pageSize: 30,
+            pageLink: link,
+            from: limits.from,
+            to: limits.to,
+          ),
+        ).thenAnswer(
+          (_) async =>
+              Right(ExpensePageResponse(items: [], next: null, prev: link)),
+        );
+
+        final data = await repository.get(
+          pageSize: 0,
+          pageLink: link,
+          from: limits.from,
+          to: limits.to,
+        );
+
+        expect(data.right.items, isEmpty);
+        expect(data.right.prev, link);
+        verify(
+          () => dataSource.get(
+            pageSize: 30,
+            pageLink: link,
+            from: limits.from,
+            to: limits.to,
+          ),
+        ).called(1);
+      }
+      verifyNoMoreInteractions(dataSource);
+    },
+  );
+
+  test('preserves remote filter pointers for an incomplete interval', () async {
+    final from = DateTime(2026, 9, 1);
+    const errors = ErrorsResponse(
+      errors: [
+        ErrorResponse(
+          status: '422',
+          title: 'Intervalo inválido',
+          detail: 'Informe os dois limites.',
+          pointer: '/filter/from',
+        ),
+      ],
+    );
+    when(() => dataSource.get(pageSize: 6, from: from))
+        .thenAnswer((_) async => const Left(errors));
+
+    final data = await repository.get(pageSize: 6, from: from);
+
+    expect(data.left.errors.single.pointer, '/filter/from');
+    expect(data.left.errors.single.status, '422');
+    expect(data.left.errors.single.detail, 'Informe os dois limites.');
+    verify(() => dataSource.get(pageSize: 6, from: from, to: null)).called(1);
+    verifyNoMoreInteractions(dataSource);
+  });
+
   test('requests 30 items when the page size is omitted', () async {
     final response = ExpensePageResponse(items: [], next: null, prev: null);
     when(() => dataSource.get(pageSize: 30))
@@ -578,8 +648,10 @@ void main() {
   );
 
   test('fails the whole page when any expense has invalid cents', () async {
+    final from = DateTime(2026, 10, 1);
+    final to = DateTime(2026, 10, 31);
     for (final amount in [0, -1]) {
-      when(() => dataSource.get(pageSize: 6)).thenAnswer(
+      when(() => dataSource.get(pageSize: 6, from: from, to: to)).thenAnswer(
         (_) async => Right(
           ExpensePageResponse(
             items: [
@@ -604,7 +676,11 @@ void main() {
         ),
       );
       expect(
-        (await repository.get(pageSize: 6)).left.errors.single.title,
+        (await repository.get(
+          pageSize: 6,
+          from: from,
+          to: to,
+        )).left.errors.single.title,
         'Valor inválido',
       );
     }

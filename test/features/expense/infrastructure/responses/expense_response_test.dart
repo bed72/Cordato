@@ -12,9 +12,9 @@ void main() {
           'type': 'expenses',
           'attributes': {
             'amount': 300,
-            'occurred_on': '2026-10-05',
-            'description': 'Game',
             'category': 'other',
+            'description': 'Game',
+            'occurred_on': '2026-10-05',
             'created_at': '2026-10-06T19:24:29+00:00',
           },
         },
@@ -22,6 +22,7 @@ void main() {
 
       expect(response.amount, 300);
       final entity = response.toEntity().right;
+
       expect(entity.id, '9');
       expect(entity.cents.cents, 300);
       expect(entity.description, 'Game');
@@ -30,15 +31,15 @@ void main() {
     });
 
     for (final category in ExpenseCategoryEnum.values) {
-      test('recognizes the API category ${category.name}', () {
+      test('recognizes the API category ${category.value}', () {
         final response = ExpenseResponse.fromJson({
           'data': {
             'id': '9',
             'attributes': {
               'amount': 300,
-              'occurred_on': '2026-10-05',
               'description': 'Game',
-              'category': category.name,
+              'occurred_on': '2026-10-05',
+              'category': category.value,
             },
           },
         });
@@ -48,14 +49,31 @@ void main() {
       });
     }
 
+    test('rejects categories outside the API contract', () {
+      expect(
+        () => ExpenseResponse.fromJson({
+          'data': {
+            'id': '9',
+            'attributes': {
+              'amount': 300,
+              'description': 'Game',
+              'category': 'unknown',
+              'occurred_on': '2026-10-05',
+            },
+          },
+        }),
+        throwsStateError,
+      );
+    });
+
     for (final amount in [0, -300]) {
       test('returns a domain error for $amount cents during conversion', () {
         final response = ExpenseResponse(
           id: '9',
           amount: amount,
+          category: .other,
           description: 'Game',
           occurredOn: DateTime(2026, 10, 5),
-          category: .other,
         );
 
         final result = response.toEntity();

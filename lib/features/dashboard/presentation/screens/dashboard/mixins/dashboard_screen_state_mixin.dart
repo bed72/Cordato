@@ -5,13 +5,32 @@ import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashbo
 mixin DashboardScreenStateMixin on State<DashboardScreen> {
   int get recentExpensesLimit => 6;
 
-  late DateTime metricsMonth;
+  late DateTime selectedMonth;
+  int _dependenciesVersion = 0;
+  bool _refreshPendingAfterNavigation = false;
+
+  DateTime get monthEnd =>
+      DateTime(selectedMonth.year, selectedMonth.month + 1, 0);
+
+  bool get isLoading =>
+      widget.expensesCommand.execute.isRunning.value ||
+      widget.insightsCommand.execute.isRunning.value ||
+      widget.metricsCommand.execute.isRunning.value;
+
+  bool get canGoToNextMonth {
+    final today = DateTime.now();
+    return selectedMonth.isBefore(DateTime(today.year, today.month));
+  }
 
   @override
   void initState() {
     super.initState();
+
     final today = DateTime.now();
-    metricsMonth = DateTime(today.year, today.month);
+    selectedMonth = DateTime(today.year, today.month);
+    widget.expensesCommand.execute.isRunning.addListener(_loadingChanged);
+    widget.insightsCommand.execute.isRunning.addListener(_loadingChanged);
+    widget.metricsCommand.execute.isRunning.addListener(_loadingChanged);
     widget.userCommand.execute.run();
     loadExpenses();
     loadInsights();
@@ -22,56 +41,101 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   void didUpdateWidget(covariant DashboardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    if (oldWidget.expensesCommand != widget.expensesCommand ||
+        oldWidget.insightsCommand != widget.insightsCommand ||
+        oldWidget.metricsCommand != widget.metricsCommand) {
+      _dependenciesVersion++;
+      _refreshPendingAfterNavigation = false;
+    }
+
     if (oldWidget.userCommand != widget.userCommand) {
       widget.userCommand.execute.run();
     }
 
     if (oldWidget.expensesCommand != widget.expensesCommand) {
+      oldWidget.expensesCommand.execute.isRunning.removeListener(
+        _loadingChanged,
+      );
       oldWidget.expensesCommand.dispose();
+      widget.expensesCommand.execute.isRunning.addListener(_loadingChanged);
       loadExpenses();
     }
 
     if (oldWidget.insightsCommand != widget.insightsCommand) {
+      oldWidget.insightsCommand.execute.isRunning.removeListener(
+        _loadingChanged,
+      );
       oldWidget.insightsCommand.dispose();
+      widget.insightsCommand.execute.isRunning.addListener(_loadingChanged);
       loadInsights();
     }
 
     if (oldWidget.metricsCommand != widget.metricsCommand) {
+      oldWidget.metricsCommand.execute.isRunning.removeListener(
+        _loadingChanged,
+      );
       oldWidget.metricsCommand.dispose();
+      widget.metricsCommand.execute.isRunning.addListener(_loadingChanged);
       loadMetrics();
     }
   }
 
   @override
   void dispose() {
+    widget.expensesCommand.execute.isRunning.removeListener(_loadingChanged);
+    widget.insightsCommand.execute.isRunning.removeListener(_loadingChanged);
+    widget.metricsCommand.execute.isRunning.removeListener(_loadingChanged);
     widget.expensesCommand.dispose();
     widget.insightsCommand.dispose();
     widget.metricsCommand.dispose();
     super.dispose();
   }
 
+  void _loadingChanged() {
+    if (!mounted) return;
+    setState(() {});
+    if (_refreshPendingAfterNavigation && !isLoading) {
+      _refreshPendingAfterNavigation = false;
+      final version = _dependenciesVersion;
+      Future<void>.microtask(() async {
+        if (!mounted || version != _dependenciesVersion) return;
+        await _refreshAfterNavigation();
+      });
+    }
+  }
+
   void loadExpenses() => widget.expensesCommand.execute.run((
+    to: monthEnd,
     pageLink: null,
+    from: selectedMonth,
     pageSize: recentExpensesLimit,
   ));
 
-  void loadInsights() => widget.insightsCommand.execute.run();
-
-  void loadMetrics() => widget.metricsCommand.execute.run((
-    startDate: metricsMonth,
-    endDate: DateTime(metricsMonth.year, metricsMonth.month + 1, 0),
-    groupBy: .category,
+  void loadInsights() => widget.insightsCommand.execute.run((
+    year: selectedMonth.year,
+    month: selectedMonth.month,
   ));
 
-  void previousMetricsMonth() => _changeMetricsMonth(-1);
+  void loadMetrics() => widget.metricsCommand.execute.run((
+    endDate: monthEnd,
+    groupBy: .category,
+    startDate: selectedMonth,
+  ));
 
-  void nextMetricsMonth() => _changeMetricsMonth(1);
+  void previousMonth() => _changeMonth(-1);
 
-  void _changeMetricsMonth(int offset) {
-    if (widget.metricsCommand.execute.isRunning.value) return;
+  void nextMonth() => _changeMonth(1);
+
+  void _changeMonth(int offset) {
+    if (isLoading || (offset > 0 && !canGoToNextMonth)) return;
     setState(() {
-      metricsMonth = DateTime(metricsMonth.year, metricsMonth.month + offset);
+      selectedMonth = DateTime(
+        selectedMonth.year,
+        selectedMonth.month + offset,
+      );
     });
+    loadExpenses();
+    loadInsights();
     loadMetrics();
   }
 
@@ -80,8 +144,8 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
     try {
       await widget.metricsCommand.execute.runAsync((
-        startDate: metricsMonth,
-        endDate: DateTime(metricsMonth.year, metricsMonth.month + 1, 0),
+        startDate: selectedMonth,
+        endDate: monthEnd,
         groupBy: .category,
       ));
     } catch (_) {
@@ -90,6 +154,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   }
 
   Future<void> refreshDashboard() async {
+    if (isLoading) return;
     await Future.wait([refreshExpenses(), refreshInsights(), refreshMetrics()]);
   }
 
@@ -97,7 +162,10 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     if (widget.insightsCommand.execute.isRunning.value) return;
 
     try {
-      await widget.insightsCommand.execute.runAsync();
+      await widget.insightsCommand.execute.runAsync((
+        year: selectedMonth.year,
+        month: selectedMonth.month,
+      ));
     } catch (_) {
       return;
     }
@@ -108,7 +176,9 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
     try {
       await widget.expensesCommand.execute.runAsync((
+        to: monthEnd,
         pageLink: null,
+        from: selectedMonth,
         pageSize: recentExpensesLimit,
       ));
     } catch (_) {
@@ -117,18 +187,24 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   }
 
   Future<void> openExpense() async {
+    final version = _dependenciesVersion;
     await widget.onExpensePressed?.call();
-    if (!mounted) return;
-    loadExpenses();
-    loadInsights();
-    loadMetrics();
+    if (!mounted || version != _dependenciesVersion) return;
+    await _refreshAfterNavigation();
   }
 
   Future<void> openExpenses() async {
-    await widget.onSeeAllExpensesPressed?.call();
-    if (!mounted) return;
-    loadExpenses();
-    loadInsights();
-    loadMetrics();
+    final version = _dependenciesVersion;
+    await widget.onSeeAllExpensesPressed?.call(selectedMonth);
+    if (!mounted || version != _dependenciesVersion) return;
+    await _refreshAfterNavigation();
+  }
+
+  Future<void> _refreshAfterNavigation() async {
+    if (isLoading) {
+      _refreshPendingAfterNavigation = true;
+      return;
+    }
+    await refreshDashboard();
   }
 }
