@@ -136,7 +136,7 @@ a recarga aguarda o fim de todas. Troca de dependências invalida a recarga pend
 e descarte impede sua execução. Sem argumento ou com `returnToPrevious: false`,
 o cadastro independente mantém a navegação para `/dashboard` após sucesso.
 A data inicial do formulário continua sendo hoje e hold não fecha a rota.
-Dashboard consulta nome e inicial do avatar por `UserCommand` e as seis primeiras
+Dashboard consulta nome e semente do avatar por `UserCommand` e as seis primeiras
 despesas por uma instância própria de `GetExpensesCommand`, descartada pela tela.
 `DashboardScreenStateMixin` concentra consulta inicial, atualização por gesto e
 retorno assíncrono do formulário e da listagem completa, recarregando as despesas
@@ -360,16 +360,17 @@ exclusão e atualização do nome como lazy singletons.
 ### Contexto User
 
 - `UserEntity` é imutável, com `id`, `name`, `email` e `status` como `String`.
+  `avatarSeed` é `String?`, preservando `avatar_seed` ausente ou nulo da API.
   Não inclui datas, `type` ou `links`.
 - `status` preserva o valor textual da API; não invente estados de enum sem
   contrato definido.
-- `IUserRepository` define `getById()`, `delete()` e `update({String? name})`.
+- `IUserRepository` define `getById()`, `delete()` e `update({String? name, String? avatarSeed})`.
   As três operações leem o ID persistido por `IUserLocalDataSource.getId()`;
   ID ausente ou vazio retorna erro sem chamada remota. O data source remoto
   continua recebendo o ID explicitamente.
   Os resultados usam typedefs `Either<ErrorsEntity, UserEntity>` para consulta
   e atualização e `Either<ErrorsEntity, bool>` para exclusão.
-- Atualização permite somente `name`, omitido do payload quando nulo. Não
+- Atualização permite `name` e `avatarSeed` (`avatar_seed`), omitidos do payload quando nulos. Não
   inclua atualização de e-mail, status ou datas sem uma nova decisão.
 - `IUserRemoteDataSource` e `UserRemoteDataSource` ficam no mesmo arquivo em
   `infrastructure/remoto/`, seguindo o padrão de Authentication. O DTO
@@ -382,17 +383,26 @@ exclusão e atualização do nome como lazy singletons.
   `UserRepository.delete` aguarda a exclusão remota e limpa o storage pelo data
   source local somente em `Right(true)` (status 204), antes de retornar sucesso.
   `Left` e `Right(false)` não acionam a limpeza; falha local retorna erro
-  genérico. Dashboard consome `UserCommand` para preencher nome e inicial do avatar.
+  genérico. Dashboard consome `UserCommand` para preencher nome e semente do avatar.
 - `UserRepository`, em `application/repositories/`, implementa `IUserRepository` por
   delegação a `IUserRemoteDataSource` e coordenação de `IUserLocalDataSource`, converte responses para entidades e
   traduz exceções inesperadas em `ErrorsEntity.unknown()`. Exclusão preserva
   o booleano devolvido pelo data source.
 - `UserScreen` recebe `UserCommand`, em `presentation/screens/user/commands/`, para consultar
-  `getById()` ao abrir e após atualizar o nome. Nome, e-mail e inicial do avatar
+  `getById()` ao abrir e após atualizar o nome. Nome, e-mail e semente do avatar
   vêm da API. `CommandBuilder` renderiza skeleton, resultado e erro com tentativa
   de recarregamento. `UserScreenStateMixin` concentra carregamento e handlers de
   UI; a tela não acessa repository ou storage diretamente. `UserAvatarWidget`
-  exibe somente a inicial, sem receber imagem externa.
+  compõe `GeneratedUserAvatarWidget` com `flutter_boring_avatars`, estilo `marble`
+  e paleta fixa dos tokens do tema claro. Dashboard reutiliza o mesmo desenho.
+  Sem semente salva, use `cordato-user-<id>`, sem depender do nome.
+- O refresh do avatar gera uma escolha temporária; “Salvar avatar” executa
+  `UpdateAvatarCommand`, registrado por factory em `userRoutesModule` e descartado
+  pela tela. Falhas preservam a escolha; sucesso exige que a API devolva a semente
+  enviada. O backend precisa aceitar e devolver `avatar_seed`; não simule
+  persistência caso o atributo seja ignorado.
+- User e Dashboard descartam `UserCommand`. Dashboard aguarda o retorno de User
+  e Settings para recarregar nome e avatar, ignorando retornos obsoletos.
 
 ## Imports
 
@@ -1098,8 +1108,6 @@ como padrão novo:
 - Há imports antigos de `flutter/material.dart` em alguns widgets de imagem e
   infraestrutura de apresentação; código novo deve usar `material_ui`.
 - `listen_it` está declarado sem uso direto na aplicação.
-- `UserCommand` é registrado por factory, mas os mixins de Dashboard e User
-  ainda não descartam as instâncias recebidas.
 - Não existe suíte `integration_test`.
 - Há um flow legado de Welcome/Authentication em `maestro/`, ainda com textos
   anteriores ao sign-in atual; a política de validação com Maestro não representa

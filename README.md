@@ -28,7 +28,7 @@ Os bounded contexts do produto são:
   repository, DTOs, data source HTTP e `GetInsightsCommand`. Cards informativos
   na Dashboard, sem persistência própria.
 - `metrics`: agregações somente leitura consultadas pela API, com distribuição
-  mensal dos gastos em gráfico horizontal segmentado por categoria na Dashboard.
+  mensal dos gastos em cards ilustrados por categoria na Dashboard.
 
 O contexto `identity` do backend não será reproduzido no app neste momento. A
 autenticação por e-mail e senha usa a API JSON:API; há sign-in, sign-up,
@@ -49,9 +49,9 @@ O app já possui:
 - tela de sign-up com validação e tela de reenvio da verificação que mostra o e-mail
   cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
   verificação após uma espera de 60 segundos e feedback da API;
-- dashboard com nome e inicial do avatar consultados na API por `UserCommand`,
-  gráfico compacto de distribuição dos gastos por categoria no topo, com
-  total em BRL, navegação mensal e detalhes por toque, seguido de
+- dashboard com nome e avatar gerado a partir da semente consultada na API por `UserCommand`,
+  carrossel de cards de distribuição dos gastos por categoria no topo, com
+  total em BRL, navegação mensal, valores e percentuais por categoria, seguido de
   cards de insights com ícone e cor por tipo em lista horizontal acima das despesas,
   e seção de despesas recentes com as seis primeiras despesas do mês na API, skeleton,
   estado vazio, erro com título e descrição e atualização por gesto ou
@@ -84,6 +84,11 @@ O app já possui:
   novamente em caso de erro, e-mail desativado e exclusão de conta com confirmação,
   loading e feedback de erro por `DeleteUserCommand`; após exclusão confirmada,
   a limpeza da sessão redireciona para as boas-vindas;
+- avatar gerado com `flutter_boring_avatars`, estilo `marble`, compartilhado entre
+  Dados pessoais e Dashboard; refresh permite experimentar opções e “Salvar avatar”
+  envia `avatar_seed` à API. A persistência exige suporte desse campo no backend;
+  falhas preservam a escolha, e sair sem salvar a descarta. A Dashboard recarrega
+  nome e avatar ao retornar de Dados pessoais ou Settings;
 - tela de edição de nome em `/user/edit`, aberta pelo item Nome, seguindo a UI
   centralizada da autenticação, com atualização pela API, loading, erros no campo
   ou toast e retorno dos dados atualizados para a tela de dados pessoais;
@@ -306,7 +311,7 @@ rota protegida.
 A integração HTTP atual inclui os fluxos de autenticação e o data source e
 repository de User, registrados em `userDependenciesModule` e compostos por
 `appModule`, com atualização de nome consumida por `UpdateUserCommand` na edição.
-As operações `getById()`, `update({String? name})` e `delete()` de `UserRepository`
+As operações `getById()`, `update({String? name, String? avatarSeed})` e `delete()` de `UserRepository`
 leem o ID por `UserLocalDataSource.getId()` e chamam o data source remoto
 com o ID explícito; ID ausente impede a requisição. `UserRepository` converte
 respostas e erros remotos para os tipos de domínio nas operações de consulta,

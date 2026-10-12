@@ -49,7 +49,7 @@ Os contextos financeiros e seu estado atual são:
 - `metrics`: agregações somente leitura, com entidades de métricas de despesas,
   contrato e implementação de repository, data source HTTP, DTOs de resposta
   e command de consulta. A Dashboard apresenta a distribuição mensal em um
-  gráfico horizontal segmentado por categoria, sem card ao redor.
+  carrossel de cards ilustrados por categoria.
 
 `ExpenseMetricsEntity`, em `metrics/domain/entities/`, preserva `id`,
 `startDate` e `endDate` como datas civis e `totalAmount` como centavos inteiros
@@ -179,34 +179,49 @@ independentemente da resposta da API. A troca de período inicia loading nas tr�
 seções e renova suas chaves pelo mês, sem renderizar resultados antigos sob o
 novo título. Cada falha oferece retry somente da seção no mês selecionado.
 Total positivo sem categorias mostra uma
-mensagem de distribuição indisponível; total zero não produz segmentos fictícios.
+mensagem de distribuição indisponível, inclusive quando nenhum total de categoria
+é positivo; total zero não produz cards fictícios.
 
-`ExpenseMetricsChartWidget`, em Metrics, usa `fl_chart` para uma barra
-horizontal empilhada de 36 pixels, sem eixos, grade ou fundo de card.
-Os segmentos preservam a ordem da API e têm largura proporcional aos totais
-em centavos; a conversão para `double` e a soma são somente geometria visual.
-As cores são estáveis por nome da categoria e derivadas do tema. Os segmentos
-não exibem texto ou percentuais. O detalhe abaixo do
-gráfico mostra somente a categoria selecionada em uma linha com indicador
-de cor, nome completo, valor em BRL e percentual da API com duas casas decimais
-seguido de “do total”. Em larguras menores ou com texto ampliado, o conteúdo
-pode quebrar linha sem truncamento. A maior categoria começa
-selecionada, preservando a ordem da API entre empates. Toques nos segmentos
-mudam a seleção; não há navegação por setas entre categorias.
-A seleção é local e volta à maior
-categoria quando os dados mudam. Categorias desconhecidas preservam seu nome
-e usam cor neutra. Os detalhes são anunciados. A legenda completa não é exibida.
-`ExpenseMetricsChartWidgetStateMixin`, restrito a `State<ExpenseMetricsChartWidget>`,
-concentra a seleção inicial e sua atualização no lifecycle, o handler de
-toque e os cálculos de segmentos e a formatação de percentuais.
-`ExpenseCategoryMetricsExtension`, em `metrics/presentation/extensions/`,
-isola os rótulos pt-BR e as cores por categoria, incluindo o fallback para
-valores desconhecidos. O mixin consome `label` e `color(context)` dessa
-extension. As cores do gráfico e do texto vêm de `context.colors`.
-O widget mantém somente a composição do gráfico e do detalhe inline.
-O gráfico respeita a preferência de redução de animações. Previews da seção
-na Dashboard usam o fake de Metrics para claro, escuro, loading, erro, vazio,
-texto ampliado e categorias novas.
+`ExpenseMetricsCategoriesExtension.cardPages`, na apresentação de Metrics,
+filtra totais positivos, ordena uma cópia por total decrescente com desempate
+pelo índice original e forma grupos consecutivos de até três. Não altera
+entidades, ordem de domínio, valores ou percentuais recebidos da API.
+`ExpenseCategoryMetricsCardWidget` mostra nome completo, valor pelo
+`IMoneyFormatter`, badge e percentual pt-BR com uma casa decimal seguido de
+“do total”. Cada card anuncia esses dados uma única vez e não possui ação.
+Categoria, valor e percentual usam o mesmo espaçamento vertical de 8 pixels.
+O primeiro card de cada página tem valor maior e ilustração decorativa por
+`ImageWidget`, sem tint, ancorada no canto inferior direito em uma área
+recortada separada dos dados, sem padding textual e respeitando os cantos do card.
+A área decorativa de 180 pixels acomoda a imagem de 220 pixels alinhada à
+direita, preservando seu topo; o recorte permanece na base e nos cantos.
+Em páginas com duas categorias, ambos os cards possuem ilustração; somente o
+primeiro mantém o destaque tipográfico. `illustrated` permite separar a presença
+da imagem de `highlighted`.
+`BackgroundIconWidget` mantém ícone quadrado arredondado
+e fundo a 12%. `ExpenseCategoryMetricsExtension` oferece rótulos, ícones,
+cores alinhadas aos itens de Expense sem importá-los e assets de categorias.
+`other` usa `others.webp`; categorias futuras mantêm o nome, com ícone/cor
+neutros e essa imagem como fallback. Cores, tipografia e raios vêm do tema.
+
+`ExpenseMetricsGridWidget` usa `StaggeredGrid.count`: um card largo; dois lado
+a lado com imagens em ambos; três com destaque alto à esquerda e dois à direita.
+Não há linha inferior nem placeholders para completar a última página.
+O destaque é relativo à página, sem área proporcional ao gasto.
+A altura-base da grade é 320 pixels, ampliada pela medição do conteúdo com a
+escala de texto vigente. O carrossel calcula a maior altura necessária entre
+todas as páginas e a aplica igualmente, incluindo páginas com um ou dois cards.
+Larguras
+estreitas, valores extensos ou texto ampliado adaptam a grade para uma coluna,
+sem truncar dados financeiros. `ExpenseMetricsCarouselWidget` usa rolagem
+horizontal com altura uniforme suficiente para todas as páginas e indicador
+quando há mais de uma. Seu mixin restrito gerencia posição e controller,
+reinicia na substituição dos dados e descarta listeners e controller.
+A seção renova a identidade pelo resultado; a Dashboard renova a chave pelo
+mês. A redução de animações desativa o snap animado. O skeleton reutiliza a
+grade de três cards e a mesma altura-base adaptativa, exclui placeholders da semântica e anuncia o loading.
+Previews cobrem 1, 2, 3, 4, 5, 6, 7, 8 e 10 categorias, empates, fallback, estados,
+temas e texto ampliado.
 
 `InsightEntity`, em `insight/domain/entities/`, possui `id`, `title`, `type`,
 `group`, `description` e `period` anulável. Insights de onboarding como
@@ -670,17 +685,17 @@ com commands descartados por `PreviewResourceWidget` e repository fake sem rede.
 
 `user` é o bounded context dos dados do usuário. `UserEntity`, em
 `domain/entities/user_entity.dart`, é imutável e possui
-`id`, `name`, `email` e `status` como `String`, sem datas.
+`id`, `name`, `email` e `status` como `String` e `avatarSeed` como `String?`, sem datas.
 O identificador preserva a representação textual da API;
 `status` preserva o valor informado, pois o contrato disponível não define todos
 os estados possíveis. O envelope JSON:API (`data`, `type` e `links`) não faz
 parte da entidade. `IUserRepository`, em
 `domain/repositories/interface_user_repository.dart`, define `getById()`,
-`delete()` e `update({String? name})`. As três operações obtêm o ID
+`delete()` e `update({String? name, String? avatarSeed})`. As três operações obtêm o ID
 persistido pelo data source local. Os typedefs `GetByIdRepositoryType`
 e `UpdateRepositoryType` representam `Either<ErrorsEntity, UserEntity>`;
 `DeleteRepositoryType` representa `Either<ErrorsEntity, bool>`. `update` permite
-atualizar somente `name`, opcional; quando nulo, o campo é omitido do payload.
+atualizar `name` e `avatarSeed`, opcionais; campos nulos são omitidos do payload.
 Em cada operação, `UserRepository` lê o ID pelo data source local e chama
 o método correspondente de `IUserRemoteDataSource` com esse ID explícito.
 ID ausente, vazio ou composto apenas de espaços retorna o erro de domínio
@@ -694,7 +709,7 @@ para GET, PATCH e DELETE de `users/<id>`. GET e PATCH retornam
 `Either<ErrorsResponse, UserResponse>`; DELETE retorna
 `Either<ErrorsResponse, bool>`, com `true` em 204 e `false` para outros status
 de sucesso. PATCH envia `data.type: users`, `data.id` e
-somente o nome informado em `data.attributes`. Erros JSON:API são preservados;
+somente os atributos informados (`name` e `avatar_seed`) em `data.attributes`. Erros JSON:API são preservados;
 respostas malformadas e exceções inesperadas recebem erro genérico.
 `UserResponse.fromJson` extrai os campos do modelo com casts Dart,
 e `UserResponseToEntity.toEntity()` os converte para `UserEntity`. As datas
@@ -718,10 +733,10 @@ novamente”. O skeleton reutiliza o layout de avatar e menu com placeholders
 visuais e `Skeletonizer`, que bloqueia interação durante o carregamento.
 `UserScreenStateMixin`, restrito a `State<UserScreen>`, inicia a consulta,
 encapsula recarregamento, edição de nome e descrição dos erros; a screen mantém
-a composição visual. O avatar usa o nome retornado.
+a composição visual. O nome identifica o avatar na semântica; o desenho usa a semente.
 `userDependenciesModule` registra `UserCommand` por factory, fornecendo instâncias
-independentes para User e Dashboard. Os mixins atuais dessas telas não descartam
-suas instâncias de `UserCommand`; esse lifecycle permanece uma pendência.
+independentes para User e Dashboard. Os mixins dessas telas descartam suas instâncias
+de `UserCommand`, inclusive quando substituídas.
 “Excluir conta” abre a bottom sheet de confirmação
 com título “Deseja apagar sua conta?”, aviso de ação irreversível e botões
 “Voltar” e “Confirmar”, seguindo o layout do logout. O handler fica em
@@ -742,9 +757,25 @@ compartilhado; `ConfirmationBottomSheetWidget` compõe os botões. O callback s�
 é chamado após fechar a sheet com confirmação e enquanto o contexto
 proprietário estiver montado; cancelar ou dispensar não executa a ação.
 Acima da lista, `UserAvatarWidget` mostra um avatar quadrado centralizado com
-cantos arredondados (`cornerRadius300`), a inicial do nome e as cores do tema.
-Não recebe imagem; o avatar atual é somente a inicial. O ícone de câmera recebe
-callback opcional; não há seleção ou upload de foto implementados.
+cantos arredondados (`cornerRadius300`) e botão “Gerar outro avatar” com ícone de
+refresh. `GeneratedUserAvatarWidget`, em `user/presentation/widgets/`, encapsula
+`AnimatedBoringAvatar` de `flutter_boring_avatars` com estilo `marble`, transição
+de 300 ms e paleta fixa dos tokens do tema claro, compartilhada nos dois temas.
+Perfil e Dashboard usam a mesma semente, com fallback `cordato-user-<id>` quando
+`avatar_seed` estiver ausente ou nulo. Alterar o nome não altera o desenho.
+`UserScreenStateMixin` gera sementes aleatórias locais de 32 caracteres hexadecimais
+e mantém a escolha temporária. “Salvar avatar” aparece somente com alteração;
+sair sem salvar descarta a escolha. `UpdateAvatarCommand`, em
+`screens/user/commands/`, recebe `String`, delega a `update(avatarSeed: ...)`, preserva
+`Either` e é registrado por factory em `userRoutesModule`, com descarte pela tela.
+`CommandBuilder` preserva o formulário durante o envio, desabilitando geração,
+edição de nome e salvamento. Sucesso usa o usuário retornado e exibe toast;
+falhas preservam a escolha para retry. A tela só confirma sucesso se a resposta
+contiver a semente enviada, evitando anunciar persistência quando a API ignora
+o atributo. O backend precisa aceitar `avatar_seed` em PATCH e retorná-lo em GET
+e PATCH; a implementação Flutter não provisiona esse campo no servidor.
+Previews de User em `presentation/previews/screens/` usam repository fake sem
+rede para experimentar geração, salvamento e erro, nos temas claro e escuro.
 `EditUserScreen` centraliza título “Nome”, descrição “Atualize o seu nome de
 exibição.” e campo na área acima do botão “Atualizar”, com rolagem e adaptação
 ao teclado, seguindo o layout da autenticação. Recebe nome inicial,
@@ -772,7 +803,7 @@ storage do core, sem dependência entre as duas features e sem ler o token.
 `ErrorsEntity.unknown()`, mesmo que a exclusão remota já tenha sido confirmada.
 O data source remoto acessa somente HTTP; o local propaga falhas ao repository.
 
-`dashboard` é uma feature de apresentação e composição, com nome e inicial do
+`dashboard` é uma feature de apresentação e composição, com nome e semente do
 avatar consultados por `UserCommand` e até seis despesas consultadas por
 `GetExpensesCommand`. O botão flutuante da Dashboard usa `FloatingActionButton`
 com `BounceWidget` e abre diretamente o cadastro em `/expense`, sem menu
@@ -1226,7 +1257,8 @@ Registros importantes:
   também registra `UserCommand` por factory para Dashboard e dados pessoais.
 - `userRoutesModule`: registra `/user` e `/user/edit`, compõe consulta, edição
   e exclusão com commands e callbacks de navegação e registra `DeleteUserCommand`
-  e `UpdateUserCommand` como lazy singletons, com descarte pelo módulo.
+  e `UpdateUserCommand` como lazy singletons, com descarte pelo módulo, além de
+  `UpdateAvatarCommand` por factory, descartado pela tela.
 - `sessionDependenciesModule`: registra `ISessionLocalDataSource`, `ISessionRepository` e
   `SessionCommand` como dependências do app inteiro (módulo sem `path`), para
   continuar observando mudanças depois que `AppScreen` sair da pilha.
@@ -1244,11 +1276,13 @@ Registros importantes:
   cadastrado para exibi-lo em um campo desabilitado e permitir o reenvio do link.
 - `dashboardRoutesModule`: injeta `UserCommand` na tela inicial, que consulta
   o usuário ao montar. O AppBar recebe o command e `UserNameWidget` usa
-  `CommandBuilder` para mostrar nome e inicial da API, skeleton durante a consulta
+  `CommandBuilder` para mostrar nome e avatar gerado a partir da API, skeleton durante a consulta
   e “Tentar novamente” em caso de erro. Nomes longos usam ellipsis. A saudação
   continua baseada na hora local. Dashboard e User recebem instâncias distintas
-  do command; a atualização feita em User não propaga o resultado diretamente
-  ao AppBar da Dashboard.
+  do command. Ao retornar de User ou Settings, a Dashboard consulta novamente
+  User para atualizar nome e avatar. Os callbacks dessas navegações retornam
+  `Future<void>`; o mixin ignora retornos após descarte ou troca de command e
+  aguarda consultas em andamento por listener antes da recarga pendente.
   O avatar reutiliza `BounceWidget` e abre `/user` ao tocar, com navegação
   injetada por callback e sem acesso ao router no widget.
   Também injeta instâncias por factory de `GetExpensesCommand` e
@@ -1256,8 +1290,7 @@ Registros importantes:
   `IMoneyFormatter` e o `IDateFormatter` do core. `DashboardScreenStateMixin` consulta a primeira
   página com `pageSize: 6` e os insights em paralelo ao montar, recarrega ambos
   após o retorno do formulário e da listagem completa e
-  descarta os commands de despesas e insights ao sair. O `UserCommand` da Dashboard não é
-  descartado pela tela. A ação de gasto recebe um callback assíncrono para aguardar
+  descarta os commands de despesas, insights e User ao sair. A ação de gasto recebe um callback assíncrono para aguardar
   o retorno da rota; após navegação que removeu a Dashboard, o handler não consulta
   novamente a instância descartada. A nova Dashboard carrega ao montar.
   O corpo usa `ListView` com rolagem sempre habilitada, padding inferior para o FAB
@@ -1405,7 +1438,7 @@ Endpoints usados pelos data sources atuais:
 | Reenvio | POST `authentication/email-verification/resend` | `false` | `Either<ErrorsResponse, bool>` |
 | Logout | DELETE `authentication/sign-out` | `true` | `Either<ErrorsResponse, bool>` |
 | Consulta de User | GET `users/<id>` | `true` | `Either<ErrorsResponse, UserResponse>` |
-| Atualização do nome | PATCH `users/<id>` | `true` | `Either<ErrorsResponse, UserResponse>` |
+| Atualização do nome e avatar | PATCH `users/<id>` | `true` | `Either<ErrorsResponse, UserResponse>` |
 | Exclusão de User | DELETE `users/<id>` | `true` | `Either<ErrorsResponse, bool>` |
 | Criação de Expense | POST `expenses` | `true` | `Either<ErrorsResponse, ExpenseResponse>` |
 | Listagem de Expense | GET `expenses` com `page[size]` e query de continuação | `true` | `Either<ErrorsResponse, ExpensePageResponse>` |
