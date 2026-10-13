@@ -304,6 +304,32 @@ atualmente sobrescrevem a base com `https://app.cordato.cloud/api`, diferente
 do padrão de `coreDependenciesModule`. Consulte `.vscode/launch.json` ao
 executar por esses perfis; `BASE_URL` é definido em tempo de compilação.
 
+## Firebase
+
+O app inicializa Firebase Core antes de montar a interface, usando o projeto
+`trocado-d362e` (Trocado). Android e iOS estão registrados com o identificador
+`com.bed.cordato`. Esta etapa configura somente Core e inicialização.
+
+Os arquivos de configuração estão em
+`lib/features/core/infrastructure/clients/firebase/firebase_options.dart`,
+`firebase.json`, `android/app/google-services.json` e
+`ios/Runner/GoogleService-Info.plist`. Para regenerá-los com acesso ao projeto:
+
+```bash
+firebase login
+dart pub global activate flutterfire_cli
+flutterfire configure \
+  --project=trocado-d362e \
+  --out=lib/features/core/infrastructure/clients/firebase/firebase_options.dart \
+  --platforms=android,ios \
+  --android-package-name=com.bed.cordato \
+  --ios-bundle-id=com.bed.cordato
+```
+
+Após regenerar, revise o diff e remova comentários adicionados em código Dart
+e Gradle conforme as convenções do projeto. Para executar, escolha um dispositivo
+Android ou iOS com `flutter run -d <id-do-dispositivo>`.
+
 ## Android Release
 
 O processo de configuração segura da chave, build e verificação de artefatos

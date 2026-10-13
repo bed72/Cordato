@@ -3,6 +3,15 @@
 Android release builds require a dedicated signing key. Never use the Android
 debug key or commit signing material, passwords, aliases, or `key.properties`.
 
+## Firebase Configuration
+
+Android uses Firebase project `trocado-d362e` with package `com.bed.cordato`.
+The Google Services Gradle plugin reads `app/google-services.json` during debug
+and release builds. Flutter initializes Firebase Core before starting the app
+using `lib/features/core/infrastructure/clients/firebase/firebase_options.dart`.
+Regeneration instructions are in the root
+README's Firebase section.
+
 ## Signing Configuration
 
 Use one of the following secure configuration boundaries. Environment variables

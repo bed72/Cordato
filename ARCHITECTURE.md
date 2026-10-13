@@ -30,6 +30,29 @@ decisões para contextos ainda planejados. Specs OpenSpec e skills locais ainda
 contêm descrições históricas de Supabase; não representam a autenticação atual
 nem justificam restaurar camadas removidas.
 
+## Firebase E Bootstrap
+
+O bootstrap em `lib/main.dart` prepara `WidgetsFlutterBinding` e aguarda
+`FirebaseClient.initialize()` antes de montar o `ModularApp`. O cliente e seu
+contrato `IFirebaseClient` ficam em
+`core/infrastructure/clients/firebase/firebase_client.dart` e encapsulam
+`Firebase.initializeApp` com `DefaultFirebaseOptions.currentPlatform`.
+O nome da instância é `Trocado`; futuros serviços que consumam essa instância
+devem resolver `Firebase.app('Trocado')` explicitamente.
+Falhas de inicialização são propagadas e impedem o início do app.
+O cliente é criado no bootstrap, sem registro de DI enquanto não houver
+consumidores nos módulos.
+
+`firebase_core` configura o projeto `trocado-d362e` somente para Android e iOS,
+ambos com identificador `com.bed.cordato`. As opções em
+`core/infrastructure/clients/firebase/firebase_options.dart`,
+`firebase.json`, `android/app/google-services.json` e
+`ios/Runner/GoogleService-Info.plist` são geradas pelo FlutterFire CLI.
+O Android aplica o plugin Google Services; o iOS inclui o plist nos recursos
+do target Runner. Outras plataformas não possuem opções configuradas.
+Esta etapa inclui somente Core e inicialização; os demais serviços Firebase
+ainda não possuem integração.
+
 ## Produto E Contextos
 
 Os contextos financeiros e seu estado atual são:

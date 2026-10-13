@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/app_module.dart';
+import 'package:cordato/features/core/infrastructure/clients/firebase/firebase_client.dart';
 import 'package:cordato/features/root/presentation/widgets/app_widget.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
@@ -9,6 +10,7 @@ import 'package:cordato/features/session/presentation/commands/session_command.d
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseClient().initialize();
 
   final navigatorKey = GlobalKey<NavigatorState>();
 

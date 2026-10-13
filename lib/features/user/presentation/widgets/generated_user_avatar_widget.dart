@@ -1,5 +1,5 @@
-import 'package:flutter_boring_avatars/flutter_boring_avatars.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_boring_avatars/flutter_boring_avatars.dart';
 
 import 'package:cordato/features/core/presentation/themes/color_theme.dart';
 
