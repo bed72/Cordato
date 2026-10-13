@@ -9,8 +9,8 @@
 
 - [x] 2.1 Criar card público de Metrics com `BackgroundIconWidget`, cores das categorias, raios e tipografia existentes, valor em BRL e percentual pt-BR com uma casa decimal.
 - [x] 2.2 Implementar badge no canto superior direito, texto percentual abaixo do valor e semântica única para evitar anúncios duplicados.
-- [x] 2.3 Implementar ilustração decorativa com `ImageWidget` no destaque e em ambos os cards de páginas duplas, no canto inferior direito, sem tint e sem sobreposição dos dados.
-- [x] 2.4 Criar grade com `StaggeredGrid.count` para um card largo, dois lado a lado ilustrados e três com destaque à esquerda, com altura uniforme entre todas as páginas.
+- [x] 2.3 Implementar ilustração decorativa com `ImageWidget` somente no destaque, no canto inferior direito, sem tint e sem sobreposição dos dados.
+- [x] 2.4 Criar grade de duas linhas com destaque em largura total acima e secundários abaixo, compartilhando as alturas de cada linha entre páginas; com dois itens, o secundário ocupa largura total.
 - [x] 2.5 Adaptar altura e composição para nomes longos, valores grandes, largura estreita e texto ampliado sem truncar dados financeiros.
 
 ## 3. Carrossel e integração
@@ -26,10 +26,16 @@
 - [x] 4.1 Atualizar previews para 1, 2, 3, 4, 5, 6, 7, 8 e 10 categorias, empates, categorias futuras, estados da seção, claro/escuro e texto ampliado.
 - [x] 4.2 Atualizar `ARCHITECTURE.md` para refletir cards, ordenação de apresentação, destaque relativo e carrossel.
 - [x] 4.3 Executar `flutter pub get`, `flutter analyze` e `flutter test`, registrando qualquer falha e sua relação com a mudança.
-- [ ] 4.4 Validar com Maestro composição, dados, scroll horizontal e vertical, indicador e reinício após troca de mês, sem criar testes Flutter de widgets/screens/tema.
-- [ ] 4.5 Validar visualmente imagens, cores das categorias, raios, legibilidade e adaptação nos previews claro/escuro e texto ampliado.
+- [x] 4.4 Validar com Maestro composição, dados, scroll horizontal e vertical, indicador e reinício após troca de mês, sem criar testes Flutter de widgets/screens/tema.
+- [x] 4.5 Validar visualmente imagens, cores das categorias, raios, legibilidade e adaptação nos previews claro/escuro e texto ampliado.
 
 ## Registro de verificação
+
+- Encerramento em 2026-10-13: o usuário confirmou que todas as validações estão resolvidas, sem pendências. Os itens 4.4 e 4.5 são concluídos com essa confirmação, além das verificações do agente descritas a seguir.
+- `flutter analyze`: sem problemas; `flutter test`: 639 testes passando na verificação final da implementação.
+- Maestro no Android físico confirmou ida e volta entre páginas de três e duas categorias, alinhamento e alturas por linha de 228 e 161 pixels no cenário real. Margens de 20 pixels e separação de 12 pixels acompanham o padrão de insights.
+- Regras finais: grupos de duas ou três categorias, sobra de um oculta, card superior ilustrado em largura total e secundários na linha inferior. O card inferior único usa largura total sem imagem. Alturas são medidas e compartilhadas por linha, sem piso fixo. A imagem permanece sem shimmer no skeleton.
+- O registro abaixo preserva o histórico anterior aos ajustes finais e não representa pendências atuais.
 
 - `flutter pub get`: concluído; `fl_chart` removido do lockfile.
 - `flutter analyze`: execução final sem erros ou warnings (`No issues found`), incluindo as correções presentes nos fluxos Dashboard e User.

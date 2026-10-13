@@ -22,6 +22,8 @@ abstract interface class IAuthenticationRemoteDataSource {
   Future<SignUpDataSourceType> signUp({
     required String email,
     required String password,
+    String? name,
+    String? avatar,
   });
 
   Future<SignInDataSourceType> signIn({
@@ -91,6 +93,8 @@ final class AuthenticationRemoteDataSource({required final IHttpClient _client})
   Future<SignUpDataSourceType> signUp({
     required String email,
     required String password,
+    String? name,
+    String? avatar,
   }) => response(
     from: (response) => .fromJson(response.body),
     execute: () => _client.post(
@@ -101,8 +105,9 @@ final class AuthenticationRemoteDataSource({required final IHttpClient _client})
             'type': 'sign-ups',
             'attributes': {
               'email': email,
-              'name': 'Trocado',
+              'avatar': ?avatar,
               'password': password,
+              'name': name ?? 'Trocado',
               'password_confirmation': password,
             },
           },

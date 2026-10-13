@@ -33,8 +33,10 @@ final dashboardRoutesModule = createModule(
             to: DateTime(month.year, month.month + 1, 0),
           ),
         ),
-        onAvatarPressed: () => context.pushNamed(RouteEnum.user.path),
-        onMenuPressed: () => context.pushNamed(RouteEnum.settings.path),
+        onAvatarPressed: () async =>
+            await context.pushNamed(RouteEnum.user.path),
+        onMenuPressed: () async =>
+            await context.pushNamed(RouteEnum.settings.path),
         onExpensePressed: () async => await context.pushNamed(
           RouteEnum.expense.path,
           arguments: (returnToPrevious: true),

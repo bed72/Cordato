@@ -180,48 +180,64 @@ seções e renova suas chaves pelo mês, sem renderizar resultados antigos sob o
 novo título. Cada falha oferece retry somente da seção no mês selecionado.
 Total positivo sem categorias mostra uma
 mensagem de distribuição indisponível, inclusive quando nenhum total de categoria
-é positivo; total zero não produz cards fictícios.
+é positivo; total zero não produz cards fictícios. Uma única categoria positiva
+mantém apenas o total, sem carrossel nem mensagem de distribuição indisponível.
 
 `ExpenseMetricsCategoriesExtension.cardPages`, na apresentação de Metrics,
 filtra totais positivos, ordena uma cópia por total decrescente com desempate
-pelo índice original e forma grupos consecutivos de até três. Não altera
+pelo índice original e forma grupos consecutivos de duas ou três categorias.
+Grupos com apenas uma categoria são ocultados, inclusive a sobra final: quatro
+categorias produzem uma página de três; cinco produzem páginas de três e duas.
+Não altera
 entidades, ordem de domínio, valores ou percentuais recebidos da API.
 `ExpenseCategoryMetricsCardWidget` mostra nome completo, valor pelo
 `IMoneyFormatter`, badge e percentual pt-BR com uma casa decimal seguido de
 “do total”. Cada card anuncia esses dados uma única vez e não possui ação.
 Categoria, valor e percentual usam o mesmo espaçamento vertical de 8 pixels.
 O primeiro card de cada página tem valor maior e ilustração decorativa por
-`ImageWidget`, sem tint, ancorada no canto inferior direito em uma área
-recortada separada dos dados, sem padding textual e respeitando os cantos do card.
-A área decorativa de 180 pixels acomoda a imagem de 220 pixels alinhada à
-direita, preservando seu topo; o recorte permanece na base e nos cantos.
-Em páginas com duas categorias, ambos os cards possuem ilustração; somente o
-primeiro mantém o destaque tipográfico. `illustrated` permite separar a presença
-da imagem de `highlighted`.
+`ImageWidget`, sem tint, ancorada no canto inferior direito, sem padding textual
+e respeitando os cantos do card. A área decorativa de 180 pixels acomoda a imagem
+de 220 pixels alinhada pela base. `OverflowBox` permite que a imagem pinte acima
+da área reservada, sem `ClipRect` interno; o recorte ocorre no contorno do card.
+O card superior usa `compact`, com área decorativa de 60 pixels e imagem de
+220 pixels, ou 240 pixels para Moradia, mantendo os dados completos.
+A imagem usa deslocamento vertical de 64 pixels no layout compacto e 48 nos
+demais, para acompanhar a base mais curta sem avançar sobre os textos.
+Somente o card superior possui ilustração e destaque tipográfico, inclusive em
+páginas com duas categorias. `illustrated` permite separar a presença da imagem
+de `highlighted`, mas não é ativado nos cards inferiores do carrossel.
 `BackgroundIconWidget` mantém ícone quadrado arredondado
 e fundo a 12%. `ExpenseCategoryMetricsExtension` oferece rótulos, ícones,
 cores alinhadas aos itens de Expense sem importá-los e assets de categorias.
 `other` usa `others.webp`; categorias futuras mantêm o nome, com ícone/cor
 neutros e essa imagem como fallback. Cores, tipografia e raios vêm do tema.
 
-`ExpenseMetricsGridWidget` usa `StaggeredGrid.count`: um card largo; dois lado
-a lado com imagens em ambos; três com destaque alto à esquerda e dois à direita.
-Não há linha inferior nem placeholders para completar a última página.
+`ExpenseMetricsGridWidget` compõe sempre duas linhas: um card ilustrado em
+largura total acima e uma linha inferior sem ilustrações. Com três categorias,
+os dois cards inferiores ficam lado a lado em larguras iguais; com duas, o card
+inferior ocupa toda a largura, mantendo a altura da linha inferior.
+Não há placeholders para completar a última página.
 O destaque é relativo à página, sem área proporcional ao gasto.
-A altura-base da grade é 320 pixels, ampliada pela medição do conteúdo com a
-escala de texto vigente. O carrossel calcula a maior altura necessária entre
-todas as páginas e a aplica igualmente, incluindo páginas com um ou dois cards.
-Larguras
-estreitas, valores extensos ou texto ampliado adaptam a grade para uma coluna,
-sem truncar dados financeiros. `ExpenseMetricsCarouselWidget` usa
+A altura da grade é calculada pela medição do conteúdo com a
+escala de texto vigente, sem piso fixo. O carrossel calcula separadamente a maior
+altura superior e a maior altura inferior entre todas as páginas e as aplica
+a cada linha. `upperHeight` e `lowerHeight` são repassados à grade; a altura total
+é sua soma mais 12 pixels de espaçamento, preservando o alinhamento ao deslizar.
+Nomes e valores extensos ou texto ampliado aumentam a altura da linha conforme
+a medição na largura real, sem truncamento e sem alterar o formato.
+`ExpenseMetricsCarouselWidget` usa
 `PageView.builder` com `PageController`, altura uniforme suficiente para todas
 as páginas e indicador quando há mais de uma. A paginação nativa encaixa uma
 página completa ao finalizar o gesto e constrói os widgets sob demanda.
 Seu mixin restrito atualiza o índice por `onPageChanged`, reinicia com
 `jumpToPage(0)` na substituição dos dados e descarta o controller. Não há
 listener manual de offset nem divisão de pixels para estimar a página.
-Cada página utiliza toda a largura disponível da seção, sem padding lateral
-adicional no carrossel, alinhando a grade aos demais widgets da Dashboard.
+O carrossel ocupa a largura da tela. Cada grade mede a largura disponível menos
+40 pixels, com margens laterais de 20 pixels no encaixe e separação de 12 pixels
+entre páginas durante o arraste, como a lista de insights. O `PageController`
+usa `viewportFraction` de `(largura - 28) / largura` e cada página recebe 6 pixels
+de padding lateral. O mixin recria e descarta o controller quando a largura muda,
+preservando o índice atual; o total e os estados de mensagem mantêm suas margens.
 A seção renova a identidade pelo resultado; a Dashboard renova a chave pelo
 mês. O reinício é imediato, sem animação programática; o encaixe nativo do gesto
 permanece ativo, inclusive com redução de animações, para evitar parada entre
@@ -771,18 +787,24 @@ de 300 ms e paleta fixa dos tokens do tema claro, compartilhada nos dois temas.
 Perfil e Dashboard usam a mesma semente, com fallback `cordato-user-<id>` quando
 `avatar` estiver ausente ou nulo. Alterar o nome não altera o desenho.
 `UserScreenStateMixin` gera sementes aleatórias locais de 32 caracteres hexadecimais
-e mantém a escolha temporária. “Salvar avatar” aparece somente com alteração;
-sair sem salvar descarta a escolha. `UpdateAvatarCommand`, em
+e mantém a escolha temporária. Cada regeneração reinicia um `Timer` de dois
+segundos; somente após esse intervalo sem nova regeneração a última seed é
+enviada automaticamente. Não há botão “Salvar avatar”. O timer é cancelado no
+descarte da tela, na troca dos commands e ao confirmar exclusão da conta,
+impedindo envios pendentes fora desse lifecycle. Sair antes do prazo descarta
+a escolha ainda não enviada. `UpdateAvatarCommand`, em
 `screens/user/commands/`, recebe `String`, delega a `update(avatar: ...)`, preserva
 `Either` e é registrado por factory em `userRoutesModule`, com descarte pela tela.
-`CommandBuilder` preserva o formulário durante o envio, desabilitando geração,
-edição de nome e salvamento. Sucesso usa o usuário retornado e exibe toast;
-falhas preservam a escolha para retry. A tela só confirma sucesso se a resposta
+`CommandBuilder` preserva o formulário durante o envio, desabilitando geração
+e edição de nome. Sucesso usa o usuário retornado e
+exibe toast; falhas preservam a escolha e exibem erro, sem retries automáticos.
+Gerar outra imagem inicia um novo prazo e uma nova tentativa. A tela só confirma sucesso se a resposta
 contiver a semente enviada, evitando anunciar persistência quando a API ignora
 o atributo. O backend aceita `avatar` em PATCH e o retorna em GET
 e PATCH; a implementação Flutter não provisiona esse campo no servidor.
 Previews de User em `presentation/previews/screens/` usam repository fake sem
-rede para experimentar geração, salvamento e erro, nos temas claro e escuro.
+rede para experimentar geração, debounce de dois segundos, salvamento automático
+e erro, nos temas claro e escuro.
 `EditUserScreen` centraliza título “Nome”, descrição “Atualize o seu nome de
 exibição.” e campo na área acima do botão “Atualizar”, com rolagem e adaptação
 ao teclado, seguindo o layout da autenticação. Recebe nome inicial,
@@ -920,6 +942,13 @@ Crie somente os diretórios que tiverem implementações reais.
 `core` contém capacidades compartilhadas, como tema, formatação monetária,
 widgets, animações, imagens e storage; não deve receber regras de uma
 feature.
+
+`SwitcherAnimation` e `SwitcherSizeAnimation`, em
+`core/presentation/animations/animation.dart`, identificam cada transição por
+`ObjectKey(animation)`. Isso mantém únicas as chaves das transições simultâneas
+no `AnimatedSwitcher`, inclusive ao alternar rapidamente entre conteúdo e
+carregamento dos botões. As chaves dos filhos continuam identificando o estado
+visual; a transição compartilhada preserva sua duração de 300 milissegundos.
 
 `HeaderWidget`, em `core/presentation/widgets/header_widget.dart`, concentra o
 cabeçalho de tela com `title` e `description` obrigatórios, semântica de heading,

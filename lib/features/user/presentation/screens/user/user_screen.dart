@@ -13,6 +13,7 @@ import 'package:cordato/features/core/presentation/widgets/buttons/elevated_butt
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
+import 'package:cordato/features/user/presentation/screens/user/commands/update_avatar_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/delete_user_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/mixins/user_screen_state_mixin.dart';
 
@@ -23,10 +24,10 @@ import 'package:cordato/features/settings/presentation/screens/settings/widgets/
 final class const UserScreen({
   super.key,
   required final UserCommand command,
+  required final UpdateAvatarCommand avatarCommand,
   required final DeleteUserCommand deleteCommand,
   required final ValueChanged<BuildContext> onBackPressed,
   required final Future<UserEntity?> Function(String name) onNamePressed,
-  final VoidCallback? onPhotoPressed,
 }) extends StatefulWidget {
   @override
   State<UserScreen> createState() => _UserScreenState();
@@ -56,7 +57,15 @@ final class _UserScreenState extends State<UserScreen>
                   whileRunning: (_, _, _) => _buildSkeleton(),
                   onError: (_, _, _, _) => _buildError(.unknown()),
                   onSuccess: (_, _) => switch (widget.command.execute.value) {
-                    Right(:final value) => _buildUser(value),
+                    Right(:final value) =>
+                      CommandBuilder<String, UpdateRepositoryType?>(
+                        command: widget.avatarCommand.execute,
+                        whileRunning: (_, _, _) =>
+                            _buildUser(avatarUser ?? value),
+                        onSuccess: (_, _) => _buildUser(avatarUser ?? value),
+                        onError: (_, _, _, _) =>
+                            _buildUser(avatarUser ?? value),
+                      ),
                     Left(:final value) => _buildError(value),
                     null => _buildSkeleton(),
                   },
@@ -104,10 +113,13 @@ final class _UserScreenState extends State<UserScreen>
         Center(
           child: UserAvatarWidget(
             name: user.name,
-            onPressed: widget.onPhotoPressed,
+            seed: avatarSeed(user),
+            onPressed: isSavingAvatar || widget.command.execute.isRunning.value
+                ? null
+                : () => generateAvatar(user),
           ),
         ),
-        const SizedBox(height: 32.0),
+        const SizedBox(height: 16.0),
         MenuCardWidget(
           children: [
             MenuItemWidget(
@@ -116,13 +128,13 @@ final class _UserScreenState extends State<UserScreen>
               spacing: 12.0,
               value: user.name,
               icon: Icons.person_outline,
-              onPressed: () => editName(user),
+              onPressed: isSavingAvatar ? null : () => editName(user),
             ),
             MenuItemWidget(
-              value: user.email,
               height: 64.0,
               spacing: 12.0,
               label: 'E-mail',
+              value: user.email,
               showChevron: false,
               disabledOpacity: 0.5,
               icon: Icons.mail_outline,

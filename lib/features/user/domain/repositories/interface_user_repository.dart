@@ -12,5 +12,5 @@ abstract interface class IUserRepository {
 
   Future<GetByIdRepositoryType> getById();
 
-  Future<UpdateRepositoryType> update({String? name});
+  Future<UpdateRepositoryType> update({String? name, String? avatar});
 }

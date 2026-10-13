@@ -14,9 +14,10 @@ void main() {
       'id': '9',
       'type': 'users',
       'attributes': {
-        'name': 'Gabriel Ramos',
-        'email': 'person@example.com',
         'status': 'active',
+        'name': 'Gabriel Ramos',
+        'avatar': 'chosen-avatar',
+        'email': 'person@example.com',
         'created_at': '2026-10-02T17:21:48+00:00',
         'updated_at': '2026-10-05T13:33:59+00:00',
       },
@@ -41,16 +42,18 @@ void main() {
     final user = (await dataSource.getById(id: '9')).right;
 
     expect(user.id, '9');
-    expect(user.name, 'Gabriel Ramos');
-    expect(user.email, 'person@example.com');
     expect(user.status, 'active');
+    expect(user.name, 'Gabriel Ramos');
+    expect(user.avatar, 'chosen-avatar');
+    expect(user.email, 'person@example.com');
     final request =
         verify(() => client.get(parameter: captureAny(named: 'parameter')))
                 .captured
                 .single
             as Requests;
-    expect(request.path, 'users/9');
+
     expect(request.body, isNull);
+    expect(request.path, 'users/9');
     expect(request.headers, isNull);
   });
 
@@ -73,6 +76,7 @@ void main() {
                   .captured
                   .single
               as Requests;
+
       expect(request.path, 'users/10');
       expect(request.headers, isNull);
       expect(request.body, {
@@ -140,6 +144,80 @@ void main() {
     expect((request.body!['data'] as Map)['attributes'], isEmpty);
   });
 
+  for (final name in <String?>[null, 'Gabriel']) {
+    test('patches the avatar and preserves optional name $name', () async {
+      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(Reponse(statusCode: 200, body: body)),
+      );
+      final user = (await dataSource.update(
+        id: '9',
+        name: name,
+        avatar: 'chosen-avatar',
+      )).right;
+      expect(user.avatar, 'chosen-avatar');
+      final request =
+          verify(() => client.patch(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+
+      expect((request.body!['data'] as Map)['attributes'], {
+        'name': ?name,
+        'avatar': 'chosen-avatar',
+      });
+    });
+  }
+
+  test('patches name and avatar using the current JSON API contract', () async {
+    const avatar = 'a3f79c0241b86e50d9c217fa6830be45';
+    when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+      (_) async => const Right(
+        Reponse(
+          statusCode: 200,
+          body: {
+            'data': {
+              'id': '13',
+              'type': 'users',
+              'attributes': {
+                'avatar': avatar,
+                'status': 'active',
+                'name': 'Maria Silva',
+                'email': 'person@example.com',
+                'created_at': '2026-10-09T17:27:36+00:00',
+                'updated_at': '2026-10-12T22:44:29+00:00',
+              },
+              'links': {'self': 'https://example.com/api/users/13'},
+            },
+          },
+        ),
+      ),
+    );
+
+    final data = await dataSource.update(
+      id: '13',
+      avatar: avatar,
+      name: 'Maria Silva',
+    );
+
+    expect(data.right.id, '13');
+    expect(data.right.avatar, avatar);
+    expect(data.right.name, 'Maria Silva');
+    final request =
+        verify(() => client.patch(parameter: captureAny(named: 'parameter')))
+                .captured
+                .single
+            as Requests;
+
+    expect(request.path, 'users/13');
+    expect(request.body, {
+      'data': {
+        'type': 'users',
+        'id': '13',
+        'attributes': {'name': 'Maria Silva', 'avatar': avatar},
+      },
+    });
+  });
+
   test('deletes the protected user and accepts 204 without a body', () async {
     when(
       () => client.delete(parameter: any(named: 'parameter')),
@@ -151,9 +229,10 @@ void main() {
                 .captured
                 .single
             as Requests;
-    expect(request.path, 'users/10');
-    expect(request.headers, isNull);
+
     expect(request.body, isNull);
+    expect(request.headers, isNull);
+    expect(request.path, 'users/10');
   });
 
   test('does not report deletion for an unexpected success status', () async {

@@ -15,6 +15,8 @@ abstract interface class IAuthenticationRepository {
   Future<SignUpRepositoryType> signUp({
     required String email,
     required String password,
+    String? name,
+    String? avatar,
   });
 
   Future<SignInRepositoryType> signIn({

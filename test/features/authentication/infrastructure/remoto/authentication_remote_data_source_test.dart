@@ -39,9 +39,10 @@ void main() {
                       client.delete(parameter: captureAny(named: 'parameter')),
                 ).captured.single
                 as Requests;
-        expect(request.path, 'authentication/sign-out');
+
         expect(request.body, isNull);
         expect(request.headers, isNull);
+        expect(request.path, 'authentication/sign-out');
         verifyNoMoreInteractions(client);
       },
     );
@@ -64,10 +65,10 @@ void main() {
         ),
       );
 
-      final result = await dataSource.logout();
-      expect(result.left.errors.single.status, '403');
-      expect(result.left.errors.single.title, 'Não autorizado');
-      expect(result.left.errors.single.detail, 'Conta bloqueada.');
+      final data = await dataSource.logout();
+      expect(data.left.errors.single.status, '403');
+      expect(data.left.errors.single.title, 'Não autorizado');
+      expect(data.left.errors.single.detail, 'Conta bloqueada.');
     });
 
     test(
@@ -208,6 +209,7 @@ void main() {
                   .captured
                   .single
               as Requests;
+
       expect(request.headers, isNull);
       expect(request.path, 'authentication/sign-in');
       expect(request.body, {
@@ -239,6 +241,7 @@ void main() {
                   .captured
                   .single
               as Requests;
+
       expect(request.headers, isNull);
       expect(request.path, 'authentication/sign-up');
       expect(request.body, {
@@ -254,6 +257,91 @@ void main() {
       });
     });
 
+    for (final avatar in <String?>[null, 'a3f79c0241b86e50d9c217fa6830be45']) {
+      test(
+        'sign-up sends the supplied name and optional avatar $avatar',
+        () async {
+          when(() => client.post(parameter: any(named: 'parameter')))
+              .thenAnswer(
+                (_) async => const Right(
+                  Reponse(
+                    statusCode: 201,
+                    body: {
+                      'data': {
+                        'id': '18',
+                        'type': 'sign-ups',
+                        'relationships': {
+                          'user': {
+                            'data': {'type': 'users', 'id': '18'},
+                          },
+                        },
+                      },
+                    },
+                  ),
+                ),
+              );
+
+          final data = await dataSource.signUp(
+            name: 'Maria Silva',
+            avatar: avatar,
+            email: email,
+            password: password,
+          );
+
+          expect(data.right.id, '18');
+          final request =
+              verify(
+                    () =>
+                        client.post(parameter: captureAny(named: 'parameter')),
+                  ).captured.single
+                  as Requests;
+
+          expect(request.headers, isNull);
+          expect(request.path, 'authentication/sign-up');
+          expect(request.body, {
+            'data': {
+              'type': 'sign-ups',
+              'attributes': {
+                'email': email,
+                'avatar': ?avatar,
+                'password': password,
+                'name': 'Maria Silva',
+                'password_confirmation': password,
+              },
+            },
+          });
+        },
+      );
+    }
+
+    test('sign-up preserves avatar validation metadata from the API', () async {
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Left(
+          Reponse(
+            statusCode: 422,
+            body: {
+              'errors': [
+                {
+                  'status': '422',
+                  'title': 'Avatar inválido',
+                  'detail': 'Informe uma seed válida.',
+                  'source': {'pointer': '/data/attributes/avatar'},
+                },
+              ],
+            },
+          ),
+        ),
+      );
+
+      final data = await dataSource.signUp(
+        email: email,
+        password: password,
+        avatar: 'invalid',
+      );
+      expect(data.left.errors.single.pointer, '/data/attributes/avatar');
+      expect(data.left.errors.single.detail, 'Informe uma seed válida.');
+    });
+
     test('resend accepts a successful response without a body', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(Reponse(statusCode: 202, body: {})),
@@ -267,6 +355,7 @@ void main() {
                   .captured
                   .single
               as Requests;
+
       expect(request.path, 'authentication/email-verification/resend');
       expect(request.body, {
         'data': {

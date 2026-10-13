@@ -26,9 +26,9 @@ final class const DashboardScreen({
   required final GetInsightsCommand insightsCommand,
   required final GetExpenseMetricsCommand metricsCommand,
   required final GetFirstExpenseMonthCommand firstExpenseMonthCommand,
-  final VoidCallback? onMenuPressed,
-  final VoidCallback? onAvatarPressed,
   final VoidCallback? onNotificationsPressed,
+  final Future<void> Function()? onMenuPressed,
+  final Future<void> Function()? onAvatarPressed,
   final Future<void> Function()? onExpensePressed,
   final Future<void> Function(DateTime month)? onSeeAllExpensesPressed,
 }) extends StatefulWidget {
@@ -43,16 +43,16 @@ final class _DashboardScreenState extends State<DashboardScreen>
     return Scaffold(
       appBar: AppBarDashboardWidget(
         command: widget.userCommand,
-        onMenuPressed: widget.onMenuPressed,
-        onAvatarPressed: widget.onAvatarPressed,
         onNotificationsPressed: widget.onNotificationsPressed,
+        onMenuPressed: widget.onMenuPressed == null ? null : openSettings,
+        onAvatarPressed: widget.onAvatarPressed == null ? null : openUser,
       ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: refreshDashboard,
           child: ListView(
+            padding: const .only(top: 20.0, bottom: 96.0),
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const .only(top: 24.0, bottom: 96.0),
             children: [
               DashboardMonthSelectorWidget(
                 selectedMonth: selectedMonth,
@@ -62,12 +62,11 @@ final class _DashboardScreenState extends State<DashboardScreen>
                     : previousMonth,
                 onNextMonth: isLoading || !canGoToNextMonth ? null : nextMonth,
               ),
-              const SizedBox(height: 8.0),
               MetricsSectionWidget(
                 key: ValueKey(('metrics', selectedMonth)),
+                onRetry: loadMetrics,
                 command: widget.metricsCommand,
                 moneyFormatter: widget.moneyFormatter,
-                onRetry: loadMetrics,
               ),
               InsightsSectionWidget(
                 key: ValueKey(('insights', selectedMonth)),

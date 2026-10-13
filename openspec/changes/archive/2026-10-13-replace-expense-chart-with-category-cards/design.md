@@ -18,17 +18,17 @@ Há 18 ilustrações WebP em `assets/images/categories/`, ainda não registradas
 
 ## Decisions
 
-### 1. Grade pequena por página com `StaggeredGrid.count`
+### 1. Grade de duas linhas com alturas compartilhadas
 
-Adicionar `flutter_staggered_grid_view` na versão estável compatível e utilizar `StaggeredGrid.count` com duas colunas. O componente é indicado para poucos itens e não possui rolagem própria; o carrossel fornece a rolagem horizontal e a Dashboard mantém a vertical. `MasonryGridView` não oferece a composição de destaque ocupando duas alturas de forma tão explícita.
+Compor `ExpenseMetricsGridWidget` com `Column`, `Row` e `Expanded`, sem rolagem própria. O carrossel fornece a rolagem horizontal e a Dashboard mantém a vertical. Todas as páginas possuem duas linhas: destaque ilustrado em largura total acima e secundários sem imagem abaixo.
 
-Usar tiles com extensão ajustável para reservar altura conforme largura disponível e tamanho do texto. Para três itens, o primeiro ocupa a coluna esquerda pela altura de dois secundários mais o espaçamento; os demais ficam à direita. Para um, o destaque ocupa as duas colunas; para dois, cada card ocupa uma coluna e ambos mostram suas ilustrações. Não há linha inferior. O primeiro sempre recebe destaque tipográfico, inclusive quando os totais empatam. A altura-base é de 320 pixels, aumentada conforme o conteúdo, e todas as páginas recebem a maior altura necessária entre elas.
+Para três itens, os secundários dividem igualmente a largura inferior; para dois, o secundário ocupa a largura total, mantendo a altura dos secundários das páginas completas. Grupos de um ficam ocultos. O primeiro sempre recebe destaque tipográfico. Medir o conteúdo na largura real e compartilhar separadamente as maiores alturas superior e inferior entre todas as páginas, sem piso fixo e com espaçamento de 12 pixels entre linhas.
 
-Em largura estreita ou escala de texto alta, aumentar a altura e adaptar a composição, podendo apresentar uma coluna quando necessário. Não resolver overflow escondendo nome ou valor com ellipsis ou reduzindo artificialmente a escala de texto.
+Em largura estreita ou escala de texto alta, aumentar as alturas medidas preservando o formato. Não resolver overflow escondendo nome ou valor com ellipsis ou reduzindo artificialmente a escala de texto.
 
 ### 2. Preparação de dados exclusiva da apresentação
 
-Filtrar totais positivos e ordenar uma cópia por total decrescente com desempate pelo índice original. Separar em grupos consecutivos de três. Essa transformação pertence à apresentação de Metrics; a entidade mantém sua ordem e conteúdo originais. Preferir mixin específico de lógica sem estado se necessário para manter o build curto.
+Filtrar totais positivos e ordenar uma cópia por total decrescente com desempate pelo índice original. Separar em grupos consecutivos de até três e ocultar grupos de um. Cinco categorias produzem páginas de três e duas; quatro produzem somente uma de três. Essa transformação pertence à extensão de apresentação de Metrics; a entidade mantém sua ordem e conteúdo originais.
 
 O primeiro de cada grupo recebe destaque relativo, inclusive na segunda página. Não aplicar thresholds nem usar percentuais para calcular geometria. O percentual exibido permanece o recebido da API e usa uma casa decimal pt-BR, como na referência.
 
@@ -38,19 +38,19 @@ Criar widgets públicos com nomes e arquivos correspondentes para card, grade de
 
 Reutilizar `BackgroundIconWidget`, `ImageWidget`, `IMoneyFormatter`, `context.colors`, `context.typography` e `context.radius`. A extensão existente de Metrics deve fornecer rótulo, ícone, cor e asset. Alinhar suas cores e ícones aos itens de despesa sem importar Expense, preservando o isolamento dos contextos e sem criar camada compartilhada apenas para esse mapeamento.
 
-Badge e card usam raios do tema; ícones permanecem quadrados arredondados. Fundo e borda derivam da cor da categoria com intensidade discreta; textos usam papéis semânticos do tema. Imagens mantêm suas cores, sem tint, e aparecem ancoradas no canto inferior direito no destaque e em ambos os cards de páginas duplas, sem padding do bloco textual. A área decorativa de 180 pixels acomoda a arte de 220 pixels e as margens transparentes dos WebPs, preservando o topo, respeitando os cantos do card e sem sobrepor dados. `other` aponta para `others.webp`; categoria futura usa rótulo original, tratamento neutro e o mesmo asset de fallback.
+Badge e card usam raios do tema; ícones permanecem quadrados arredondados. Fundo e borda derivam da cor da categoria; textos usam papéis semânticos do tema. Somente o destaque possui imagem, ancorada pela base no canto inferior direito. A área reservada de 60 pixels permite overflow da arte de 220 pixels, ou 240 para Moradia, com deslocamento de 46 pixels na horizontal e 64 na vertical. O recorte ocorre no contorno do card. `Skeleton.ignore` preserva a ilustração sem shimmer durante loading. `other` aponta para `others.webp`; categoria futura usa rótulo original, tratamento neutro e o mesmo asset de fallback.
 
 ### 4. Carrossel, lifecycle e acessibilidade
 
-Usar navegação horizontal com páginas identificáveis, indicador discreto quando necessário e posição reiniciada na troca do mês ou dados. Calcular a altura necessária de cada grade com base na largura disponível, conteúdo e escala de texto, e aplicar a maior altura a todas as páginas. Em duas categorias, ambos os cards ocupam a altura completa; em uma, o card largo também ocupa essa altura. A altura permanece constante ao navegar horizontalmente, sem cortar conteúdo nas páginas seguintes.
+Usar navegação horizontal com indicador discreto e reinício na troca do mês ou dados. Aplicar as maiores alturas por linha a todas as páginas. A altura total permanece constante ao deslizar, inclusive na página final com dois itens, sem cortar conteúdo nem deslocar as seções seguintes.
 
-Usar `PageView.builder` com `PageController`, altura explícita calculada pelo conteúdo e largura completa por página. `onPageChanged` fornece o índice do indicador. O reinício usa `jumpToPage(0)`, sem animação programática; não desativar o encaixe nativo do gesto quando houver redução de animações. Isso evita posições intermediárias permanentes e substitui o cálculo manual de offset do `SingleChildScrollView`.
+Usar `PageView.builder` com `PageController`. O viewport ocupa a largura da tela; a grade mede essa largura menos 40 pixels. `viewportFraction` de `(largura - 28) / largura` e padding lateral de 6 pixels por página garantem margens de 20 pixels no encaixe e separação de 12 pixels durante o arraste, como nos insights. `onPageChanged` fornece o índice; o reinício usa `jumpToPage(0)`. O mixin recria e descarta o controller quando a largura muda, preservando o índice. O encaixe nativo permanece ativo com redução de animações.
 
 Se forem necessários controller, listeners e índice de página, usar widget stateful e mixin restrito ao widget conforme as convenções do projeto, descartando recursos e sem operações financeiras. Não adicionar gerenciamento global de estado. Manter semântica única por card e excluir ícone, badge duplicado e ilustração do anúncio. Respeitar redução de animações.
 
 ### 5. Integração e validação
 
-`MetricsSectionWidget` troca a composição de gráfico por carrossel, preservando total, CommandBuilder, retry e mensagens. Filtragem sem categorias visíveis deve produzir distribuição indisponível quando o total for positivo. Skeleton deve acompanhar a grade de três cards e a mesma altura-base adaptativa, reutilizando componentes reais com placeholders sem semântica financeira.
+`MetricsSectionWidget` preserva total, CommandBuilder, retry e mensagens. Ausência de categorias positivas produz distribuição indisponível com total positivo; uma única categoria positiva mantém somente o total. Skeleton acompanha as duas linhas de três cards, com placeholders sem semântica financeira e ilustração excluída do shimmer.
 
 Atualizar previews para 1, 2, 3, 4, 5, 6, 7, 8 e 10 categorias, empate, zero, desconhecidas, loading, erro, nomes e valores extensos, temas e texto ampliado. Validar visualmente e com Maestro; testes unitários cobrem apenas lógica pura alterada. Remover dependência, widget e mixin antigos e documentar a nova apresentação em `ARCHITECTURE.md`.
 
@@ -68,4 +68,4 @@ Trocar dependências e registrar assets; implementar componentes e integração;
 
 ## Open Questions
 
-Nenhuma bloqueante. O ajuste final solicitado durante implementação reduz a página para três itens, mantém altura uniforme entre páginas e ilustra os dois cards em páginas duplas. O critério de adaptação para largura/texto deve ser refinado pela validação visual, preservando todos os dados.
+Nenhuma. O usuário aprovou as regras finais de duas linhas, páginas de duas ou três categorias, alturas compartilhadas por linha, margens iguais às dos insights e ilustração sem skeleton, e confirmou todas as validações como resolvidas em 2026-10-13.

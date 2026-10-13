@@ -5,55 +5,27 @@ import 'package:cordato/features/metrics/domain/entities/expense_category_metric
 
 extension ExpenseCategoryMetricsExtension on ExpenseCategoryMetricsEntity {
   Color color(BuildContext context) => switch (category) {
-    'housing' => context.colors.primary,
-    'food' => context.colors.tertiary,
-    'health' => context.colors.secondary,
-    'transport' => Color.lerp(
-      context.colors.primary,
-      context.colors.tertiary,
-      0.5,
-    )!,
-    'subscriptions' => Color.lerp(
-      context.colors.primary,
-      context.colors.onSurface,
-      0.4,
-    )!,
-    'education' => Color.lerp(
-      context.colors.tertiary,
-      context.colors.onSurface,
-      0.4,
-    )!,
-    'leisure' => Color.lerp(
-      context.colors.secondary,
-      context.colors.primary,
-      0.5,
-    )!,
-    'shopping' => context.colors.primaryContainer,
-    'services' => context.colors.tertiaryContainer,
+    'health' => context.colors.error,
     'pets' => context.colors.tertiary,
-    'taxes' => context.colors.secondary,
     'travel' => context.colors.primary,
-    'financing' => Color.lerp(
-      context.colors.secondary,
-      context.colors.onSurface,
-      0.4,
-    )!,
-    'insurance' => context.colors.secondaryContainer,
-    'investments' => Color.lerp(
-      context.colors.tertiary,
-      context.colors.primary,
-      0.3,
-    )!,
-    'personal_care' => Color.lerp(
-      context.colors.secondary,
-      context.colors.tertiary,
-      0.5,
-    )!,
-    'gifts_and_donations' => Color.lerp(
-      context.colors.tertiary,
-      context.colors.secondary,
-      0.3,
-    )!,
+    'taxes' => context.colors.secondary,
+    'insurance' => context.colors.primary,
+    'transport' => context.colors.primary,
+    'financing' => context.colors.secondary,
+    'investments' => context.colors.tertiary,
+    'personal_care' => context.colors.secondary,
+    'gifts_and_donations' => context.colors.tertiary,
+    'housing' => context.isDark ? Colors.blue.shade300 : Colors.blue.shade700,
+    'shopping' => context.isDark ? Colors.pink.shade300 : Colors.pink.shade700,
+    'services' => context.isDark ? Colors.teal.shade300 : Colors.teal.shade700,
+    'food' => context.isDark ? Colors.orange.shade300 : Colors.orange.shade800,
+    'subscriptions' =>
+      context.isDark ? Colors.cyan.shade300 : Colors.cyan.shade800,
+    'education' =>
+      context.isDark ? Colors.indigo.shade300 : Colors.indigo.shade700,
+    'leisure' =>
+      context.isDark ? Colors.purple.shade300 : Colors.purple.shade700,
+    'other' => context.colors.outline,
     _ => context.colors.onSurfaceVariant,
   };
 
@@ -78,4 +50,31 @@ extension ExpenseCategoryMetricsExtension on ExpenseCategoryMetricsEntity {
     'other' => 'Outros',
     _ => category,
   };
+
+  IconData get icon => switch (category) {
+    'pets' => Icons.pets_outlined,
+    'housing' => Icons.home_outlined,
+    'leisure' => Icons.movie_outlined,
+    'travel' => Icons.flight_outlined,
+    'health' => Icons.favorite_outline,
+    'food' => Icons.restaurant_outlined,
+    'insurance' => Icons.shield_outlined,
+    'education' => Icons.school_outlined,
+    'services' => Icons.handyman_outlined,
+    'personal_care' => Icons.spa_outlined,
+    'financing' => Icons.payments_outlined,
+    'taxes' => Icons.account_balance_outlined,
+    'shopping' => Icons.shopping_bag_outlined,
+    'subscriptions' => Icons.autorenew_outlined,
+    'investments' => Icons.trending_up_outlined,
+    'transport' => Icons.directions_car_outlined,
+    'gifts_and_donations' => Icons.card_giftcard_outlined,
+    _ => Icons.receipt_long_outlined,
+  };
+
+  String get asset =>
+      'assets/images/categories/${switch (category) {
+        'health' || 'leisure' || 'taxes' || 'travel' || 'housing' || 'food' || 'shopping' || 'insurance' || 'services' || 'education' || 'transport' || 'financing' || 'pets' || 'investments' || 'subscriptions' || 'personal_care' || 'gifts_and_donations' => category,
+        _ => 'others',
+      }}.webp';
 }

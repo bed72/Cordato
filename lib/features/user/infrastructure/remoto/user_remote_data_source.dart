@@ -15,7 +15,11 @@ abstract interface class IUserRemoteDataSource {
 
   Future<GetByIdDataSourceType> getById({required String id});
 
-  Future<UpdateDataSourceType> update({required String id, String? name});
+  Future<UpdateDataSourceType> update({
+    required String id,
+    String? name,
+    String? avatar,
+  });
 }
 
 final class UserRemoteDataSource({required final IHttpClient _client})
@@ -41,20 +45,23 @@ final class UserRemoteDataSource({required final IHttpClient _client})
   );
 
   @override
-  Future<UpdateDataSourceType> update({required String id, String? name}) =>
-      response(
-        from: (response) => .fromJson(response.body),
-        execute: () => _client.patch(
-          parameter: Requests(
-            path: '${HttpPathEnum.user.path}/${Uri.encodeComponent(id)}',
-            body: {
-              'data': {
-                'id': id,
-                'type': 'users',
-                'attributes': {'name': ?name},
-              },
-            },
-          ),
-        ),
-      );
+  Future<UpdateDataSourceType> update({
+    required String id,
+    String? name,
+    String? avatar,
+  }) => response(
+    from: (response) => .fromJson(response.body),
+    execute: () => _client.patch(
+      parameter: Requests(
+        path: '${HttpPathEnum.user.path}/${Uri.encodeComponent(id)}',
+        body: {
+          'data': {
+            'id': id,
+            'type': 'users',
+            'attributes': {'name': ?name, 'avatar': ?avatar},
+          },
+        },
+      ),
+    ),
+  );
 }

@@ -15,41 +15,41 @@ import 'package:cordato/features/metrics/presentation/commands/get_expense_metri
 import 'package:cordato/features/metrics/presentation/previews/fakes/metrics_preview_repository.dart';
 
 @CordatoPreview(
-  group: 'Metrics / Gráfico',
+  group: 'Metrics / Cards',
   name: 'Categorias / Claro',
-  size: Size(390, 340),
+  size: cordatoPhonePreviewSize,
   brightness: Brightness.light,
 )
 @CordatoPreview(
-  group: 'Metrics / Gráfico',
+  group: 'Metrics / Cards',
   name: 'Categorias / Escuro',
-  size: Size(390, 340),
+  size: cordatoPhonePreviewSize,
   brightness: Brightness.dark,
 )
 Widget previewMetricsSectionWidget() => _sectionPreview();
 
 @CordatoPreview(
-  group: 'Metrics / Gráfico',
+  group: 'Metrics / Cards',
   name: 'Carregando',
-  size: Size(390, 300),
+  size: cordatoPhonePreviewSize,
 )
-Widget previewLoadingExpenseMetricsChartWidget() =>
+Widget previewLoadingExpenseMetricsCardsWidget() =>
     _sectionPreview(loading: true);
 
 @CordatoPreview(
-  group: 'Metrics / Gráfico',
+  group: 'Metrics / Cards',
   name: 'Sem gastos',
   size: Size(390, 380),
 )
-Widget previewEmptyExpenseMetricsChartWidget() => _sectionPreview(month: 9);
+Widget previewEmptyExpenseMetricsCardsWidget() => _sectionPreview(month: 9);
 
 @CordatoPreview(
-  group: 'Metrics / Gráfico',
+  group: 'Metrics / Cards',
   name: 'Erro com retry',
   size: Size(390, 340),
 )
-Widget previewFailureExpenseMetricsChartWidget() =>
-    _sectionPreview(result: Left(ErrorsEntity.unknown()));
+Widget previewFailureExpenseMetricsCardsWidget() =>
+    _sectionPreview(data: Left(ErrorsEntity.unknown()));
 
 @CordatoPreview(
   group: 'Dashboard / Período',
@@ -67,26 +67,26 @@ Widget previewLeapFebruaryDashboardMonth() =>
 Widget previewYearBoundaryDashboardMonth() => _sectionPreview(month: 1);
 
 @CordatoPreview(
-  group: 'Metrics / Gráfico',
-  name: 'Categorias novas',
+  group: 'Metrics / Cards',
+  name: 'Empates e categorias novas / Estreito',
   size: Size(320, 440),
 )
 Widget previewManyExpenseMetricsCategories() => _sectionPreview(
-  result: Right(
+  data: Right(
     ExpenseMetricsEntity(
       id: 'many-categories',
       totalAmount: 100000,
-      startDate: DateTime(2026, 10, 1),
       endDate: DateTime(2026, 10, 31),
+      startDate: DateTime(2026, 10, 1),
       categories: [
         for (final category in [
-          'housing',
           'food',
           'health',
-          'transport',
-          'subscriptions',
-          'education',
+          'housing',
           'services',
+          'transport',
+          'education',
+          'subscriptions',
           'future_category',
         ])
           ExpenseCategoryMetricsEntity(
@@ -100,30 +100,189 @@ Widget previewManyExpenseMetricsCategories() => _sectionPreview(
 );
 
 @CordatoPreview(
-  group: 'Metrics / Gráfico',
+  group: 'Metrics / Cards',
   name: 'Texto ampliado',
   size: Size(390, 520),
 )
-Widget previewLargeTextExpenseMetricsChartWidget() => Builder(
+Widget previewLargeTextExpenseMetricsCardsWidget() => Builder(
   builder: (context) => MediaQuery(
     data: MediaQuery.of(context)
         .copyWith(textScaler: const TextScaler.linear(1.6)),
-    child: _sectionPreview(),
+    child: _sectionPreview(data: _categoriesResult(8, large: true)),
   ),
 );
 
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '1 categoria',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewOneMetricsCategory() =>
+    _sectionPreview(data: _categoriesResult(1));
+
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '2 categorias',
+  size: cordatoPhonePreviewSize,
+)
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '2 categorias / Escuro / Card inferior largo',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.dark,
+)
+Widget previewTwoMetricsCategories() =>
+    _sectionPreview(data: _categoriesResult(2));
+
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '3 categorias',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewThreeMetricsCategories() =>
+    _sectionPreview(data: _categoriesResult(3));
+
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '4 categorias / Sobra de um oculta',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewFourMetricsCategories() =>
+    _sectionPreview(data: _categoriesResult(4));
+
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '5 categorias / Última página com dois cards largos',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewFiveMetricsCategories() =>
+    _sectionPreview(data: _categoriesResult(5));
+
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '6 categorias / Duas páginas completas',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewSixMetricsCategories() =>
+    _sectionPreview(data: _categoriesResult(6));
+
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '10 categorias / Três páginas e sobra oculta',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewTenMetricsCategories() =>
+    _sectionPreview(data: _categoriesResult(10));
+
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '7 categorias',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewSevenMetricsCategories() =>
+    _sectionPreview(data: _categoriesResult(7));
+
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '8 categorias / Claro',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.light,
+)
+@CordatoPreview(
+  group: 'Metrics / Quantidades',
+  name: '8 categorias / Escuro',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.dark,
+)
+Widget previewEightMetricsCategories() =>
+    _sectionPreview(data: _categoriesResult(8));
+
+@CordatoPreview(
+  group: 'Metrics / Cards',
+  name: 'Distribuição indisponível após filtro',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewFilteredMetricsCategories() => _sectionPreview(
+  data: Right(
+    ExpenseMetricsEntity(
+      id: 'filtered',
+      totalAmount: 10000,
+      startDate: DateTime(2026, 10),
+      endDate: DateTime(2026, 10, 31),
+      categories: const [
+        ExpenseCategoryMetricsEntity(
+          category: 'food',
+          totalAmount: 0,
+          percentage: 0,
+        ),
+      ],
+    ),
+  ),
+);
+
+@CordatoPreview(
+  group: 'Metrics / Cards',
+  name: 'Texto ampliado / Escuro',
+  size: Size(320, 844),
+  brightness: Brightness.dark,
+)
+Widget previewDarkLargeTextMetricsCards() => Builder(
+  builder: (context) => MediaQuery(
+    data: MediaQuery.of(context).copyWith(
+      textScaler: const TextScaler.linear(2.0),
+      disableAnimations: true,
+    ),
+    child: _sectionPreview(data: _categoriesResult(7, large: true)),
+  ),
+);
+
+GetExpensesRepositoryType _categoriesResult(int count, {bool large = false}) =>
+    Right(
+      ExpenseMetricsEntity(
+        id: 'categories-$count',
+        startDate: DateTime(2026, 10),
+        endDate: DateTime(2026, 10, 31),
+        totalAmount: large ? 99999999999 : 360000,
+        categories: [
+          for (final (index, category) in [
+            'food',
+            'pets',
+            'other',
+            'housing',
+            'personal_care',
+            'gifts_and_donations',
+            'Categoria futura com nome extenso',
+            'subscriptions',
+            'health',
+            'transport',
+          ].take(count).indexed)
+            ExpenseCategoryMetricsEntity(
+              category: category,
+              totalAmount: large
+                  ? 9999999999 - index
+                  : index < 8
+                  ? 80000 - index * 10000
+                  : 5000 - (index - 8) * 1000,
+              percentage: 23.45 - index * 2,
+            ),
+        ],
+      ),
+    );
+
 Widget _sectionPreview({
-  GetExpensesRepositoryType? result,
+  GetExpensesRepositoryType? data,
   bool loading = false,
   int month = 10,
   int year = 2026,
 }) {
-  DateTime selectedMonth = DateTime(year, month, 1);
-  return PreviewResourceWidget<GetExpenseMetricsCommand>(
+  return PreviewResourceWidget<
+    ({GetExpenseMetricsCommand command, ValueNotifier<DateTime> month})
+  >(
     create: () {
+      final selectedMonth = DateTime(year, month, 1);
       final command = GetExpenseMetricsCommand(
         repository: MetricsPreviewRepository(
-          type: result,
+          type: data,
           delay: const Duration(milliseconds: 250),
         ),
       );
@@ -134,20 +293,29 @@ Widget _sectionPreview({
           groupBy: .category,
         ));
       }
-      return command;
+      return (command: command, month: ValueNotifier(selectedMonth));
     },
-    dispose: (command) => command.dispose(),
-    builder: (command) => StatefulBuilder(
+    dispose: (resource) {
+      resource.command.dispose();
+      resource.month.dispose();
+    },
+    builder: (resource) => StatefulBuilder(
       builder: (context, setState) {
+        final command = resource.command;
+        final selectedMonth = resource.month.value;
         void load() => command.execute.run((
-          startDate: selectedMonth,
-          endDate: DateTime(selectedMonth.year, selectedMonth.month + 1, 0),
+          startDate: resource.month.value,
+          endDate: DateTime(
+            resource.month.value.year,
+            resource.month.value.month + 1,
+            0,
+          ),
           groupBy: .category,
         ));
         void changeMonth(int offset) {
           if (command.execute.isRunning.value) return;
           setState(
-            () => selectedMonth = DateTime(
+            () => resource.month.value = DateTime(
               selectedMonth.year,
               selectedMonth.month + offset,
             ),

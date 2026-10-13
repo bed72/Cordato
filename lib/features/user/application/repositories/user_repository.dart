@@ -34,14 +34,19 @@ final class UserRepository({
   });
 
   @override
-  Future<UpdateRepositoryType> update({String? name}) => _withId((id) async {
-    final data = await _remoteDataSource.update(id: id, name: name);
+  Future<UpdateRepositoryType> update({String? name, String? avatar}) =>
+      _withId((id) async {
+        final data = await _remoteDataSource.update(
+          id: id,
+          name: name,
+          avatar: avatar,
+        );
 
-    return data.either(
-      (errors) => errors.toEntity(),
-      (user) => user.toEntity(),
-    );
-  });
+        return data.either(
+          (errors) => errors.toEntity(),
+          (user) => user.toEntity(),
+        );
+      });
 
   ErrorsEntity get _error => ErrorsEntity(
     errors: [

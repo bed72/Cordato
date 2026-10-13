@@ -4,12 +4,12 @@ O gráfico segmentado atual dificulta comparar e identificar as categorias, pois
 
 ## What Changes
 
-- Substituir o gráfico por um carrossel horizontal de grades assimétricas com até três categorias por página e altura uniforme entre páginas.
+- Substituir o gráfico por um carrossel horizontal de duas linhas com duas ou três categorias por página e alturas uniformes por linha entre páginas; grupos de uma categoria ficam ocultos.
 - Mostrar somente categorias com gastos positivos, ordenadas por valor decrescente, com destaque relativo para a maior categoria de cada página.
-- Apresentar ícone, nome, valor em BRL e percentual mensal em todos os cards; usar ilustração no destaque e nos dois cards de páginas duplas, ancorada no canto inferior direito.
+- Apresentar ícone, nome, valor em BRL e percentual mensal em todos os cards; usar ilustração somente no destaque superior em largura total. Os secundários ficam lado a lado abaixo ou em largura total quando resta um secundário.
 - Reutilizar o componente de ícone dos itens de despesa, as cores das categorias e os raios e tipografia do aplicativo.
 - Usar as ilustrações existentes em `assets/images/categories/` e adaptar loading e previews.
-- Adicionar `flutter_staggered_grid_view` e remover `fl_chart` e a seleção do gráfico antigo.
+- Compor as linhas com widgets de layout do Flutter e remover o gráfico antigo e sua seleção; preservar margens de 20 pixels e separação de 12 pixels entre páginas como nos insights.
 
 ## Capabilities
 

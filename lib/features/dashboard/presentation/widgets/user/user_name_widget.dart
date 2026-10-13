@@ -24,7 +24,11 @@ final class const UserNameWidget({
       whileRunning: (_, _, _) => _skeleton(context),
       onError: (_, _, _, _) => _content(context, '', failed: true),
       onSuccess: (_, _) => switch (command.execute.value) {
-        Right(:final value) => _content(context, value.name),
+        Right(:final value) => _content(
+          context,
+          value.name,
+          seed: value.avatar ?? 'cordato-user-${value.id}',
+        ),
         Left() => _content(context, '', failed: true),
         null => _skeleton(context),
       },
@@ -34,10 +38,15 @@ final class const UserNameWidget({
   UserNameSkeletonWidget _skeleton(BuildContext context) =>
       UserNameSkeletonWidget(child: _content(context, 'Trocado'));
 
-  Row _content(BuildContext context, String name, {bool failed = false}) => Row(
+  Row _content(
+    BuildContext context,
+    String name, {
+    bool failed = false,
+    String seed = 'cordato-placeholder',
+  }) => Row(
     spacing: 12.0,
     children: [
-      AvatarDashboardWidget(initial: initial(name), onPress: onAvatarPressed),
+      AvatarDashboardWidget(seed: seed, onPress: onAvatarPressed),
       Expanded(
         child: Column(
           mainAxisAlignment: .center,

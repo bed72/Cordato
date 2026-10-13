@@ -51,7 +51,10 @@ O app já possui:
   verificação após uma espera de 60 segundos e feedback da API;
 - dashboard com nome e avatar gerado a partir da semente consultada na API por `UserCommand`,
   carrossel de cards de distribuição dos gastos por categoria no topo, com
-  total em BRL, navegação mensal, valores e percentuais por categoria, seguido de
+  total em BRL, navegação mensal, valores e percentuais por categoria. As páginas
+  têm um card ilustrado acima e dois menores abaixo; a última página com duas
+  categorias mantém um card inferior em largura total. As alturas são uniformes
+  por linha e grupos de uma categoria ficam ocultos. O carrossel é seguido de
   cards de insights com ícone e cor por tipo em lista horizontal acima das despesas,
   e seção de despesas recentes com as seis primeiras despesas do mês na API, skeleton,
   estado vazio, erro com título e descrição e atualização por gesto ou
@@ -85,9 +88,10 @@ O app já possui:
   loading e feedback de erro por `DeleteUserCommand`; após exclusão confirmada,
   a limpeza da sessão redireciona para as boas-vindas;
 - avatar gerado com `flutter_boring_avatars`, estilo `marble`, compartilhado entre
-  Dados pessoais e Dashboard; refresh permite experimentar opções e “Salvar avatar”
-  envia a seed em `avatar` à API e usa o mesmo campo da resposta;
-  falhas preservam a escolha, e sair sem salvar a descarta. A Dashboard recarrega
+  Dados pessoais e Dashboard; refresh permite experimentar opções e salva a última
+  seed automaticamente após dois segundos sem regenerar, usando `avatar` na API;
+  cada clique reinicia o prazo. Falhas preservam a escolha e mostram erro; sair
+  antes do envio cancela o salvamento pendente. A Dashboard recarrega
   nome e avatar ao retornar de Dados pessoais ou Settings;
 - tela de edição de nome em `/user/edit`, aberta pelo item Nome, seguindo a UI
   centralizada da autenticação, com atualização pela API, loading, erros no campo
@@ -250,6 +254,14 @@ O domínio de entrada de produção confirmado para `APP_URL` é
 `/authentication/confirm-email` e os arquivos de associação Android e iOS
 em `/.well-known/`.
 
+Para usar o backend local do Lerd em um Android físico conectado por USB, execute
+`python3 tool/android_usb_proxy.py --device <id-do-adb>` e mantenha esse terminal
+aberto antes de iniciar **Cordato (debug)** no VS Code. Consulte o ID com
+`adb devices`. O proxy escuta somente no loopback do Mac, encaminha a API para
+`https://trocado.test` com validação pelo CA do mkcert e configura `adb reverse`.
+O perfil de debug usa `http://127.0.0.1:8765/api/`; o Android não precisa resolver
+`.test` nem instalar o certificado do Mac. Reexecute o proxy após reconectar o USB.
+
 Para usar o backend local do Lerd em um Android na mesma rede, execute
 `make android-lan` antes de iniciar **Cordato (debug)** no VS Code. O comando
 compartilha o site pelo IP da rede e atualiza a URL de debug em
@@ -260,8 +272,8 @@ local. O HTTP da rede local é permitido apenas no build Android de debug.
 
 No simulador iOS, execute
 `flutter run --dart-define=BASE_URL=https://trocado.test/api/`. O simulador usa
-o domínio HTTPS local do Lerd no Mac. A configuração **Cordato (debug)** também
-aponta para esse endereço no arquivo versionado, mas `make android-lan` a
+o domínio HTTPS local do Lerd no Mac. A configuração **Cordato (debug)**
+aponta para o proxy USB Android no arquivo versionado, mas `make android-lan` a
 substitui pelo IP da rede para Android. Reinicie o app após mudar o
 `--dart-define`.
 

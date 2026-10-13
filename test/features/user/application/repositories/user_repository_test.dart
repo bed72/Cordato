@@ -24,6 +24,7 @@ void main() {
     name: 'Gabriel',
     status: 'active',
     id: 'returned-id',
+    avatar: 'chosen-avatar',
     email: 'gabriel@example.com',
   );
 
@@ -79,6 +80,7 @@ void main() {
           expect(response.right.id, userResponse.id);
           expect(response.right.name, userResponse.name);
           expect(response.right.email, userResponse.email);
+          expect(response.right.avatar, userResponse.avatar);
           verify(() => localDataSource.getId()).called(1);
           verify(() => dataSource.update(id: id, name: 'Gabriel')).called(1);
           verifyNoMoreInteractions(dataSource);
@@ -195,6 +197,22 @@ void main() {
       verify(() => localDataSource.getId()).called(1);
       verifyNoMoreInteractions(localDataSource);
     });
+
+    for (final name in <String?>[null, 'Gabriel']) {
+      test(
+        'delegates the avatar seed without normalization and name $name',
+        () async {
+          const seed = ' chosen-avatar ';
+          when(() => dataSource.update(id: id, name: name, avatar: seed))
+              .thenAnswer((_) async => const Right(userResponse));
+          final response = await repository.update(name: name, avatar: seed);
+          expect(response.right.avatar, userResponse.avatar);
+          verify(() => dataSource.update(id: id, name: name, avatar: seed))
+              .called(1);
+          verifyNoMoreInteractions(dataSource);
+        },
+      );
+    }
 
     for (final deleted in [true, false]) {
       test('preserves the deletion result $deleted', () async {

@@ -10,8 +10,9 @@ void main() {
         'type': 'users',
         'attributes': {
           'name': 'Trocado',
-          'email': 'person@example.com',
           'status': 'active',
+          'avatar': 'chosen-avatar',
+          'email': 'person@example.com',
           'created_at': '2026-10-05T16:48:33+00:00',
           'updated_at': '2026-10-05T16:52:34+00:00',
         },
@@ -22,7 +23,47 @@ void main() {
     final user = response.toEntity();
     expect(user.id, '10');
     expect(user.name, 'Trocado');
-    expect(user.email, 'person@example.com');
     expect(user.status, 'active');
+    expect(user.avatar, 'chosen-avatar');
+    expect(user.email, 'person@example.com');
+  });
+
+  for (final attributes in [
+    <String, dynamic>{},
+    <String, dynamic>{'avatar': null},
+  ]) {
+    test('accepts a user without an avatar seed: $attributes', () {
+      final response = UserResponse.fromJson({
+        'data': {
+          'id': '10',
+          'attributes': {
+            'name': 'Gabriel',
+            'status': 'active',
+            'email': 'person@example.com',
+            ...attributes,
+          },
+        },
+      });
+
+      expect(response.avatar, isNull);
+      expect(response.toEntity().avatar, isNull);
+    });
+  }
+
+  test('rejects an avatar seed with an invalid type', () {
+    expect(
+      () => UserResponse.fromJson({
+        'data': {
+          'id': '10',
+          'attributes': {
+            'avatar': 123,
+            'name': 'Gabriel',
+            'status': 'active',
+            'email': 'person@example.com',
+          },
+        },
+      }),
+      throwsA(isA<TypeError>()),
+    );
   });
 }

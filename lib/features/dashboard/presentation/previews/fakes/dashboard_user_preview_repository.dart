@@ -17,5 +17,6 @@ final class DashboardUserPreviewRepository implements IUserRepository {
   Future<DeleteRepositoryType> delete() async => Left(.unknown());
 
   @override
-  Future<UpdateRepositoryType> update({String? name}) async => Left(.unknown());
+  Future<UpdateRepositoryType> update({String? name, String? avatar}) async =>
+      Left(.unknown());
 }

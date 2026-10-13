@@ -10,6 +10,11 @@ class const SwitcherAnimation({super.key, required final Widget child})
       duration: _duration,
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) => FadeTransition(
+        key: ObjectKey(animation),
+        opacity: animation,
+        child: child,
+      ),
       child: child,
     );
   }
@@ -24,6 +29,7 @@ class const SwitcherSizeAnimation({super.key, required final Widget child})
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       transitionBuilder: (child, animation) => SizeTransition(
+        key: ObjectKey(animation),
         alignment: .topCenter,
         sizeFactor: animation,
         child: child,

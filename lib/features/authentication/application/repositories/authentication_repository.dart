@@ -60,10 +60,14 @@ final class AuthenticationRepository({
   Future<SignUpRepositoryType> signUp({
     required String email,
     required String password,
+    String? name,
+    String? avatar,
   }) async {
     try {
       final data = await _remoteDataSource.signUp(
+        name: name,
         email: email,
+        avatar: avatar,
         password: password,
       );
 

@@ -73,7 +73,7 @@ Widget _screenPreview({
 
   return PreviewResourceWidget<UserCommand>(
     create: () => UserCommand(repository: DashboardUserPreviewRepository()),
-    dispose: (command) => command.dispose(),
+    dispose: (_) {},
     builder: (userCommand) => DashboardScreen(
       userCommand: userCommand,
       dateFormatter: DateFormatter(),

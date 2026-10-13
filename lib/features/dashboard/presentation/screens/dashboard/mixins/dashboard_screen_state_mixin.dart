@@ -7,6 +7,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
   late DateTime selectedMonth;
   int _dependenciesVersion = 0;
+  bool _userRefreshPending = false;
   bool _refreshPendingAfterNavigation = false;
 
   DateTime get monthEnd =>
@@ -43,6 +44,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     );
     widget.firstExpenseMonthCommand.execute.run();
     widget.userCommand.execute.run();
+    widget.userCommand.execute.isRunning.addListener(_userLoadingChanged);
     loadExpenses();
     loadInsights();
     loadMetrics();
@@ -61,6 +63,12 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     }
 
     if (oldWidget.userCommand != widget.userCommand) {
+      _userRefreshPending = false;
+      oldWidget.userCommand.execute.isRunning.removeListener(
+        _userLoadingChanged,
+      );
+      oldWidget.userCommand.dispose();
+      widget.userCommand.execute.isRunning.addListener(_userLoadingChanged);
       widget.userCommand.execute.run();
     }
 
@@ -115,6 +123,8 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     widget.expensesCommand.dispose();
     widget.insightsCommand.dispose();
     widget.metricsCommand.dispose();
+    widget.userCommand.execute.isRunning.removeListener(_userLoadingChanged);
+    widget.userCommand.dispose();
     super.dispose();
   }
 
@@ -242,6 +252,36 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     await widget.onExpensePressed?.call();
     if (!mounted || version != _dependenciesVersion) return;
     await _refreshAfterNavigation();
+  }
+
+  Future<void> openUser() => _openUserNavigation(widget.onAvatarPressed);
+
+  Future<void> openSettings() => _openUserNavigation(widget.onMenuPressed);
+
+  Future<void> _openUserNavigation(Future<void> Function()? navigate) async {
+    if (navigate == null) return;
+    final command = widget.userCommand;
+    await navigate();
+    if (!mounted || command != widget.userCommand) return;
+    if (command.execute.isRunning.value) {
+      _userRefreshPending = true;
+      return;
+    }
+    command.execute.run();
+  }
+
+  void _userLoadingChanged() {
+    if (!mounted ||
+        !_userRefreshPending ||
+        widget.userCommand.execute.isRunning.value) {
+      return;
+    }
+    _userRefreshPending = false;
+    final command = widget.userCommand;
+    Future<void>.microtask(() {
+      if (!mounted || command != widget.userCommand) return;
+      command.execute.run();
+    });
   }
 
   Future<void> openExpenses() async {

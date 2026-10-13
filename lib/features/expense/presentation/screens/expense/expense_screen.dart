@@ -46,20 +46,20 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
       appBar: ExpenseAppBarWidget(onBackPressed: widget.onBackPressed),
       body: SafeArea(
         child: widget.id == null
-            ? _form()
+            ? _buildForm()
             : CommandBuilder<String, GetByIdRepositoryType?>(
                 command: widget.getCommand.execute,
-                onSuccess: (_, _) => _content(),
-                onError: (_, _, _, _) => _content(),
-                whileRunning: (_, _, _) => _skeleton(),
+                onSuccess: (_, _) => _buildContent(),
+                onError: (_, _, _, _) => _buildContent(),
+                whileRunning: (_, _, _) => _buildSkeleton(),
               ),
       ),
     );
   }
 
-  Widget _content() {
-    if (isLoading) return _skeleton();
-    if (expense != null) return _form(initialExpense: expense);
+  Widget _buildContent() {
+    if (isLoading) return _buildSkeleton();
+    if (expense != null) return _buildForm(initialExpense: expense);
 
     return Center(
       child: SingleChildScrollView(
@@ -81,8 +81,8 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
     );
   }
 
-  Widget _skeleton() => ExpenseSkeletonWidget(
-    child: _form(
+  ExpenseSkeletonWidget _buildSkeleton() => ExpenseSkeletonWidget(
+    child: _buildForm(
       enabled: false,
       initialExpense: ExpenseEntity(
         id: widget.id!,
@@ -94,7 +94,7 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
     ),
   );
 
-  ExpenseFormWidget _form({
+  ExpenseFormWidget _buildForm({
     ExpenseEntity? initialExpense,
     bool enabled = true,
   }) => ExpenseFormWidget(

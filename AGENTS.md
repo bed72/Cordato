@@ -396,9 +396,12 @@ exclusão e atualização do nome como lazy singletons.
   compõe `GeneratedUserAvatarWidget` com `flutter_boring_avatars`, estilo `marble`
   e paleta fixa dos tokens do tema claro. Dashboard reutiliza o mesmo desenho.
   Sem semente salva, use `cordato-user-<id>`, sem depender do nome.
-- O refresh do avatar gera uma escolha temporária; “Salvar avatar” executa
-  `UpdateAvatarCommand`, registrado por factory em `userRoutesModule` e descartado
-  pela tela. Falhas preservam a escolha; sucesso exige que a API devolva a semente
+- O refresh do avatar gera uma escolha temporária e reinicia um timer de dois
+  segundos. Sem nova regeneração nesse prazo, a última seed é salva automaticamente
+  por `UpdateAvatarCommand`, registrado por factory em `userRoutesModule` e descartado
+  pela tela. Não há botão de salvamento. O timer é cancelado no descarte, na troca
+  dos commands e ao confirmar exclusão. Falhas preservam a escolha e mostram erro,
+  sem retries automáticos; regenerar agenda outra tentativa. Sucesso exige que a API devolva a semente
   enviada. O atributo HTTP é `avatar`; não simule
   persistência caso o atributo seja ignorado.
 - User e Dashboard descartam `UserCommand`. Dashboard aguarda o retorno de User

@@ -2,15 +2,14 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
+import 'package:cordato/features/user/presentation/widgets/generated_user_avatar_widget.dart';
 
 final class const UserAvatarWidget({
   super.key,
   required final String name,
+  required final String seed,
   final VoidCallback? onPressed,
 }) extends StatelessWidget {
-  String get _initial =>
-      name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
-
   @override
   Widget build(BuildContext context) {
     const borderWidth = 3.0;
@@ -26,21 +25,7 @@ final class const UserAvatarWidget({
             label: 'Avatar de $name',
             child: ClipRRect(
               borderRadius: context.radius.cornerRadius300,
-              child: ColoredBox(
-                color: context.colors.primaryContainer,
-                child: SizedBox.square(
-                  dimension: 100.0,
-                  child: Center(
-                    child: Text(
-                      _initial,
-                      style: context.typography.headlineLarge?.copyWith(
-                        fontWeight: .w700,
-                        color: context.colors.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              child: GeneratedUserAvatarWidget(seed: seed, size: 100.0),
             ),
           ),
           Positioned(
@@ -55,15 +40,15 @@ final class const UserAvatarWidget({
                 padding: const .all(borderWidth),
                 child: Semantics(
                   button: true,
-                  label: 'Alterar foto',
                   enabled: onPressed != null,
+                  label: 'Gerar outro avatar',
                   child: IconButtonWidget(
                     width: 36.0,
                     height: 36.0,
                     iconSize: 20.0,
                     onPress: onPressed,
+                    icon: Icons.refresh,
                     borderRadius: buttonRadius,
-                    icon: Icons.camera_alt_outlined,
                     iconColor: context.colors.onPrimary,
                     backgroundColor: context.colors.primary,
                   ),

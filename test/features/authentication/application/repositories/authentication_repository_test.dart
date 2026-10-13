@@ -6,11 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
-import 'package:cordato/features/authentication/application/repositories/authentication_repository.dart';
 import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
-
 import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
 import 'package:cordato/features/authentication/infrastructure/responses/sign_up_response.dart';
+import 'package:cordato/features/authentication/application/repositories/authentication_repository.dart';
 import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
 
 import '../../../../support/authentication/mocks/authentication_local_data_source_mock.dart';
@@ -367,6 +366,81 @@ void main() {
           .called(1);
       verifyNever(() => localDataSource.saveToken(any()));
     });
+
+    for (final name in <String?>[null, 'Maria Silva']) {
+      for (final avatar in <String?>[
+        null,
+        'a3f79c0241b86e50d9c217fa6830be45',
+      ]) {
+        test(
+          'sign-up delegates optional name $name and avatar $avatar unchanged',
+          () async {
+            when(
+              () => dataSource.signUp(
+                name: name,
+                email: email,
+                avatar: avatar,
+                password: password,
+              ),
+            ).thenAnswer((_) async => const Right(SignUpResponse(id: '18')));
+
+            final data = await repository.signUp(
+              name: name,
+              email: email,
+              avatar: avatar,
+              password: password,
+            );
+
+            expect(data.right, isTrue);
+            verify(
+              () => dataSource.signUp(
+                name: name,
+                email: email,
+                avatar: avatar,
+                password: password,
+              ),
+            ).called(1);
+            verifyZeroInteractions(localDataSource);
+          },
+        );
+      }
+    }
+
+    test(
+      'sign-up translates avatar errors without creating a session',
+      () async {
+        when(
+          () => dataSource.signUp(
+            name: null,
+            email: email,
+            avatar: 'invalid',
+            password: password,
+          ),
+        ).thenAnswer(
+          (_) async => const Left(
+            ErrorsResponse(
+              errors: [
+                ErrorResponse(
+                  status: '422',
+                  title: 'Avatar inválido',
+                  pointer: '/data/attributes/avatar',
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final data = await repository.signUp(
+          email: email,
+          password: password,
+          avatar: 'invalid',
+        );
+
+        expect(data.left.errors.single.status, '422');
+        expect(data.left.errors.single.pointer, '/data/attributes/avatar');
+        verifyZeroInteractions(localDataSource);
+      },
+    );
 
     test('resend returns success after acceptance', () async {
       when(() => dataSource.resendEmail(email: email))
