@@ -67,6 +67,7 @@ final class _DashboardScreenState extends State<DashboardScreen>
                     DashboardMonthSelectorWidget(
                       selectedMonth: selectedMonth,
                       formatter: widget.dateFormatter,
+                      showNavigation: canGoToPreviousMonth || canGoToNextMonth,
                       onPreviousMonth: isLoading || !canGoToPreviousMonth
                           ? null
                           : previousMonth,

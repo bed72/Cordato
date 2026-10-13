@@ -10,6 +10,7 @@ final class const DashboardMonthSelectorWidget({
   required final IDateFormatter formatter,
   required final VoidCallback? onNextMonth,
   required final VoidCallback? onPreviousMonth,
+  final bool showNavigation = true,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -29,19 +30,21 @@ final class const DashboardMonthSelectorWidget({
               ),
             ),
           ),
-          _buildMonthButton(
-            context: context,
-            label: 'Mês anterior',
-            icon: Icons.chevron_left,
-            onPress: onPreviousMonth,
-          ),
-          const SizedBox(width: 8.0),
-          _buildMonthButton(
-            context: context,
-            label: 'Próximo mês',
-            icon: Icons.chevron_right,
-            onPress: onNextMonth,
-          ),
+          if (showNavigation) ...[
+            _buildMonthButton(
+              context: context,
+              label: 'Mês anterior',
+              icon: Icons.chevron_left,
+              onPress: onPreviousMonth,
+            ),
+            const SizedBox(width: 8.0),
+            _buildMonthButton(
+              context: context,
+              label: 'Próximo mês',
+              icon: Icons.chevron_right,
+              onPress: onNextMonth,
+            ),
+          ],
         ],
       ),
     );

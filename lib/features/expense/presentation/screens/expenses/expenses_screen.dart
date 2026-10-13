@@ -72,7 +72,7 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
-            padding: const .all(16.0),
+            padding: const .fromLTRB(16.0, 24.0, 16.0, 0.0),
             child: Column(
               crossAxisAlignment: .stretch,
               children: [
@@ -116,7 +116,11 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
               mainAxisSize: .min,
               crossAxisAlignment: .stretch,
               children: [
-                if (startsGroup) ExpensesGroupHeaderWidget(label: group),
+                if (startsGroup)
+                  ExpensesGroupHeaderWidget(
+                    label: group,
+                    topSpacing: index == 0 ? 8.0 : 16.0,
+                  ),
                 ExpenseDismissibleWidget(
                   key: ValueKey(expense.id),
                   id: expense.id,

@@ -5,11 +5,12 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 final class const ExpensesGroupHeaderWidget({
   super.key,
   required final String label,
+  final double topSpacing = 16.0,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const .fromLTRB(16.0, 16.0, 16.0, 4.0),
+      padding: .fromLTRB(16.0, topSpacing, 16.0, 4.0),
       child: Semantics(
         header: true,
         child: Text(

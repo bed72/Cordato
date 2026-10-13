@@ -237,7 +237,11 @@ permanece no estado da mesma instância da Dashboard.
 As setas reutilizam o fundo, raio e tamanho do botão de voltar do core e
 mostram o ícone com opacidade reduzida quando desabilitadas.
 O retorno é limitado ao mês da primeira despesa; meses vazios intermediários
-continuam navegáveis. Sem despesas, ambas as setas ficam desabilitadas no mês atual.
+continuam navegáveis. Quando não há outro mês disponível, inclusive sem despesas
+ou com histórico somente no mês atual, `showNavigation` oculta ambas as setas,
+preservando o título do mês. Havendo meses navegáveis, as setas permanecem
+visíveis e desabilitadas durante loading. O total de gastos e seu skeleton usam
+espaçamento superior de 8 pixels após o seletor.
 `GetFirstExpenseMonthCommand`, em `dashboard/presentation/screens/dashboard/commands/`,
 consulta o histórico geral por `IExpenseRepository.get`, com o tamanho padrão
 de página, seguindo `next` como continuação opaca e calculando o menor mês civil
@@ -737,7 +741,9 @@ Uma única `SliverList.builder` apresenta cabeçalhos acessíveis por período:
 Hoje, Esta semana (segunda-feira até ontem, somente no mês corrente), Este mês
 (dias anteriores à semana corrente) e mês/ano para os outros meses e datas futuras.
 Cada item pertence a um único grupo; grupos vazios não geram cabeçalhos.
-`ExpensesGroupHeaderWidget` fica fora do conteúdo arrastável. Cada item construído
+`ExpensesGroupHeaderWidget` fica fora do conteúdo arrastável. Seu `topSpacing`
+usa 8 pixels no primeiro grupo, aproximando a lista dos filtros, e 16 pixels nos
+demais grupos. Cada item construído
 compara seu rótulo com o do item anterior em tempo constante, inclusive entre páginas,
 sem agrupar toda a lista no build nem construir antecipadamente os itens de um mês.
 Páginas cronológicas acrescentam itens no fim em tempo linear no tamanho da página;

@@ -1,5 +1,5 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:command_it/command_it.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';

@@ -28,7 +28,7 @@ final class const MetricsSectionWidget({
       onError: (_, _, _, _) => const SizedBox.shrink(),
       onSuccess: (_, _) => switch (command.execute.value) {
         Right(:final value) => Padding(
-          padding: const .symmetric(vertical: 20.0),
+          padding: const .only(top: 8.0, bottom: 20.0),
           child: _buildMetrics(context: context, metrics: value),
         ),
         Left() => const SizedBox.shrink(),
@@ -43,7 +43,7 @@ final class const MetricsSectionWidget({
   Padding _buildSection({
     required BuildContext context,
     required Widget child,
-  }) => Padding(padding: const .all(20.0), child: child);
+  }) => Padding(padding: const .fromLTRB(20.0, 8.0, 20.0, 20.0), child: child);
 
   Column _buildMetrics({
     required BuildContext context,
