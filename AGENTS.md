@@ -176,8 +176,27 @@ decrescente pela data civil. A rota `/expenses` recebe o record opcional
 `({DateTime from, DateTime to})` e o repassa como `period`; sem argumento mantém
 a consulta geral. “Ver tudo” recebe o mês selecionado pelo callback
 `Future<bool> Function(DateTime month)?` da Dashboard e transporta seu intervalo
-civil completo. Header e semântica identificam mês e ano. Abertura, paginação,
-refresh e retry preservam os limites. Edição para fora do intervalo inclusivo
+civil completo. O título “Despesas” e a descrição “Acompanhe todas as suas
+despesas.” são fixos. `ExpensesFiltersWidget` mostra categoria antes do período,
+12 pixels abaixo da descrição, em `InputChip` com ícone de fechar, ação nativa
+`onDeleted`, `BounceWidget` e `Wrap` com espaçamentos de 8 pixels. Os filtros
+ficam fora de exclusões semânticas e possuem rótulos de remoção localizados.
+Períodos mensais mostram mês e ano; outros intervalos mostram os limites civis.
+Sem filtros, não há pílulas nem espaço adicional.
+`ExpensesScreenStateMixin` inicializa `activeCategory` e `activePeriod` pelos
+argumentos e usa esses valores em consultas, rótulos, vazio e retorno da edição.
+Rebuilds e troca isolada do command preservam os filtros locais; mudanças reais
+nas entradas reiniciam a lente e invalidam operações anteriores. Se a consulta
+do mesmo command estiver em andamento, uma única recarga da combinação vigente
+aguarda seu término. `removeCategoryFilter` e `removePeriodFilter` removem
+somente o filtro correspondente, limpam itens, continuação e feedback, mantêm o
+controller e voltam ao topo antes da primeira página. `canRemoveFilters` bloqueia
+remoção durante loading, edição e confirmação/execução de exclusão, sem enfileirar
+ações bloqueadas. Falha da nova lente mantém filtros novos e lista vazia; retry
+solicita a primeira página. Refresh/paginação da mesma lente preservam itens em
+falha e repetem a operação correspondente. Remover filtros não sinaliza alteração
+financeira nem muda o mês da Dashboard. Abertura, paginação,
+refresh e retry preservam os filtros ativos. Edição para fora do intervalo inclusivo
 remove o item; dentro dele, atualiza ou reposiciona. Edição e exclusão preservam
 controller de rolagem e continuação e verificam se é necessário carregar mais.
 A ordenação permanece

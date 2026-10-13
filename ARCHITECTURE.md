@@ -519,6 +519,37 @@ A listagem geral e consumidores sem recorte continuam informando filtros nulos.
 `ExpensesScreen` recebe `category` opcional junto a `period`. A rota aceita
 records com `from`, `to`, `category` e callback opcional, preservando os records
 anteriores sem categoria. O cabeçalho e o vazio identificam as lentes ativas.
+O título “Despesas” e a descrição “Acompanhe todas as suas despesas.” permanecem
+fixos. `ExpensesFiltersWidget` exibe categoria antes do período em `InputChip`
+com ícone de fechar e ação nativa de remoção, 12 pixels abaixo da descrição.
+Um `Wrap` usa espaçamentos de 8 pixels. A validação com texto ampliado e rótulos
+longos permanece pendente, registrada na change arquivada. Cores, tipografia e formato de pílula vêm do tema, com
+`BounceWidget` para pressão e alvo Material acessível. O corpo não possui ação.
+As pílulas ficam fora de exclusões semânticas; a ação de remoção possui descrição
+localizada e callbacks nulos durante operações incompatíveis. Sem filtros, não
+há pílulas nem espaço adicional. Períodos mensais completos mostram mês e ano;
+outros intervalos mostram os limites civis pelo formatter existente.
+Previews da tela cobrem categoria + mês, somente mês, somente categoria,
+entrada geral, loading, falha e vazio, além de categoria longa em largura
+reduzida e texto ampliado nos temas claro/escuro, categoria futura e intervalo
+não mensal. Os fakes locais filtram e paginam os dados sem rede ou storage;
+esses cenários não substituem a validação dos contratos HTTP e da navegação real.
+`ExpensesScreenStateMixin` inicializa `activeCategory` e `activePeriod` pelas
+entradas da tela antes da primeira consulta. Rótulos, mensagens, consultas e
+pertencimento após edição usam esse estado local. Rebuilds e troca isolada do
+command preservam os filtros ativos; mudança efetiva nas entradas reaplica a
+combinação inicial e reinicia a primeira página, invalidando operações anteriores.
+Se o mesmo command ainda estiver consultando, a reconfiguração aguarda seu
+término para consultar a combinação vigente sem execuções concorrentes.
+O mixin expõe `removeCategoryFilter`, `removePeriodFilter` e `canRemoveFilters`
+para a composição da interface. Cada handler remove somente seu filtro, sem
+sinalizar alteração financeira, e reinicia a consulta com páginas de 20 itens,
+continuação nula e filtros restantes. Essa troca limpa resultados, cursor e
+feedback antes da consulta, preserva o controller e volta ao topo. Loading,
+edição e confirmação/execução de exclusão bloqueiam remoções, que não são
+enfileiradas. Falha mantém os filtros novos e a lista vazia; retry solicita a
+primeira página dessa combinação. Respostas, finalizações e callbacks post-frame
+obsoletos são ignorados pela identidade do command e revisão da consulta.
 Paginação, refresh e retry reenviam mês e categoria; edição que devolva um item
 fora de qualquer lente remove-o da lista, preservando rolagem e continuação.
 Continuações repassam `next` ou `prev` sem interpretação. Cada execução substitui o resultado

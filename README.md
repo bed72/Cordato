@@ -66,9 +66,14 @@ O app já possui:
   vazios indicam ausência de despesas naquele mês. Refresh preserva a seleção;
 - listagem completa em `/expenses`, aberta por “Ver tudo” da Dashboard, com
   rolagem infinita em páginas de 20 itens, atualização por gesto, skeleton, vazio
-  e nova tentativa após erro, preservando os itens já carregados. Acompanha o mês
-  selecionado, identificado na tela e na acessibilidade, mantendo o filtro em
-  paginação, refresh e retry. Despesas editadas para outro mês saem do recorte;
+  e nova tentativa após erro, preservando os itens já carregados em refresh e
+  paginação. O cabeçalho mantém “Despesas” e “Acompanhe todas as suas despesas.”.
+  Categoria e período recebidos da Dashboard aparecem em pílulas removíveis,
+  identificadas também na acessibilidade. Remover categoria mantém o período;
+  remover período consulta o histórico completo da categoria restante. A troca
+  limpa itens e cursor, volta ao topo e consulta a primeira página. Paginação,
+  refresh, retry e edição respeitam os filtros ativos. Despesas editadas para
+  outro mês saem do recorte somente enquanto o período permanece ativo;
   edição dentro do mês e exclusão preservam agrupamentos, paginação e rolagem.
   A rota sem período continua oferecendo a listagem geral;
 - formulário de gasto integrado à API, com descrição obrigatória, calculadora
@@ -187,7 +192,15 @@ consumidores. A Dashboard envia o mês selecionado às três consultas; o interv
 civil respeita viradas de ano e fevereiro bissexto.
 Os cards de categoria possuem bounce e abrem a mesma listagem de “Ver tudo”,
 acrescentando `filter[category]` ao mês selecionado. A listagem identifica mês
-e categoria e preserva essas lentes na paginação, refresh e retry.
+e categoria em pílulas removíveis abaixo da descrição fixa. Os filtros são
+estado local inicializado pelos argumentos: rebuilds e troca isolada do command
+não restauram filtros removidos. Mudanças efetivas nas entradas reiniciam a lente,
+ignorando respostas antigas. Remoção limpa o resultado antes da consulta, enquanto
+refresh da mesma lente preserva os itens até sucesso. Falha após remoção mantém
+os filtros novos e permite retry da primeira página. Loading, edição e confirmação
+ou execução de exclusão bloqueiam remoções. Remover filtros não chama
+`onExpensesChanged` nem altera o mês da Dashboard; reabrir a listagem restaura a
+combinação enviada nessa nova abertura.
 `ExpensesSkeletonWidget`, de `expense/presentation/widgets/`, é reutilizado nas
 duas telas: seis placeholders na Dashboard, oito na listagem sem itens e três
 no rodapé durante consultas com despesas já carregadas.
@@ -242,8 +255,10 @@ atualização do painel após a análise inicial.
 
 O catálogo mensal inclui a Dashboard completa em claro/escuro, carregamento
 agregado, mês vazio e falha parcial; o seletor inclui fevereiro bissexto e
-virada de ano. A listagem possui previews de setembro com paginação de 20 itens,
-loading, vazio, falha com retry e entrada geral. Todos usam fakes locais sem
+virada de ano. A listagem possui previews de categoria + mês, somente mês,
+somente categoria, entrada geral, loading, vazio e falha com retry. Também cobre
+categoria longa em largura reduzida, texto ampliado, categoria futura e intervalo
+não mensal, além de paginação de 20 itens. Todos usam fakes locais sem
 rede ou storage. Previews não substituem a validação da API e dos fluxos reais
 com Maestro; os resultados são registrados na change OpenSpec.
 

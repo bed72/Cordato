@@ -4,6 +4,7 @@ import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
@@ -11,6 +12,8 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
 
 mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
+  String? activeCategory;
+  ({DateTime from, DateTime to})? activePeriod;
   String? nextPageLink;
   String? pendingDeleteId;
   String? deletingExpenseId;
@@ -20,28 +23,48 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   bool hasFailure = false;
   bool _retryRefresh = true;
   bool isEditingExpense = false;
+  int? _pendingRefreshRevision;
+  int _queryRevision = 0;
 
   final List<ExpenseEntity> expenses = [];
   final scrollController = ScrollController();
 
   int get pageSize => 20;
 
-  String? get monthLabel {
-    final period = widget.period;
+  bool get canRemoveFilters =>
+      mounted &&
+      !isLoading &&
+      !widget.getCommand.execute.isRunning.value &&
+      !isEditingExpense &&
+      pendingDeleteId == null &&
+      deletingExpenseId == null &&
+      !widget.deleteCommand.execute.isRunning.value;
+
+  String? get periodLabel {
+    final period = activePeriod;
     if (period == null) return null;
+
+    final lastDay = DateTime(period.from.year, period.from.month + 1, 0);
+    if (period.from.day != 1 || _civilDay(period.to) != _civilDay(lastDay)) {
+      return widget.dateFormatter.formatShortPeriod(period.from, period.to);
+    }
+
     return '${widget.dateFormatter.formatMonth(period.from)} de ${period.from.year}';
   }
 
-  String? get filterLabel {
-    final category = widget.category;
-    final label = category == null
+  String? get categoryLabel {
+    final category = activeCategory;
+    return category == null
         ? null
         : ExpenseCategoryEnum.values
                   .where((value) => value.value == category)
                   .firstOrNull
                   ?.label ??
               category;
-    final labels = [label, monthLabel].whereType<String>().toList();
+  }
+
+  String? get filterLabel {
+    final labels = [categoryLabel, periodLabel].whereType<String>().toList();
 
     return labels.isEmpty ? null : labels.join(' · ');
   }
@@ -49,6 +72,8 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   @override
   void initState() {
     super.initState();
+    activeCategory = widget.category;
+    activePeriod = widget.period;
     scrollController.addListener(loadNearEnd);
     refreshExpenses();
   }
@@ -63,21 +88,30 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       deletingExpenseId = null;
     }
 
-    if (oldWidget.getCommand != widget.getCommand) {
-      oldWidget.getCommand.dispose();
-      expenses.clear();
-      nextPageLink = null;
-      isLoading = false;
-      hasLoaded = false;
-      hasFailure = false;
+    final commandChanged = oldWidget.getCommand != widget.getCommand;
+    final filtersChanged =
+        oldWidget.category != widget.category ||
+        oldWidget.period != widget.period;
+
+    if (commandChanged) oldWidget.getCommand.dispose();
+
+    if (filtersChanged) {
+      activeCategory = widget.category;
+      activePeriod = widget.period;
+    }
+
+    if (commandChanged || filtersChanged) {
+      isEditingExpense = false;
       pendingDeleteId = null;
       deletingExpenseId = null;
-      refreshExpenses();
+      _restartQuery();
     }
   }
 
   @override
   void dispose() {
+    _queryRevision++;
+    _pendingRefreshRevision = null;
     scrollController.removeListener(loadNearEnd);
     scrollController.dispose();
     widget.getCommand.dispose();
@@ -86,11 +120,56 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   }
 
   void loadNearEnd() {
-    if (!scrollController.hasClients || hasFailure || !hasLoaded) return;
+    if (!mounted || !scrollController.hasClients || hasFailure || !hasLoaded) {
+      return;
+    }
     if (scrollController.position.extentAfter < 240.0) loadNextPage();
   }
 
   Future<void> refreshExpenses() => _loadPage(refresh: true);
+
+  Future<void> removeCategoryFilter() async {
+    if (!canRemoveFilters || activeCategory == null) return;
+
+    setState(() => activeCategory = null);
+    await _restartQuery();
+  }
+
+  Future<void> removePeriodFilter() async {
+    if (!canRemoveFilters || activePeriod == null) return;
+
+    setState(() => activePeriod = null);
+    await _restartQuery();
+  }
+
+  Future<void> _restartQuery() async {
+    if (!mounted) return;
+
+    final command = widget.getCommand;
+    setState(() {
+      _queryRevision++;
+      expenses.clear();
+      nextPageLink = null;
+      hasLoaded = false;
+      hasFailure = false;
+      _retryRefresh = true;
+      isLoading = command.execute.isRunning.value;
+      _pendingRefreshRevision = isLoading ? _queryRevision : null;
+    });
+
+    final revision = _queryRevision;
+    if (scrollController.hasClients) {
+      scrollController.jumpTo(0);
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_isCurrentQuery(command, revision) && scrollController.hasClients) {
+          scrollController.jumpTo(0);
+        }
+      });
+    }
+
+    if (_pendingRefreshRevision == null) await refreshExpenses();
+  }
 
   Future<void> loadNextPage() async {
     if (nextPageLink == null) return;
@@ -112,11 +191,12 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     }
 
     final command = widget.getCommand;
+    final revision = _queryRevision;
     setState(() => isEditingExpense = true);
 
     try {
       final updated = await navigate(id);
-      if (!mounted || widget.getCommand != command || updated == null) return;
+      if (!_isCurrentQuery(command, revision) || updated == null) return;
       widget.onExpensesChanged?.call();
 
       final index = expenses.indexWhere((expense) => expense.id == id);
@@ -124,11 +204,13 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
 
       setState(() => _applyUpdatedExpense(index, updated));
     } finally {
-      if (mounted) setState(() => isEditingExpense = false);
+      if (_isCurrentQuery(command, revision)) {
+        setState(() => isEditingExpense = false);
+      }
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.getCommand == command) loadNearEnd();
+      if (_isCurrentQuery(command, revision)) loadNearEnd();
     });
   }
 
@@ -142,6 +224,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
 
     final command = widget.deleteCommand;
     final queryCommand = widget.getCommand;
+    final revision = _queryRevision;
     bool deleted = false;
     bool confirmed = false;
 
@@ -156,9 +239,8 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
         subtitle: 'Esta ação não pode ser desfeita.',
       );
 
-      if (!mounted ||
+      if (!_isCurrentQuery(queryCommand, revision) ||
           widget.deleteCommand != command ||
-          widget.getCommand != queryCommand ||
           !confirmed) {
         return false;
       }
@@ -166,8 +248,8 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       setState(() => deletingExpenseId = id);
       final data = await command.execute.runAsync(id);
       if (!mounted ||
-          widget.deleteCommand != command ||
-          widget.getCommand != queryCommand) {
+          !_isCurrentQuery(queryCommand, revision) ||
+          widget.deleteCommand != command) {
         return false;
       }
 
@@ -200,15 +282,15 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       showDeleteFailure();
       return false;
     } catch (_) {
-      if (mounted &&
-          widget.deleteCommand == command &&
-          widget.getCommand == queryCommand) {
+      if (_isCurrentQuery(queryCommand, revision) &&
+          widget.deleteCommand == command) {
         showDeleteFailure();
       }
 
       return false;
     } finally {
-      if (mounted && widget.deleteCommand == command) {
+      if (_isCurrentQuery(queryCommand, revision) &&
+          widget.deleteCommand == command) {
         setState(() {
           deletingExpenseId = null;
           if (!deleted) pendingDeleteId = null;
@@ -231,7 +313,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       DateTime.utc(date.year, date.month, date.day);
 
   bool _isWithinPeriod(DateTime date) {
-    final period = widget.period;
+    final period = activePeriod;
     if (period == null) return true;
 
     final day = _civilDay(date);
@@ -241,8 +323,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
 
   void _applyUpdatedExpense(int index, ExpenseEntity updated) {
     if (!_isWithinPeriod(updated.occurredOn) ||
-        (widget.category != null &&
-            updated.category.value != widget.category)) {
+        (activeCategory != null && updated.category.value != activeCategory)) {
       expenses.removeAt(index);
       return;
     }
@@ -280,24 +361,30 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   }
 
   void removeDeletedExpense(String id) {
+    if (!mounted || pendingDeleteId != id) return;
+
+    final command = widget.getCommand;
+    final revision = _queryRevision;
     setState(() {
       expenses.removeWhere((expense) => expense.id == id);
       pendingDeleteId = null;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) loadNearEnd();
+      if (_isCurrentQuery(command, revision)) loadNearEnd();
     });
   }
 
   Future<void> _loadPage({required bool refresh}) async {
-    if (isLoading ||
+    if (!mounted ||
+        isLoading ||
         isEditingExpense ||
         pendingDeleteId != null ||
         widget.getCommand.execute.isRunning.value) {
       return;
     }
     final command = widget.getCommand;
+    final revision = _queryRevision;
 
     setState(() {
       isLoading = true;
@@ -308,13 +395,13 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     try {
       final data = await command.execute.runAsync((
         pageSize: pageSize,
-        to: widget.period?.to,
-        category: widget.category,
-        from: widget.period?.from,
+        to: activePeriod?.to,
+        category: activeCategory,
+        from: activePeriod?.from,
         pageLink: refresh ? null : nextPageLink,
       ));
 
-      if (!mounted || widget.getCommand != command) return;
+      if (!_isCurrentQuery(command, revision)) return;
 
       setState(() {
         if (data case Right(:final value)) {
@@ -330,17 +417,28 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
         hasFailure = true;
       });
     } catch (_) {
-      if (!mounted || widget.getCommand != command) return;
+      if (!_isCurrentQuery(command, revision)) return;
       setState(() => hasFailure = true);
     } finally {
-      if (mounted && widget.getCommand == command) {
+      if (_isCurrentQuery(command, revision)) {
         setState(() => isLoading = false);
+      }
+      final pendingRevision = _pendingRefreshRevision;
+      if (pendingRevision != null &&
+          _isCurrentQuery(command, pendingRevision) &&
+          !command.execute.isRunning.value) {
+        _pendingRefreshRevision = null;
+        setState(() => isLoading = false);
+        refreshExpenses();
       }
     }
 
-    if (!mounted || widget.getCommand != command || hasFailure) return;
+    if (!_isCurrentQuery(command, revision) || hasFailure) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.getCommand == command) loadNearEnd();
+      if (_isCurrentQuery(command, revision)) loadNearEnd();
     });
   }
+
+  bool _isCurrentQuery(GetExpensesCommand command, int revision) =>
+      mounted && widget.getCommand == command && _queryRevision == revision;
 }

@@ -15,6 +15,7 @@ import 'package:cordato/features/expense/presentation/screens/expenses/mixins/ex
 
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_item_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_app_bar_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_filters_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_skeleton_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_feedback_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_dismissible_widget.dart';
@@ -71,21 +72,28 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
-            padding: const .fromLTRB(16.0, 16.0, 16.0, 24.0),
-            child: Semantics(
-              header: true,
-              label: filterLabel == null
-                  ? 'Despesas'
-                  : 'Despesas: $filterLabel',
-              excludeSemantics: true,
-              child: HeaderWidget(
-                title: 'Despesas',
-                description: widget.category != null
-                    ? filterLabel ?? 'Acompanhe todas as suas despesas.'
-                    : monthLabel == null
-                    ? 'Acompanhe todas as suas despesas.'
-                    : 'Acompanhe suas despesas de $monthLabel.',
-              ),
+            padding: const .all(16.0),
+            child: Column(
+              crossAxisAlignment: .stretch,
+              children: [
+                const HeaderWidget(
+                  title: 'Despesas',
+                  description: 'Acompanhe todas as suas despesas.',
+                ),
+                if (activeCategory != null || activePeriod != null) ...[
+                  const SizedBox(height: 12.0),
+                  ExpensesFiltersWidget(
+                    periodLabel: periodLabel,
+                    categoryLabel: categoryLabel,
+                    onRemoveCategory: canRemoveFilters
+                        ? removeCategoryFilter
+                        : null,
+                    onRemovePeriod: canRemoveFilters
+                        ? removePeriodFilter
+                        : null,
+                  ),
+                ],
+              ],
             ),
           ),
         ),
@@ -170,11 +178,11 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
     if (hasLoaded && expenses.isEmpty) {
       return ExpensesFeedbackWidget(
         title: 'Ainda sem despesas',
-        description: widget.category != null
+        description: activeCategory != null
             ? 'Não há despesas para $filterLabel.'
-            : monthLabel == null
+            : periodLabel == null
             ? 'Seus gastos cadastrados aparecerão aqui.'
-            : 'Não há despesas em $monthLabel.',
+            : 'Não há despesas em $periodLabel.',
       );
     }
 
