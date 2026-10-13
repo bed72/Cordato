@@ -1,7 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
@@ -34,14 +33,6 @@ Widget previewLoadingExpensesSectionWidget() => _sectionPreview();
 Widget previewEmptyExpensesSectionWidget() => _sectionPreview(
   result: Right(ExpensePageEntity(items: [], next: null, prev: null)),
 );
-
-@CordatoPreview(
-  group: 'Dashboard / Despesas',
-  name: 'Seção com falha',
-  size: Size(390.0, 240.0),
-)
-Widget previewFailureExpensesSectionWidget() =>
-    _sectionPreview(result: Left(ErrorsEntity.unknown()));
 
 @CordatoPreview(
   group: 'Dashboard / Despesas',
@@ -91,16 +82,9 @@ Widget _sectionPreview({
       child: ExpensesSectionWidget(
         limit: 6,
         command: command,
-        dateFormatter: DateFormatter(now: () => DateTime(2026, 10, 7)),
         moneyFormatter: MoneyFormatter(),
-        onRetry: () => command.execute.run((
-          pageSize: 6,
-          category: null,
-          pageLink: null,
-          from: DateTime(2026, 10),
-          to: DateTime(2026, 10, 31),
-        )),
         onSeeAllExpensesPressed: onSeeAllExpensesPressed,
+        dateFormatter: DateFormatter(now: () => DateTime(2026, 10, 7)),
       ),
     ),
   ),
@@ -109,10 +93,10 @@ Widget _sectionPreview({
 ExpensePageEntity _expensesPage() {
   final fixtures =
       <({String description, int cents, ExpenseCategoryEnum category})>[
-        (description: 'Mercado da semana', cents: 24590, category: .food),
         (description: 'Aluguel', cents: 180000, category: .housing),
         (description: 'Combustível', cents: 15000, category: .transport),
         (description: 'Consulta médica', cents: 28000, category: .health),
+        (description: 'Mercado da semana', cents: 24590, category: .food),
         (description: 'Cinema com a família', cents: 9600, category: .leisure),
         (
           description: 'Assinatura de música',
@@ -128,10 +112,10 @@ ExpensePageEntity _expensesPage() {
       for (final (index, fixture) in fixtures.indexed)
         ExpenseEntity(
           id: 'preview-expense-$index',
-          description: fixture.description,
-          cents: AmountValueObject.create(cents: fixture.cents).right,
-          occurredOn: DateTime(2026, 10, 7 - index),
           category: fixture.category,
+          description: fixture.description,
+          occurredOn: DateTime(2026, 10, 7 - index),
+          cents: AmountValueObject.create(cents: fixture.cents).right,
         ),
     ],
   );

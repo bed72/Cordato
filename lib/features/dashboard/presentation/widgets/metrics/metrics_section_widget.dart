@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/widgets/buttons/text_button_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
@@ -16,7 +15,6 @@ final class const MetricsSectionWidget({
   super.key,
   required final IMoneyFormatter moneyFormatter,
   required final GetExpenseMetricsCommand command,
-  required final VoidCallback? onRetry,
   final ValueChanged<String>? onCategoryPressed,
 }) extends StatelessWidget {
   @override
@@ -27,19 +25,13 @@ final class const MetricsSectionWidget({
         context: context,
         child: const ExpenseMetricsSkeletonWidget(),
       ),
-      onError: (_, _, _, _) => _buildSection(
-        context: context,
-        child: _buildFailure(context: context),
-      ),
+      onError: (_, _, _, _) => const SizedBox.shrink(),
       onSuccess: (_, _) => switch (command.execute.value) {
         Right(:final value) => Padding(
           padding: const .symmetric(vertical: 20.0),
           child: _buildMetrics(context: context, metrics: value),
         ),
-        Left() => _buildSection(
-          context: context,
-          child: _buildFailure(context: context),
-        ),
+        Left() => const SizedBox.shrink(),
         null => _buildSection(
           context: context,
           child: const ExpenseMetricsSkeletonWidget(),
@@ -115,19 +107,5 @@ final class const MetricsSectionWidget({
         color: context.colors.onSurfaceVariant,
       ),
     ),
-  );
-
-  Column _buildFailure({required BuildContext context}) => Column(
-    spacing: 12.0,
-    crossAxisAlignment: .start,
-    children: [
-      Text(
-        'Não foi possível carregar os gastos por categoria.',
-        style: context.typography.bodyMedium?.copyWith(
-          color: context.colors.onSurfaceVariant,
-        ),
-      ),
-      TextButtonWidget(label: 'Tentar novamente', onTap: onRetry),
-    ],
   );
 }

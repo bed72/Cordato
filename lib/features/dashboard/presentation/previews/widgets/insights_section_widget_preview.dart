@@ -1,7 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
 
@@ -27,14 +26,6 @@ Widget previewLoadingInsightsSectionWidget() => _sectionPreview();
 )
 Widget previewEmptyInsightsSectionWidget() =>
     _sectionPreview(type: const Right([]));
-
-@CordatoPreview(
-  group: 'Dashboard / Insights',
-  name: 'Falha e nova tentativa',
-  size: Size(390.0, 240.0),
-)
-Widget previewFailureInsightsSectionWidget() =>
-    _sectionPreview(type: Left(ErrorsEntity.unknown()));
 
 @CordatoPreview(
   group: 'Dashboard / Insights',
@@ -77,10 +68,7 @@ Widget _sectionPreview({GetRepositoryType? type}) =>
       builder: (command) => Scaffold(
         body: SingleChildScrollView(
           padding: const .symmetric(vertical: 24.0),
-          child: InsightsSectionWidget(
-            command: command,
-            onRetry: () => command.execute.run((year: 2026, month: 10)),
-          ),
+          child: InsightsSectionWidget(command: command),
         ),
       ),
     );

@@ -1,5 +1,5 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/app_module.dart';
@@ -13,7 +13,7 @@ import 'package:cordato/features/core/infrastructure/clients/firebase/firebase_c
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await FirebaseClient().initialize();
+  await FirebaseClient.initialize();
 
   final navigatorKey = GlobalKey<NavigatorState>();
 

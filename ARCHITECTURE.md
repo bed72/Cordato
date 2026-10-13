@@ -231,7 +231,9 @@ em paralelo: Metrics com intervalo e `groupBy: category`, Insights com ano/mês
 e recentes com intervalo e tamanho seis. Abertura, troca pelas setas, refresh e
 retorno à instância existente da Dashboard usam esse contexto; refresh não muda
 a seleção. `DashboardMonthSelectorWidget` pertence à Dashboard, permanece visível
-em todos os estados e impede avanço além do mês atual, sem swipe mensal.
+nos estados normais e impede avanço além do mês atual, sem swipe mensal.
+No erro financeiro global e durante recuperação, o seletor fica oculto e o mês
+permanece no estado da mesma instância da Dashboard.
 As setas reutilizam o fundo, raio e tamanho do botão de voltar do core e
 mostram o ícone com opacidade reduzida quando desabilitadas.
 O retorno é limitado ao mês da primeira despesa; meses vazios intermediários
@@ -251,7 +253,8 @@ anterior ao novo limite antes de consultar as seções, sem avançar além do m�
 Essa consulta percorre todo o histórico porque o contrato atual não fornece
 metadados do primeiro mês nem ordenação ascendente.
 As setas ficam desabilitadas enquanto qualquer command de seção estiver rodando,
-inclusive retry. O mixin observa `isRunning` dos três commands, removendo os
+inclusive recuperação. O mixin observa resultados, erros observáveis e
+`isRunning` dos três commands, removendo os
 listeners antes de substituir ou descartar instâncias. Retornos de navegação
 após descarte ou substituição de dependências são ignorados.
 Voltar do cadastro ou da listagem sem alterações não dispara consultas nem skeletons.
@@ -271,15 +274,37 @@ A recarga pendente é invalidada na troca de dependências e não executa após
 descarte da tela.
 
 `MetricsSectionWidget`, na Dashboard, fica antes dos insights. Usa
-`CommandBuilder` para skeleton, falha com retry, total zero e sucesso. O total
+`CommandBuilder` para skeleton, total zero e sucesso. O total
 é formatado pelo `IMoneyFormatter`; o mês do seletor vem do estado da Dashboard,
 independentemente da resposta da API. A troca de período inicia loading nas três
 seções e renova suas chaves pelo mês, sem renderizar resultados antigos sob o
-novo título. Cada falha oferece retry somente da seção no mês selecionado.
+novo título. Não há retry localizado nas seções da Dashboard.
 Total positivo sem categorias mostra uma
 mensagem de distribuição indisponível, inclusive quando nenhum total de categoria
 é positivo; total zero não produz cards fictícios. Uma única categoria positiva
 mantém apenas o total, sem carrossel nem mensagem de distribuição indisponível.
+
+Falha de Metrics, Insights ou recentes (Left ou exceção observável) ativa
+imediatamente um erro financeiro persistente em `DashboardScreenStateMixin`,
+mesmo com consultas remanescentes em execução. `DashboardScreen` retorna
+`ErrorScreen` com o mesmo cabeçalho, título “Não foi possível carregar sua
+Dashboard.”, descrição “Não conseguimos carregar suas informações agora. Tente
+novamente.” e ação “Tentar novamente”, sem seletor, seções ou FAB. Não navega nem
+cria outro State. Sucessos remanescentes não removem o erro; resultados nulos ou
+vazios não são falhas. Falha de User mostra “Trocado” e avatar placeholder sem
+retry no nome; falha do limite apenas bloqueia o retorno a meses anteriores.
+
+O retry único é bloqueado enquanto qualquer consulta, inclusive User, ou ciclo
+de recarga estiver em andamento. Não acumula toques bloqueados. User é consultado
+em paralelo ao limite; depois do limite resolver, aplica o ajuste civil vigente
+do mês e inicia as três consultas financeiras em paralelo. Loading permanece na
+tela de erro durante o ciclo. Somente os três resultados Right devolvidos por
+essa tentativa restauram o conteúdo, sem contar valores preservados nos commands.
+Falhas auxiliares não impedem a recuperação financeira. Uma nova falha mantém a
+tela e libera outro retry ao terminar; não há retry automático. A identidade do
+ciclo invalida conclusões após troca de qualquer command ou descarte, preservando
+a recarga pendente após navegação. Componentes e previews de erro localizado sem
+consumidores foram removidos.
 
 `ExpenseMetricsCategoriesExtension.cardPages`, na apresentação de Metrics,
 filtra totais positivos, ordena uma cópia por total decrescente com desempate
@@ -1460,7 +1485,8 @@ Registros importantes:
 - `dashboardRoutesModule`: injeta `UserCommand` na tela inicial, que consulta
   o usuário ao montar. O AppBar recebe o command e `UserNameWidget` usa
   `CommandBuilder` para mostrar nome e avatar gerado a partir da API, skeleton durante a consulta
-  e “Tentar novamente” em caso de erro. Nomes longos usam ellipsis. A saudação
+  e “Trocado” com avatar placeholder em Left ou exceção, sem retry localizado.
+  Nomes longos usam ellipsis. A saudação
   continua baseada na hora local. Dashboard e User recebem instâncias distintas
   do command. Ao retornar de User ou Settings, a Dashboard consulta novamente
   User para atualizar nome e avatar. Os callbacks dessas navegações retornam
@@ -1478,15 +1504,16 @@ Registros importantes:
   novamente a instância descartada. A nova Dashboard carrega ao montar.
   O corpo usa `ListView` com rolagem sempre habilitada, padding inferior para o FAB
   e `RefreshIndicator` para recarregar a primeira página e os insights em paralelo,
-  inclusive com lista vazia. Falhas são independentes; `InsightsSectionWidget`
+   inclusive com lista vazia. Falhas financeiras acionam o erro global;
+   `InsightsSectionWidget`
   aparece antes de `ExpensesSectionWidget`.
   `ExpensesSectionWidget` usa `CommandBuilder` para skeleton de seis itens,
-  erro localizado com título, descrição e retry, vazio com “Sem despesas neste mês” e sucesso.
+   vazio com “Sem despesas neste mês” e sucesso; erros são coordenados pela Dashboard.
   Exibe no máximo seis itens, preservando a ordem e as datas da API. Valores usam
   `IMoneyFormatter.formatCents` e datas usam `IDateFormatter.formatLongDate`, como
   `07 de Out`, incluindo o ano quando diferente do atual, em `pt_BR` e sem conversão
   de fuso. Não acumula páginas nem carrega continuações. Erros de execução da
-  atualização permanecem visíveis pelo builder, sem toast adicional.
+   atualização acionam a tela de erro global, sem toast adicional.
   `ExpenseItemWidget`, em `expense/presentation/widgets/`, recebe descrição,
   categoria e textos formatados de valor e data, sem estado ou acesso a rede.
   Reutiliza `BackgroundIconWidget` e os rótulos, ícones e cores semânticas de
@@ -1679,6 +1706,22 @@ vez de estilizar botões Material diretamente.
 O dashboard usa um botão de ação expansível para acessar o formulário de gasto;
 não há barra inferior de navegação ou shell autenticado na composição atual.
 
+`ErrorScreen`, em `core/presentation/screens/error/error_screen.dart`, é uma
+screen compartilhada de apresentação, dona do Scaffold, sem rota ou dependências
+de consultas. Recebe appBar opcional, imagem decorativa por `AssetEnum`, título, descrição,
+label/callback anulável da ação principal e label/callback opcionais da secundária.
+Sem label secundário, somente a ação principal é renderizada. Loading mostra
+progresso no botão principal e desabilita ambas as ações; callbacks nulos também
+desabilitam seus botões. Reutiliza o tema e os botões compartilhados com margens
+laterais de 20 pixels. O corpo centralizado e o footer na base participam da mesma
+rolagem quando o espaço é insuficiente, preservando textos e ações com fonte
+ampliada. Os previews do core cobrem ambos os temas, cabeçalhos, uma ou duas ações,
+loading, callbacks nulos, tela pequena e paisagem com texto a 200%.
+As imagens são renderizadas por `ImageWidget`, com `BoxFit.contain`, tamanho de
+200×200 e cores originais, excluídas da semântica. `AssetEnum.genericError` é o
+padrão; `AssetEnum.connectionError` permite a composição de erro de conexão.
+Ambas centralizam path e descrição das imagens de `assets/images/errors/`.
+
 O teclado `CentsCalculatorWidget`, em
 `expense/presentation/screens/expense/widgets/calculator/`, recebe dígitos em reais:
 `80` representa `R$ 80,00`. A tecla de vírgula permite informar até dois
@@ -1706,7 +1749,7 @@ Previews nativos usam `@CordatoPreview`, em
 `core/presentation/previews/preview.dart`, com tema real, localização e toast.
 O catálogo contém componentes compartilhados do core, Welcome, formulário e
 listagem de Expense e seções e tela completa da Dashboard. Os previews mensais
-cobrem loading agregado, mês vazio, falha parcial, consultas explícitas,
+cobrem loading agregado, mês vazio, erro financeiro global, consultas explícitas,
 listagem filtrada ou geral e paginação local de 20 itens. O seletor possui
 cenários de fevereiro bissexto e virada de ano. Fakes de catálogo implementam
 contratos de domínio sem rede ou storage; comandos pertencentes às screens

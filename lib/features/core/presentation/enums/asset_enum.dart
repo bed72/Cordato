@@ -1,5 +1,13 @@
 enum AssetEnum({required final String alt, required final String source}) {
   logo(alt: 'Logo Trocado', source: 'assets/images/logo.webp'),
+  genericError(
+    alt: 'Ilustração de erro',
+    source: 'assets/images/errors/generic_error.webp',
+  ),
+  connectionError(
+    alt: 'Ilustração de erro de conexão',
+    source: 'assets/images/errors/connection_error.webp',
+  ),
   categoryHealth(alt: 'Saúde', source: 'assets/images/categories/health.webp'),
   categoryTaxes(alt: 'Impostos', source: 'assets/images/categories/taxes.webp'),
   categoryTravel(

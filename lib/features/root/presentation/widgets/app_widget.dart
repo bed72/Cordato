@@ -2,9 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/features/root/presentation/mixins/app_widget_state_mixin.dart';
-
 import 'package:cordato/features/session/presentation/commands/session_command.dart';
+import 'package:cordato/features/root/presentation/mixins/app_widget_state_mixin.dart';
 
 import 'package:cordato/features/core/presentation/themes/themes.dart';
 import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';

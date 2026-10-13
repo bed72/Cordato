@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/widgets/buttons/link_button_widget.dart';
 
 import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
@@ -21,27 +20,26 @@ final class const UserNameWidget({
   Widget build(BuildContext context) {
     return CommandBuilder<void, GetByIdRepositoryType?>(
       command: command.execute,
-      whileRunning: (_, _, _) => _skeleton(context),
-      onError: (_, _, _, _) => _content(context, '', failed: true),
+      whileRunning: (_, _, _) => _buildSkeleton(context),
+      onError: (_, _, _, _) => _buildContent(context, 'Trocado'),
       onSuccess: (_, _) => switch (command.execute.value) {
-        Right(:final value) => _content(
+        Right(:final value) => _buildContent(
           context,
           value.name,
           seed: value.avatar ?? 'cordato-user-${value.id}',
         ),
-        Left() => _content(context, '', failed: true),
-        null => _skeleton(context),
+        Left() => _buildContent(context, 'Trocado'),
+        null => _buildSkeleton(context),
       },
     );
   }
 
-  UserNameSkeletonWidget _skeleton(BuildContext context) =>
-      UserNameSkeletonWidget(child: _content(context, 'Trocado'));
+  UserNameSkeletonWidget _buildSkeleton(BuildContext context) =>
+      UserNameSkeletonWidget(child: _buildContent(context, 'Trocado'));
 
-  Row _content(
+  Row _buildContent(
     BuildContext context,
     String name, {
-    bool failed = false,
     String seed = 'cordato-placeholder',
   }) => Row(
     spacing: 12.0,
@@ -59,21 +57,15 @@ final class const UserNameWidget({
                 color: context.colors.onSurfaceVariant,
               ),
             ),
-            if (failed)
-              LinkButtonWidget(
-                label: 'Tentar novamente',
-                onTap: command.execute.run,
-              )
-            else
-              Text(
-                name,
-                maxLines: 1,
-                overflow: .ellipsis,
-                style: context.typography.titleMedium?.copyWith(
-                  fontWeight: .w700,
-                  color: context.colors.onSurface,
-                ),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: .ellipsis,
+              style: context.typography.titleMedium?.copyWith(
+                fontWeight: .w700,
+                color: context.colors.onSurface,
               ),
+            ),
           ],
         ),
       ),

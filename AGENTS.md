@@ -161,11 +161,25 @@ refresh preserva o mês. `DashboardMonthSelectorWidget` mantém mês/ano visíve
 impede meses futuros e desabilita as setas enquanto qualquer seção carrega,
 incluindo retry. Listeners de `isRunning` são removidos no lifecycle; retornos
 obsoletos de navegação são ignorados. A troca ativa skeletons sem dados anteriores
-sob o novo título. Cada seção oferece retry localizado no mês selecionado.
+sob o novo título. Falha de métricas, insights ou recentes (Left ou exceção
+observável) substitui imediatamente o Scaffold pela `ErrorScreen`, na mesma
+instância e sem mudar o mês. Cabeçalho e seus callbacks permanecem disponíveis;
+seletor, seções e FAB ficam ocultos. O erro persiste após sucessos remanescentes.
+O retry único fica bloqueado enquanto houver consultas da Dashboard, inclusive
+User, ou recuperação em andamento, sem enfileirar toques. Recarrega User em
+paralelo ao limite histórico, aplica eventual ajuste civil do mês e consulta as
+três seções em paralelo. A tela de erro mantém loading até o ciclo terminar;
+somente os três resultados Right dessa tentativa restauram o conteúdo. Outra
+falha libera nova tentativa ao terminar. Falhas de User ou limite não ativam ou
+prolongam o erro financeiro; o limite com erro bloqueia a seta anterior. O mixin
+remove observações de resultados, erros e loading e invalida ciclos obsoletos
+na troca de dependências ou descarte. User mostra “Trocado” com avatar placeholder
+em Left ou exceção, sem retry no nome, preservando saudação e skeleton no loading.
 `InsightsSectionWidget` fica acima das
-despesas, com skeleton, erro com retry e seção oculta quando vazia.
+despesas, com skeleton e seção oculta quando vazia.
 `ExpensesSectionWidget` usa `CommandBuilder`
-para loading, erro com título, descrição e retry, vazio mensal e sucesso, sem paginação na UI.
+para loading, vazio mensal e sucesso, sem paginação na UI. As três seções não
+possuem retry localizado: a Dashboard coordena o erro e a recuperação.
 Reutiliza `ExpenseItemWidget` de Expense, `IMoneyFormatter` e datas pt-BR sem
 conversão de fuso. “Ver tudo” requer itens e callback de navegação disponível;
 a rota fornece o destino `/expenses` para a listagem completa.
@@ -598,6 +612,20 @@ Todos os botões que participam do padrão de interação devem reutilizar
 `BounceWidget`. A animação compartilhada reproduz o hook RN
 `use-press-bounce.ts`: escala `0.96` no press-in e retorna a `1.0` com spring,
 preservando a velocidade atual.
+
+### Tela Compartilhada De Erro
+
+`ErrorScreen`, em `features/core/presentation/screens/error/error_screen.dart`,
+compõe seu próprio Scaffold com appBar opcional, imagem decorativa, título,
+descrição e footer. Recebe ações por labels e callbacks anuláveis, sem acessar
+commands ou router. A ação secundária só aparece com label; loading mostra
+progresso na principal e desabilita ambas. Preserve os botões compartilhados,
+tema, margens laterais de 20 pixels e rolagem adaptável para conteúdo e ações
+em espaço reduzido ou texto ampliado. Seus previews ficam em
+`features/core/presentation/previews/screens/error_screen_preview.dart`.
+As ilustrações usam `ImageWidget` com `AssetEnum.genericError` por padrão e
+`AssetEnum.connectionError` para erro de conexão, preservando suas cores originais
+e excluindo a imagem da semântica para não duplicar a mensagem.
 
 ### Imagens
 

@@ -1,15 +1,16 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
-import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
+
 import 'package:cordato/features/dashboard/presentation/widgets/metrics/metrics_section_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/dashboard_month_selector_widget.dart';
-import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
+
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
+import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/repositories/interface_metrics_repository.dart';
 import 'package:cordato/features/metrics/presentation/commands/get_expense_metrics_command.dart';
 import 'package:cordato/features/metrics/presentation/previews/fakes/metrics_preview_repository.dart';
@@ -42,14 +43,6 @@ Widget previewLoadingExpenseMetricsCardsWidget() =>
   size: Size(390, 380),
 )
 Widget previewEmptyExpenseMetricsCardsWidget() => _sectionPreview(month: 9);
-
-@CordatoPreview(
-  group: 'Metrics / Cards',
-  name: 'Erro com retry',
-  size: Size(390, 340),
-)
-Widget previewFailureExpenseMetricsCardsWidget() =>
-    _sectionPreview(data: Left(ErrorsEntity.unknown()));
 
 @CordatoPreview(
   group: 'Dashboard / Período',
@@ -270,10 +263,10 @@ GetExpensesRepositoryType _categoriesResult(int count, {bool large = false}) =>
     );
 
 Widget _sectionPreview({
-  GetExpensesRepositoryType? data,
-  bool loading = false,
   int month = 10,
   int year = 2026,
+  bool loading = false,
+  GetExpensesRepositoryType? data,
 }) {
   return PreviewResourceWidget<
     ({GetExpenseMetricsCommand command, ValueNotifier<DateTime> month})
@@ -332,8 +325,8 @@ Widget _sectionPreview({
                   ValueListenableBuilder<bool>(
                     valueListenable: command.execute.isRunning,
                     builder: (_, running, _) => DashboardMonthSelectorWidget(
-                      selectedMonth: selectedMonth,
                       formatter: DateFormatter(),
+                      selectedMonth: selectedMonth,
                       onPreviousMonth: loading || running
                           ? null
                           : () => changeMonth(-1),
@@ -354,7 +347,6 @@ Widget _sectionPreview({
                   MetricsSectionWidget(
                     command: command,
                     moneyFormatter: MoneyFormatter(),
-                    onRetry: load,
                   ),
                 ],
               ),

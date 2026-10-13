@@ -35,7 +35,7 @@ void main() {
       };
       bool initialized = false;
 
-      final initialization = FirebaseClient().initialize().then((_) {
+      final initialization = FirebaseClient.initialize().then((_) {
         initialized = true;
       });
       await Future<void>.delayed(Duration.zero);
@@ -53,6 +53,6 @@ void main() {
     final failure = StateError('Firebase initialization failed');
     firebasePlatform.initialize = (_) => Future.error(failure);
 
-    await expectLater(FirebaseClient().initialize(), throwsA(same(failure)));
+    await expectLater(FirebaseClient.initialize(), throwsA(same(failure)));
   });
 }

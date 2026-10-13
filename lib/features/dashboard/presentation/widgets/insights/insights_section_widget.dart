@@ -9,12 +9,9 @@ import 'package:cordato/features/insight/presentation/widgets/insights_list_widg
 import 'package:cordato/features/insight/presentation/widgets/insights_skeleton_widget.dart';
 import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
 
-import 'package:cordato/features/dashboard/presentation/widgets/insights/insights_failure_widget.dart';
-
 final class const InsightsSectionWidget({
   super.key,
   required final GetInsightsCommand command,
-  final VoidCallback? onRetry,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -22,14 +19,14 @@ final class const InsightsSectionWidget({
       command: command.execute,
       whileRunning: (_, _, _) =>
           _buildSection(context, const InsightsSkeletonWidget()),
-      onError: (_, _, _, _) => _buildSection(context, _buildFailure()),
+      onError: (_, _, _, _) => const SizedBox.shrink(),
       onSuccess: (_, _) => switch (command.execute.value) {
         Right(:final value) when value.isEmpty => const SizedBox.shrink(),
         Right(:final value) => _buildSection(
           context,
           InsightsListWidget(insights: value),
         ),
-        Left() => _buildSection(context, _buildFailure()),
+        Left() => const SizedBox.shrink(),
         null => _buildSection(context, const InsightsSkeletonWidget()),
       },
     );
@@ -59,6 +56,4 @@ final class const InsightsSectionWidget({
       ],
     ),
   );
-
-  Widget _buildFailure() => InsightsFailureWidget(onRetry: onRetry);
 }

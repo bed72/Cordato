@@ -56,8 +56,15 @@ Widget previewEmptyMonthlyDashboardScreen() => _screenPreview(empty: true);
 
 @CordatoPreview(
   group: 'Dashboard / Telas',
-  name: 'Falha parcial de insights',
+  name: 'Erro financeiro global / Claro',
   size: cordatoPhonePreviewSize,
+  brightness: Brightness.light,
+)
+@CordatoPreview(
+  group: 'Dashboard / Telas',
+  name: 'Erro financeiro global / Escuro',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.dark,
 )
 Widget previewPartialFailureMonthlyDashboardScreen() =>
     _screenPreview(failure: true);

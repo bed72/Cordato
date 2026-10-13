@@ -14,7 +14,6 @@ import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_empty_widget.dart';
-import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_failure_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_skeleton_widget.dart';
 
 final class const ExpensesSectionWidget({
@@ -23,7 +22,6 @@ final class const ExpensesSectionWidget({
   required final GetExpensesCommand command,
   required final IDateFormatter dateFormatter,
   required final IMoneyFormatter moneyFormatter,
-  final VoidCallback? onRetry,
   final VoidCallback? onSeeAllExpensesPressed,
 }) extends StatelessWidget {
   @override
@@ -31,16 +29,15 @@ final class const ExpensesSectionWidget({
     return CommandBuilder<
       ({
         int pageSize,
-        String? pageLink,
-        DateTime? from,
         DateTime? to,
+        DateTime? from,
         String? category,
+        String? pageLink,
       }),
       GetRepositoryType?
     >(
       command: command.execute,
-      onError: (_, _, _, _) =>
-          _buildSection(context: context, child: _buildFailure()),
+      onError: (_, _, _, _) => const SizedBox.shrink(),
       whileRunning: (_, _, _) =>
           _buildSection(context: context, child: _buildLoading()),
       onSuccess: (_, _) => switch (command.execute.value) {
@@ -50,10 +47,10 @@ final class const ExpensesSectionWidget({
         ),
         Right(:final value) => _buildSection(
           context: context,
-          child: _buildItems(value.items),
           hasItems: true,
+          child: _buildItems(value.items),
         ),
-        Left() => _buildSection(context: context, child: _buildFailure()),
+        Left() => const SizedBox.shrink(),
         null => _buildSection(context: context, child: _buildLoading()),
       },
     );
@@ -99,9 +96,6 @@ final class const ExpensesSectionWidget({
 
   ExpensesSkeletonWidget _buildLoading() =>
       ExpensesSkeletonWidget(count: limit);
-
-  ExpensesFailureWidget _buildFailure() =>
-      ExpensesFailureWidget(onRetry: onRetry);
 
   Column _buildItems(List<ExpenseEntity> expenses) => Column(
     mainAxisSize: .min,
