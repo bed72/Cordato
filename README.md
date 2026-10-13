@@ -370,6 +370,29 @@ use **Messaging → Enviar mensagem de teste** no console, com o app em backgrou
 Android precisa de Google Play Services. A entrega real de push e a configuração
 APNs remota ainda não foram validadas. A chave `.p8` não deve ser versionada.
 
+## Notificações Locais
+
+`flutter_local_notifications` fornece a exibição nativa por
+`INotificationClient`, registrado como lazy singleton no Modular. O cliente
+fica em `lib/features/core/infrastructure/clients/notification/notification_client.dart`.
+O consumidor deve aguardar `initialize()` antes de
+chamar `show(id: ..., title: ..., body: ...)`.
+
+A inicialização configura o canal Android `cordato_default` com importância alta
+e o ícone existente `ic_notification`, sem pedir permissão no iOS. A permissão
+de notificações deve ser solicitada explicitamente pelo fluxo consumidor,
+usando `IMessagingClient.requestPermission()`. O adapter propaga falhas do plugin.
+
+Esta etapa prepara a infraestrutura de exibição imediata. O aplicativo ainda
+não inicializa o cliente automaticamente, não conecta mensagens FCM à exibição,
+não agenda notificações e não implementa navegação ao tocar. A exibição local
+não exige chave APNs nem backend.
+
+A exibição real foi validada no Android conectado com Maestro, usando um
+entrypoint temporário e as dependências do Modular: inicialização, exibição,
+título e corpo no painel de notificações. O build debug para simulador iOS
+também foi verificado; a exibição real no iOS ainda não foi validada.
+
 ## Android Release
 
 O processo de configuração segura da chave, build e verificação de artefatos

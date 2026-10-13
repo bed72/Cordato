@@ -84,6 +84,29 @@ descartadas. O consumidor deve cancelar suas subscriptions.
 mensagens como lazy singletons; `ICrashClient` e `IMessagingClient` usam
 `CrashClient.new` e `MessagingClient.new`, com dependências resolvidas pelo
 Modular. Nenhuma screen acessa SDKs.
+
+`NotificationClient`, em `core/infrastructure/clients/notification/notification_client.dart`,
+implementa `INotificationClient` e recebe `FlutterLocalNotificationsPlugin` por
+construtor. Ambos são lazy singletons do core, registrados pelo Modular;
+`NotificationClient.new` resolve o plugin pelo grafo. `initialize()` cria
+o canal Android `cordato_default`, nome “Notificações”, descrição “Notificações
+do Cordato” e importância alta, e aguarda a inicialização do plugin para Android
+e iOS. Não solicita permissão iOS na inicialização. O consumidor deve aguardar
+`initialize()` antes de `show({required int id, required String body, required
+String title})`. O adapter não inicia automaticamente, não agenda notificações
+e não trata toques. `show` preserva ID, título e corpo, usa o mesmo canal e ícone
+`ic_notification`, prioridade/importância altas no Android e os detalhes padrão
+Darwin no iOS. Exceções são propagadas. A permissão continua sendo solicitada
+explicitamente pelo fluxo consumidor, por `IMessagingClient.requestPermission()`.
+Não há subscription automática entre Messaging e notificação local nesta etapa.
+
+O ícone nativo existente é preservado por `android/app/src/main/res/raw/keep.xml`.
+O Gradle habilita core library desugaring com `desugar_jdk_libs:2.1.4`, mantendo
+Java/Kotlin 21. O AppDelegate iOS define `UNUserNotificationCenter.current().delegate`
+como o próprio `FlutterAppDelegate`, preservando o registro de plugins pelo
+lifecycle UIScene e a integração com Messaging. Notificação local não depende
+de chave APNs nem de chamada ao backend.
+
 O app não solicita permissão nem consulta/envia tokens ao abrir. Não há
 integração com backend de dispositivos, renderização de notificação em primeiro
 plano, navegação ao tocar ou handler Dart para mensagens de background.
