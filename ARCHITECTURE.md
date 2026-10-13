@@ -156,7 +156,7 @@ sem acumular despesas. Não pressupõe ordenação nem encerra em uma página va
 que ainda tenha continuação. Falhas invalidam o limite inteiro e continuações
 repetidas retornam erro. O command é registrado por factory no módulo de rotas
 da Dashboard e descartado pela tela, interrompendo novas páginas após descarte.
-O limite é consultado na abertura, refresh e retorno de cadastro/listagem;
+O limite é consultado na abertura, refresh e retorno de cadastro/listagem com alterações confirmadas;
 trocas de mês reutilizam o resultado. Durante a consulta, as setas ficam
 desabilitadas; falha mantém o retorno bloqueado até uma nova consulta por refresh.
 Se a primeira despesa for removida ou mudar de mês, a recarga ajusta uma seleção
@@ -167,7 +167,18 @@ As setas ficam desabilitadas enquanto qualquer command de seção estiver rodand
 inclusive retry. O mixin observa `isRunning` dos três commands, removendo os
 listeners antes de substituir ou descartar instâncias. Retornos de navegação
 após descarte ou substituição de dependências são ignorados.
-Quando o retorno ocorre durante uma consulta, o mixin adia a recarga das três
+Voltar do cadastro ou da listagem sem alterações não dispara consultas nem skeletons.
+Os callbacks financeiros da Dashboard retornam `Future<bool>`: `true` somente
+quando houve criação, edição ou exclusão bem-sucedida durante a navegação.
+O módulo de Dashboard mantém esse sinal local a cada abertura e transporta
+`VoidCallback onExpensesChanged` no record de argumentos da rota, junto a
+`returnToPrevious` no cadastro ou `from`/`to` na listagem. As rotas continuam
+aceitando os records anteriores sem callback. As telas recebem o callback
+anulável por construtor; o formulário o chama em cada criação confirmada,
+inclusive hold, e em atualização confirmada. A listagem o chama após receber
+uma edição bem-sucedida ou confirmar a exclusão na API. O sinal independe do
+modo de fechamento da rota, incluindo botão, gesto e voltar do sistema.
+Quando o retorno com alterações ocorre durante uma consulta, o mixin adia a recarga das três
 seções até todas terminarem, inclusive com erro, mantendo o mês selecionado.
 A recarga pendente é invalidada na troca de dependências e não executa após
 descarte da tela.
@@ -209,6 +220,10 @@ de `highlighted`, mas não é ativado nos cards inferiores do carrossel.
 `BackgroundIconWidget` mantém ícone quadrado arredondado
 e fundo a 12%. `ExpenseCategoryMetricsExtension` oferece rótulos, ícones,
 cores alinhadas aos itens de Expense sem importá-los e assets de categorias.
+O getter `asset` retorna `AssetEnum` do core, que centraliza `source` e `alt`
+da logo e das imagens de categorias. O card consome esses campos pelo
+`ImageWidget` e usa `AssetEnum.categoryOthers.source` como fallback, sem
+montar ou repetir caminhos de arquivos na feature.
 `other` usa `others.webp`; categorias futuras mantêm o nome, com ícone/cor
 neutros e essa imagem como fallback. Cores, tipografia e raios vêm do tema.
 
@@ -698,11 +713,11 @@ sucesso, a listagem substitui somente o item correspondente, reposicionando-o
 quando a data civil muda e preservando a posição quando somente valor ou descrição mudam.
 Mantém rolagem e continuações da paginação. Cancelar não altera a lista. O mixin bloqueia
 edição duplicada, consultas e exclusões enquanto o editor está aberto.
-Ao retornar da listagem completa, Dashboard consulta novamente suas despesas
+Ao retornar da listagem completa com alterações confirmadas, Dashboard consulta novamente suas despesas
 recentes, refletindo as edições e exclusões realizadas. O callback de “Ver tudo”
-em `DashboardScreen` é `Future<void> Function(DateTime month)?`, assíncrono para
+em `DashboardScreen` é `Future<bool> Function(DateTime month)?`, assíncrono para
 transportar o mês selecionado e aguardar o retorno da navegação. No retorno,
-as três seções são recarregadas no mês preservado.
+as três seções são recarregadas no mês preservado somente quando o resultado é `true`.
 O catálogo de previews de Expense inclui cadastro, edição e skeleton do formulário,
 com commands descartados por `PreviewResourceWidget` e repository fake sem rede.
 
@@ -1325,7 +1340,7 @@ Registros importantes:
   `GetInsightsCommand`, além do
   `IMoneyFormatter` e o `IDateFormatter` do core. `DashboardScreenStateMixin` consulta a primeira
   página com `pageSize: 6` e os insights em paralelo ao montar, recarrega ambos
-  após o retorno do formulário e da listagem completa e
+  após o retorno do formulário e da listagem completa com alterações confirmadas e
   descarta os commands de despesas, insights e User ao sair. A ação de gasto recebe um callback assíncrono para aguardar
   o retorno da rota; após navegação que removeu a Dashboard, o handler não consulta
   novamente a instância descartada. A nova Dashboard carrega ao montar.

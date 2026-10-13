@@ -100,6 +100,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     try {
       final updated = await navigate(id);
       if (!mounted || widget.getCommand != command || updated == null) return;
+      widget.onExpensesChanged?.call();
 
       final index = expenses.indexWhere((expense) => expense.id == id);
       if (index < 0) return;
@@ -154,6 +155,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       }
 
       if (data case Right(value: true)) {
+        widget.onExpensesChanged?.call();
         deleted = true;
         context.showToast(
           variant: .success,

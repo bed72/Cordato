@@ -13,8 +13,8 @@ import 'package:cordato/features/core/presentation/widgets/buttons/elevated_butt
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
-import 'package:cordato/features/user/presentation/screens/user/commands/update_avatar_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/delete_user_command.dart';
+import 'package:cordato/features/user/presentation/screens/user/commands/update_avatar_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/mixins/user_screen_state_mixin.dart';
 
 import 'package:cordato/features/user/presentation/screens/user/widgets/user_avatar_widget.dart';

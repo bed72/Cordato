@@ -39,9 +39,10 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
         !DateUtils.isSameDay(occurredOn, initial.occurredOn);
     final validation = widget.validator(
       cents: cents,
-      description: descriptionController.text,
       occurredOn: occurredOn,
+      description: descriptionController.text,
     );
+
     return hasChanges &&
         validation.cents is Valid<int> &&
         validation.description is Valid<String> &&
@@ -220,6 +221,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     }
 
     if (data.data case Right()) {
+      widget.onExpensesChanged?.call();
       context.showToast(
         variant: .success,
         title: 'Gasto cadastrado',
@@ -252,6 +254,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     if (data.data case Left(:final value)) {
       _showErrors(value);
     } else if (data.data case Right(:final value)) {
+      widget.onExpensesChanged?.call();
       context.showToast(
         variant: .success,
         title: 'Gasto atualizado',

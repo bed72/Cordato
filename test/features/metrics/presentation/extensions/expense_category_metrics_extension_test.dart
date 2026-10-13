@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/presentation/extensions/expense_category_metrics_extension.dart';
 
@@ -37,9 +38,10 @@ void main() {
 
         expect(category.label, entry.value);
         expect(
-          category.asset,
+          category.asset.source,
           'assets/images/categories/${entry.key == 'other' ? 'others' : entry.key}.webp',
         );
+        expect(category.asset.alt, entry.value);
       });
     }
 
@@ -52,7 +54,7 @@ void main() {
 
       expect(category.label, 'future_category');
       expect(category.icon, Icons.receipt_long_outlined);
-      expect(category.asset, 'assets/images/categories/others.webp');
+      expect(category.asset, AssetEnum.categoryOthers);
     });
 
     const icons = {

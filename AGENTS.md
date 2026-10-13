@@ -130,7 +130,8 @@ modos; hold interrompido não envia. Cancelar pickers preserva a entrada.
 A Dashboard abre `/expense` com `(returnToPrevious: true)`, record de tipo
 `({bool returnToPrevious})`. Após sucesso por toque simples, a rota usa
 `context.pop()` para preservar a instância da Dashboard e seu mês selecionado.
-Cancelar também retorna à mesma instância. Nos dois retornos, as três seções
+Cancelar também retorna à mesma instância. Voltar sem alterações não recarrega.
+Após alterações confirmadas, as três seções
 são recarregadas no mês preservado; se alguma consulta ainda estiver rodando,
 a recarga aguarda o fim de todas. Troca de dependências invalida a recarga pendente
 e descarte impede sua execução. Sem argumento ou com `returnToPrevious: false`,
@@ -140,7 +141,12 @@ Dashboard consulta nome e semente do avatar por `UserCommand` e as seis primeira
 despesas por uma instância própria de `GetExpensesCommand`, descartada pela tela.
 `DashboardScreenStateMixin` concentra consulta inicial, atualização por gesto e
 retorno assíncrono do formulário e da listagem completa, recarregando as despesas
-recentes, insights e métricas após ambos, quando a mesma instância permanece montada.
+recentes, insights e métricas somente após alterações confirmadas, quando a mesma instância permanece montada.
+Os callbacks financeiros retornam `Future<bool>` e o módulo transporta
+`VoidCallback onExpensesChanged` no record de argumentos junto a `returnToPrevious`
+ou `from`/`to`. O formulário sinaliza criações confirmadas, inclusive hold, e
+atualizações; a listagem sinaliza edições e exclusões confirmadas. O sinal é local
+à navegação e independe do modo de voltar. Records sem callback continuam aceitos.
 A Dashboard recebe instâncias próprias de `GetInsightsCommand` e
 `GetExpenseMetricsCommand`, descartadas pela tela. `selectedMonth` é o contexto
 compartilhado das três seções: intervalo civil para métricas e recentes, ano/mês
@@ -163,7 +169,7 @@ do core. `ExpensesScreenStateMixin` acumula páginas de 20 itens em ordem
 decrescente pela data civil. A rota `/expenses` recebe o record opcional
 `({DateTime from, DateTime to})` e o repassa como `period`; sem argumento mantém
 a consulta geral. “Ver tudo” recebe o mês selecionado pelo callback
-`Future<void> Function(DateTime month)?` da Dashboard e transporta seu intervalo
+`Future<bool> Function(DateTime month)?` da Dashboard e transporta seu intervalo
 civil completo. Header e semântica identificam mês e ano. Abertura, paginação,
 refresh e retry preservam os limites. Edição para fora do intervalo inclusivo
 remove o item; dentro dele, atualiza ou reposiciona. Edição e exclusão preservam
@@ -576,6 +582,10 @@ relevantes para o layout.
 
 Assets locais devem ser declarados no `pubspec.yaml`. O asset atual da marca é
 `assets/images/logo.webp`.
+Centralize caminhos e descrições de imagens locais em `AssetEnum`, em
+`features/core/presentation/enums/asset_enum.dart`, usando `source` e `alt`.
+O enum reúne a logo e as imagens de categorias. Features fazem a associação
+dos seus dados ao enum na apresentação, sem montar ou repetir paths nos widgets.
 
 ## Widget Previews
 

@@ -23,6 +23,7 @@ import 'package:cordato/features/expense/presentation/screens/expense/validators
 final class const ExpenseScreen({
   super.key,
   final String? id,
+  final VoidCallback? onExpensesChanged,
   required final VoidCallback onBackPressed,
   required final IDateFormatter dateFormatter,
   required final GetExpenseCommand getCommand,
@@ -109,5 +110,6 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
     moneyFormatter: widget.moneyFormatter,
     onExpenseCreated: widget.onExpenseCreated,
     onExpenseUpdated: widget.onExpenseUpdated,
+    onExpensesChanged: widget.onExpensesChanged,
   );
 }

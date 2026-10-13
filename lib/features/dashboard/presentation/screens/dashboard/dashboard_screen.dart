@@ -29,8 +29,8 @@ final class const DashboardScreen({
   final VoidCallback? onNotificationsPressed,
   final Future<void> Function()? onMenuPressed,
   final Future<void> Function()? onAvatarPressed,
-  final Future<void> Function()? onExpensePressed,
-  final Future<void> Function(DateTime month)? onSeeAllExpensesPressed,
+  final Future<bool> Function()? onExpensePressed,
+  final Future<bool> Function(DateTime month)? onSeeAllExpensesPressed,
 }) extends StatefulWidget {
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();

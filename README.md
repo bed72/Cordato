@@ -167,6 +167,10 @@ abre cadastro; com ID textual consulta a API e mostra skeleton até preencher o
 formulário. O record opcional `({bool returnToPrevious})` com valor `true`, enviado
 pela Dashboard, faz o sucesso do cadastro fechar o formulário com `pop`, sem
 recriar a Dashboard. Sem argumento, o sucesso navega para `/dashboard`.
+Ao abrir cadastro ou listagem pela Dashboard, voltar sem alterações preserva
+os dados exibidos, sem novas consultas. Criação, edição ou exclusão confirmada
+sinaliza a alteração por `onExpensesChanged` no record da rota e atualiza as
+três seções ao retornar, inclusive após cadastro por hold e voltar pelo sistema.
 A listagem abre a edição ao arrastar o item da esquerda para a direita,
 revelando o lápis; o gesto oposto mantém a exclusão. Recebe a entidade atualizada
 ao retornar, preservando paginação e rolagem. O PATCH altera valor, descrição e

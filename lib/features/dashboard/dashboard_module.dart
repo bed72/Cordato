@@ -26,21 +26,35 @@ final dashboardRoutesModule = createModule(
         insightsCommand: inject<GetInsightsCommand>(),
         metricsCommand: inject<GetExpenseMetricsCommand>(),
         firstExpenseMonthCommand: inject<GetFirstExpenseMonthCommand>(),
-        onSeeAllExpensesPressed: (month) async => await context.pushNamed(
-          RouteEnum.expenses.path,
-          arguments: (
-            from: DateTime(month.year, month.month),
-            to: DateTime(month.year, month.month + 1, 0),
-          ),
-        ),
+
         onAvatarPressed: () async =>
             await context.pushNamed(RouteEnum.user.path),
         onMenuPressed: () async =>
             await context.pushNamed(RouteEnum.settings.path),
-        onExpensePressed: () async => await context.pushNamed(
-          RouteEnum.expense.path,
-          arguments: (returnToPrevious: true),
-        ),
+        onExpensePressed: () async {
+          bool changed = false;
+          await context.pushNamed(
+            RouteEnum.expense.path,
+            arguments: (
+              returnToPrevious: true,
+              onExpensesChanged: () => changed = true,
+            ),
+          );
+
+          return changed;
+        },
+        onSeeAllExpensesPressed: (month) async {
+          bool changed = false;
+          await context.pushNamed(
+            RouteEnum.expenses.path,
+            arguments: (
+              onExpensesChanged: () => changed = true,
+              from: DateTime(month.year, month.month),
+              to: DateTime(month.year, month.month + 1, 0),
+            ),
+          );
+          return changed;
+        },
       ),
     );
   },

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 
@@ -72,9 +73,24 @@ extension ExpenseCategoryMetricsExtension on ExpenseCategoryMetricsEntity {
     _ => Icons.receipt_long_outlined,
   };
 
-  String get asset =>
-      'assets/images/categories/${switch (category) {
-        'health' || 'leisure' || 'taxes' || 'travel' || 'housing' || 'food' || 'shopping' || 'insurance' || 'services' || 'education' || 'transport' || 'financing' || 'pets' || 'investments' || 'subscriptions' || 'personal_care' || 'gifts_and_donations' => category,
-        _ => 'others',
-      }}.webp';
+  AssetEnum get asset => switch (category) {
+    'food' => AssetEnum.categoryFood,
+    'pets' => AssetEnum.categoryPets,
+    'taxes' => AssetEnum.categoryTaxes,
+    'health' => AssetEnum.categoryHealth,
+    'travel' => AssetEnum.categoryTravel,
+    'leisure' => AssetEnum.categoryLeisure,
+    'housing' => AssetEnum.categoryHousing,
+    'shopping' => AssetEnum.categoryShopping,
+    'services' => AssetEnum.categoryServices,
+    'insurance' => AssetEnum.categoryInsurance,
+    'education' => AssetEnum.categoryEducation,
+    'transport' => AssetEnum.categoryTransport,
+    'financing' => AssetEnum.categoryFinancing,
+    'investments' => AssetEnum.categoryInvestments,
+    'personal_care' => AssetEnum.categoryPersonalCare,
+    'subscriptions' => AssetEnum.categorySubscriptions,
+    'gifts_and_donations' => AssetEnum.categoryGiftsAndDonations,
+    _ => AssetEnum.categoryOthers,
+  };
 }

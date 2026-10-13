@@ -155,8 +155,8 @@ Widget _screenPreview({
               : null,
         ),
       ),
-      onExpensePressed: () async {},
-      onSeeAllExpensesPressed: (_) async {},
+      onExpensePressed: () async => false,
+      onSeeAllExpensesPressed: (_) async => false,
     ),
   );
 }

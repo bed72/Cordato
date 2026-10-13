@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
+import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/core/presentation/widgets/images/image_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
@@ -127,10 +128,11 @@ final class const ExpenseCategoryMetricsCardWidget({
                         child: Skeleton.ignore(
                           child: ImageWidget(
                             fit: .contain,
-                            source: category.asset,
+                            alt: category.asset.alt,
                             width: illustrationSize,
                             height: illustrationSize,
-                            fallback: 'assets/images/categories/others.webp',
+                            source: category.asset.source,
+                            fallback: AssetEnum.categoryOthers.source,
                           ),
                         ),
                       ),

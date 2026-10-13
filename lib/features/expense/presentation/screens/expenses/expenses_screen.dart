@@ -27,6 +27,7 @@ final class const ExpensesScreen({
   required final GetExpensesCommand getCommand,
   required final IMoneyFormatter moneyFormatter,
   required final DeleteExpenseCommand deleteCommand,
+  final VoidCallback? onExpensesChanged,
   final ({DateTime from, DateTime to})? period,
   final Future<ExpenseEntity?> Function(String id)? onExpensePressed,
 }) extends StatefulWidget {

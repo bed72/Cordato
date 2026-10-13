@@ -249,8 +249,8 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
   Future<void> openExpense() async {
     final version = _dependenciesVersion;
-    await widget.onExpensePressed?.call();
-    if (!mounted || version != _dependenciesVersion) return;
+    final changed = await widget.onExpensePressed?.call();
+    if (!mounted || version != _dependenciesVersion || changed != true) return;
     await _refreshAfterNavigation();
   }
 
@@ -286,8 +286,8 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
   Future<void> openExpenses() async {
     final version = _dependenciesVersion;
-    await widget.onSeeAllExpensesPressed?.call(selectedMonth);
-    if (!mounted || version != _dependenciesVersion) return;
+    final changed = await widget.onSeeAllExpensesPressed?.call(selectedMonth);
+    if (!mounted || version != _dependenciesVersion || changed != true) return;
     await _refreshAfterNavigation();
   }
 
