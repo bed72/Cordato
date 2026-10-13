@@ -12,6 +12,17 @@ using `lib/features/core/infrastructure/clients/firebase/firebase_options.dart`.
 Regeneration instructions are in the root
 README's Firebase section.
 
+The Crashlytics Gradle plugin is also applied. Collection follows the Firebase
+default. Flutter error handlers delegate to `ICrashClient`, resolved by Modular.
+Keep R8 mapping files and any Dart symbols produced by
+`--split-debug-info`; upload Dart symbols separately with
+`firebase crashlytics:symbols:upload --app=1:929522866059:android:7303f64f0cd02c16f7418e <directory>`.
+
+Cloud Messaging requires Google Play Services. The manifest declares
+`POST_NOTIFICATIONS`; runtime permission is exposed by `IMessagingClient` and
+is not requested at startup. Device-token registration with the application
+backend is not implemented yet. Push delivery still needs a real-device test.
+
 ## Signing Configuration
 
 Use one of the following secure configuration boundaries. Environment variables

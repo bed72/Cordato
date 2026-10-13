@@ -10,7 +10,6 @@ final class FirebaseClient implements IFirebaseClient {
   @override
   Future<void> initialize() async {
     await Firebase.initializeApp(
-      name: 'Trocado',
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }

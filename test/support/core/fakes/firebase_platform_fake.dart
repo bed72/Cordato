@@ -4,9 +4,14 @@ final class FirebasePlatformFake({
   required var Future<FirebaseAppPlatform> Function(FirebaseOptions? options)
   initialize,
 }) extends FirebasePlatform {
+  String? initializedName;
+
   @override
   Future<FirebaseAppPlatform> initializeApp({
     String? name,
     FirebaseOptions? options,
-  }) => initialize(options);
+  }) {
+    initializedName = name;
+    return initialize(options);
+  }
 }

@@ -42,6 +42,7 @@ void main() {
 
       expect(initialized, isFalse);
       expect(receivedOptions, expectedOptions);
+      expect(firebasePlatform.initializedName, isNull);
 
       completion.complete(FirebaseAppPlatform('[DEFAULT]', expectedOptions));
       await initialization;

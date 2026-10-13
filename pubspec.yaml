@@ -52,6 +52,8 @@ dependencies:
   talker_dio_logger: ^5.1.20
 
   firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
+  firebase_crashlytics: ^5.4.0
 
 dev_dependencies:
   flutter_test:

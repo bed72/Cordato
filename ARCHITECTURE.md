@@ -37,8 +37,8 @@ O bootstrap em `lib/main.dart` prepara `WidgetsFlutterBinding` e aguarda
 contrato `IFirebaseClient` ficam em
 `core/infrastructure/clients/firebase/firebase_client.dart` e encapsulam
 `Firebase.initializeApp` com `DefaultFirebaseOptions.currentPlatform`.
-O nome da instância é `Trocado`; futuros serviços que consumam essa instância
-devem resolver `Firebase.app('Trocado')` explicitamente.
+A inicialização usa a instância padrão, sem `name`, exigida pelos plugins
+Crashlytics e Messaging. O projeto remoto continua sendo `trocado-d362e`.
 Falhas de inicialização são propagadas e impedem o início do app.
 O cliente é criado no bootstrap, sem registro de DI enquanto não houver
 consumidores nos módulos.
@@ -50,8 +50,49 @@ ambos com identificador `com.bed.cordato`. As opções em
 `ios/Runner/GoogleService-Info.plist` são geradas pelo FlutterFire CLI.
 O Android aplica o plugin Google Services; o iOS inclui o plist nos recursos
 do target Runner. Outras plataformas não possuem opções configuradas.
-Esta etapa inclui somente Core e inicialização; os demais serviços Firebase
-ainda não possuem integração.
+Os clientes de Core, Crashlytics e Messaging ficam juntos em
+`core/infrastructure/clients/firebase/`, sem pastas separadas por serviço.
+
+`CrashClient` implementa `ICrashClient`, recebe `FirebaseCrashlytics` por
+construtor e delega somente `recordFlutterError` e `recordError` ao SDK.
+Não possui `initialize`, configuração de coleta ou lifecycle. Após o
+`ModularApp` montar o grafo de dependências, o Builder do bootstrap resolve
+`inject<ICrashClient>()` e conecta diretamente `FlutterError.onError` a
+`recordFlutterError` e `PlatformDispatcher.instance.onError` a `recordError`.
+O bootstrap não acessa o SDK Crashlytics nem define uma política de coleta por
+modo de build; vale o comportamento padrão do Firebase.
+Erros do framework são não fatais;
+erros assíncronos não tratados são fatais e preservam a stack trace original.
+Chamadas de registro delegam ao SDK e propagam falhas, independentemente
+do modo de build. O Android aplica o plugin Crashlytics, e o Runner executa
+`ios/upload_crashlytics_symbols.sh` após Thin Binary somente em Release para
+dispositivo, usando os checkouts do Swift Package Manager e FlutterFire CLI.
+
+`MessagingClient` implementa `IMessagingClient`, recebe `FirebaseMessaging`
+e o stream `FirebaseMessaging.onMessage` por construtor. Identifica somente
+Android e iOS; demais plataformas são recusadas. `requestPermission()` retorna
+`true` para autorização plena ou provisória, e `false` para negada ou ainda não
+determinada. `getToken()` preserva o token FCM anulável; no iOS consulta APNs
+antes e retorna `null` enquanto esse token não estiver disponível. Falhas do SDK
+propagam, distinguindo indisponibilidade de ausência de token ou permissão.
+Não há polling nem retry automático. `onTokenRefresh` preserva o stream do SDK,
+e `onForegroundMessage` converte `RemoteMessage.toMap()`, incluindo `data`,
+metadados e `notification` anulável; mensagens somente de dados não são
+descartadas. O consumidor deve cancelar suas subscriptions.
+
+`coreDependenciesModule` registra os SDKs da instância padrão e o stream de
+mensagens como lazy singletons; `ICrashClient` e `IMessagingClient` usam
+`CrashClient.new` e `MessagingClient.new`, com dependências resolvidas pelo
+Modular. Nenhuma screen acessa SDKs.
+O app não solicita permissão nem consulta/envia tokens ao abrir. Não há
+integração com backend de dispositivos, renderização de notificação em primeiro
+plano, navegação ao tocar ou handler Dart para mensagens de background.
+Notificações em background seguem o comportamento nativo do FCM, sujeito à
+permissão do sistema. O Android declara `POST_NOTIFICATIONS`; o iOS declara
+Push Notifications, entitlement APNs e modos `fetch`/`remote-notification`,
+mantendo o swizzling do SDK habilitado. Para entrega iOS, ainda é necessário
+configurar a chave APNs no console Firebase para `com.bed.cordato` e usar um
+provisioning profile com Push Notifications; esse estado remoto não foi verificado.
 
 ## Produto E Contextos
 

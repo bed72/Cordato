@@ -306,9 +306,11 @@ executar por esses perfis; `BASE_URL` é definido em tempo de compilação.
 
 ## Firebase
 
-O app inicializa Firebase Core antes de montar a interface, usando o projeto
+O app inicializa Firebase Core e configura Crashlytics no bootstrap após
+montar as dependências do Modular, usando o projeto
 `trocado-d362e` (Trocado). Android e iOS estão registrados com o identificador
-`com.bed.cordato`. Esta etapa configura somente Core e inicialização.
+`com.bed.cordato`. Core, Crashlytics e Cloud Messaging usam a instância padrão.
+Seus clientes ficam juntos em `lib/features/core/infrastructure/clients/firebase/`.
 
 Os arquivos de configuração estão em
 `lib/features/core/infrastructure/clients/firebase/firebase_options.dart`,
@@ -329,6 +331,44 @@ flutterfire configure \
 Após regenerar, revise o diff e remova comentários adicionados em código Dart
 e Gradle conforme as convenções do projeto. Para executar, escolha um dispositivo
 Android ou iOS com `flutter run -d <id-do-dispositivo>`.
+
+Crashlytics captura erros do framework e erros assíncronos não tratados pelos
+handlers conectados diretamente ao `ICrashClient` resolvido pelo Modular.
+A coleta segue o padrão do Firebase, sem configuração por modo de build no app.
+Para confirmar no console, execute um
+build release em dispositivo, registre um erro controlado e confira o relatório
+do app correto no projeto `trocado-d362e`. O recebimento real ainda não foi
+validado. Para falhas nativas fatais, o relatório normalmente é enviado na
+abertura seguinte, sem debugger conectado.
+
+O iOS usa Swift Package Manager. O script `ios/upload_crashlytics_symbols.sh`
+envia os símbolos nos builds Release para dispositivo e requer FlutterFire CLI
+no PATH da máquina de build. Debug, Profile e simulador não executam o envio.
+Após regenerar a configuração pelo CLI, preserve essa fase e o script próprio.
+Se usar `--split-debug-info`, guarde os símbolos Dart e envie-os separadamente
+com `firebase crashlytics:symbols:upload --app=<firebase-app-id> <diretorio>`.
+
+Cloud Messaging está disponível por `IMessagingClient` no módulo do core para
+solicitar permissão, consultar token, observar renovação e receber mensagens em
+primeiro plano com o payload completo. O app ainda não pede permissão na abertura,
+não envia tokens ao backend e não exibe mensagens em primeiro plano nem navega
+ao tocar em uma notificação. Mensagens somente de dados em background ainda não
+possuem handler Dart.
+
+Para completar o push no iOS:
+
+1. Configure a chave APNs `.p8`, Key ID e Team ID em **Configurações do projeto →
+   Cloud Messaging → app iOS `com.bed.cordato`** no console Firebase.
+2. Use uma conta Apple Developer e provisioning profile com Push Notifications.
+   O projeto já declara a capability e os modos de background; a exportação
+   assinada deve usar o ambiente APNs apropriado ao profile.
+3. Solicite a permissão pelo cliente. Antes de consultar o token FCM, o token
+   APNs precisa estar disponível; enquanto não estiver, o cliente retorna `null`.
+
+Para testar entrega, autorize notificações, obtenha o token no dispositivo e
+use **Messaging → Enviar mensagem de teste** no console, com o app em background.
+Android precisa de Google Play Services. A entrega real de push e a configuração
+APNs remota ainda não foram validadas. A chave `.p8` não deve ser versionada.
 
 ## Android Release
 
