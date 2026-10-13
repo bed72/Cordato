@@ -18,6 +18,7 @@ final class ExpensesPreviewRepository({required final GetRepositoryType type})
     DateTime? to,
     DateTime? from,
     String? pageLink,
+    String? category,
   }) async => type;
 
   @override

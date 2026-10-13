@@ -55,6 +55,7 @@ void main() {
         to: null,
         pageSize: 6,
         pageLink: null,
+        category: null,
       ));
 
       expect(data?.right, same(page));
@@ -74,6 +75,7 @@ void main() {
         to: null,
         from: null,
         pageLink: null,
+        category: null,
       ));
 
       final continuation = ExpensePageEntity(
@@ -89,6 +91,7 @@ void main() {
         to: null,
         from: null,
         pageSize: 20,
+        category: null,
         pageLink: page.next,
       ));
 
@@ -117,6 +120,7 @@ void main() {
       from: null,
       pageSize: 6,
       pageLink: null,
+      category: null,
     ));
 
     expect(data?.left, same(errors));
@@ -138,6 +142,7 @@ void main() {
       to: null,
       from: null,
       pageLink: null,
+      category: null,
     ));
     await started.future;
     expect(command.execute.isRunning.value, isTrue);
@@ -146,6 +151,7 @@ void main() {
       pageLink: page.next,
       to: null,
       from: null,
+      category: null,
     ));
     verify(() => repository.get(pageSize: 6)).called(1);
     pending.complete(Right(page));
@@ -165,6 +171,7 @@ void main() {
         to: null,
         from: null,
         pageLink: null,
+        category: null,
       )))?.left,
       same(errors),
     );
@@ -177,6 +184,7 @@ void main() {
         to: null,
         from: null,
         pageLink: null,
+        category: null,
       )))?.right,
       same(page),
     );
@@ -194,6 +202,7 @@ void main() {
         to: null,
         from: null,
         pageLink: null,
+        category: null,
       ));
 
       expect(otherCommand.execute.value, isNull);
@@ -217,6 +226,7 @@ void main() {
           to: null,
           from: null,
           pageLink: null,
+          category: null,
         )),
         throwsA(same(failure)),
       );
@@ -249,8 +259,13 @@ void main() {
       final to = DateTime(2026, 9, 30, 12);
       for (final link in [null, page.next]) {
         when(
-          () =>
-              repository.get(pageSize: 20, pageLink: link, from: from, to: to),
+          () => repository.get(
+            pageSize: 20,
+            pageLink: link,
+            from: from,
+            to: to,
+            category: 'food',
+          ),
         ).thenAnswer((_) async => Right(page));
 
         final result = await command.execute.runAsync((
@@ -258,12 +273,18 @@ void main() {
           pageLink: link,
           from: from,
           to: to,
+          category: 'food',
         ));
 
         expect(result?.right, same(page));
         verify(
-          () =>
-              repository.get(pageSize: 20, pageLink: link, from: from, to: to),
+          () => repository.get(
+            pageSize: 20,
+            pageLink: link,
+            from: from,
+            to: to,
+            category: 'food',
+          ),
         ).called(1);
       }
       verifyNoMoreInteractions(repository);
@@ -291,6 +312,7 @@ void main() {
         from: from,
         pageSize: 6,
         pageLink: null,
+        category: null,
       ));
 
       expect(data?.left, same(errors));

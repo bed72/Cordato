@@ -13,9 +13,10 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
   @override
   Future<GetRepositoryType> get({
     int pageSize = 30,
-    String? pageLink,
-    DateTime? from,
     DateTime? to,
+    DateTime? from,
+    String? category,
+    String? pageLink,
   }) async =>
       Right(ExpensePageEntity(items: [expense], next: null, prev: null));
 
@@ -33,8 +34,8 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
       id: expense.id,
       cents: amount,
       description: description,
-      occurredOn: occurredOn ?? DateTime.now(),
       category: expense.category,
+      occurredOn: occurredOn ?? .now(),
     ),
   );
 
@@ -49,9 +50,9 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
         (amount) => ExpenseEntity(
           id: id,
           cents: amount,
-          description: description ?? expense.description,
-          occurredOn: occurredOn ?? expense.occurredOn,
           category: expense.category,
+          occurredOn: occurredOn ?? expense.occurredOn,
+          description: description ?? expense.description,
         ),
       );
 }

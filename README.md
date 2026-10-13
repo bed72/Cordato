@@ -185,6 +185,9 @@ preserva a continuação. Insight aceita `year`/`month` opcionais em
 Consultas sem filtros continuam disponíveis na listagem geral e em outros
 consumidores. A Dashboard envia o mês selecionado às três consultas; o intervalo
 civil respeita viradas de ano e fevereiro bissexto.
+Os cards de categoria possuem bounce e abrem a mesma listagem de “Ver tudo”,
+acrescentando `filter[category]` ao mês selecionado. A listagem identifica mês
+e categoria e preserva essas lentes na paginação, refresh e retry.
 `ExpensesSkeletonWidget`, de `expense/presentation/widgets/`, é reutilizado nas
 duas telas: seis placeholders na Dashboard, oito na listagem sem itens e três
 no rodapé durante consultas com despesas já carregadas.

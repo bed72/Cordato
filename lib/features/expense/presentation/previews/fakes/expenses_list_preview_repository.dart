@@ -16,6 +16,7 @@ final class ExpensesListPreviewRepository({
     int pageSize = 30,
     DateTime? to,
     DateTime? from,
+    String? category,
     String? pageLink,
   }) async {
     if (loading) return Completer<GetRepositoryType>().future;
@@ -25,6 +26,7 @@ final class ExpensesListPreviewRepository({
       final day = _civilDay(expense.occurredOn);
 
       return (from == null || !day.isBefore(_civilDay(from))) &&
+          (category == null || expense.category.value == category) &&
           (to == null || !day.isAfter(_civilDay(to)));
     }).toList();
 

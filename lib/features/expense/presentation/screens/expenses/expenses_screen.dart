@@ -27,6 +27,7 @@ final class const ExpensesScreen({
   required final GetExpensesCommand getCommand,
   required final IMoneyFormatter moneyFormatter,
   required final DeleteExpenseCommand deleteCommand,
+  final String? category,
   final VoidCallback? onExpensesChanged,
   final ({DateTime from, DateTime to})? period,
   final Future<ExpenseEntity?> Function(String id)? onExpensePressed,
@@ -44,7 +45,13 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
       body: SafeArea(
         child:
             CommandBuilder<
-              ({int pageSize, String? pageLink, DateTime? from, DateTime? to}),
+              ({
+                int pageSize,
+                DateTime? to,
+                DateTime? from,
+                String? category,
+                String? pageLink,
+              }),
               GetRepositoryType?
             >(
               command: widget.getCommand.execute,
@@ -67,13 +74,15 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
             padding: const .fromLTRB(16.0, 16.0, 16.0, 24.0),
             child: Semantics(
               header: true,
-              label: monthLabel == null
+              label: filterLabel == null
                   ? 'Despesas'
-                  : 'Despesas de $monthLabel',
+                  : 'Despesas: $filterLabel',
               excludeSemantics: true,
               child: HeaderWidget(
                 title: 'Despesas',
-                description: monthLabel == null
+                description: widget.category != null
+                    ? filterLabel ?? 'Acompanhe todas as suas despesas.'
+                    : monthLabel == null
                     ? 'Acompanhe todas as suas despesas.'
                     : 'Acompanhe suas despesas de $monthLabel.',
               ),
@@ -161,7 +170,9 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
     if (hasLoaded && expenses.isEmpty) {
       return ExpensesFeedbackWidget(
         title: 'Ainda sem despesas',
-        description: monthLabel == null
+        description: widget.category != null
+            ? 'Não há despesas para $filterLabel.'
+            : monthLabel == null
             ? 'Seus gastos cadastrados aparecerão aqui.'
             : 'Não há despesas em $monthLabel.',
       );

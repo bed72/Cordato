@@ -56,7 +56,7 @@ esses parâmetros a `IExpenseRepository.create`, preserva `Either` e
 implementa `ICommand`. `expenseDependenciesModule` registra data source e
 repository pelos contratos, commands por factory e validators
 e os injeta na tela. O formulário executa o cadastro pela API.
-`IExpenseRepository.get({int pageSize = 30, String? pageLink, DateTime? from, DateTime? to})` e o data source
+`IExpenseRepository.get({int pageSize = 30, String? pageLink, DateTime? from, DateTime? to, String? category})` e o data source
 remoto oferecem consulta paginada, consumida pela seção de recentes da Dashboard.
 `IExpenseRepository.update({required String id, int? cents, String? description, DateTime? occurredOn})`
 e o data source remoto oferecem edição parcial de valor, descrição e data civil.
@@ -108,7 +108,7 @@ herdados quando ao menos um limite está presente, preservando a continuação e
 os demais parâmetros. Sem intervalo explícito, os filtros do link são mantidos.
 O recorte de seis despesas pertence ao consumidor Dashboard.
 `GetExpensesCommand`, em `expense/presentation/screens/expenses/commands/`, recebe o record
-`({int pageSize, String? pageLink, DateTime? from, DateTime? to})`, delega a `IExpenseRepository.get` e preserva
+`({int pageSize, String? pageLink, DateTime? from, DateTime? to, String? category})`, delega a `IExpenseRepository.get` e preserva
 `Either` em `GetRepositoryType?`, inicialmente nulo. Não acumula páginas nem
 define o limite da Dashboard. Implementa `ICommand` e é registrado por factory
 em `expenseDependenciesModule`; cada consumidor deve descartar sua instância.
@@ -147,6 +147,12 @@ Os callbacks financeiros retornam `Future<bool>` e o módulo transporta
 ou `from`/`to`. O formulário sinaliza criações confirmadas, inclusive hold, e
 atualizações; a listagem sinaliza edições e exclusões confirmadas. O sinal é local
 à navegação e independe do modo de voltar. Records sem callback continuam aceitos.
+Os cards de categoria usam `BounceWidget` e abrem a mesma listagem de “Ver tudo”
+com categoria opcional e mês selecionado. Metrics emite somente a string da
+categoria por callback; Dashboard compõe a navegação. Expense delega `category`
+sem normalização e envia `filter[category]`, com precedência sobre o link.
+Listagem preserva ambas as lentes na paginação, refresh e retry e remove itens
+editados que deixem de pertencer ao mês ou à categoria.
 A Dashboard recebe instâncias próprias de `GetInsightsCommand` e
 `GetExpenseMetricsCommand`, descartadas pela tela. `selectedMonth` é o contexto
 compartilhado das três seções: intervalo civil para métricas e recentes, ano/mês

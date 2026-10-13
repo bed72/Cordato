@@ -12,6 +12,7 @@ final class const ExpenseMetricsCarouselWidget({
   super.key,
   required final IMoneyFormatter moneyFormatter,
   required final List<List<ExpenseCategoryMetricsEntity>> pages,
+  final ValueChanged<String>? onCategoryPressed,
 }) extends StatefulWidget {
   @override
   State<ExpenseMetricsCarouselWidget> createState() =>
@@ -61,6 +62,7 @@ final class _ExpenseMetricsCarouselWidgetState
                       lowerHeight: lowerHeight,
                       categories: widget.pages[index],
                       moneyFormatter: widget.moneyFormatter,
+                      onCategoryPressed: widget.onCategoryPressed,
                     ),
                   ),
                 ),
@@ -68,9 +70,9 @@ final class _ExpenseMetricsCarouselWidgetState
             ),
             if (widget.pages.length > 1)
               Semantics(
+                liveRegion: true,
                 label:
                     'Página ${currentPage + 1} de ${widget.pages.length} de categorias',
-                liveRegion: true,
                 child: Padding(
                   padding: const .only(top: 8.0),
                   child: Row(

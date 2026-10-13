@@ -10,6 +10,7 @@ final class const ExpenseMetricsGridWidget({
   super.key,
   required final IMoneyFormatter moneyFormatter,
   required final List<ExpenseCategoryMetricsEntity> categories,
+  final ValueChanged<String>? onCategoryPressed,
   final double? upperHeight,
   final double? lowerHeight,
 }) extends StatelessWidget {
@@ -32,6 +33,9 @@ final class const ExpenseMetricsGridWidget({
                 compact: true,
                 highlighted: true,
                 category: categories.first,
+                onTap: onCategoryPressed == null
+                    ? null
+                    : () => onCategoryPressed!(categories.first.category),
                 moneyFormatter: moneyFormatter,
               ),
             ),
@@ -45,6 +49,9 @@ final class const ExpenseMetricsGridWidget({
                     Expanded(
                       child: ExpenseCategoryMetricsCardWidget(
                         category: category,
+                        onTap: onCategoryPressed == null
+                            ? null
+                            : () => onCategoryPressed!(category.category),
                         moneyFormatter: moneyFormatter,
                       ),
                     ),

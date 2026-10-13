@@ -23,6 +23,7 @@ abstract interface class IExpenseRemoteDataSource {
     required int pageSize,
     DateTime? to,
     DateTime? from,
+    String? category,
     String? pageLink,
   });
 
@@ -64,6 +65,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
 
   @override
   Future<GetDataSourceType> get({
+    String? category,
     required int pageSize,
     DateTime? to,
     DateTime? from,
@@ -76,6 +78,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
         query: _pageQuery(
           to: to,
           from: from,
+          category: category,
           pageSize: pageSize,
           pageLink: pageLink,
         ),
@@ -137,6 +140,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
     required int pageSize,
     DateTime? to,
     DateTime? from,
+    String? category,
     String? pageLink,
   }) {
     final query = <String, dynamic>{};
@@ -154,6 +158,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
       }
     }
     query['page[size]'] = pageSize;
+    if (category != null) query['filter[category]'] = category;
 
     if (from != null || to != null) {
       query.remove('filter[year]');

@@ -1,7 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
+import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
@@ -27,6 +30,20 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     final period = widget.period;
     if (period == null) return null;
     return '${widget.dateFormatter.formatMonth(period.from)} de ${period.from.year}';
+  }
+
+  String? get filterLabel {
+    final category = widget.category;
+    final label = category == null
+        ? null
+        : ExpenseCategoryEnum.values
+                  .where((value) => value.value == category)
+                  .firstOrNull
+                  ?.label ??
+              category;
+    final labels = [label, monthLabel].whereType<String>().toList();
+
+    return labels.isEmpty ? null : labels.join(' · ');
   }
 
   @override
@@ -223,7 +240,9 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   }
 
   void _applyUpdatedExpense(int index, ExpenseEntity updated) {
-    if (!_isWithinPeriod(updated.occurredOn)) {
+    if (!_isWithinPeriod(updated.occurredOn) ||
+        (widget.category != null &&
+            updated.category.value != widget.category)) {
       expenses.removeAt(index);
       return;
     }
@@ -290,6 +309,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       final data = await command.execute.runAsync((
         pageSize: pageSize,
         to: widget.period?.to,
+        category: widget.category,
         from: widget.period?.from,
         pageLink: refresh ? null : nextPageLink,
       ));

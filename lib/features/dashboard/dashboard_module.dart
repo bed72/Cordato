@@ -43,11 +43,12 @@ final dashboardRoutesModule = createModule(
 
           return changed;
         },
-        onSeeAllExpensesPressed: (month) async {
+        onSeeAllExpensesPressed: (month, {category}) async {
           bool changed = false;
           await context.pushNamed(
             RouteEnum.expenses.path,
             arguments: (
+              category: category,
               onExpensesChanged: () => changed = true,
               from: DateTime(month.year, month.month),
               to: DateTime(month.year, month.month + 1, 0),

@@ -46,13 +46,26 @@ final expenseRoutesModule = createModule(
         RouteEnum.expenses.path,
         child: (context, state) {
           final period = switch (state.arguments) {
+            (
+              to: final DateTime to,
+              from: final DateTime from,
+              category: final String? _,
+              onExpensesChanged: final VoidCallback _,
+            ) =>
+              (from: from, to: to),
+            (
+              to: final DateTime to,
+              from: final DateTime from,
+              category: final String? _,
+            ) =>
+              (from: from, to: to),
             (from: final DateTime from, to: final DateTime to) => (
-              from: from,
               to: to,
+              from: from,
             ),
             (
-              from: final DateTime from,
               to: final DateTime to,
+              from: final DateTime from,
               onExpensesChanged: final VoidCallback _,
             ) =>
               (from: from, to: to),
@@ -60,22 +73,47 @@ final expenseRoutesModule = createModule(
           };
           final onExpensesChanged = switch (state.arguments) {
             (
-              from: final DateTime _,
               to: final DateTime _,
+              from: final DateTime _,
+              category: final String? _,
+              onExpensesChanged: final VoidCallback callback,
+            ) =>
+              callback,
+            (
+              to: final DateTime _,
+              from: final DateTime _,
               onExpensesChanged: final VoidCallback callback,
             ) =>
               callback,
             _ => null,
           };
+          final category = switch (state.arguments) {
+            (
+              to: final DateTime _,
+              from: final DateTime _,
+              category: final String? category,
+              onExpensesChanged: final VoidCallback _,
+            ) =>
+              category,
+            (
+              to: final DateTime _,
+              from: final DateTime _,
+              category: final String? category,
+            ) =>
+              category,
+            _ => null,
+          };
+
           return ExpensesScreen(
-            key: ValueKey(period),
+            key: ValueKey((period, category)),
             period: period,
+            category: category,
             onBackPressed: context.pop,
+            onExpensesChanged: onExpensesChanged,
             dateFormatter: inject<IDateFormatter>(),
             getCommand: inject<GetExpensesCommand>(),
             moneyFormatter: inject<IMoneyFormatter>(),
             deleteCommand: inject<DeleteExpenseCommand>(),
-            onExpensesChanged: onExpensesChanged,
             onExpensePressed: (id) => context.pushNamed<ExpenseEntity>(
               RouteEnum.expense.path,
               arguments: id,

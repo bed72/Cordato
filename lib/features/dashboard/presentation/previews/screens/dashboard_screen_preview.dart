@@ -156,7 +156,7 @@ Widget _screenPreview({
         ),
       ),
       onExpensePressed: () async => false,
-      onSeeAllExpensesPressed: (_) async => false,
+      onSeeAllExpensesPressed: (_, {category}) async => false,
     ),
   );
 }

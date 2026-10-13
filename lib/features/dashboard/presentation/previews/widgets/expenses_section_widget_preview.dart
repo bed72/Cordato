@@ -76,6 +76,7 @@ Widget _sectionPreview({
     if (result != null) {
       command.execute.run((
         pageSize: 6,
+        category: null,
         pageLink: null,
         from: DateTime(2026, 10),
         to: DateTime(2026, 10, 31),
@@ -94,6 +95,7 @@ Widget _sectionPreview({
         moneyFormatter: MoneyFormatter(),
         onRetry: () => command.execute.run((
           pageSize: 6,
+          category: null,
           pageLink: null,
           from: DateTime(2026, 10),
           to: DateTime(2026, 10, 31),

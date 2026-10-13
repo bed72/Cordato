@@ -6,18 +6,31 @@ import 'package:cordato/features/expense/domain/repositories/interface_expense_r
 final class GetExpensesCommand({required IExpenseRepository repository})
     implements ICommand {
   final Command<
-    ({int pageSize, String? pageLink, DateTime? from, DateTime? to}),
+    ({
+      int pageSize,
+      DateTime? to,
+      DateTime? from,
+      String? category,
+      String? pageLink,
+    }),
     GetRepositoryType?
   >
   execute =
       Command.createAsync<
-        ({int pageSize, String? pageLink, DateTime? from, DateTime? to}),
+        ({
+          int pageSize,
+          DateTime? to,
+          DateTime? from,
+          String? category,
+          String? pageLink,
+        }),
         GetRepositoryType?
       >(
         initialValue: null,
         (pagination) => repository.get(
           to: pagination.to,
           from: pagination.from,
+          category: pagination.category,
           pageLink: pagination.pageLink,
           pageSize: pagination.pageSize,
         ),

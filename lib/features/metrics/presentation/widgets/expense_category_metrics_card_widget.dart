@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
+import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/images/image_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
@@ -16,6 +17,7 @@ final class const ExpenseCategoryMetricsCardWidget({
   super.key,
   required final IMoneyFormatter moneyFormatter,
   required final ExpenseCategoryMetricsEntity category,
+  final VoidCallback? onTap,
   final bool highlighted = false,
   final bool illustrated = false,
   final bool compact = false,
@@ -30,10 +32,13 @@ final class const ExpenseCategoryMetricsCardWidget({
     final amount = moneyFormatter.formatCents(category.totalAmount);
     final percentage = _buildPercentageLabel(percentage: category.percentage);
 
-    return Semantics(
+    final card = Semantics(
+      onTap: onTap,
       container: true,
+      button: onTap != null,
       excludeSemantics: true,
       label: '${category.label}, $amount, $percentage do total',
+      hint: onTap == null ? null : 'Ver despesas de ${category.label}',
       child: Container(
         clipBehavior: .antiAlias,
         decoration: BoxDecoration(
@@ -145,6 +150,10 @@ final class const ExpenseCategoryMetricsCardWidget({
         ),
       ),
     );
+
+    return onTap == null
+        ? card
+        : BounceWidget.withOnPress(onPress: onTap, child: card);
   }
 
   TextStyle? buildAmountStyle({

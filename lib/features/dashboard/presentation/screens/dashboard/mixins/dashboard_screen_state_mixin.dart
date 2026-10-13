@@ -9,6 +9,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   int _dependenciesVersion = 0;
   bool _userRefreshPending = false;
   bool _refreshPendingAfterNavigation = false;
+  bool _isOpeningExpenses = false;
 
   DateTime get monthEnd =>
       DateTime(selectedMonth.year, selectedMonth.month + 1, 0);
@@ -143,6 +144,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
   void loadExpenses() => widget.expensesCommand.execute.run((
     to: monthEnd,
+    category: null,
     pageLink: null,
     from: selectedMonth,
     pageSize: recentExpensesLimit,
@@ -237,6 +239,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
     try {
       await widget.expensesCommand.execute.runAsync((
+        category: null,
         to: monthEnd,
         pageLink: null,
         from: selectedMonth,
@@ -284,11 +287,22 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     });
   }
 
-  Future<void> openExpenses() async {
+  Future<void> openExpenses({String? category}) async {
+    if (_isOpeningExpenses) return;
     final version = _dependenciesVersion;
-    final changed = await widget.onSeeAllExpensesPressed?.call(selectedMonth);
-    if (!mounted || version != _dependenciesVersion || changed != true) return;
-    await _refreshAfterNavigation();
+    _isOpeningExpenses = true;
+    try {
+      final changed = await widget.onSeeAllExpensesPressed?.call(
+        selectedMonth,
+        category: category,
+      );
+      if (!mounted || version != _dependenciesVersion || changed != true) {
+        return;
+      }
+      await _refreshAfterNavigation();
+    } finally {
+      _isOpeningExpenses = false;
+    }
   }
 
   Future<void> _refreshAfterNavigation() async {

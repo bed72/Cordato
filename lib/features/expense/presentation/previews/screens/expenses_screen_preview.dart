@@ -26,6 +26,13 @@ Widget previewMonthlyExpensesScreen() => _screenPreview();
 
 @CordatoPreview(
   group: 'Expense / Listagem',
+  name: 'Alimentação / Setembro',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewCategoryExpensesScreen() => _screenPreview(category: 'food');
+
+@CordatoPreview(
+  group: 'Expense / Listagem',
   name: 'Carregando setembro',
   size: cordatoPhonePreviewSize,
 )
@@ -53,6 +60,7 @@ Widget previewFailureMonthlyExpensesScreen() => _screenPreview(failure: true);
 Widget previewGeneralExpensesScreen() => _screenPreview(general: true);
 
 Widget _screenPreview({
+  String? category,
   bool empty = false,
   bool loading = false,
   bool failure = false,
@@ -88,6 +96,7 @@ Widget _screenPreview({
   );
 
   return ExpensesScreen(
+    category: category,
     onBackPressed: () {},
     moneyFormatter: MoneyFormatter(),
     period: general

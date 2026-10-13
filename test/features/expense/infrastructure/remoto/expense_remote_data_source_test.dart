@@ -798,6 +798,81 @@ void main() {
   });
 
   test(
+    'keeps explicit category and month on first and subsequent pages',
+    () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(
+          Reponse(
+            statusCode: 200,
+            body: {
+              'data': [],
+              'links': {'next': null, 'prev': null},
+            },
+          ),
+        ),
+      );
+      for (final link in [
+        null,
+        '?page[after]=opaque&filter[category]=travel&sort=-occurred_on',
+      ]) {
+        await dataSource.get(
+          pageSize: 20,
+          pageLink: link,
+          category: 'food',
+          from: DateTime.utc(2026, 9, 1, 23),
+          to: DateTime(2026, 9, 30, 12),
+        );
+        final request =
+            verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                    .captured
+                    .single
+                as Requests;
+        expect(request.path, 'expenses');
+        expect(request.query, {
+          'page[size]': 20,
+          'filter[from]': '2026-09-01',
+          'filter[to]': '2026-09-30',
+          'filter[category]': 'food',
+          if (link != null) 'page[after]': 'opaque',
+          if (link != null) 'sort': '-occurred_on',
+        });
+      }
+    },
+  );
+
+  test(
+    'preserves continuation category when no category is supplied',
+    () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Right(
+          Reponse(
+            statusCode: 200,
+            body: {
+              'data': [],
+              'links': {'next': null, 'prev': null},
+            },
+          ),
+        ),
+      );
+      await dataSource.get(
+        pageSize: 20,
+        pageLink: '?page[after]=opaque&filter[category]=food',
+      );
+      final request =
+          verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+
+      expect(request.query, {
+        'page[size]': 20,
+        'page[after]': 'opaque',
+        'filter[category]': 'food',
+      });
+    },
+  );
+
+  test(
     'returns an error for malformed pages and unexpected exceptions',
     () async {
       for (final invalidBody in [

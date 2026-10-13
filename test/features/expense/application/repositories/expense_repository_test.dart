@@ -387,8 +387,8 @@ void main() {
     final errors = (await repository.delete(id: '1')).left.errors;
 
     expect(errors, hasLength(2));
-    expect(errors.first.status, '403');
     expect(errors.last.status, '403');
+    expect(errors.first.status, '403');
     expect(errors.last.title, 'Outro erro');
     expect(errors.first.pointer, '/data/id');
     expect(errors.first.title, 'Acesso negado');
@@ -488,6 +488,45 @@ void main() {
     expect(page.next, isNull);
     expect(page.prev, isNull);
     expect(page.items, isEmpty);
+  });
+
+  test('delegates category and month unchanged across pages', () async {
+    final from = DateTime(2026, 9, 1);
+    final to = DateTime(2026, 9, 30);
+    for (final link in [null, '?page[after]=opaque']) {
+      when(
+        () => dataSource.get(
+          to: to,
+          from: from,
+          pageSize: 20,
+          pageLink: link,
+          category: 'food',
+        ),
+      ).thenAnswer(
+        (_) async =>
+            Right(ExpensePageResponse(items: [], next: null, prev: null)),
+      );
+
+      final data = await repository.get(
+        to: to,
+        from: from,
+        pageSize: 20,
+        pageLink: link,
+        category: 'food',
+      );
+
+      expect(data.right.items, isEmpty);
+      verify(
+        () => dataSource.get(
+          to: to,
+          from: from,
+          pageSize: 20,
+          pageLink: link,
+          category: 'food',
+        ),
+      ).called(1);
+    }
+    verifyNoMoreInteractions(dataSource);
   });
 
   test(

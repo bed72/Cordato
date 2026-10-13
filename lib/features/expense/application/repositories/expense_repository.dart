@@ -89,6 +89,7 @@ final class ExpenseRepository({
 
   @override
   Future<GetRepositoryType> get({
+    String? category,
     int pageSize = 30,
     DateTime? to,
     DateTime? from,
@@ -98,6 +99,7 @@ final class ExpenseRepository({
       final response = await _remoteDataSource.get(
         to: to,
         from: from,
+        category: category,
         pageLink: pageLink,
         pageSize: pageSize > 0 ? pageSize : 30,
       );

@@ -17,6 +17,7 @@ final class const MetricsSectionWidget({
   required final IMoneyFormatter moneyFormatter,
   required final GetExpenseMetricsCommand command,
   required final VoidCallback? onRetry,
+  final ValueChanged<String>? onCategoryPressed,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -96,6 +97,7 @@ final class const MetricsSectionWidget({
             key: ObjectKey(metrics),
             pages: pages,
             moneyFormatter: moneyFormatter,
+            onCategoryPressed: onCategoryPressed,
           ),
         },
       ],

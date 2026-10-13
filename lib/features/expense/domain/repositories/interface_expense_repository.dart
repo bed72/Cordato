@@ -17,6 +17,7 @@ abstract interface class IExpenseRepository {
     int pageSize = 30,
     DateTime? to,
     DateTime? from,
+    String? category,
     String? pageLink,
   });
 

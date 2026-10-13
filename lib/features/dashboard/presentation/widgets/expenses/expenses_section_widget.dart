@@ -29,7 +29,13 @@ final class const ExpensesSectionWidget({
   @override
   Widget build(BuildContext context) {
     return CommandBuilder<
-      ({int pageSize, String? pageLink, DateTime? from, DateTime? to}),
+      ({
+        int pageSize,
+        String? pageLink,
+        DateTime? from,
+        DateTime? to,
+        String? category,
+      }),
       GetRepositoryType?
     >(
       command: command.execute,

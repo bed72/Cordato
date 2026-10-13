@@ -203,7 +203,13 @@ Não altera
 entidades, ordem de domínio, valores ou percentuais recebidos da API.
 `ExpenseCategoryMetricsCardWidget` mostra nome completo, valor pelo
 `IMoneyFormatter`, badge e percentual pt-BR com uma casa decimal seguido de
-“do total”. Cada card anuncia esses dados uma única vez e não possui ação.
+“do total”. Cada card anuncia esses dados uma única vez. Com callback disponível,
+reutiliza `BounceWidget` e oferece a ação de acessibilidade para consultar despesas
+da categoria. O toque abre `/expenses` pelo mesmo callback de “Ver tudo”, com
+o intervalo do mês selecionado e a categoria como string da API; arrastar o
+carrossel não abre a listagem. Metrics apenas emite a categoria, sem conhecer
+Expense ou navegação. Dashboard compõe o destino e preserva o sinal de alterações
+e a recarga no retorno. Toques repetidos durante a navegação são ignorados.
 Categoria, valor e percentual usam o mesmo espaçamento vertical de 8 pixels.
 O primeiro card de cada página tem valor maior e ilustração decorativa por
 `ImageWidget`, sem tint, ancorada no canto inferior direito, sem padding textual
@@ -459,12 +465,15 @@ Usa casts e `DateTime.parse`; categorias desconhecidas falham sem fallback para
 `other`. `created_at` e os metadados JSON:API não integram a entidade atual.
 `ExpenseResponseToEntity.toEntity()` retorna `Either<ErrorsEntity, ExpenseEntity>`
 para preservar a falha de validação do VO quando o valor recebido não é positivo.
-`IExpenseRepository.get({int pageSize = 30, String? pageLink, DateTime? from, DateTime? to})` retorna
+`IExpenseRepository.get({int pageSize = 30, String? pageLink, DateTime? from, DateTime? to, String? category})` retorna
 `Future<GetRepositoryType>`, com `Either<ErrorsEntity, ExpensePageEntity>`.
 O tamanho padrão é 30. O repository substitui valores menores ou iguais a zero
 por 30 antes de chamar o data source; valores positivos são preservados.
 Os limites civis opcionais `from` e `to` são delegados sem defaults, validação
 ou normalização, inclusive quando somente um limite foi informado.
+`category` também é delegada sem normalização. O data source envia valores
+não nulos em `filter[category]`; o filtro explícito prevalece sobre a categoria
+do link de paginação. Sem categoria explícita, preserva a do link, se houver.
 `ExpensePageEntity` mantém uma cópia não modificável de `items`
 e as continuações opacas anuláveis `next` e `prev`. A ordem da API é preservada,
 sem ordenação, filtro de datas futuras ou truncamento local. Lista vazia é sucesso.
@@ -501,12 +510,17 @@ recentes está integrada à Dashboard; a listagem completa usa rolagem infinita 
 `GetExpensesCommand`, em
 `expense/presentation/screens/expenses/commands/get_expenses_command.dart`,
 recebe `IExpenseRepository` e delega a `get` os campos do record
-`({int pageSize, String? pageLink, DateTime? from, DateTime? to})`, sem defaults
+`({int pageSize, String? pageLink, DateTime? from, DateTime? to, String? category})`, sem defaults
 ou normalização dos limites. Seu `execute` começa em `null` e preserva
 `Either<ErrorsEntity, ExpensePageEntity>` em `GetRepositoryType?`; lista vazia é
 sucesso e `Left` permanece resultado de negócio. A primeira página usa
 `pageSize: 6`, `pageLink: null` e o intervalo civil do mês selecionado na Dashboard.
 A listagem geral e consumidores sem recorte continuam informando filtros nulos.
+`ExpensesScreen` recebe `category` opcional junto a `period`. A rota aceita
+records com `from`, `to`, `category` e callback opcional, preservando os records
+anteriores sem categoria. O cabeçalho e o vazio identificam as lentes ativas.
+Paginação, refresh e retry reenviam mês e categoria; edição que devolva um item
+fora de qualquer lente remove-o da lista, preservando rolagem e continuação.
 Continuações repassam `next` ou `prev` sem interpretação. Cada execução substitui o resultado
 da consulta anterior, sem acumular itens, definir limite por tela ou avançar
 automaticamente. Durante a execução, o estado do `command_it` bloqueia novas

@@ -30,7 +30,8 @@ final class const DashboardScreen({
   final Future<void> Function()? onMenuPressed,
   final Future<void> Function()? onAvatarPressed,
   final Future<bool> Function()? onExpensePressed,
-  final Future<bool> Function(DateTime month)? onSeeAllExpensesPressed,
+  final Future<bool> Function(DateTime month, {String? category})?
+  onSeeAllExpensesPressed,
 }) extends StatefulWidget {
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -67,6 +68,9 @@ final class _DashboardScreenState extends State<DashboardScreen>
                 onRetry: loadMetrics,
                 command: widget.metricsCommand,
                 moneyFormatter: widget.moneyFormatter,
+                onCategoryPressed: widget.onSeeAllExpensesPressed == null
+                    ? null
+                    : (category) => openExpenses(category: category),
               ),
               InsightsSectionWidget(
                 key: ValueKey(('insights', selectedMonth)),
