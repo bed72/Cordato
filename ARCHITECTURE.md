@@ -708,7 +708,9 @@ anteriores sem categoria. O cabeçalho e o vazio identificam as lentes ativas.
 O título “Despesas” e a descrição “Acompanhe todas as suas despesas.” permanecem
 fixos. `ExpensesFiltersWidget` exibe categoria antes do período em `InputChip`
 com ícone de fechar e ação nativa de remoção, 12 pixels abaixo da descrição.
-Um `Wrap` usa espaçamentos de 8 pixels. A validação com texto ampliado e rótulos
+Uma `Row` mantém os filtros em uma única linha, com espaçamento de 8 pixels,
+dentro de um `SingleChildScrollView` horizontal, como na listagem de Insights.
+Os rótulos não quebram linha nem são truncados. A validação com texto ampliado e rótulos
 longos permanece pendente, registrada na change arquivada. Cores, tipografia e formato de pílula vêm do tema, com
 `BounceWidget` para pressão e alvo Material acessível. O corpo não possui ação.
 As pílulas ficam fora de exclusões semânticas; a ação de remoção possui descrição

@@ -13,25 +13,28 @@ final class const ExpensesFiltersWidget({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8.0,
-      runSpacing: 8.0,
-      children: [
-        if (categoryLabel case final label?)
-          _buildChip(
-            context,
-            label: label,
-            onDeleted: onRemoveCategory,
-            removalLabel: 'Remover filtro de categoria: $label',
-          ),
-        if (periodLabel case final label?)
-          _buildChip(
-            context,
-            label: label,
-            onDeleted: onRemovePeriod,
-            removalLabel: 'Remover filtro de período: $label',
-          ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: .horizontal,
+      primary: false,
+      child: Row(
+        spacing: 8.0,
+        children: [
+          if (categoryLabel case final label?)
+            _buildChip(
+              context,
+              label: label,
+              onDeleted: onRemoveCategory,
+              removalLabel: 'Remover filtro de categoria: $label',
+            ),
+          if (periodLabel case final label?)
+            _buildChip(
+              context,
+              label: label,
+              onDeleted: onRemovePeriod,
+              removalLabel: 'Remover filtro de período: $label',
+            ),
+        ],
+      ),
     );
   }
 
@@ -60,7 +63,7 @@ final class const ExpensesFiltersWidget({
         borderRadius: context.radius.cornerRadius050,
       ),
       label: DefaultTextStyle(
-        softWrap: true,
+        softWrap: false,
         overflow: .visible,
         style:
             context.typography.labelLarge?.copyWith(color: foreground) ??

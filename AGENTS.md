@@ -245,7 +245,9 @@ a consulta geral. “Ver tudo” recebe o mês selecionado pelo callback
 civil completo. O título “Despesas” e a descrição “Acompanhe todas as suas
 despesas.” são fixos. `ExpensesFiltersWidget` mostra categoria antes do período,
 12 pixels abaixo da descrição, em `InputChip` com ícone de fechar, ação nativa
-`onDeleted`, `BounceWidget` e `Wrap` com espaçamentos de 8 pixels. Os filtros
+`onDeleted`, `BounceWidget` e `Row` com espaçamento de 8 pixels em um
+`SingleChildScrollView` horizontal. Os filtros permanecem em uma única linha,
+com rótulos sem quebra ou truncamento. Os filtros
 ficam fora de exclusões semânticas e possuem rótulos de remoção localizados.
 Períodos mensais mostram mês e ano; outros intervalos mostram os limites civis.
 Sem filtros, não há pílulas nem espaço adicional.

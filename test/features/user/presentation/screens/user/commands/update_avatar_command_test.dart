@@ -95,8 +95,8 @@ void main() {
     when(() => repository.update(avatar: seed))
         .thenAnswer((_) async => const Right(user));
 
-    expect(command.execute.value, same(user));
     expect(await command.execute.runAsync(seed), same(user));
+    expect(command.execute.value, same(user));
     expect(command.execute.results.value.hasError, isFalse);
   });
 
