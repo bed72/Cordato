@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
@@ -17,31 +18,37 @@ import '../../../../../../support/expense/mocks/expense_repository_mock.dart';
 void main() {
   late ExpenseRepositoryMock repository;
   late GetFirstExpenseMonthCommand command;
+  void onResult() {}
 
   ExpenseEntity expense(DateTime date) => ExpenseEntity(
-    id: date.toIso8601String(),
     category: .other,
     occurredOn: date,
     description: 'Gasto',
+    id: date.toIso8601String(),
     cents: .create(cents: 100).right,
   );
 
   ExpensePageEntity page(List<DateTime> dates, {String? next}) =>
       ExpensePageEntity(
-        items: dates.map(expense).toList(),
         next: next,
         prev: null,
+        items: dates.map(expense).toList(),
       );
 
   setUp(() {
     repository = ExpenseRepositoryMock();
     command = GetFirstExpenseMonthCommand(repository: repository);
+    command.execute.results.addListener(onResult);
   });
 
-  tearDown(() => command.dispose());
+  tearDown(() {
+    command.execute.results.removeListener(onResult);
+    command.dispose();
+  });
 
   test('waits for execution before querying the history', () {
     expect(command.execute.value, isNull);
+    expect(command.execute.results.value.hasError, isFalse);
     verifyZeroInteractions(repository);
   });
 
@@ -59,10 +66,11 @@ void main() {
       (_) async => Right(page([DateTime(2025, 2, 28), DateTime(2026, 1, 1)])),
     );
 
-    final result = await command.execute.runAsync();
+    final data = await command.execute.runAsync();
 
-    expect(result?.right, DateTime(2025, 2));
-    expect(command.execute.value?.right, DateTime(2025, 2));
+    expect(data, DateTime(2025, 2));
+    expect(command.execute.value, DateTime(2025, 2));
+    expect(command.execute.results.value.data, DateTime(2025, 2));
     verify(() => repository.get()).called(1);
     verify(() => repository.get(pageLink: next)).called(1);
     verifyNoMoreInteractions(repository);
@@ -75,7 +83,7 @@ void main() {
     when(() => repository.get(pageLink: next))
         .thenAnswer((_) async => Right(page([DateTime(2024, 9, 10)])));
 
-    expect((await command.execute.runAsync())?.right, DateTime(2024, 9));
+    expect(await command.execute.runAsync(), DateTime(2024, 9));
   });
 
   test(
@@ -83,10 +91,12 @@ void main() {
     () async {
       when(() => repository.get()).thenAnswer((_) async => Right(page([])));
 
-      final result = await command.execute.runAsync();
+      final data = await command.execute.runAsync();
 
-      expect(result?.isRight, isTrue);
-      expect(result?.right, isNull);
+      expect(data, isNull);
+      expect(command.execute.results.value.hasError, isFalse);
+      expect(command.execute.results.value.isRunning, isFalse);
+      verify(() => repository.get()).called(1);
     },
   );
 
@@ -101,8 +111,21 @@ void main() {
       when(() => repository.get(pageLink: next))
           .thenAnswer((_) async => Left(errors));
 
-      expect((await command.execute.runAsync())?.left, same(errors));
-      expect(command.execute.value?.left, same(errors));
+      await expectLater(
+        command.execute.runAsync(),
+        throwsA(
+          isA<CommandFailureException>().having(
+            (failure) => failure.errors,
+            'errors',
+            same(errors),
+          ),
+        ),
+      );
+      expect(command.execute.value, isNull);
+      expect(
+        command.execute.errors.value?.error,
+        same(command.execute.results.value.error),
+      );
     },
   );
 
@@ -115,7 +138,10 @@ void main() {
       when(() => repository.get(pageLink: next))
           .thenAnswer((_) async => Right(page([], next: next)));
 
-      expect((await command.execute.runAsync())?.isLeft, isTrue);
+      await expectLater(
+        command.execute.runAsync(),
+        throwsA(isA<CommandFailureException>()),
+      );
       verify(() => repository.get(pageLink: next)).called(1);
       verify(() => repository.get()).called(1);
       verifyNoMoreInteractions(repository);
@@ -125,22 +151,90 @@ void main() {
   test('replaces the limit after the first expense changes', () async {
     when(() => repository.get())
         .thenAnswer((_) async => Right(page([DateTime(2025, 1, 1)])));
-    expect((await command.execute.runAsync())?.right, DateTime(2025, 1));
+    expect(await command.execute.runAsync(), DateTime(2025, 1));
 
     when(() => repository.get())
         .thenAnswer((_) async => Right(page([DateTime(2026, 9, 1)])));
-    expect((await command.execute.runAsync())?.right, DateTime(2026, 9));
+    expect(await command.execute.runAsync(), DateTime(2026, 9));
   });
 
   test('allows retry after a history query fails', () async {
     when(() => repository.get())
         .thenAnswer((_) async => Left(ErrorsEntity.unknown()));
-    expect((await command.execute.runAsync())?.isLeft, isTrue);
+    await expectLater(
+      command.execute.runAsync(),
+      throwsA(isA<CommandFailureException>()),
+    );
 
     when(() => repository.get())
         .thenAnswer((_) async => Right(page([DateTime(2026, 9, 1)])));
-    expect((await command.execute.runAsync())?.right, DateTime(2026, 9));
+    expect(await command.execute.runAsync(), DateTime(2026, 9));
   });
+
+  test('preserves empty typed errors after a previous valid limit', () async {
+    when(() => repository.get())
+        .thenAnswer((_) async => Right(page([DateTime(2026, 9, 1)])));
+    await command.execute.runAsync();
+    const errors = ErrorsEntity(errors: []);
+    when(() => repository.get()).thenAnswer((_) async => const Left(errors));
+
+    await expectLater(
+      command.execute.runAsync(),
+      throwsA(
+        isA<CommandFailureException>().having(
+          (failure) => failure.errors,
+          'errors',
+          same(errors),
+        ),
+      ),
+    );
+
+    expect(command.execute.value, DateTime(2026, 9));
+    expect(command.execute.results.value.data, isNull);
+    expect(
+      command.execute.errors.value?.error,
+      same(command.execute.results.value.error),
+    );
+  });
+
+  test(
+    'preserves unexpected failures in the Future and error observables',
+    () async {
+      final failure = StateError('repository unavailable');
+      when(() => repository.get()).thenThrow(failure);
+
+      await expectLater(command.execute.runAsync(), throwsA(same(failure)));
+
+      expect(command.execute.results.value.error, same(failure));
+      expect(command.execute.errors.value?.error, same(failure));
+    },
+  );
+
+  test(
+    'does not create a late failure or another page after disposal',
+    () async {
+      final disposable = GetFirstExpenseMonthCommand(repository: repository);
+      final started = Completer<void>();
+      final pending = Completer<GetRepositoryType>();
+      when(() => repository.get()).thenAnswer((_) {
+        started.complete();
+        return pending.future;
+      });
+      final execution = disposable.execute.runAsync();
+      await started.future;
+      disposable.dispose();
+      pending.complete(Left(ErrorsEntity.unknown()));
+
+      expect(await execution, isNull);
+
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      expect(disposable.execute.results.value.data, isNull);
+      expect(disposable.execute.results.value.hasError, isFalse);
+      verify(() => repository.get()).called(1);
+      verifyNoMoreInteractions(repository);
+    },
+  );
 
   test(
     'blocks concurrent executions until the complete history is loaded',
@@ -152,13 +246,13 @@ void main() {
         return pending.future;
       });
 
-      final result = command.execute.runAsync();
+      final data = command.execute.runAsync();
       await started.future;
       expect(command.execute.isRunning.value, isTrue);
       command.execute.run();
       pending.complete(Right(page([DateTime(2026, 9, 1)])));
 
-      expect((await result)?.right, DateTime(2026, 9));
+      expect(await data, DateTime(2026, 9));
       expect(command.execute.isRunning.value, isFalse);
       verify(() => repository.get()).called(1);
     },
@@ -175,11 +269,11 @@ void main() {
         return pending.future;
       });
 
-      final result = disposable.execute.runAsync();
+      final data = disposable.execute.runAsync();
       await started.future;
       disposable.dispose();
       pending.complete(Right(page([], next: '?page[after]=unused')));
-      await result;
+      await data;
 
       verify(() => repository.get()).called(1);
       verifyNoMoreInteractions(repository);

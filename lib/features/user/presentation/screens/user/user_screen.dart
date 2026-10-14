@@ -1,12 +1,12 @@
 import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_item_widget.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/danger_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
@@ -24,8 +24,8 @@ import 'package:cordato/features/settings/presentation/screens/settings/widgets/
 final class const UserScreen({
   super.key,
   required final UserCommand command,
-  required final UpdateAvatarCommand avatarCommand,
   required final DeleteUserCommand deleteCommand,
+  required final UpdateAvatarCommand avatarCommand,
   required final ValueChanged<BuildContext> onBackPressed,
   required final Future<UserEntity?> Function(String name) onNamePressed,
 }) extends StatefulWidget {
@@ -52,23 +52,24 @@ final class _UserScreenState extends State<UserScreen>
               ),
               const SizedBox(height: 8.0),
               Expanded(
-                child: CommandBuilder<void, GetByIdRepositoryType?>(
+                child: CommandBuilder<void, UserEntity?>(
                   command: widget.command.execute,
                   whileRunning: (_, _, _) => _buildSkeleton(),
-                  onError: (_, _, _, _) => _buildError(.unknown()),
-                  onSuccess: (_, _) => switch (widget.command.execute.value) {
-                    Right(:final value) =>
+                  onError: (_, failure, _, _) => _buildError(
+                    failure is CommandFailureException
+                        ? failure.errors
+                        : .unknown(),
+                  ),
+                  onNullData: (_, _) => _buildSkeleton(),
+                  onData: (_, user, _) =>
                       CommandBuilder<String, UpdateRepositoryType?>(
                         command: widget.avatarCommand.execute,
                         whileRunning: (_, _, _) =>
-                            _buildUser(avatarUser ?? value),
-                        onSuccess: (_, _) => _buildUser(avatarUser ?? value),
+                            _buildUser(avatarUser ?? user!),
+                        onSuccess: (_, _) => _buildUser(avatarUser ?? user!),
                         onError: (_, _, _, _) =>
-                            _buildUser(avatarUser ?? value),
+                            _buildUser(avatarUser ?? user!),
                       ),
-                    Left(:final value) => _buildError(value),
-                    null => _buildSkeleton(),
-                  },
                 ),
               ),
               const SizedBox(height: 8.0),

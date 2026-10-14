@@ -1,8 +1,6 @@
 import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
 
 mixin DashboardScreenStateMixin on State<DashboardScreen> {
@@ -36,15 +34,12 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
       !widget.userCommand.execute.isRunning.value;
 
   bool get canGoToPreviousMonth {
-    if (widget.firstExpenseMonthCommand.execute.results.value.hasError ||
-        widget.firstExpenseMonthCommand.execute.errors.value != null) {
+    final result = widget.firstExpenseMonthCommand.execute.results.value;
+    if (result.isRunning || result.hasError || result.data == null) {
       return false;
     }
 
-    final data = widget.firstExpenseMonthCommand.execute.value;
-    if (data == null || data.isLeft || data.right == null) return false;
-
-    return selectedMonth.isAfter(data.right!);
+    return selectedMonth.isAfter(result.data!);
   }
 
   bool get canGoToNextMonth {
@@ -169,7 +164,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     ];
     monthControlsListenable = Listenable.merge([
       ...executionSignals,
-      widget.firstExpenseMonthCommand.execute,
+      widget.firstExpenseMonthCommand.execute.results,
     ]);
     retryControlsListenable = Listenable.merge([
       ...executionSignals,
@@ -222,12 +217,10 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
       _failed(widget.insightsCommand.execute) ||
       _failed(widget.metricsCommand.execute);
 
-  bool _failed<TParam, TResult>(
-    Command<TParam, Either<ErrorsEntity, TResult>?> command,
-  ) {
+  bool _failed<TParam, TResult>(Command<TParam, TResult> command) {
     final data = command.results.value;
 
-    return !data.isRunning && (data.hasError || data.data?.isLeft == true);
+    return !data.isRunning && data.hasError;
   }
 
   void loadExpenses() => widget.expensesCommand.execute.run((
@@ -273,16 +266,23 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   }
 
   Future<bool> refreshMetrics() async {
-    if (widget.metricsCommand.execute.isRunning.value) return false;
+    final command = widget.metricsCommand;
+    final version = _dependenciesVersion;
+    if (command.execute.isRunning.value) return false;
 
     try {
-      final data = await widget.metricsCommand.execute.runAsync((
+      final data = await command.execute.runAsync((
         endDate: monthEnd,
         groupBy: .category,
         startDate: selectedMonth,
       ));
 
-      return data?.isRight == true;
+      return mounted &&
+          version == _dependenciesVersion &&
+          command == widget.metricsCommand &&
+          data != null &&
+          !command.execute.results.value.hasError &&
+          !command.execute.results.value.isRunning;
     } catch (_) {
       return false;
     }
@@ -340,14 +340,19 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   }
 
   Future<void> _refreshFirstMonth(int version) async {
+    final command = widget.firstExpenseMonthCommand;
     try {
-      final data = await widget.firstExpenseMonthCommand.execute.runAsync();
+      final data = await command.execute.runAsync();
 
       if (!mounted || version != _dependenciesVersion) return;
-      if (data == null || data.isLeft) return;
+      if (command != widget.firstExpenseMonthCommand ||
+          command.execute.results.value.hasError ||
+          command.execute.results.value.isRunning) {
+        return;
+      }
       final today = DateTime.now();
       final currentMonth = DateTime(today.year, today.month);
-      final firstMonth = data.right ?? currentMonth;
+      final firstMonth = data ?? currentMonth;
 
       if (selectedMonth.isBefore(firstMonth)) {
         setState(() {
@@ -362,25 +367,34 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   }
 
   Future<bool> refreshInsights() async {
-    if (widget.insightsCommand.execute.isRunning.value) return false;
+    final command = widget.insightsCommand;
+    final version = _dependenciesVersion;
+    if (command.execute.isRunning.value) return false;
 
     try {
-      final data = await widget.insightsCommand.execute.runAsync((
+      final data = await command.execute.runAsync((
         year: selectedMonth.year,
         month: selectedMonth.month,
       ));
 
-      return data?.isRight == true;
+      return mounted &&
+          version == _dependenciesVersion &&
+          command == widget.insightsCommand &&
+          data != null &&
+          !command.execute.results.value.hasError &&
+          !command.execute.results.value.isRunning;
     } catch (_) {
       return false;
     }
   }
 
   Future<bool> refreshExpenses() async {
-    if (widget.expensesCommand.execute.isRunning.value) return false;
+    final command = widget.expensesCommand;
+    final version = _dependenciesVersion;
+    if (command.execute.isRunning.value) return false;
 
     try {
-      final data = await widget.expensesCommand.execute.runAsync((
+      final data = await command.execute.runAsync((
         to: monthEnd,
         category: null,
         pageLink: null,
@@ -388,7 +402,12 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
         pageSize: recentExpensesLimit,
       ));
 
-      return data?.isRight == true;
+      return mounted &&
+          version == _dependenciesVersion &&
+          command == widget.expensesCommand &&
+          data != null &&
+          !command.execute.results.value.hasError &&
+          !command.execute.results.value.isRunning;
     } catch (_) {
       return false;
     }

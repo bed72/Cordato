@@ -4,8 +4,8 @@ import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
-import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
@@ -18,13 +18,13 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   String? pendingDeleteId;
   String? deletingExpenseId;
 
+  int _queryRevision = 0;
   bool isLoading = false;
   bool hasLoaded = false;
   bool hasFailure = false;
   bool _retryRefresh = true;
   bool isEditingExpense = false;
   int? _pendingRefreshRevision;
-  int _queryRevision = 0;
 
   final List<ExpenseEntity> expenses = [];
   final scrollController = ScrollController();
@@ -404,12 +404,12 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       if (!_isCurrentQuery(command, revision)) return;
 
       setState(() {
-        if (data case Right(:final value)) {
+        if (data != null) {
           if (refresh) expenses.clear();
-          for (final expense in value.items) {
+          for (final expense in data.items) {
             _insertExpense(expense);
           }
-          nextPageLink = value.next;
+          nextPageLink = data.next;
           hasLoaded = true;
           return;
         }

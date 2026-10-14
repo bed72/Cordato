@@ -1,12 +1,14 @@
-import 'package:command_it/command_it.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter/foundation.dart';
+import 'package:command_it/command_it.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/main.dart';
+
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 
@@ -15,8 +17,8 @@ import '../../../../support/expense/mocks/expense_repository_mock.dart';
 
 void main() {
   late CrashClientMock client;
-  late ExpenseRepositoryMock repository;
   late GetExpensesCommand command;
+  late ExpenseRepositoryMock repository;
   late void Function(CommandError<dynamic>, StackTrace)? previousHandler;
 
   const input = (
@@ -53,21 +55,21 @@ void main() {
     'installs the fallback without changing native or Flutter error policies',
     () {
       final filter = Command.errorFilterDefault;
-      final assertionsAlwaysThrow = Command.assertionsAlwaysThrow;
-      final reportAllExceptions = Command.reportAllExceptions;
       final flutterHandler = FlutterError.onError;
+      final reportAllExceptions = Command.reportAllExceptions;
+      final assertionsAlwaysThrow = Command.assertionsAlwaysThrow;
       final platformHandler = PlatformDispatcher.instance.onError;
 
       configureCommandExceptionHandler(client);
 
-      expect(Command.globalExceptionHandler, isNotNull);
-      expect(Command.errorFilterDefault, same(filter));
-      expect(filter, isA<GlobalIfNoLocalErrorFilter>());
-      expect(Command.assertionsAlwaysThrow, assertionsAlwaysThrow);
-      expect(Command.assertionsAlwaysThrow, isTrue);
-      expect(Command.reportAllExceptions, reportAllExceptions);
       expect(Command.reportAllExceptions, isFalse);
+      expect(Command.assertionsAlwaysThrow, isTrue);
+      expect(Command.errorFilterDefault, same(filter));
+      expect(Command.globalExceptionHandler, isNotNull);
+      expect(filter, isA<GlobalIfNoLocalErrorFilter>());
       expect(FlutterError.onError, same(flutterHandler));
+      expect(Command.reportAllExceptions, reportAllExceptions);
+      expect(Command.assertionsAlwaysThrow, assertionsAlwaysThrow);
       expect(PlatformDispatcher.instance.onError, same(platformHandler));
       verifyZeroInteractions(client);
     },
@@ -77,22 +79,30 @@ void main() {
     'completes a typed failure without a local handler or crash report',
     () async {
       final errors = ErrorsEntity(errors: []);
-      final failure = CommandFailureException(errors: errors);
-      when(() => repository.get(pageSize: 6)).thenThrow(failure);
+      when(() => repository.get(pageSize: 6))
+          .thenAnswer((_) async => Left(errors));
 
       await expectLater(
         command.execute.runAsync(input),
-        throwsA(same(failure)),
+        throwsA(
+          isA<CommandFailureException>().having(
+            (failure) => failure.errors,
+            'errors',
+            same(errors),
+          ),
+        ),
       );
 
-      final result = command.execute.results.value;
-      expect(result.hasError, isTrue);
-      expect(result.error, same(failure));
-      expect(result.data, isNull);
-      expect(result.paramData, input);
-      expect(command.execute.errors.value?.error, same(failure));
-      expect(command.execute.isRunning.value, isFalse);
+      final data = command.execute.results.value;
+      final failure = data.error as CommandFailureException;
+
+      expect(data.data, isNull);
+      expect(data.hasError, isTrue);
+      expect(data.paramData, input);
+      expect(data.error, same(failure));
       expect(failure.errors, same(errors));
+      expect(command.execute.isRunning.value, isFalse);
+      expect(command.execute.errors.value?.error, same(failure));
       verifyZeroInteractions(client);
       verify(() => repository.get(pageSize: 6)).called(1);
     },
@@ -109,19 +119,23 @@ void main() {
         throwsA(same(failure)),
       );
 
-      final result = command.execute.results.value;
-      expect(result.error, same(failure));
-      expect(result.hasError, isTrue);
+      final data = command.execute.results.value;
+
+      expect(data.hasError, isTrue);
+      expect(data.error, same(failure));
       expect(command.execute.isRunning.value, isFalse);
+
       final reported = verify(
         () => client.recordError(
+          fatal: false,
           error: failure,
           stackTrace: captureAny(named: 'stackTrace'),
-          fatal: false,
         ),
       );
+
       reported.called(1);
-      expect(reported.captured.single, same(result.stackTrace));
+
+      expect(reported.captured.single, same(data.stackTrace));
       verifyNoMoreInteractions(client);
     },
   );
@@ -144,9 +158,9 @@ void main() {
 
           void onFailure() {
             if (channel == 'results') {
-              final result = command.execute.results.value;
-              if (result.isRunning || !result.hasError) return;
-              localError = result.error;
+              final data = command.execute.results.value;
+              if (data.isRunning || !data.hasError) return;
+              localError = data.error;
             } else {
               final error = command.execute.errors.value;
               if (error == null) return;
@@ -169,11 +183,11 @@ void main() {
 
           expect(localFailures, 1);
           expect(localError, same(failure));
-          expect(command.execute.results.value.hasError, isTrue);
-          expect(command.execute.results.value.data, isNull);
-          expect(command.execute.errors.value?.error, same(failure));
-          expect(command.execute.value, same(previousValue));
           expect(command.execute.isRunning.value, isFalse);
+          expect(command.execute.results.value.data, isNull);
+          expect(command.execute.value, same(previousValue));
+          expect(command.execute.results.value.hasError, isTrue);
+          expect(command.execute.errors.value?.error, same(failure));
           verifyZeroInteractions(client);
           verify(() => repository.get(pageSize: 6)).called(2);
         },

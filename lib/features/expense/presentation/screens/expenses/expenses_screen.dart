@@ -6,7 +6,7 @@ import 'package:cordato/features/core/presentation/formatters/interface_date_for
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/delete_expense_command.dart';
@@ -53,10 +53,11 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
                 String? category,
                 String? pageLink,
               }),
-              GetRepositoryType?
+              ExpensePageEntity?
             >(
               command: widget.getCommand.execute,
-              onSuccess: (_, _) => _buildContent(),
+              onData: (_, _, _) => _buildContent(),
+              onNullData: (_, _) => _buildContent(),
               onError: (_, _, _, _) => _buildContent(),
               whileRunning: (_, _, _) => _buildContent(),
             ),

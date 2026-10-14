@@ -162,9 +162,12 @@ mixin UserScreenStateMixin on State<UserScreen> {
     loadUser();
   }
 
-  String error(ErrorsEntity errors) => errors.errors
-      .map((error) => error.detail ?? error.title ?? '...')
-      .join('\n');
+  String error(ErrorsEntity errors) {
+    if (errors.errors.isEmpty) return 'Não foi possível processar a resposta.';
+    return errors.errors
+        .map((error) => error.detail ?? error.title ?? '...')
+        .join('\n');
+  }
 
   @override
   void didUpdateWidget(covariant UserScreen oldWidget) {

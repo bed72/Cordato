@@ -36,15 +36,17 @@ Registro do grupo 3: [fronteira tipada, fallback e testes](implementation-part-2
 
 ## 4. Consultas compartilhadas: commands e todos os consumidores
 
-- [ ] 4.1 Migrar GetExpensesCommand para ExpensePageEntity anulável com switch Right/Left; na mesma unidade adaptar DashboardScreenStateMixin, ExpensesSectionWidget, ExpensesScreen/mixin, previews e testes, mantendo acúmulo exclusivamente no consumidor.
-- [ ] 4.2 Migrar GetInsightsCommand para lista de InsightEntity anulável; adaptar InsightsSectionWidget, Dashboard, previews e testes preservando filtros opcionais, ordem, vazio e período nulo.
-- [ ] 4.3 Migrar GetExpenseMetricsCommand para ExpenseMetricsEntity anulável; adaptar MetricsSectionWidget, Dashboard, previews e testes preservando total zero e categorias ausentes/vazias.
-- [ ] 4.4 Migrar UserCommand para UserEntity anulável; adaptar UserNameWidget, UserScreen/mixin, Dashboard e previews/testes preservando saudação, nome/seed e fallback Trocado.
-- [ ] 4.5 Migrar GetFirstExpenseMonthCommand para DateTime anulável com falha tipada, mantendo pages não ordenadas, next opaco, página vazia com continuação, links repetidos e interrupção cooperativa após dispose sem lançar erro artificial de descarte.
-- [ ] 4.6 Adaptar Dashboard à saída do limite, distinguindo conclusão válida nula de erro/estado inicial e preservando ajuste civil da seleção e bloqueio anterior em falha.
-- [ ] 4.7 Usar onData/onNullData nos builders que consomem dados e remover releituras de value para decidir sucesso/erro; manter builders de botão que ignoram o retorno.
-- [ ] 4.8 Atualizar as suítes de consultas para resultados nativos, CommandFailureException no Future/results/errors, inputs intactos, retry, isolamento e valores vazios, sem alterar stubs de repository para abandonar Either.
-- [ ] 4.9 Verificar instâncias e descartes dos previews afetados, atualizar contratos descritos em ARCHITECTURE.md/AGENTS.md e executar análise e testes das unidades migradas.
+- [x] 4.1 Migrar GetExpensesCommand para ExpensePageEntity anulável com switch Right/Left; na mesma unidade adaptar DashboardScreenStateMixin, ExpensesSectionWidget, ExpensesScreen/mixin, previews e testes, mantendo acúmulo exclusivamente no consumidor.
+- [x] 4.2 Migrar GetInsightsCommand para lista de InsightEntity anulável; adaptar InsightsSectionWidget, Dashboard, previews e testes preservando filtros opcionais, ordem, vazio e período nulo.
+- [x] 4.3 Migrar GetExpenseMetricsCommand para ExpenseMetricsEntity anulável; adaptar MetricsSectionWidget, Dashboard, previews e testes preservando total zero e categorias ausentes/vazias.
+- [x] 4.4 Migrar UserCommand para UserEntity anulável; adaptar UserNameWidget, UserScreen/mixin, Dashboard e previews/testes preservando saudação, nome/seed e fallback Trocado.
+- [x] 4.5 Migrar GetFirstExpenseMonthCommand para DateTime anulável com falha tipada, mantendo pages não ordenadas, next opaco, página vazia com continuação, links repetidos e interrupção cooperativa após dispose sem lançar erro artificial de descarte.
+- [x] 4.6 Adaptar Dashboard à saída do limite, distinguindo conclusão válida nula de erro/estado inicial e preservando ajuste civil da seleção e bloqueio anterior em falha.
+- [x] 4.7 Usar onData/onNullData nos builders que consomem dados e remover releituras de value para decidir sucesso/erro; manter builders de botão que ignoram o retorno.
+- [x] 4.8 Atualizar as suítes de consultas para resultados nativos, CommandFailureException no Future/results/errors, inputs intactos, retry, isolamento e valores vazios, sem alterar stubs de repository para abandonar Either.
+- [x] 4.9 Verificar instâncias e descartes dos previews afetados, atualizar contratos descritos em ARCHITECTURE.md/AGENTS.md e executar análise e testes das unidades migradas.
+
+Registro do grupo 4: [consultas nativas, consumidores, propriedade e checks](implementation-part-3.md).
 
 ## 5. Dashboard: recuperação com canal nativo e tentativas válidas
 

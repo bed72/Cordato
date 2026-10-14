@@ -1,7 +1,6 @@
 import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
@@ -26,17 +25,14 @@ final class const MetricsSectionWidget({
         child: const ExpenseMetricsSkeletonWidget(),
       ),
       onError: (_, _, _, _) => const SizedBox.shrink(),
-      onSuccess: (_, _) => switch (command.execute.value) {
-        Right(:final value) => Padding(
-          padding: const .only(top: 8.0, bottom: 20.0),
-          child: _buildMetrics(context: context, metrics: value),
-        ),
-        Left() => const SizedBox.shrink(),
-        null => _buildSection(
-          context: context,
-          child: const ExpenseMetricsSkeletonWidget(),
-        ),
-      },
+      onData: (_, metrics, _) => Padding(
+        padding: const .only(top: 8.0, bottom: 20.0),
+        child: _buildMetrics(context: context, metrics: metrics!),
+      ),
+      onNullData: (_, _) => _buildSection(
+        context: context,
+        child: const ExpenseMetricsSkeletonWidget(),
+      ),
     );
   }
 

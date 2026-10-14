@@ -108,8 +108,9 @@ herdados quando ao menos um limite está presente, preservando a continuação e
 os demais parâmetros. Sem intervalo explícito, os filtros do link são mantidos.
 O recorte de seis despesas pertence ao consumidor Dashboard.
 `GetExpensesCommand`, em `expense/presentation/screens/expenses/commands/`, recebe o record
-`({int pageSize, String? pageLink, DateTime? from, DateTime? to, String? category})`, delega a `IExpenseRepository.get` e preserva
-`Either` em `GetRepositoryType?`, inicialmente nulo. Não acumula páginas nem
+`({int pageSize, String? pageLink, DateTime? from, DateTime? to, String? category})`, delega a `IExpenseRepository.get` e publica
+`ExpensePageEntity?`, inicialmente nulo. Right fornece a página original e Left
+lança `CommandFailureException` com a mesma ErrorsEntity. Não acumula páginas nem
 define o limite da Dashboard. Implementa `ICommand` e é registrado por factory
 em `expenseDependenciesModule`; cada consumidor deve descartar sua instância.
 `ExpenseFormValidator` reúne os resultados de valor, descrição e data pelo padrão
@@ -154,15 +155,23 @@ sem normalização e envia `filter[category]`, com precedência sobre o link.
 Listagem preserva ambas as lentes na paginação, refresh e retry e remove itens
 editados que deixem de pertencer ao mês ou à categoria.
 A Dashboard recebe instâncias próprias de `GetInsightsCommand` e
-`GetExpenseMetricsCommand`, descartadas pela tela. `selectedMonth` é o contexto
+`GetExpenseMetricsCommand`, descartadas pela tela. Metrics publica
+`ExpenseMetricsEntity?`, preservando total zero e categorias ausentes/vazias;
+Right mantém a entidade e Left lança CommandFailureException com a falha original.
+O limite histórico usa `GetFirstExpenseMonthCommand`, com `DateTime?`: null após
+conclusão válida significa ausência de histórico. Percorre páginas gerais sem
+presumir ordem, preserva next opaco e lança falha tipada em erro ou continuação
+repetida. Após descarte, interrompe novas páginas sem gerar erro artificial;
+mounted/identidade/versão impedem aplicar sua conclusão neutra.
+`selectedMonth` é o contexto
 compartilhado das três seções: intervalo civil para métricas e recentes, ano/mês
 para insights. Consultas são paralelas na abertura, troca, refresh e retorno;
 refresh preserva o mês. `DashboardMonthSelectorWidget` mantém mês/ano visíveis,
 impede meses futuros e desabilita as setas enquanto qualquer seção carrega,
 incluindo retry. Listeners de `isRunning` são removidos no lifecycle; retornos
 obsoletos de navegação são ignorados. A troca ativa skeletons sem dados anteriores
-sob o novo título. Falha de métricas, insights ou recentes (Left ou exceção
-observável) substitui imediatamente o Scaffold pela `ErrorScreen`, na mesma
+sob o novo título. Falha tipada ou inesperada de métricas, insights ou recentes
+substitui imediatamente o Scaffold pela `ErrorScreen`, na mesma
 instância e sem mudar o mês. O código vigente não fornece cabeçalho à ErrorScreen,
 divergindo da intenção registrada em `unify-dashboard-error-screen`;
 seletor, seções e FAB ficam ocultos. O erro persiste após sucessos remanescentes.
@@ -170,17 +179,18 @@ O retry único fica bloqueado enquanto houver consultas da Dashboard, inclusive
 User, ou recuperação em andamento, sem enfileirar toques. Recarrega User em
 paralelo ao limite histórico, aplica eventual ajuste civil do mês e consulta as
 três seções em paralelo. A tela de erro mantém loading até o ciclo terminar;
-somente os três resultados Right dessa tentativa restauram o conteúdo. Outra
+somente as três consultas com dados nativos e snapshot terminal sem erro da
+tentativa vigente restauram o conteúdo. Outra
 falha libera nova tentativa ao terminar. Falhas de User ou limite não ativam ou
 prolongam o erro financeiro; o limite com erro bloqueia a seta anterior. O mixin
-observa somente `results` das três consultas para detectar Left ou exceção
-terminal, inclusive enquanto as seções estão ocultas. Os listeners de execução
+observa somente `results` das três consultas para detectar `hasError` terminal,
+inclusive enquanto as seções estão ocultas. Os listeners de execução
 coordenam pendências; seletor e disponibilidade do retry observam seus listenables
 declarativamente, com composições estáveis por dependências. Não há `setState`
 global vazio para resultados já observados nas seções. O mixin remove observações
 de resultados e execução e invalida ciclos obsoletos
 na troca de dependências ou descarte. User mostra “Trocado” com avatar placeholder
-em Left ou exceção, sem retry no nome, preservando saudação e skeleton no loading.
+em falha tipada ou inesperada, sem retry no nome, preservando saudação e skeleton no loading.
 `InsightsSectionWidget` fica acima das
 despesas, com skeleton e seção oculta quando vazia.
 `ExpensesSectionWidget` usa `CommandBuilder`
@@ -259,8 +269,10 @@ de vários meses e períodos nulos não são recortados ou substituídos.
 `insightDependenciesModule` registra data source e repository como
 lazy singletons pelos contratos e o command por factory, composto por `appModule`.
 `GetInsightsCommand`, em `insight/presentation/commands/`, consulta
-`IInsightRepository.get` com o record `({int? year, int? month})`, preserva `Either` em
-`GetRepositoryType?`, inicialmente nulo, e implementa `ICommand`. Cada execução
+`IInsightRepository.get` com o record `({int? year, int? month})`, publica
+`List<InsightEntity>?`, inicialmente nulo, e implementa `ICommand`. Right
+preserva a mesma lista; Left lança `CommandFailureException` com a mesma falha.
+Cada execução
 substitui o resultado anterior; o consumidor deve descartar sua instância.
 `InsightsListWidget` usa rolagem horizontal, cards com toda a largura disponível
 descontando as margens laterais de 20 pixels,
@@ -440,7 +452,9 @@ exclusão e atualização do nome como lazy singletons.
   traduz exceções inesperadas em `ErrorsEntity.unknown()`. Exclusão preserva
   o booleano devolvido pelo data source.
 - `UserScreen` recebe `UserCommand`, em `presentation/screens/user/commands/`, para consultar
-  `getById()` ao abrir e após atualizar o nome. Nome, e-mail e semente do avatar
+  `getById()` ao abrir e após atualizar o nome. O command publica `UserEntity?`,
+  inicialmente nulo: Right mantém a entidade, Left lança CommandFailureException
+  com a ErrorsEntity original. Nome, e-mail e semente do avatar
   vêm da API. `CommandBuilder` renderiza skeleton, resultado e erro com tentativa
   de recarregamento. `UserScreenStateMixin` concentra carregamento e handlers de
   UI; a tela não acessa repository ou storage diretamente. `UserAvatarWidget`
@@ -886,8 +900,9 @@ da adaptação de Left. Falhas locais não exigem reporte global adicional.
 
 A migração para dados nativos ocorre por command e todos os seus consumidores:
 repository continua com Either; o callback do command adapta Right para dados e
-Left para CommandFailureException, sem converter genérico. Nesta etapa os
-commands existentes ainda mantêm Either. Ao migrar, priorize o erro do snapshot
+Left para CommandFailureException, sem converter genérico. GetExpenses,
+GetInsights, GetExpenseMetrics, User e GetFirstExpenseMonth já usam dados nativos;
+GetExpense, mutações e Authentication ainda mantêm Either. Ao migrar, priorize o erro do snapshot
 terminal sobre dados, trate o Future de `runAsync` em erro e não duplique no catch
 um feedback já emitido por listener. Não use value anterior como sucesso atual.
 

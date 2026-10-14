@@ -1,12 +1,14 @@
 import 'dart:async';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
+
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
+import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/repositories/interface_metrics_repository.dart';
 import 'package:cordato/features/metrics/presentation/commands/get_expense_metrics_command.dart';
 
@@ -17,10 +19,12 @@ void main() {
   late MetricsRepositoryMock repository;
   late GetExpenseMetricsCommand command;
   late ExpenseMetricsEntity metrics;
+  void onResult() {}
 
   setUp(() {
     repository = MetricsRepositoryMock();
     command = GetExpenseMetricsCommand(repository: repository);
+    command.execute.results.addListener(onResult);
     metrics = ExpenseMetricsEntity(
       id: 'metrics-id',
       totalAmount: 389205,
@@ -36,7 +40,10 @@ void main() {
     );
   });
 
-  tearDown(() => command.dispose());
+  tearDown(() {
+    command.execute.results.removeListener(onResult);
+    command.dispose();
+  });
 
   test('starts without a result or a repository query', () {
     expect(command.execute.value, isNull);
@@ -50,11 +57,11 @@ void main() {
       final response = Right<ErrorsEntity, ExpenseMetricsEntity>(metrics);
       when(() => repository.getExpenses()).thenAnswer((_) async => response);
 
-      final result = await command.execute.runAsync(defaultFilters);
+      final data = await command.execute.runAsync(defaultFilters);
 
-      expect(result, same(response));
-      expect(command.execute.value, same(response));
-      expect(command.execute.value?.right, same(metrics));
+      expect(data, same(metrics));
+      expect(command.execute.value, same(metrics));
+      expect(command.execute.results.value.data, same(metrics));
       verify(() => repository.getExpenses()).called(1);
       verifyNoMoreInteractions(repository);
     },
@@ -72,14 +79,14 @@ void main() {
       ),
     ).thenAnswer((_) async => response);
 
-    final result = await command.execute.runAsync((
-      startDate: startDate,
+    final data = await command.execute.runAsync((
       endDate: endDate,
       groupBy: .category,
+      startDate: startDate,
     ));
 
-    expect(result, same(response));
-    expect(command.execute.value?.right, same(metrics));
+    expect(data, same(metrics));
+    expect(command.execute.value, same(metrics));
     final captured = verify(
       () => repository.getExpenses(
         startDate: captureAny(named: 'startDate'),
@@ -87,53 +94,65 @@ void main() {
         groupBy: .category,
       ),
     ).captured;
-    expect(captured[0], same(startDate));
+
     expect(captured[1], same(endDate));
+    expect(captured[0], same(startDate));
     verifyNoMoreInteractions(repository);
   });
 
-  test(
-    'preserves incomplete periods and validation failures as results',
-    () async {
-      final endDate = DateTime(2026, 10, 31);
-      const response = Left<ErrorsEntity, ExpenseMetricsEntity>(
-        ErrorsEntity(
-          errors: [
-            ErrorEntity(
-              title: 'Parâmetro inválido',
-              detail: 'As datas inicial e final devem ser informadas juntas.',
-              status: '422',
-              parameter: 'start_date',
-            ),
-          ],
-        ),
-      );
-      when(() => repository.getExpenses(endDate: endDate, groupBy: .category))
-          .thenAnswer((_) async => response);
+  test('preserves incomplete periods and metadata in typed failures', () async {
+    final endDate = DateTime(2026, 10, 31);
+    const response = Left<ErrorsEntity, ExpenseMetricsEntity>(
+      ErrorsEntity(
+        errors: [
+          ErrorEntity(
+            title: 'Parâmetro inválido',
+            detail: 'As datas inicial e final devem ser informadas juntas.',
+            status: '422',
+            parameter: 'start_date',
+          ),
+        ],
+      ),
+    );
+    when(() => repository.getExpenses(endDate: endDate, groupBy: .category))
+        .thenAnswer((_) async => response);
 
-      final result = await command.execute.runAsync((
+    await expectLater(
+      command.execute.runAsync((
         startDate: null,
         endDate: endDate,
         groupBy: .category,
-      ));
+      )),
+      throwsA(
+        isA<CommandFailureException>().having(
+          (failure) => failure.errors,
+          'errors',
+          same(response.left),
+        ),
+      ),
+    );
 
-      expect(result, same(response));
-      expect(command.execute.value, same(response));
-      expect(result?.left.errors.single.parameter, 'start_date');
-      verify(() => repository.getExpenses(endDate: endDate, groupBy: .category))
-          .called(1);
-    },
-  );
+    final failure =
+        command.execute.results.value.error as CommandFailureException;
+    expect(failure.errors.errors.single.parameter, 'start_date');
+    expect(command.execute.errors.value?.error, same(failure));
+    expect(command.execute.value, isNull);
+    verify(() => repository.getExpenses(endDate: endDate, groupBy: .category))
+        .called(1);
+  });
 
   test('allows retry after failure and replaces the previous result', () async {
     when(() => repository.getExpenses())
         .thenAnswer((_) async => Left(ErrorsEntity.unknown()));
-    expect((await command.execute.runAsync(defaultFilters))?.isLeft, isTrue);
+    await expectLater(
+      command.execute.runAsync(defaultFilters),
+      throwsA(isA<CommandFailureException>()),
+    );
     when(() => repository.getExpenses())
         .thenAnswer((_) async => Right(metrics));
 
     await command.execute.runAsync(defaultFilters);
-    expect(command.execute.value?.right, same(metrics));
+    expect(command.execute.value, same(metrics));
 
     final emptyMetrics = ExpenseMetricsEntity(
       id: 'empty-period',
@@ -147,9 +166,9 @@ void main() {
 
     await command.execute.runAsync(defaultFilters);
 
-    expect(command.execute.value?.right, same(emptyMetrics));
-    expect(command.execute.value?.right.totalAmount, 0);
-    expect(command.execute.value?.right.categories, isEmpty);
+    expect(command.execute.value, same(emptyMetrics));
+    expect(command.execute.value?.totalAmount, 0);
+    expect(command.execute.value?.categories, isEmpty);
     verify(() => repository.getExpenses()).called(3);
   });
 
@@ -168,7 +187,7 @@ void main() {
     verify(() => repository.getExpenses()).called(1);
     pending.complete(Right(metrics));
 
-    expect((await result)?.right, same(metrics));
+    expect(await result, same(metrics));
     expect(command.execute.isRunning.value, isFalse);
     verifyNoMoreInteractions(repository);
   });
@@ -181,7 +200,7 @@ void main() {
 
     await command.execute.runAsync(defaultFilters);
 
-    expect(command.execute.value?.right, same(metrics));
+    expect(command.execute.value, same(metrics));
     expect(otherCommand.execute.value, isNull);
     expect(otherCommand.execute.isRunning.value, isFalse);
   });
@@ -196,6 +215,8 @@ void main() {
         command.execute.runAsync(defaultFilters),
         throwsA(same(failure)),
       );
+      expect(command.execute.results.value.error, same(failure));
+      expect(command.execute.errors.value?.error, same(failure));
     } finally {
       command.execute.results.removeListener(onResult);
     }
@@ -217,4 +238,49 @@ void main() {
     );
     verifyZeroInteractions(repository);
   });
+
+  test('keeps zero totals and absent grouping as successful data', () async {
+    final empty = ExpenseMetricsEntity(
+      id: 'empty',
+      totalAmount: 0,
+      startDate: DateTime(2026, 10),
+      endDate: DateTime(2026, 10, 31),
+      categories: null,
+    );
+    when(() => repository.getExpenses()).thenAnswer((_) async => Right(empty));
+
+    expect(await command.execute.runAsync(defaultFilters), same(empty));
+    expect(command.execute.results.value.data?.categories, isNull);
+    expect(command.execute.results.value.hasError, isFalse);
+  });
+
+  test(
+    'publishes an empty typed failure instead of a previous total',
+    () async {
+      when(() => repository.getExpenses())
+          .thenAnswer((_) async => Right(metrics));
+      await command.execute.runAsync(defaultFilters);
+      const errors = ErrorsEntity(errors: []);
+      when(() => repository.getExpenses())
+          .thenAnswer((_) async => const Left(errors));
+
+      await expectLater(
+        command.execute.runAsync(defaultFilters),
+        throwsA(
+          isA<CommandFailureException>().having(
+            (failure) => failure.errors,
+            'errors',
+            same(errors),
+          ),
+        ),
+      );
+
+      expect(command.execute.value, same(metrics));
+      expect(command.execute.results.value.data, isNull);
+      expect(
+        command.execute.errors.value?.error,
+        same(command.execute.results.value.error),
+      );
+    },
+  );
 }

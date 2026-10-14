@@ -226,9 +226,10 @@ inválidos como `start_date` sem tratá-los como pointers do documento.
 `({DateTime? startDate, DateTime? endDate, ExpenseMetricsGroupByEnum? groupBy})`
 e delega seus campos a `getExpenses` sem validação, normalização ou defaults.
 Os três campos do record são informados explicitamente; `null` preserva a
-ausência do filtro. O resultado começa em `null` e preserva o
-`Either<ErrorsEntity, ExpenseMetricsEntity>` em `GetExpensesRepositoryType?`,
-incluindo totais zero e falhas de validação como resultados. Cada consulta
+ausência do filtro. O resultado começa em `null` e publica
+`ExpenseMetricsEntity?`, incluindo totais zero e agrupamento ausente ou vazio.
+Right do repository vira dado nativo; Left lança `CommandFailureException` com
+a mesma ErrorsEntity. Cada consulta
 substitui o resultado anterior, sem cálculo ou acúmulo de métricas. O command
 impede execuções concorrentes e permite nova tentativa após falha; exceções
 inesperadas permanecem erros observáveis do command. `dispose` descarta
@@ -260,9 +261,13 @@ espaçamento superior de 8 pixels após o seletor.
 consulta o histórico geral por `IExpenseRepository.get`, com o tamanho padrão
 de página, seguindo `next` como continuação opaca e calculando o menor mês civil
 sem acumular despesas. Não pressupõe ordenação nem encerra em uma página vazia
-que ainda tenha continuação. Falhas invalidam o limite inteiro e continuações
-repetidas retornam erro. O command é registrado por factory no módulo de rotas
+que ainda tenha continuação. Publica `DateTime?`; null após conclusão válida
+significa histórico ausente. Falhas invalidam o limite inteiro e continuações
+repetidas lançam `CommandFailureException`. O command é registrado por factory no módulo de rotas
 da Dashboard e descartado pela tela, interrompendo novas páginas após descarte.
+Ao detectar o próprio descarte depois de receber uma página, encerra com null
+sem lançar falha artificial nem publicar limite parcial. A Dashboard invalida
+esse retorno por mounted, identidade e versão, sem contá-lo como recuperação.
 O limite é consultado na abertura, refresh e retorno de cadastro/listagem com alterações confirmadas;
 trocas de mês reutilizam o resultado. Durante a consulta, as setas ficam
 desabilitadas; falha mantém o retorno bloqueado até uma nova consulta por refresh.
@@ -272,12 +277,12 @@ Essa consulta percorre todo o histórico porque o contrato atual não fornece
 metadados do primeiro mês nem ordenação ascendente.
 As setas ficam desabilitadas enquanto qualquer command de seção estiver rodando,
 inclusive recuperação. O mixin observa somente `results` dos três commands para
-detectar Left ou exceção terminal e ativar o erro financeiro persistente. Essa
+detectar `hasError` terminal e ativar o erro financeiro persistente. Essa
 observação permanece durante a tela de erro, sem listeners adicionais de `errors`.
 Os listeners de `isRunning` coordenam exclusivamente as recargas pendentes,
 removendo as assinaturas antes de substituir ou descartar instâncias.
 O seletor observa declarativamente a execução das três seções e do limite, além
-do valor publicado pelo limite; a disponibilidade do retry observa também a
+do snapshot de `results` do limite; a disponibilidade do retry observa também a
 execução de User. As composições `Listenable.merge` são estáveis por conjunto de
 dependências e seus builders gerenciam as assinaturas, sem notifiers derivados
 ou subscriptions criadas a cada build. Resultados das seções continuam nos seus
@@ -311,7 +316,7 @@ mensagem de distribuição indisponível, inclusive quando nenhum total de categ
 é positivo; total zero não produz cards fictícios. Uma única categoria positiva
 mantém apenas o total, sem carrossel nem mensagem de distribuição indisponível.
 
-Falha de Metrics, Insights ou recentes (Left ou exceção observável) ativa
+Falha tipada ou inesperada de Metrics, Insights ou recentes ativa
 imediatamente um erro financeiro persistente em `DashboardScreenStateMixin`,
 mesmo com consultas remanescentes em execução. `DashboardScreen` retorna
 `ErrorScreen` com título “Não foi possível carregar sua
@@ -329,8 +334,9 @@ O retry único é bloqueado enquanto qualquer consulta, inclusive User, ou ciclo
 de recarga estiver em andamento. Não acumula toques bloqueados. User é consultado
 em paralelo ao limite; depois do limite resolver, aplica o ajuste civil vigente
 do mês e inicia as três consultas financeiras em paralelo. Loading permanece na
-tela de erro durante o ciclo. Somente os três resultados Right devolvidos por
-essa tentativa restauram o conteúdo, sem contar valores preservados nos commands.
+tela de erro durante o ciclo. Somente as três consultas com dados nativos,
+snapshot terminal sem erro e command/versão vigentes restauram o conteúdo,
+sem contar valores preservados nos commands ou adesão a uma leitura ocupada.
 Falhas auxiliares não impedem a recuperação financeira. Uma nova falha mantém a
 tela e libera outro retry ao terminar; não há retry automático. A identidade do
 ciclo invalida conclusões após troca de qualquer command ou descarte, preservando
@@ -462,8 +468,9 @@ como lazy singletons pelos contratos e `GetInsightsCommand` por factory.
 `IInsightRepository` e delega os campos do record `({int? year, int? month})`
 a `get` sem defaults ou normalização. Ambos os campos devem ser explícitos;
 `(year: null, month: null)` preserva a consulta geral. `execute` começa em
-`null` e preserva `Either<ErrorsEntity, List<InsightEntity>>` em
-`GetRepositoryType?`; lista vazia é sucesso e `Left` é resultado de negócio.
+`null` e publica `List<InsightEntity>?`; lista vazia é sucesso. Right publica a
+mesma lista do repository e Left lança `CommandFailureException`, preservando
+ErrorsEntity e seus metadados sem mudar o contrato do repository.
 Cada consulta substitui o resultado anterior, sem acumular, ordenar ou limitar
 insights. O command impede novas chamadas durante a execução e permite nova
 tentativa após falha. Exceções inesperadas são erros observáveis do command.
@@ -471,9 +478,10 @@ Implementa `ICommand`, descarta `execute` em `dispose` e deve ser descartado
 pelo consumidor. Não há tela proprietária de Insight, portanto o command fica
 no diretório de commands da feature.
 
-`InsightsSectionWidget`, na Dashboard, usa `CommandBuilder` para estados
-independentes das despesas: skeleton com anúncio “Carregando insights”, erro
-discreto com “Tentar novamente”, lista vazia sem seção nem espaçamento e sucesso.
+`InsightsSectionWidget`, na Dashboard, usa `CommandBuilder` com `onData` e
+`onNullData` para dados e entrada sem resultado, `whileRunning` para skeleton
+com anúncio “Carregando insights” e `onError` para ocultar a seção enquanto a
+Dashboard apresenta seu erro global. Lista vazia não cria seção ou espaçamento.
 `InsightsListWidget`, na apresentação de Insight, preserva a ordem da API em
 `SingleChildScrollView` horizontal e `Row`, com margens de 20 pixels, espaçamento
 de 12 e cards com toda a largura disponível descontando as margens laterais
@@ -654,9 +662,9 @@ recentes está integrada à Dashboard; a listagem completa usa rolagem infinita 
 `expense/presentation/screens/expenses/commands/get_expenses_command.dart`,
 recebe `IExpenseRepository` e delega a `get` os campos do record
 `({int pageSize, String? pageLink, DateTime? from, DateTime? to, String? category})`, sem defaults
-ou normalização dos limites. Seu `execute` começa em `null` e preserva
-`Either<ErrorsEntity, ExpensePageEntity>` em `GetRepositoryType?`; lista vazia é
-sucesso e `Left` permanece resultado de negócio. A primeira página usa
+ou normalização dos limites. Seu `execute` começa em `null` e publica
+`ExpensePageEntity?`; página vazia é sucesso e Left do repository lança
+`CommandFailureException` com a ErrorsEntity original. A primeira página usa
 `pageSize: 6`, `pageLink: null` e o intervalo civil do mês selecionado na Dashboard.
 A listagem geral e consumidores sem recorte continuam informando filtros nulos.
 `ExpensesScreen` recebe `category` opcional junto a `period`. A rota aceita
@@ -954,10 +962,13 @@ singletons pelos contratos e é composto por `appModule`, sem `path`.
 Settings e exibe `DangerButtonWidget` com “Excluir conta” no rodapé. Nome abre
 `/user/edit`, passando o nome exibido como argumento; e-mail fica desativado,
 sem chevron. `UserCommand`, em `presentation/screens/user/commands/`, consulta `IUserRepository.getById()`
-e preserva `Either<ErrorsEntity, UserEntity>`. A tela recebe esse command por
+e publica `UserEntity?`, inicialmente nulo. Right retorna a entidade original;
+Left lança `CommandFailureException` com a mesma ErrorsEntity. A tela recebe esse command por
 construtor e usa `CommandBuilder` para consultar a API ao montar, renderizar
 loading com `UserSkeletonWidget`, nome e e-mail reais e erros com botão “Tentar
-novamente”. O skeleton reutiliza o layout de avatar e menu com placeholders
+novamente”. O builder consome a entidade por `onData`, preserva skeleton por
+`onNullData`/`whileRunning` e usa a falha tipada em `onError`, com fallback
+genérico para exceção inesperada ou lista vazia. O skeleton reutiliza o layout de avatar e menu com placeholders
 visuais e `Skeletonizer`, que bloqueia interação durante o carregamento.
 `UserScreenStateMixin`, restrito a `State<UserScreen>`, inicia a consulta,
 encapsula recarregamento, edição de nome e descrição dos erros; a screen mantém
@@ -1363,9 +1374,10 @@ migrado adapta Right para o valor de sucesso e lança CommandFailureException
 para Left no callback específico. Exceções inesperadas do repository seguem
 como erros originais pelo CommandIt, sem encapsulamento tipado artificial.
 Não há converter genérico nem mudança para domínio orientado a exceptions.
-O tipo e o fallback já estão disponíveis; nesta etapa os commands existentes
-ainda preservam Either. Cada saída será migrada junto de todos os consumidores
-e testes na mesma unidade.
+O tipo e o fallback estão disponíveis. GetExpenses, GetInsights,
+GetExpenseMetrics, User e GetFirstExpenseMonth já usam
+dados nativos; GetExpense, mutações e Authentication ainda preservam Either.
+Cada saída é migrada junto de todos os consumidores e testes na mesma unidade.
 
 Consumidores que aguardam `runAsync` precisam tratar seu Future em erro, mesmo
 quando um listener recebe a falha. O catch não deve repetir o feedback desse
