@@ -152,9 +152,9 @@ void main() {
         expect(completed, isFalse);
         removed.complete();
 
-        final result = await data;
+        final value = await data;
         expect(completed, isTrue);
-        expect(result.right, isTrue);
+        expect(value.right, isTrue);
       });
     });
 
@@ -349,9 +349,9 @@ void main() {
         expect(completed, isFalse);
         userIdSaved.complete();
 
-        final result = await signIn;
+        final value = await signIn;
         expect(completed, isTrue);
-        expect(result.right.token, 'opaque-token');
+        expect(value.right.token, 'opaque-token');
       },
     );
 

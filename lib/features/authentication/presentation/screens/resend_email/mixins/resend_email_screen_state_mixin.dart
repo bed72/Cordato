@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
-import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
@@ -53,26 +53,30 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
   }
 
   void _handleResend() {
-    final result = widget.command.execute.results.value;
-    if (!mounted || result.isRunning || result.paramData == null) return;
+    final data = widget.command.execute.results.value;
+    if (!mounted || data.isRunning || data.paramData == null) return;
 
-    if (result.hasError) {
+    if (data.hasError) {
+      if (data.error case CommandFailureException(:final errors)
+          when errors.errors.isNotEmpty) {
+        context.showToast(
+          variant: .error,
+          title: errors.errors.first.title ?? 'Erro ao reenviar e-mail',
+          description: errors.errors
+              .map(
+                (error) =>
+                    error.detail ?? 'Não foi possível reenviar o e-mail.',
+              )
+              .join('\n'),
+        );
+        return;
+      }
       context.showToast(
         variant: .error,
         title: 'Erro ao reenviar e-mail',
         description: 'Não foi possível reenviar o e-mail. Tente novamente.',
       );
-    } else if (result.data case Left(:final value)) {
-      context.showToast(
-        variant: .error,
-        title: value.errors.first.title ?? 'Erro ao reenviar e-mail',
-        description: value.errors
-            .map(
-              (error) => error.detail ?? 'Não foi possível reenviar o e-mail.',
-            )
-            .join('\n'),
-      );
-    } else if (result.data case Right(value: true)) {
+    } else if (data.data == true) {
       _startCooldown();
       context.showToast(
         title: 'E-mail reenviado',

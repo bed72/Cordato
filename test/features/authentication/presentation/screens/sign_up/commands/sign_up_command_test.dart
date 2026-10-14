@@ -1,14 +1,17 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
-import 'package:cordato/features/authentication/presentation/screens/sign_up/commands/sign_up_command.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
+
+import 'package:cordato/features/authentication/presentation/screens/sign_up/commands/sign_up_command.dart';
+import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 
 import '../../../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
+  void onResult() {}
   const credentials = (email: 'person@example.com', password: 'secret');
 
   late IAuthenticationRepository repository;
@@ -17,9 +20,19 @@ void main() {
   setUp(() {
     repository = AuthenticationRepositoryMock();
     command = SignUpCommand(repository: repository);
+    command.execute.results.addListener(onResult);
   });
 
-  tearDown(() => command.dispose());
+  tearDown(() {
+    command.execute.results.removeListener(onResult);
+    command.dispose();
+  });
+
+  test('starts without a registration or a repository call', () {
+    expect(command.execute.value, isNull);
+    expect(command.execute.results.value.hasError, isFalse);
+    verifyZeroInteractions(repository);
+  });
 
   test('sign-up returns the registration result', () async {
     when(
@@ -29,10 +42,12 @@ void main() {
       ),
     ).thenAnswer((_) async => const Right(true));
 
-    final result = await command.execute.runAsync(credentials);
+    final data = await command.execute.runAsync(credentials);
 
-    expect(result?.right, isTrue);
-    expect(command.execute.value?.right, isTrue);
+    expect(data, isTrue);
+    expect(command.execute.value, isTrue);
+    expect(command.execute.results.value.data, isTrue);
+    expect(command.execute.results.value.paramData, credentials);
     verify(
       () => repository.signUp(
         email: credentials.email,
@@ -43,7 +58,16 @@ void main() {
 
   test('sign-up preserves the error list in the command result', () async {
     const errors = ErrorsEntity(
-      errors: [ErrorEntity(detail: 'E-mail já cadastrado.')],
+      errors: [
+        ErrorEntity(
+          title: 'Conflito',
+          status: '409',
+          detail: 'E-mail já cadastrado.',
+          pointer: '/data/attributes/email',
+          parameter: 'email',
+        ),
+        ErrorEntity(),
+      ],
     );
     when(
       () => repository.signUp(
@@ -52,10 +76,22 @@ void main() {
       ),
     ).thenAnswer((_) async => const Left(errors));
 
-    final result = await command.execute.runAsync(credentials);
-
-    expect(result?.left, same(errors));
-    expect(command.execute.value?.left, same(errors));
+    await expectLater(
+      command.execute.runAsync(credentials),
+      throwsA(
+        isA<CommandFailureException>().having(
+          (failure) => failure.errors,
+          'errors',
+          same(errors),
+        ),
+      ),
+    );
+    final failure =
+        command.execute.results.value.error as CommandFailureException;
+    expect(failure.errors, same(errors));
+    expect(command.execute.results.value.hasError, isTrue);
+    expect(command.execute.errors.value?.error, same(failure));
+    expect(command.execute.value, isNull);
   });
 
   test(
@@ -77,9 +113,81 @@ void main() {
           command.execute.runAsync(credentials),
           throwsA(same(failure)),
         );
+        expect(command.execute.results.value.error, same(failure));
+        expect(command.execute.errors.value?.error, same(failure));
       } finally {
         command.execute.results.removeListener(onResult);
       }
     },
   );
+
+  test('publishes false without turning it into a failure', () async {
+    when(
+      () => repository.signUp(
+        email: credentials.email,
+        password: credentials.password,
+      ),
+    ).thenAnswer((_) async => const Right(false));
+    expect(await command.execute.runAsync(credentials), isFalse);
+    expect(command.execute.value, isFalse);
+    expect(command.execute.results.value.data, isFalse);
+    expect(command.execute.results.value.hasError, isFalse);
+  });
+
+  test(
+    'keeps empty failure distinct from prior acceptance and allows retry',
+    () async {
+      when(
+        () => repository.signUp(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).thenAnswer((_) async => const Right(true));
+      await command.execute.runAsync(credentials);
+      const errors = ErrorsEntity(errors: []);
+      when(
+        () => repository.signUp(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).thenAnswer((_) async => const Left(errors));
+      await expectLater(
+        command.execute.runAsync(credentials),
+        throwsA(
+          isA<CommandFailureException>().having(
+            (failure) => failure.errors,
+            'errors',
+            same(errors),
+          ),
+        ),
+      );
+      expect(command.execute.value, isTrue);
+      expect(command.execute.results.value.data, isNull);
+      expect(command.execute.results.value.hasError, isTrue);
+      when(
+        () => repository.signUp(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).thenAnswer((_) async => const Right(true));
+      expect(await command.execute.runAsync(credentials), isTrue);
+      expect(command.execute.results.value.hasError, isFalse);
+      verify(
+        () => repository.signUp(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).called(3);
+    },
+  );
+
+  test('delegates credentials without normalization', () async {
+    const input = (email: '  Person@Example.com  ', password: ' secret ');
+    when(() => repository.signUp(email: input.email, password: input.password))
+        .thenAnswer((_) async => const Right(true));
+    expect(await command.execute.runAsync(input), isTrue);
+    verify(
+      () => repository.signUp(email: input.email, password: input.password),
+    ).called(1);
+  });
 }

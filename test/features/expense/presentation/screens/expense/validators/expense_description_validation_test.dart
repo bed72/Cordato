@@ -11,7 +11,7 @@ void main() {
       expect(
         validator(description),
         isA<Invalid<String>>().having(
-          (result) => result.message,
+          (data) => data.message,
           'message',
           'Informe uma descrição',
         ),
@@ -26,7 +26,7 @@ void main() {
         expect(
           validator(description),
           isA<Invalid<String>>().having(
-            (result) => result.message,
+            (data) => data.message,
             'message',
             'A descrição deve ter entre 2 e 128 caracteres',
           ),
@@ -42,7 +42,7 @@ void main() {
         expect(
           validator(description),
           isA<Valid<String>>().having(
-            (result) => result.value,
+            (data) => data.value,
             'value',
             description,
           ),
@@ -55,7 +55,7 @@ void main() {
     expect(
       validator('  Compra de  mercado  '),
       isA<Valid<String>>().having(
-        (result) => result.value,
+        (data) => data.value,
         'value',
         'Compra de  mercado',
       ),

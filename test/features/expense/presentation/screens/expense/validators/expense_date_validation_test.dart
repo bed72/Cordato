@@ -10,7 +10,7 @@ void main() {
     expect(
       validator(null),
       isA<Invalid<DateTime?>>().having(
-        (result) => result.message,
+        (data) => data.message,
         'message',
         'Selecione a data',
       ),
@@ -22,11 +22,7 @@ void main() {
 
     expect(
       validator(date),
-      isA<Valid<DateTime?>>().having(
-        (result) => result.value,
-        'value',
-        same(date),
-      ),
+      isA<Valid<DateTime?>>().having((data) => data.value, 'value', same(date)),
     );
   });
 }

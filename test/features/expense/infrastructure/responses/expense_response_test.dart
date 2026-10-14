@@ -76,10 +76,10 @@ void main() {
           occurredOn: DateTime(2026, 10, 5),
         );
 
-        final result = response.toEntity();
+        final data = response.toEntity();
 
-        expect(result.isLeft, isTrue);
-        expect(result.left.errors.single.title, 'Valor inválido');
+        expect(data.isLeft, isTrue);
+        expect(data.left.errors.single.title, 'Valor inválido');
       });
     }
   });

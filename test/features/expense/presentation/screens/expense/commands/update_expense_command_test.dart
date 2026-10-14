@@ -61,12 +61,12 @@ void main() {
         ),
       ).thenAnswer((_) async => response);
 
-      final result = await command.execute.runAsync(parameters);
+      final data = await command.execute.runAsync(parameters);
 
-      expect(result, same(entity));
+      expect(data, same(entity));
       expect(command.execute.value, same(entity));
-      expect(command.execute.results.value.data, same(entity));
       expect(command.execute.results.value.hasError, isFalse);
+      expect(command.execute.results.value.data, same(entity));
       verify(
         () => repository.update(
           id: parameters.id,
@@ -181,12 +181,13 @@ void main() {
       return pending.future;
     });
 
-    final result = command.execute.runAsync((
+    final data = command.execute.runAsync((
       id: '8',
       cents: 1500,
-      description: null,
       occurredOn: null,
+      description: null,
     ));
+
     await started.future;
     expect(command.execute.isRunning.value, isTrue);
     command.execute.run((
@@ -198,7 +199,7 @@ void main() {
     verify(() => repository.update(id: '8', cents: 1500)).called(1);
     pending.complete(Right(entity));
 
-    expect(await result, same(entity));
+    expect(await data, same(entity));
     expect(command.execute.isRunning.value, isFalse);
     verifyNoMoreInteractions(repository);
   });

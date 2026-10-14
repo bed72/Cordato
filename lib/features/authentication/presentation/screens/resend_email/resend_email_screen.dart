@@ -1,15 +1,13 @@
 import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/authentication/presentation/widgets/email_field_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
+import 'package:cordato/features/authentication/presentation/widgets/email_field_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/app_bar_sign_up_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/commands/resend_email_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/mixins/resend_email_screen_state_mixin.dart';
-import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/widgets/resend_email_cooldown_label_widget.dart';
 
 final class const ResendEmailScreen({
@@ -58,7 +56,7 @@ final class _ResendEmailScreenState extends State<ResendEmailScreen>
                 ),
               ),
               ResendEmailCooldownLabelWidget(remaining: remaining),
-              CommandBuilder<String, Either<ErrorsEntity, bool>?>(
+              CommandBuilder<String, bool?>(
                 command: widget.command.execute,
                 whileRunning: (_, _, _) => const ElevatedButtonWidget(
                   onTap: null,

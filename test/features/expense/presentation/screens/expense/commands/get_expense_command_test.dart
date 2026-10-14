@@ -51,9 +51,9 @@ void main() {
       when(() => repository.getById(id: 'a/b?c#d'))
           .thenAnswer((_) async => response);
 
-      final result = await command.execute.runAsync('a/b?c#d');
+      final data = await command.execute.runAsync('a/b?c#d');
 
-      expect(result, same(entity));
+      expect(data, same(entity));
       expect(command.execute.value, same(entity));
       expect(command.execute.results.value.hasError, isFalse);
       expect(command.execute.results.value.data, same(entity));
@@ -140,9 +140,9 @@ void main() {
     when(() => repository.getById(id: '8'))
         .thenAnswer((_) async => Right(entity));
 
-    final result = await command.execute.runAsync('8');
+    final data = await command.execute.runAsync('8');
 
-    expect(result, same(entity));
+    expect(data, same(entity));
     expect(command.execute.value, same(entity));
     expect(command.execute.errors.value, isNull);
     expect(command.execute.results.value.hasError, isFalse);

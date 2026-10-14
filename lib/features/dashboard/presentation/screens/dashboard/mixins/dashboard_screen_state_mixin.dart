@@ -35,12 +35,12 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
       !widget.userCommand.execute.isRunning.value;
 
   bool get canGoToPreviousMonth {
-    final result = widget.firstExpenseMonthCommand.execute.results.value;
-    if (result.isRunning || result.hasError || result.data == null) {
+    final data = widget.firstExpenseMonthCommand.execute.results.value;
+    if (data.isRunning || data.hasError || data.data == null) {
       return false;
     }
 
-    return selectedMonth.isAfter(result.data!);
+    return selectedMonth.isAfter(data.data!);
   }
 
   bool get canGoToNextMonth {

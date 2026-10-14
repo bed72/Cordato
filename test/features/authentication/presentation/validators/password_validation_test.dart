@@ -10,7 +10,7 @@ void main() {
     expect(
       validator(''),
       isA<Invalid<String>>().having(
-        (result) => result.message,
+        (data) => data.message,
         'message',
         'Senha obrigatória',
       ),
@@ -22,7 +22,7 @@ void main() {
       expect(
         validator(password),
         isA<Invalid<String>>().having(
-          (result) => result.message,
+          (data) => data.message,
           'message',
           'A senha deve ter entre 6 e 12 caracteres',
         ),
@@ -34,7 +34,7 @@ void main() {
     expect(
       validator('abc123'),
       isA<Invalid<String>>().having(
-        (result) => result.message,
+        (data) => data.message,
         'message',
         'A senha deve conter uma letra maiúscula',
       ),
@@ -45,7 +45,7 @@ void main() {
     expect(
       validator('Abcdef'),
       isA<Invalid<String>>().having(
-        (result) => result.message,
+        (data) => data.message,
         'message',
         'A senha deve conter um número',
       ),
@@ -58,11 +58,7 @@ void main() {
       for (final password in ['Abc123', 'Abcdefghij12']) {
         expect(
           validator(password),
-          isA<Valid<String>>().having(
-            (result) => result.value,
-            'value',
-            password,
-          ),
+          isA<Valid<String>>().having((data) => data.value, 'value', password),
         );
       }
     },

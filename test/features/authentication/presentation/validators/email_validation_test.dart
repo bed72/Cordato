@@ -1,16 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/core/presentation/validators/validation.dart';
+import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 
 void main() {
   const validator = EmailValidation();
 
   test('rejects an empty email', () {
-    final result = validator('   ');
+    final data = validator('   ');
 
     expect(
-      result,
+      data,
       isA<Invalid<String>>().having(
         (validation) => validation.message,
         'message',
@@ -20,10 +20,10 @@ void main() {
   });
 
   test('rejects an invalid email', () {
-    final result = validator('invalid-email');
+    final data = validator('invalid-email');
 
     expect(
-      result,
+      data,
       isA<Invalid<String>>().having(
         (validation) => validation.message,
         'message',
@@ -33,10 +33,10 @@ void main() {
   });
 
   test('returns a trimmed valid email', () {
-    final result = validator(' person@example.com ');
+    final data = validator(' person@example.com ');
 
     expect(
-      result,
+      data,
       isA<Valid<String>>().having(
         (validation) => validation.value,
         'value',

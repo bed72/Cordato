@@ -87,13 +87,13 @@ void main() {
       ),
     ).thenAnswer((_) async => Right(entity));
 
-    final result = await command.execute.runAsync((
+    final data = await command.execute.runAsync((
       cents: 300,
       occurredOn: null,
       description: ' Game ',
     ));
 
-    expect(result, same(entity));
+    expect(data, same(entity));
     verify(
       () => repository.create(
         cents: 300,

@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/form_sign_in_widget.dart';
@@ -24,18 +24,11 @@ mixin SignInScreenStateMixin on State<SignInScreen> {
     final data = widget.command.execute.results.value;
     if (!mounted || data.isRunning || data.paramData == null) return;
 
-    if (data.hasError) {
-      context.showToast(
-        variant: .error,
-        title: 'Erro ao entrar',
-        description: 'Não foi possível entrar. Tente novamente.',
-      );
-      return;
-    }
-
-    if (data.data case Left(:final value)) {
+    if (!data.hasError) return;
+    if (data.error case CommandFailureException(:final errors)
+        when errors.errors.isNotEmpty) {
       final remaining =
-          formKey.currentState?.showErrors(value.errors) ?? value.errors;
+          formKey.currentState?.showErrors(errors.errors) ?? errors.errors;
 
       if (remaining.isNotEmpty) {
         context.showToast(
@@ -49,7 +42,13 @@ mixin SignInScreenStateMixin on State<SignInScreen> {
               .join('\n'),
         );
       }
+      return;
     }
+    context.showToast(
+      variant: .error,
+      title: 'Erro ao entrar',
+      description: 'Não foi possível entrar. Tente novamente.',
+    );
   }
 
   void signIn() {

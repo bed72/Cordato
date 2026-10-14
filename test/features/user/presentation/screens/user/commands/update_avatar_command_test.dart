@@ -109,17 +109,17 @@ void main() {
       return pending.future;
     });
 
-    final result = command.execute.runAsync(seed);
+    final data = command.execute.runAsync(seed);
     await started.future;
     expect(command.execute.isRunning.value, isTrue);
 
     command.execute.run(seed);
     final joined = command.execute.runAsync('another-avatar');
-    expect(joined, same(result));
+    expect(joined, same(data));
     verify(() => repository.update(avatar: seed)).called(1);
     pending.complete(const Right(user));
 
-    expect(await result, same(user));
+    expect(await data, same(user));
     expect(await joined, same(user));
     expect(command.execute.isRunning.value, isFalse);
     expect(command.execute.results.value.paramData, seed);

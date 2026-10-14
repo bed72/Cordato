@@ -32,9 +32,9 @@ void main() {
     when(() => repository.delete()).thenAnswer((_) async => const Right(true));
 
     expect(command.execute.value, isNull);
-    final result = await command.execute.runAsync();
+    final data = await command.execute.runAsync();
 
-    expect(result, isTrue);
+    expect(data, isTrue);
     expect(command.execute.value, isTrue);
     expect(command.execute.results.value.data, isTrue);
     verify(() => repository.delete()).called(1);
@@ -43,9 +43,9 @@ void main() {
   test('preserves an unconfirmed deletion without reporting success', () async {
     when(() => repository.delete()).thenAnswer((_) async => const Right(false));
 
-    final result = await command.execute.runAsync();
+    final data = await command.execute.runAsync();
 
-    expect(result, isFalse);
+    expect(data, isFalse);
     expect(command.execute.value, isFalse);
     expect(command.execute.results.value.data, isFalse);
     expect(command.execute.results.value.hasError, isFalse);
@@ -93,20 +93,23 @@ void main() {
     final pending = Completer<DeleteRepositoryType>();
     when(() => repository.delete()).thenAnswer((_) => pending.future);
 
-    final result = command.execute.runAsync();
+    final data = command.execute.runAsync();
     await Future<void>.delayed(Duration.zero);
     expect(command.execute.isRunning.value, isTrue);
 
     command.execute.run();
     final joined = command.execute.runAsync();
 
-    expect(joined, same(result));
+    expect(joined, same(data));
+
     verify(() => repository.delete()).called(1);
     pending.complete(const Right(true));
 
-    expect(await result, isTrue);
+    expect(await data, isTrue);
     expect(await joined, isTrue);
+
     await Future<void>.delayed(Duration.zero);
+
     expect(command.execute.isRunning.value, isFalse);
     verifyNoMoreInteractions(repository);
   });

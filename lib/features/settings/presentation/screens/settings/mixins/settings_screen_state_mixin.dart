@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
 
@@ -37,26 +37,25 @@ mixin SettingsScreenStateMixin on State<SettingsScreen> {
     final data = widget.command.execute.results.value;
     if (!mounted || data.isRunning) return;
 
-    if (data.hasError) {
+    if (!data.hasError) return;
+    if (data.error case CommandFailureException(:final errors)
+        when errors.errors.isNotEmpty) {
       context.showToast(
         variant: .error,
-        title: 'Erro ao sair',
-        description: 'Não foi possível sair. Tente novamente.',
-      );
-      return;
-    }
-
-    if (data.data case Left(:final value)) {
-      context.showToast(
-        variant: .error,
-        title: value.errors.first.title ?? 'Erro ao sair',
-        description: value.errors
+        title: errors.errors.first.title ?? 'Erro ao sair',
+        description: errors.errors
             .map(
               (error) =>
                   error.detail ?? 'Não foi possível sair. Tente novamente.',
             )
             .join('\n'),
       );
+      return;
     }
+    context.showToast(
+      variant: .error,
+      title: 'Erro ao sair',
+      description: 'Não foi possível sair. Tente novamente.',
+    );
   }
 }

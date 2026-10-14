@@ -115,22 +115,29 @@ repetir a matriz Maestro nem atribuir cobertura nova aos registros anteriores.
 - [x] 9.3 Preservar timer de dois segundos, escolha temporária e avatarUser quando necessário; cancelar timer na troca/descarte/exclusão e manter ausência de retry automático.
 - [x] 9.4 Migrar DeleteUserCommand e handlers/testes para bool anulável, preservando true/false, limpeza de storage exclusivamente pelo repository e navegação pela observação de sessão.
 - [x] 9.5 Validar que erro tipado com lista vazia usa fallback sem throw secundário, e que value antigo não confirma nome/avatar/exclusão de uma tentativa falha.
-- [ ] 9.6 Validar via Maestro consulta, edição de nome, regeneração coalescida de avatar, seed não devolvida quando reproduzível e confirmação de exclusão em ambiente apropriado, sem descarte manual de singletons do módulo.
+- [x] 9.6 Validar via Maestro consulta, edição de nome, regeneração coalescida de avatar, seed não devolvida quando reproduzível e confirmação de exclusão em ambiente apropriado, sem descarte manual de singletons do módulo.
 
 Registro do grupo 9: [mutações nativas de User, lifecycle e checks](implementation-part-8.md).
 9.1–9.5 foram implementadas e verificadas por testes de commands e inspeção dos
-consumidores. 9.6 permanece pendente; nenhum launcher temporário foi criado ou
-solicitado novamente, e não houve alteração de dados da conta em dispositivo.
+consumidores. 9.6 foi encerrada por aceite explícito do usuário, sem execução
+Maestro adicional. Nenhum launcher temporário foi criado ou solicitado novamente,
+e não houve alteração de dados da conta em dispositivo.
 
 ## 10. Authentication e Settings: migração completa dos consumers
 
-- [ ] 10.1 Migrar SignInCommand com SignInScreen/mixin, builders e testes para SessionEntity anulável, preservando credenciais, erro de campo e transição por SessionCommand.
-- [ ] 10.2 Migrar SignUpCommand com SignUpScreen/mixin/builders/testes para bool anulável, preservando true com confirmação, false sem navegação e falhas esperadas no contexto.
-- [ ] 10.3 Migrar ResendEmailCommand com tela/mixin/previews/teste no caminho atual existente para bool anulável, preservando cooldown e false sem anúncio de sucesso.
-- [ ] 10.4 Migrar LogoutCommand com SettingsScreen/mixin/previews/testes para bool anulável, mantendo confirmação, revogação/limpeza no repository e um feedback de erro contextual.
-- [ ] 10.5 Interpretar CommandFailureException para pointers/toasts e Throwable inesperado para fallback, sem navegação em builders ou commands e sem reintroduzir contracts históricos de Supabase.
-- [ ] 10.6 Atualizar todos os testes que esperavam Left em execute.value, comprovando falhas em results/errors/Future e sucesso dos valores nativos, com subscriptions e configuração global restauradas.
+- [x] 10.1 Migrar SignInCommand com SignInScreen/mixin, builders e testes para SessionEntity anulável, preservando credenciais, erro de campo e transição por SessionCommand.
+- [x] 10.2 Migrar SignUpCommand com SignUpScreen/mixin/builders/testes para bool anulável, preservando true com confirmação, false sem navegação e falhas esperadas no contexto.
+- [x] 10.3 Migrar ResendEmailCommand com tela/mixin/previews/teste no caminho atual existente para bool anulável, preservando cooldown e false sem anúncio de sucesso.
+- [x] 10.4 Migrar LogoutCommand com SettingsScreen/mixin/previews/testes para bool anulável, mantendo confirmação, revogação/limpeza no repository e um feedback de erro contextual.
+- [x] 10.5 Interpretar CommandFailureException para pointers/toasts e Throwable inesperado para fallback, sem navegação em builders ou commands e sem reintroduzir contracts históricos de Supabase.
+- [x] 10.6 Atualizar todos os testes que esperavam Left em execute.value, comprovando falhas em results/errors/Future e sucesso dos valores nativos, com subscriptions e configuração global restauradas.
 - [ ] 10.7 Validar Maestro sign-in falho/bem-sucedido, sign-up/reenvio e logout confirmado/cancelado/falho, preservando storage e sessão conforme as respostas reais do ambiente.
+
+Registro do grupo 10: [Authentication, Settings, checks e validação pendente](implementation-part-9.md).
+10.1–10.6 foram implementadas e verificadas por testes de commands e inspeção dos
+consumidores. 10.7 permanece pendente: o simulador listado pelo Maestro ficou
+inacessível ao inspecionar a tela. Não houve execução dos fluxos nem alteração
+de conta ou sessão em dispositivo nesta etapa.
 
 ## 11. Lifecycle dos demais consumidores e fluxos não Either
 

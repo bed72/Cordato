@@ -270,17 +270,18 @@ void main() {
         });
 
         bool completed = false;
-        final response = repository.delete().then((result) {
+        final response = repository.delete().then((data) {
           completed = true;
-          return result;
+          return data;
         });
         await clearing.future;
         expect(completed, isFalse);
         pending.complete();
 
-        final result = await response;
+        final data = await response;
+
         expect(completed, isTrue);
-        expect(result.right, isTrue);
+        expect(data.right, isTrue);
       },
     );
 

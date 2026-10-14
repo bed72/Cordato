@@ -53,10 +53,10 @@ final class _MetricsSectionWidgetState extends State<MetricsSectionWidget> {
   }
 
   void _rememberTotal() {
-    final result = widget.command.execute.results.value;
-    if (result.isRunning || result.hasError || result.data == null) return;
+    final data = widget.command.execute.results.value;
+    if (data.isRunning || data.hasError || data.data == null) return;
 
-    final metrics = result.data!;
+    final metrics = data.data!;
     final period = (
       from: DateTime(
         metrics.startDate.year,

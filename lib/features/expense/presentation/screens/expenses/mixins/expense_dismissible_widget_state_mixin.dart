@@ -22,6 +22,14 @@ mixin ExpenseDismissibleWidgetStateMixin
   bool get wantKeepAlive => _isHandlingSwipe;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!TickerMode.of(context) && _isHandlingSwipe && _returningFromEdit) {
+      _finishReturn();
+    }
+  }
+
+  @override
   void dispose() {
     swipeController.dispose();
     super.dispose();
@@ -73,18 +81,15 @@ mixin ExpenseDismissibleWidgetStateMixin
             ),
           )
           .orCancel;
-      final action = activate && widget.enabled && !editing
-          ? widget.onConfirmDelete()
+      final action = activate && widget.enabled
+          ? editing
+                ? _editAndRestore(id)
+                : widget.onConfirmDelete()
           : Future<bool>.value(false);
 
       await returning;
       if (!mounted || widget.id != id) return;
       swipeController.value = 0.0;
-
-      if (editing && activate && widget.enabled) {
-        await widget.onEdit?.call();
-        return;
-      }
 
       final deleted = await action;
       if (mounted && widget.id == id && deleted) widget.onDeleted();
@@ -96,5 +101,19 @@ mixin ExpenseDismissibleWidgetStateMixin
         updateKeepAlive();
       }
     }
+  }
+
+  void _finishReturn() {
+    swipeController.stop(canceled: false);
+    swipeController.value = 0.0;
+  }
+
+  Future<bool> _editAndRestore(String id) async {
+    try {
+      await widget.onEdit?.call();
+    } finally {
+      if (mounted && widget.id == id) _finishReturn();
+    }
+    return false;
   }
 }

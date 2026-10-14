@@ -846,10 +846,12 @@ arrastes curtos ou cancelados apenas retornam à posição original.
 O mesmo componente aceita arraste da esquerda para a direita para editar: o item
 se desloca para a direita e revela à esquerda um fundo `primaryContainer` com
 lápis `onPrimaryContainer`. O limite e o threshold são os mesmos da exclusão;
-soltar após o threshold conclui o spring de retorno e fixa o deslocamento em zero
-antes de abrir o editor, sem confirmação ou remoção do item. A navegação não pausa
-uma mola pendente: ao voltar, o item já está na posição original. Antes de navegar,
-o gesto revalida montagem, ID e disponibilidade da ação. A direção permanece fixada durante
+soltar após o threshold inicia o spring de retorno e abre o editor imediatamente,
+em paralelo, sem confirmação ou remoção do item. Quando a rota de edição cobre a
+lista e desativa seu `TickerMode`, o gesto conclui a mola e fixa o deslocamento em
+zero. O retorno do editor também fixa zero, inclusive se a rota voltar antes de
+cobrir a lista. Não há espera pela duração da mola antes de navegar nem animação
+pendente ao retornar. A direção permanece fixada durante
 o retorno para o overshoot do spring não exibir a ação oposta. Não há abertura
 por toque simples. A ação de acessibilidade “Editar despesa” abre o mesmo editor.
 Sem callback de edição, somente o arraste de exclusão fica disponível.
@@ -1383,8 +1385,12 @@ Responsabilidades e implementações atuais:
   outra falha. `signUp` retorna sucesso após o cadastro. Sign-in,
   sign-up e reenvio retornam `Either<ErrorsEntity, R>`: os erros JSON:API são
   preservados no `Left` e falhas inesperadas usam um erro genérico.
-  `SignInCommand` e `SignUpCommand` entregam esse `Either` como resultado ao
-  `command_it`, para a apresentação decidir como exibir os erros.
+  `SignInCommand` publica `SessionEntity?`; `SignUpCommand` e `ResendEmailCommand`
+  publicam `bool?`, todos inicialmente nulos. Right publica o valor original e
+  Left lança `CommandFailureException` com a mesma ErrorsEntity. Os listeners
+  interpretam o snapshot terminal, priorizando erro antes dos dados. Falhas
+  tipadas mantêm pointers e mensagens; lista vazia ou erro inesperado usa fallback
+  localizado, sem interpretar `value` anterior como sucesso.
   As duas rotas retornam o envelope JSON:API `errors` com itens contendo
   `title`, `detail`, `status` e, para erros de campo, `source.pointer`.
   A apresentação usa `status` e `source.pointer` para mostrar erros de e-mail
@@ -1442,8 +1448,8 @@ proprietária do logout; Settings o recebe por construtor. `ResendEmailScreen`
 e `ResendEmailCommand` vivem em `screens/resend_email/`, preservando a rota
 `/authentication/confirm`. Renomeações de tela e command atualizam arquivo, tipo, imports,
 registro no módulo, testes e documentação sem mudar a rota por consequência.
-O sign-in entrega `Either` à apresentação para tratar os erros da API; commands
-de outras features podem expor falhas como erros observáveis. Estado
+Os commands de Authentication adaptam `Either` para dados nativos ou falha tipada;
+os consumidores tratam os erros observáveis no contexto da tela. Estado
 efêmero pertence à screen ou widget. Quando lifecycle, controllers e handlers
 prejudicarem a leitura, use um mixin específico em `presentation/mixins/` ou
 no diretório da própria tela, restrito ao `State` correspondente e responsável
@@ -1467,7 +1473,9 @@ O tipo e o fallback estão disponíveis. GetExpenses, GetInsights,
 GetExpenseMetrics, User, GetFirstExpenseMonth e GetExpense já usam
 dados nativos; CreateExpense e UpdateExpense também publicam ExpenseEntity anulável,
 e DeleteExpense publica bool anulável. UpdateUser e UpdateAvatar publicam UserEntity
-anulável, e DeleteUser publica bool anulável. Authentication ainda preserva Either.
+anulável, e DeleteUser publica bool anulável. SignIn publica SessionEntity anulável;
+SignUp, ResendEmail e Logout publicam bool anulável. Os repositories de
+Authentication continuam retornando Either.
 Cada saída é migrada junto de todos os consumidores e testes na mesma unidade.
 
 Consumidores que aguardam `runAsync` precisam tratar seu Future em erro, mesmo
@@ -1731,7 +1739,18 @@ dos formulários substituem sign-in por sign-up e vice-versa, mantendo
 sign-up por `/authentication/confirm`, que exibe o e-mail em um campo
 desabilitado e permite reenviar o link com feedback da API. Um cooldown local
 de 60 segundos começa ao abrir a tela e reinicia após cada reenvio aceito; o
-tempo restante aparece no `ResendEmailCooldownLabelWidget`. O
+tempo restante aparece no `ResendEmailCooldownLabelWidget`. Somente resultado
+terminal `true`, sem erro, navega do cadastro para a confirmação ou reinicia o
+cooldown e anuncia reenvio aceito; `false` não produz esses efeitos. Controllers,
+validação e timer continuam locais. Os builders dos botões somente renderizam
+execução, sem navegação ou toast.
+`LogoutCommand` publica `bool?`, inicialmente nulo, adaptando Right para o booleano
+e Left para `CommandFailureException`. Settings mantém a confirmação e mostra
+um único feedback contextual em falha, incluindo lista vazia e erro inesperado.
+Revogação e limpeza continuam no repository; a navegação decorre da observação
+de sessão. As telas removem seus listeners sem descartar os lazy singletons:
+SignIn, SignUp e ResendEmail pertencem ao root, e Logout ao módulo de Settings.
+O
 link de confirmação abre `/authentication/confirm-email` com
 `verification_url` como parâmetro na `CallbackScreen`; a rota aceita exatamente
 um valor desse parâmetro, tratando ausência ou múltiplos valores como URL ausente.

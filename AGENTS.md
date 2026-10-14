@@ -912,24 +912,29 @@ ação. Commands sem tela proprietária dentro da própria feature ficam em
 arquivo, imports, registro no módulo, testes e documentação na mesma alteração; preserve as
 rotas e o comportamento quando a mudança for somente de nomenclatura.
 
-O sign-in mantém `Either` no resultado do command para a apresentação decidir
-como exibir erros da API:
+O sign-in publica a sessão nativa e adapta falhas do repository no command:
 
 ```dart
 final class SignInCommand({required IAuthenticationRepository repository})
     implements ICommand {
   final Command<
     ({String email, String password}),
-    Either<ErrorsEntity, SessionEntity>?
+    SessionEntity?
   > execute = Command.createAsync<
     ({String email, String password}),
-    Either<ErrorsEntity, SessionEntity>?
+    SessionEntity?
   >(
     initialValue: null,
-    (credentials) => repository.signIn(
-      email: credentials.email,
-      password: credentials.password,
-    ),
+    (credentials) async {
+      final result = await repository.signIn(
+        email: credentials.email,
+        password: credentials.password,
+      );
+      return switch (result) {
+        Right(:final value) => value,
+        Left(:final value) => throw CommandFailureException(errors: value),
+      };
+    },
   );
 
   @override
@@ -937,9 +942,16 @@ final class SignInCommand({required IAuthenticationRepository repository})
 }
 ```
 
-Na screen, use `CommandBuilder` para renderizar estados de execução e resultado;
-trate `Left` como resultado quando o command retornar `Either`. Não faça
-`try/catch` da operação diretamente no `build`.
+Na screen, use `CommandBuilder` para renderizar estados de execução e resultado.
+Listeners interpretam o snapshot terminal, priorizando erro antes dos dados;
+falha tipada distribui mensagens por pointer ou toast, com fallback localizado
+para lista vazia ou erro inesperado. Não faça `try/catch` da operação no `build`.
+SignUp, ResendEmail e Logout publicam `bool?`, inicialmente nulo. Cadastro navega
+somente em true; reenvio reinicia o cooldown de sessenta segundos e anuncia sucesso
+somente em true. False permanece dado válido sem esses efeitos. SignIn mantém a
+transição pela observação da sessão, e Logout mantém confirmação em Settings,
+revogação/limpeza no repository e um único feedback contextual em falha.
+As telas não descartam os lazy singletons de Authentication ou Settings.
 
 `CommandFailureException`, em `core/presentation/commands/`, transporta a mesma
 `ErrorsEntity`, incluindo lista vazia, ordem e metadados anuláveis. O bootstrap
@@ -956,7 +968,9 @@ Left para CommandFailureException, sem converter genérico. GetExpenses,
 GetInsights, GetExpenseMetrics, User e GetFirstExpenseMonth já usam dados nativos;
 GetExpense, CreateExpense e UpdateExpense também usam dados nativos;
 DeleteExpense publica bool anulável. UpdateUser e UpdateAvatar publicam UserEntity
-anulável, e DeleteUser publica bool anulável. Authentication ainda mantém Either.
+anulável, e DeleteUser publica bool anulável. SignIn publica SessionEntity anulável;
+SignUp, ResendEmail e Logout publicam bool anulável. Os repositories de
+Authentication continuam retornando Either.
 Ao migrar, priorize o erro do snapshot
 terminal sobre dados, trate o Future de `runAsync` em erro e não duplique no catch
 um feedback já emitido por listener. Não use value anterior como sucesso atual.

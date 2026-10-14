@@ -8,7 +8,7 @@ import 'package:cordato/features/core/infrastructure/clients/http/responses/resp
 void main() {
   group('response', () {
     test('preserves query parameters separately from JSON pointers', () async {
-      final result = await response<int>(
+      final data = await response<int>(
         execute: () async => const Left(
           Reponse(
             statusCode: 422,
@@ -34,9 +34,9 @@ void main() {
         ),
         from: (_) => throw StateError('must not convert an error'),
       );
-      final errors = result.left.toEntity().errors;
+      final errors = data.left.toEntity().errors;
 
-      expect(result.left.errors.first.parameter, 'start_date');
+      expect(data.left.errors.first.parameter, 'start_date');
       expect(errors.first.parameter, 'start_date');
       expect(errors.first.pointer, isNull);
       expect(errors.first.status, '422');
@@ -70,9 +70,9 @@ void main() {
           const Right(Reponse(statusCode: 200, body: {'name': 'Gabriel'})),
         );
 
-        final result = await data;
+        final value = await data;
         expect(conversions, 1);
-        expect(result.right, '200: Gabriel');
+        expect(value.right, '200: Gabriel');
       },
     );
 

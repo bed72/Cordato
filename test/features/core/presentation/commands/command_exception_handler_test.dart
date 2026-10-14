@@ -181,23 +181,20 @@ void main() {
             ),
           );
 
-          final result = auxiliary == 'user'
+          final data = auxiliary == 'user'
               ? user.execute.results.value
               : history.execute.results.value;
-          expect(result.hasError, isTrue);
-          expect(result.isRunning, isFalse);
-          expect(
-            result.errorReaction,
-            ErrorReaction.firstLocalThenGlobalHandler,
-          );
+          expect(data.hasError, isTrue);
+          expect(data.isRunning, isFalse);
+          expect(data.errorReaction, ErrorReaction.firstLocalThenGlobalHandler);
           if (typed) {
             verifyZeroInteractions(client);
           } else {
             verify(
               () => client.recordError(
-                error: failure,
-                stackTrace: result.stackTrace!,
                 fatal: false,
+                error: failure,
+                stackTrace: data.stackTrace!,
               ),
             ).called(1);
             verifyNoMoreInteractions(client);

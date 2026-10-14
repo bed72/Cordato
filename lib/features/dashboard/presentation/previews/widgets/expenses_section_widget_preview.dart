@@ -31,7 +31,7 @@ Widget previewLoadingExpensesSectionWidget() => _sectionPreview();
   size: Size(390.0, 220.0),
 )
 Widget previewEmptyExpensesSectionWidget() => _sectionPreview(
-  result: Right(ExpensePageEntity(items: [], next: null, prev: null)),
+  type: Right(ExpensePageEntity(items: [], next: null, prev: null)),
 );
 
 @CordatoPreview(
@@ -40,7 +40,7 @@ Widget previewEmptyExpensesSectionWidget() => _sectionPreview(
   size: Size(390.0, 520.0),
 )
 Widget previewExpensesSectionWidget() => _sectionPreview(
-  result: Right(_expensesPage()),
+  type: Right(_expensesPage()),
   onSeeAllExpensesPressed: () {},
 );
 
@@ -50,21 +50,20 @@ Widget previewExpensesSectionWidget() => _sectionPreview(
   size: Size(390.0, 520.0),
 )
 Widget previewExpensesSectionWithoutSeeAllWidget() =>
-    _sectionPreview(result: Right(_expensesPage()));
+    _sectionPreview(type: Right(_expensesPage()));
 
 Widget _sectionPreview({
-  GetRepositoryType? result,
+  GetRepositoryType? type,
   VoidCallback? onSeeAllExpensesPressed,
 }) => PreviewResourceWidget<GetExpensesCommand>(
   create: () {
     final command = GetExpensesCommand(
       repository: ExpensesPreviewRepository(
         type:
-            result ??
-            Right(ExpensePageEntity(items: [], next: null, prev: null)),
+            type ?? Right(ExpensePageEntity(items: [], next: null, prev: null)),
       ),
     );
-    if (result != null) {
+    if (type != null) {
       command.execute.run((
         pageSize: 6,
         category: null,

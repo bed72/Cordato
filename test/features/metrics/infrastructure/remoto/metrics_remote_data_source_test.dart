@@ -4,6 +4,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+
 import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
 import 'package:cordato/features/metrics/infrastructure/remoto/metrics_remote_data_source.dart';
 
@@ -36,22 +37,24 @@ void main() {
   test(
     'gets the relative endpoint without filters or custom headers',
     () async {
-      final result = await dataSource.getExpenses();
+      final data = await dataSource.getExpenses();
 
-      expect(result.right.id, 'metrics-id');
-      expect(result.right.totalAmount, 389205);
-      expect(result.right.startDate, DateTime(2026, 10, 1));
-      expect(result.right.endDate, DateTime(2026, 10, 31));
-      expect(result.right.categories, isNull);
+      expect(data.right.id, 'metrics-id');
+      expect(data.right.categories, isNull);
+      expect(data.right.totalAmount, 389205);
+      expect(data.right.endDate, DateTime(2026, 10, 31));
+      expect(data.right.startDate, DateTime(2026, 10, 1));
+
       final request =
           verify(() => client.get(parameter: captureAny(named: 'parameter')))
                   .captured
                   .single
               as Requests;
-      expect(request.path, 'metrics/expenses');
-      expect(request.query, isNull);
+
       expect(request.body, isNull);
+      expect(request.query, isNull);
       expect(request.headers, isNull);
+      expect(request.path, 'metrics/expenses');
       verifyNoMoreInteractions(client);
     },
   );
@@ -151,16 +154,16 @@ void main() {
       ),
     );
 
-    final result = await dataSource.getExpenses(groupBy: .category);
+    final data = await dataSource.getExpenses(groupBy: .category);
 
-    expect(result.right.categories!.map((category) => category.category), [
+    expect(data.right.categories!.map((category) => category.category), [
       'housing',
       'future_category',
     ]);
-    expect(result.right.categories!.first.totalAmount, 216000);
-    expect(result.right.categories!.first.percentage, 55.50);
-    expect(result.right.categories!.last.totalAmount, 7965);
-    expect(result.right.categories!.last.percentage, 2.05);
+    expect(data.right.categories!.last.percentage, 2.05);
+    expect(data.right.categories!.last.totalAmount, 7965);
+    expect(data.right.categories!.first.percentage, 55.50);
+    expect(data.right.categories!.first.totalAmount, 216000);
   });
 
   test('accepts zero totals with an empty grouping', () async {
@@ -182,10 +185,10 @@ void main() {
       ),
     );
 
-    final result = await dataSource.getExpenses(groupBy: .category);
+    final data = await dataSource.getExpenses(groupBy: .category);
 
-    expect(result.right.totalAmount, 0);
-    expect(result.right.categories, isEmpty);
+    expect(data.right.totalAmount, 0);
+    expect(data.right.categories, isEmpty);
   });
 
   test(

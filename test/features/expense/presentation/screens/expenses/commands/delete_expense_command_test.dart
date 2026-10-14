@@ -41,9 +41,9 @@ void main() {
         final response = Right<ErrorsEntity, bool>(deleted);
         when(() => repository.delete(id: id)).thenAnswer((_) async => response);
 
-        final result = await command.execute.runAsync(id);
+        final data = await command.execute.runAsync(id);
 
-        expect(result, deleted);
+        expect(data, deleted);
         expect(command.execute.value, deleted);
         expect(command.execute.results.value.data, deleted);
         expect(command.execute.results.value.hasError, isFalse);
@@ -96,14 +96,14 @@ void main() {
       return pending.future;
     });
 
-    final result = command.execute.runAsync('1');
+    final data = command.execute.runAsync('1');
     await started.future;
     expect(command.execute.isRunning.value, isTrue);
     command.execute.run('2');
     verify(() => repository.delete(id: '1')).called(1);
     pending.complete(const Right(true));
 
-    expect(await result, isTrue);
+    expect(await data, isTrue);
     expect(command.execute.isRunning.value, isFalse);
     verifyNoMoreInteractions(repository);
   });
@@ -147,9 +147,9 @@ void main() {
         .thenAnswer((_) async => const Right(false));
 
     await command.execute.runAsync('1');
-    final result = await command.execute.runAsync('2');
+    final data = await command.execute.runAsync('2');
 
-    expect(result, isFalse);
+    expect(data, isFalse);
     expect(command.execute.value, isFalse);
     verify(() => repository.delete(id: '1')).called(1);
     verify(() => repository.delete(id: '2')).called(1);

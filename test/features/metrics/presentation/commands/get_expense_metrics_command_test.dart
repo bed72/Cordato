@@ -180,14 +180,14 @@ void main() {
       return pending.future;
     });
 
-    final result = command.execute.runAsync(defaultFilters);
+    final data = command.execute.runAsync(defaultFilters);
     await started.future;
     expect(command.execute.isRunning.value, isTrue);
     command.execute.run(defaultFilters);
     verify(() => repository.getExpenses()).called(1);
     pending.complete(Right(metrics));
 
-    expect(await result, same(metrics));
+    expect(await data, same(metrics));
     expect(command.execute.isRunning.value, isFalse);
     verifyNoMoreInteractions(repository);
   });
