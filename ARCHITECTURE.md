@@ -304,6 +304,12 @@ Quando o retorno com alterações ocorre durante uma consulta, o mixin adia a re
 seções até todas terminarem, inclusive com erro, mantendo o mês selecionado.
 A recarga pendente é invalidada na troca de dependências e não executa após
 descarte da tela.
+As intenções financeira e de User permanecem pendentes até a microtask que
+revalida disponibilidade, versão e identidade e inicia a nova leitura. Sinais
+adicionais são coalescidos; se outra consulta ocupar o command antes dessa
+microtask, a intenção aguarda a próxima liberação. O retorno de User/Settings
+também valida a versão de dependências. Troca de dependências invalida pendências
+e a exclusão mútua da listagem; um `finally` antigo não libera uma navegação nova.
 
 `MetricsSectionWidget`, na Dashboard, fica antes dos insights. Usa
 `CommandBuilder` para skeleton, total zero e sucesso. O total
@@ -337,6 +343,15 @@ do mês e inicia as três consultas financeiras em paralelo. Loading permanece n
 tela de erro durante o ciclo. Somente as três consultas com dados nativos,
 snapshot terminal sem erro e command/versão vigentes restauram o conteúdo,
 sem contar valores preservados nos commands ou adesão a uma leitura ocupada.
+Cada consulta financeira confirma que `runAsync` publicou sincronicamente um
+novo snapshot de início com seus parâmetros antes de aguardar o Future. Depois,
+exige snapshot terminal distinto, parâmetros solicitados, dados nativos iguais
+por identidade ao retorno e ausência de erro, com State, versão e command ainda
+válidos. O limite usa a mesma prova de início e conclusão, permitindo null
+concluído como histórico ausente. Nenhuma decisão usa `value` antigo ou
+`isSuccess` inicial. User e limite sem builders locais mantêm o fallback global
+real instalado no bootstrap; falhas auxiliares são absorvidas pelos awaits sem
+duplicar feedback ou ativar o latch financeiro.
 Falhas auxiliares não impedem a recuperação financeira. Uma nova falha mantém a
 tela e libera outro retry ao terminar; não há retry automático. A identidade do
 ciclo invalida conclusões após troca de qualquer command ou descarte, preservando

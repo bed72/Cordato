@@ -2,6 +2,7 @@ import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
+import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
 
 mixin DashboardScreenStateMixin on State<DashboardScreen> {
   int get recentExpensesLimit => 6;
@@ -79,6 +80,8 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
         oldWidget.firstExpenseMonthCommand != widget.firstExpenseMonthCommand ||
         oldWidget.userCommand != widget.userCommand) {
       _dependenciesVersion++;
+      _userRefreshPending = false;
+      _isOpeningExpenses = false;
       _refreshPendingAfterNavigation = false;
       _isRefreshingDashboard = false;
       isRecovering = false;
@@ -139,6 +142,8 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   @override
   void dispose() {
     _dependenciesVersion++;
+    _userRefreshPending = false;
+    _refreshPendingAfterNavigation = false;
     _removeFinancialObservers(widget);
     widget.expensesCommand.execute.isRunning.removeListener(_executionChanged);
     widget.insightsCommand.execute.isRunning.removeListener(_executionChanged);
@@ -184,12 +189,17 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     if (_refreshPendingAfterNavigation &&
         !isLoading &&
         !widget.userCommand.execute.isRunning.value) {
-      _refreshPendingAfterNavigation = false;
-
       final version = _dependenciesVersion;
       Future<void>.microtask(() async {
-        if (!mounted || version != _dependenciesVersion) return;
-        await _refreshAfterNavigation();
+        if (!mounted ||
+            version != _dependenciesVersion ||
+            !_refreshPendingAfterNavigation ||
+            isLoading ||
+            widget.userCommand.execute.isRunning.value) {
+          return;
+        }
+        _refreshPendingAfterNavigation = false;
+        await refreshDashboard();
       });
     }
   }
@@ -271,18 +281,33 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     if (command.execute.isRunning.value) return false;
 
     try {
-      final data = await command.execute.runAsync((
+      final input = (
         endDate: monthEnd,
-        groupBy: .category,
+        groupBy: ExpenseMetricsGroupByEnum.category,
         startDate: selectedMonth,
-      ));
+      );
+      final previous = command.execute.results.value;
+      final execution = command.execute.runAsync(input);
+      final started = command.execute.results.value;
+      final didStart =
+          !identical(previous, started) &&
+          started.isRunning &&
+          started.paramData == input;
+      final data = await execution;
 
-      return mounted &&
-          version == _dependenciesVersion &&
-          command == widget.metricsCommand &&
-          data != null &&
-          !command.execute.results.value.hasError &&
-          !command.execute.results.value.isRunning;
+      if (!mounted ||
+          version != _dependenciesVersion ||
+          command != widget.metricsCommand ||
+          !didStart) {
+        return false;
+      }
+      final terminal = command.execute.results.value;
+      return !identical(started, terminal) &&
+          !terminal.hasError &&
+          !terminal.isRunning &&
+          terminal.paramData == input &&
+          terminal.data != null &&
+          identical(terminal.data, data);
     } catch (_) {
       return false;
     }
@@ -332,8 +357,11 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   }
 
   Future<void> _refreshUser() async {
+    final command = widget.userCommand;
+    if (command.execute.isRunning.value) return;
+
     try {
-      await widget.userCommand.execute.runAsync();
+      await command.execute.runAsync();
     } catch (_) {
       return;
     }
@@ -341,13 +369,25 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
   Future<void> _refreshFirstMonth(int version) async {
     final command = widget.firstExpenseMonthCommand;
+    if (!mounted ||
+        version != _dependenciesVersion ||
+        command.execute.isRunning.value) {
+      return;
+    }
     try {
-      final data = await command.execute.runAsync();
+      final previous = command.execute.results.value;
+      final execution = command.execute.runAsync();
+      final started = command.execute.results.value;
+      final didStart = !identical(previous, started) && started.isRunning;
+      final data = await execution;
 
       if (!mounted || version != _dependenciesVersion) return;
-      if (command != widget.firstExpenseMonthCommand ||
-          command.execute.results.value.hasError ||
-          command.execute.results.value.isRunning) {
+      if (command != widget.firstExpenseMonthCommand || !didStart) return;
+      final terminal = command.execute.results.value;
+      if (identical(started, terminal) ||
+          terminal.hasError ||
+          terminal.isRunning ||
+          terminal.data != data) {
         return;
       }
       final today = DateTime.now();
@@ -372,17 +412,29 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     if (command.execute.isRunning.value) return false;
 
     try {
-      final data = await command.execute.runAsync((
-        year: selectedMonth.year,
-        month: selectedMonth.month,
-      ));
+      final input = (year: selectedMonth.year, month: selectedMonth.month);
+      final previous = command.execute.results.value;
+      final execution = command.execute.runAsync(input);
+      final started = command.execute.results.value;
+      final didStart =
+          !identical(previous, started) &&
+          started.isRunning &&
+          started.paramData == input;
+      final data = await execution;
 
-      return mounted &&
-          version == _dependenciesVersion &&
-          command == widget.insightsCommand &&
-          data != null &&
-          !command.execute.results.value.hasError &&
-          !command.execute.results.value.isRunning;
+      if (!mounted ||
+          version != _dependenciesVersion ||
+          command != widget.insightsCommand ||
+          !didStart) {
+        return false;
+      }
+      final terminal = command.execute.results.value;
+      return !identical(started, terminal) &&
+          !terminal.hasError &&
+          !terminal.isRunning &&
+          terminal.paramData == input &&
+          terminal.data != null &&
+          identical(terminal.data, data);
     } catch (_) {
       return false;
     }
@@ -394,20 +446,35 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     if (command.execute.isRunning.value) return false;
 
     try {
-      final data = await command.execute.runAsync((
+      final input = (
         to: monthEnd,
         category: null,
         pageLink: null,
         from: selectedMonth,
         pageSize: recentExpensesLimit,
-      ));
+      );
+      final previous = command.execute.results.value;
+      final execution = command.execute.runAsync(input);
+      final started = command.execute.results.value;
+      final didStart =
+          !identical(previous, started) &&
+          started.isRunning &&
+          started.paramData == input;
+      final data = await execution;
 
-      return mounted &&
-          version == _dependenciesVersion &&
-          command == widget.expensesCommand &&
-          data != null &&
-          !command.execute.results.value.hasError &&
-          !command.execute.results.value.isRunning;
+      if (!mounted ||
+          version != _dependenciesVersion ||
+          command != widget.expensesCommand ||
+          !didStart) {
+        return false;
+      }
+      final terminal = command.execute.results.value;
+      return !identical(started, terminal) &&
+          !terminal.hasError &&
+          !terminal.isRunning &&
+          terminal.paramData == input &&
+          terminal.data != null &&
+          identical(terminal.data, data);
     } catch (_) {
       return false;
     }
@@ -427,14 +494,20 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
   Future<void> _openUserNavigation(Future<void> Function()? navigate) async {
     if (navigate == null) return;
+    final version = _dependenciesVersion;
     final command = widget.userCommand;
     await navigate();
-    if (!mounted || command != widget.userCommand) return;
+    if (!mounted ||
+        version != _dependenciesVersion ||
+        command != widget.userCommand) {
+      return;
+    }
     if (command.execute.isRunning.value) {
       _userRefreshPending = true;
       return;
     }
 
+    _userRefreshPending = false;
     command.execute.run();
   }
 
@@ -447,11 +520,18 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
       return;
     }
 
-    _userRefreshPending = false;
     final command = widget.userCommand;
+    final version = _dependenciesVersion;
 
     Future<void>.microtask(() {
-      if (!mounted || command != widget.userCommand) return;
+      if (!mounted ||
+          version != _dependenciesVersion ||
+          command != widget.userCommand ||
+          !_userRefreshPending ||
+          command.execute.isRunning.value) {
+        return;
+      }
+      _userRefreshPending = false;
       command.execute.run();
     });
   }
@@ -473,7 +553,9 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
       await _refreshAfterNavigation();
     } finally {
-      _isOpeningExpenses = false;
+      if (mounted && version == _dependenciesVersion) {
+        _isOpeningExpenses = false;
+      }
     }
   }
 
@@ -483,6 +565,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
       return;
     }
 
+    _refreshPendingAfterNavigation = false;
     await refreshDashboard();
   }
 }

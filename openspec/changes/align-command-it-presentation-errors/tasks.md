@@ -50,15 +50,17 @@ Registro do grupo 4: [consultas nativas, consumidores, propriedade e checks](imp
 
 ## 5. Dashboard: recuperação com canal nativo e tentativas válidas
 
-- [ ] 5.1 Remover a interpretação de Left na Dashboard migrada, usando snapshot terminal com hasError sem observar errors adicionalmente para o mesmo latch.
-- [ ] 5.2 Manter observação financeira durante ErrorScreen/recuperação e validar que User/limite sem builders locais continuam com fallback global real.
-- [ ] 5.3 Adaptar refreshExpenses/refreshInsights/refreshMetrics para sucesso da execução corrente, sem consultar value antigo, isSuccess inicial ou Future compartilhado como prova da tentativa solicitada.
-- [ ] 5.4 Preservar exclusão mútua antes do primeiro await, User em paralelo ao limite na recuperação, limite antes das seções e Future.wait das três consultas com mês vigente.
-- [ ] 5.5 Preservar latch imediato e persistente, isRecovering iniciado por contexto, loading até o fim do ciclo e liberação somente após três sucessos financeiros válidos, inclusive com falhas auxiliares.
-- [ ] 5.6 Garantir que a intenção financeira após navegação produz nova leitura quando ficar ocioso, coalescendo sinais e sem consumir a intenção aderindo à execução anterior.
-- [ ] 5.7 Garantir nova leitura de User após retorno de User/Settings quando uma consulta antiga estiver ocupada, limpando a intenção ao mudar command ou descartar.
-- [ ] 5.8 Revalidar mounted/versão/identidade em continuations e finally, impedindo que resultado ou descarte antigo altere flags, mês ou latch de um ciclo novo.
+- [x] 5.1 Remover a interpretação de Left na Dashboard migrada, usando snapshot terminal com hasError sem observar errors adicionalmente para o mesmo latch.
+- [x] 5.2 Manter observação financeira durante ErrorScreen/recuperação e validar que User/limite sem builders locais continuam com fallback global real.
+- [x] 5.3 Adaptar refreshExpenses/refreshInsights/refreshMetrics para sucesso da execução corrente, sem consultar value antigo, isSuccess inicial ou Future compartilhado como prova da tentativa solicitada.
+- [x] 5.4 Preservar exclusão mútua antes do primeiro await, User em paralelo ao limite na recuperação, limite antes das seções e Future.wait das três consultas com mês vigente.
+- [x] 5.5 Preservar latch imediato e persistente, isRecovering iniciado por contexto, loading até o fim do ciclo e liberação somente após três sucessos financeiros válidos, inclusive com falhas auxiliares.
+- [x] 5.6 Garantir que a intenção financeira após navegação produz nova leitura quando ficar ocioso, coalescendo sinais e sem consumir a intenção aderindo à execução anterior.
+- [x] 5.7 Garantir nova leitura de User após retorno de User/Settings quando uma consulta antiga estiver ocupada, limpando a intenção ao mudar command ou descartar.
+- [x] 5.8 Revalidar mounted/versão/identidade em continuations e finally, impedindo que resultado ou descarte antigo altere flags, mês ou latch de um ciclo novo.
 - [ ] 5.9 Executar matriz Maestro da Dashboard e registrar consultas observadas, resultado visual, ausência de retry extra e limitações de reprodução de dependências.
+
+Registro do grupo 5: [tentativas válidas, pendências, fallback e limites de validação](implementation-part-4.md).
 
 ## 6. Consulta simples de ExpenseScreen
 

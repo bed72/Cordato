@@ -181,6 +181,15 @@ paralelo ao limite histórico, aplica eventual ajuste civil do mês e consulta a
 três seções em paralelo. A tela de erro mantém loading até o ciclo terminar;
 somente as três consultas com dados nativos e snapshot terminal sem erro da
 tentativa vigente restauram o conteúdo. Outra
+consulta só conta para recuperação se `runAsync` publicar um novo snapshot de
+início com os parâmetros solicitados e, depois, um terminal distinto com os mesmos
+parâmetros e dados do Future, sob mounted/versão/identidade válidos. O limite
+também exige início e conclusão novos, aceitando null concluído. Intenções de
+recarga financeira e de User permanecem pendentes até revalidar disponibilidade
+na microtask que inicia a leitura nova; sinais coalescem e uma consulta que ocupe
+o command antes da microtask não consome a intenção. Troca de dependências ou
+descarte limpa pendências e invalida continuations e finally antigos.
+Outra
 falha libera nova tentativa ao terminar. Falhas de User ou limite não ativam ou
 prolongam o erro financeiro; o limite com erro bloqueia a seta anterior. O mixin
 observa somente `results` das três consultas para detectar `hasError` terminal,
