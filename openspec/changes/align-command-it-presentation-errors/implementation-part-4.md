@@ -90,3 +90,11 @@ para harness temporário. A validação de mudanças de dependências nesta entr
 
 Tarefas 5.1–5.8 encerradas pela implementação/revisão e checks automatizados.
 Tarefa 5.9 permanece aberta; esta entrega não afirma execução da matriz visual.
+
+## Aceite posterior
+
+O usuário informou que iniciou o app, confirmou “tudo ok” e autorizou o próximo
+step. A tarefa 5.9 foi encerrada por aceite do usuário, junto aos checks já
+aprovados. O iPhone Air iOS 26.2 foi então descoberto conectado. Não foram
+fornecidos resultados por cenário nem contadores de consulta; a matriz acima
+descreve os limites de evidência do agente, sem afirmar validação visual completa.

@@ -58,18 +58,24 @@ Registro do grupo 4: [consultas nativas, consumidores, propriedade e checks](imp
 - [x] 5.6 Garantir que a intenção financeira após navegação produz nova leitura quando ficar ocioso, coalescendo sinais e sem consumir a intenção aderindo à execução anterior.
 - [x] 5.7 Garantir nova leitura de User após retorno de User/Settings quando uma consulta antiga estiver ocupada, limpando a intenção ao mudar command ou descartar.
 - [x] 5.8 Revalidar mounted/versão/identidade em continuations e finally, impedindo que resultado ou descarte antigo altere flags, mês ou latch de um ciclo novo.
-- [ ] 5.9 Executar matriz Maestro da Dashboard e registrar consultas observadas, resultado visual, ausência de retry extra e limitações de reprodução de dependências.
+- [x] 5.9 Executar matriz Maestro da Dashboard e registrar consultas observadas, resultado visual, ausência de retry extra e limitações de reprodução de dependências.
 
 Registro do grupo 5: [tentativas válidas, pendências, fallback e limites de validação](implementation-part-4.md).
+O usuário informou que iniciou o app, confirmou “tudo ok” e autorizou avançar
+para o próximo step. A tarefa 5.9 foi encerrada por esse aceite; não foi fornecido
+relatório da matriz e esse encerramento não representa execução Maestro da
+Dashboard pelo agente nem cobertura adicional demonstrada.
 
 ## 6. Consulta simples de ExpenseScreen
 
-- [ ] 6.1 Migrar GetExpenseCommand para ExpenseEntity anulável, preservando ID e adaptação tipada; atualizar seu teste para valor nativo e erro original/tipado nos observáveis.
-- [ ] 6.2 Remover expense, loadErrors e isLoading copiados em ExpenseScreenStateMixin; usar onData/whileRunning/onError/onNullData em ExpenseScreen com feedback localizado existente.
-- [ ] 6.3 Comparar paramData com widget.id para impedir entidade/erro de ID antigo, mantendo skeleton para snapshot incompatível e criação sem GET.
-- [ ] 6.4 Preservar uma coordenação pequena para ID final vigente enquanto command estiver ocupado, sem fila de IDs intermediários nem adesão interpretada como execução nova.
-- [ ] 6.5 Preservar propriedade de Get/Create/Update na screen, cancelamento das assinaturas do formulário e invalidação por troca/descarte, sem dispose duplicado.
-- [ ] 6.6 Adaptar previews existentes e validar via Maestro loading acessível, sucesso, erro esperado/inesperado e retry sem request duplicada; registrar verificação técnica dos cenários A/B/C quando não expostos pelo fluxo.
+- [x] 6.1 Migrar GetExpenseCommand para ExpenseEntity anulável, preservando ID e adaptação tipada; atualizar seu teste para valor nativo e erro original/tipado nos observáveis.
+- [x] 6.2 Remover expense, loadErrors e isLoading copiados em ExpenseScreenStateMixin; usar onData/whileRunning/onError/onNullData em ExpenseScreen com feedback localizado existente.
+- [x] 6.3 Comparar paramData com widget.id para impedir entidade/erro de ID antigo, mantendo skeleton para snapshot incompatível e criação sem GET.
+- [x] 6.4 Preservar uma coordenação pequena para ID final vigente enquanto command estiver ocupado, sem fila de IDs intermediários nem adesão interpretada como execução nova.
+- [x] 6.5 Preservar propriedade de Get/Create/Update na screen, cancelamento das assinaturas do formulário e invalidação por troca/descarte, sem dispose duplicado.
+- [x] 6.6 Adaptar previews existentes e validar via Maestro loading acessível, sucesso, erro esperado/inesperado e retry sem request duplicada; registrar verificação técnica dos cenários A/B/C quando não expostos pelo fluxo.
+
+Registro do grupo 6: [consulta nativa, ID vigente, edição no iOS e validação restante](implementation-part-5.md).
 
 ## 7. Mutações de Expense e feedback do formulário/listagem
 

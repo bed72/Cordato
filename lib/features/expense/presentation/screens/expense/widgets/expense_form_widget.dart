@@ -13,7 +13,6 @@ import 'package:cordato/features/authentication/presentation/widgets/date_field_
 import 'package:cordato/features/authentication/presentation/widgets/amount_field_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/commands/create_expense_command.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/commands/update_expense_command.dart';
@@ -47,7 +46,7 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
     if (isEditing) {
       return CommandBuilder<
         ({String id, int? cents, String? description, DateTime? occurredOn}),
-        UpdateRepositoryType?
+        ExpenseEntity?
       >(
         command: widget.updateCommand.execute,
         onSuccess: (_, _) => _buildContent(),
@@ -57,7 +56,7 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
     }
     return CommandBuilder<
       ({int cents, String description, DateTime? occurredOn}),
-      CreateRepositoryType?
+      ExpenseEntity?
     >(
       command: widget.createCommand.execute,
       onSuccess: (_, _) => _buildContent(),

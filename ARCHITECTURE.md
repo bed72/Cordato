@@ -745,8 +745,10 @@ deve descartar sua instância. Não atualiza listas nem navega. É consumido pel
 modo de edição de `ExpenseScreen` na rota `/expense`.
 
 `GetExpenseCommand`, em `screens/expense/commands/get_expense_command.dart`, recebe
-um ID textual e delega a `IExpenseRepository.getById`, preservando o `Either`
-em `GetByIdRepositoryType?`, inicialmente nulo. Bloqueia consultas simultâneas e
+um ID textual e delega a `IExpenseRepository.getById` sem normalização. Publica
+`ExpenseEntity?`, inicialmente nulo: Right preserva a entidade e Left lança
+`CommandFailureException` com a ErrorsEntity original. Exceções inesperadas
+permanecem no canal nativo sem conversão. Bloqueia consultas simultâneas e
 permite repetir após falha. Implementa `ICommand` e é registrado por factory em
 `expenseDependenciesModule`; `ExpenseScreen` descarta a instância recebida.
 
@@ -872,15 +874,26 @@ o destino após sucesso por toque simples. A Dashboard envia
 com `context.pop()`, preservando a instância da Dashboard e seu mês selecionado.
 Sem argumento ou com `returnToPrevious: false`, o cadastro independente continua
 navegando para `/dashboard`. Nenhuma entidade é passada pela rota para preencher o formulário.
-`ExpenseScreenStateMixin` executa `GetExpenseCommand` ao abrir com ID e mantém
-loading, entidade consultada e erros, ignorando respostas obsoletas. Durante a
-consulta, `CommandBuilder` compõe `ExpenseSkeletonWidget` sobre o formulário real
+`ExpenseScreenStateMixin` executa `GetExpenseCommand` ao abrir com ID, sem copiar
+loading, entidade ou erros. `CommandBuilder<String, ExpenseEntity?>` compõe
+diretamente sucesso por `onData`, erro por `onError` e skeleton por
+`whileRunning`/`onNullData`. Sucesso e erro só são apresentados quando `paramData`
+corresponde ao ID vigente; snapshots de outro ID mantêm skeleton. Durante a
+consulta, o builder compõe `ExpenseSkeletonWidget` sobre o formulário real
 com valores fictícios e interação bloqueada. A semântica anuncia “Carregando
 despesa” e exclui os placeholders. Falhas exibem título, detalhes e “Tentar
 novamente”; nenhum formulário editável vazio é apresentado. Sucesso preenche
 descrição, centavos e data civil da API. A tela descarta seus commands de criação,
 consulta e atualização. Os commands mantêm os nomes das operações; componentes,
 mixins e validator usam o nome Expense, compartilhado pelos dois modos.
+Falha tipada preserva detalhes/títulos remotos, aplicando fallback seguro para
+lista vazia; falha inesperada mantém a mensagem genérica existente. O mixin usa
+`run` e não aplica resultados por await: não interpreta `value` antigo nem
+adesão a `runAsync` como leitura nova. Uma intenção coalescida de consulta aguarda
+o command ocupado e inicia somente o ID final vigente em microtask, depois de
+revalidar mounted, revisão e identidade. Retry ocupado não é enfileirado; remover
+o ID limpa a intenção e mantém criação sem GET. Troca de command e dispose
+removem o listener da instância observada e invalidam microtasks antigas.
 `ExpenseFormWidgetStateMixin`, em `screens/expense/mixins/`,
 restrito a `State<ExpenseFormWidget>`,
 possui o controller de descrição, centavos,
@@ -1390,8 +1403,8 @@ para Left no callback específico. Exceções inesperadas do repository seguem
 como erros originais pelo CommandIt, sem encapsulamento tipado artificial.
 Não há converter genérico nem mudança para domínio orientado a exceptions.
 O tipo e o fallback estão disponíveis. GetExpenses, GetInsights,
-GetExpenseMetrics, User e GetFirstExpenseMonth já usam
-dados nativos; GetExpense, mutações e Authentication ainda preservam Either.
+GetExpenseMetrics, User, GetFirstExpenseMonth e GetExpense já usam
+dados nativos; mutações e Authentication ainda preservam Either.
 Cada saída é migrada junto de todos os consumidores e testes na mesma unidade.
 
 Consumidores que aguardam `runAsync` precisam tratar seu Future em erro, mesmo

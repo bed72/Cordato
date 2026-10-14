@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
@@ -207,6 +207,10 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     }
 
     if (data.hasError) {
+      if (data.error case CommandFailureException(:final errors)) {
+        _showErrors(errors);
+        return;
+      }
       context.showToast(
         variant: .error,
         title: 'Erro ao cadastrar gasto',
@@ -215,12 +219,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
       return;
     }
 
-    if (data.data case Left(:final value)) {
-      _showErrors(value);
-      return;
-    }
-
-    if (data.data case Right()) {
+    if (data.data != null) {
       widget.onExpensesChanged?.call();
       context.showToast(
         variant: .success,
@@ -244,6 +243,10 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
       return;
     }
     if (data.hasError) {
+      if (data.error case CommandFailureException(:final errors)) {
+        _showErrors(errors);
+        return;
+      }
       context.showToast(
         variant: .error,
         title: 'Erro ao atualizar gasto',
@@ -251,9 +254,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
       );
       return;
     }
-    if (data.data case Left(:final value)) {
-      _showErrors(value);
-    } else if (data.data case Right(:final value)) {
+    if (data.data case final value?) {
       widget.onExpensesChanged?.call();
       context.showToast(
         variant: .success,
@@ -306,15 +307,22 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
           : descriptionMessages.join('\n');
     });
 
-    if (remaining.isNotEmpty) {
+    if (remaining.isNotEmpty || errors.errors.isEmpty) {
       context.showToast(
         variant: .error,
         title:
-            remaining.first.title ??
+            remaining.firstOrNull?.title ??
             (isEditing ? 'Erro ao atualizar gasto' : 'Erro ao cadastrar gasto'),
-        description: remaining
-            .map((error) => error.detail ?? error.title ?? 'Tente novamente.')
-            .join('\n'),
+        description: remaining.isEmpty
+            ? (isEditing
+                  ? 'Não foi possível atualizar o gasto. Tente novamente.'
+                  : 'Não foi possível cadastrar o gasto. Tente novamente.')
+            : remaining
+                  .map(
+                    (error) =>
+                        error.detail ?? error.title ?? 'Tente novamente.',
+                  )
+                  .join('\n'),
       );
     }
   }

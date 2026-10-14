@@ -7,7 +7,6 @@ import 'package:cordato/features/core/presentation/formatters/interface_money_fo
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/commands/get_expense_command.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/commands/create_expense_command.dart';
@@ -48,20 +47,21 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
       body: SafeArea(
         child: widget.id == null
             ? _buildForm()
-            : CommandBuilder<String, GetByIdRepositoryType?>(
+            : CommandBuilder<String, ExpenseEntity?>(
                 command: widget.getCommand.execute,
-                onSuccess: (_, _) => _buildContent(),
-                onError: (_, _, _, _) => _buildContent(),
+                onNullData: (_, _) => _buildSkeleton(),
                 whileRunning: (_, _, _) => _buildSkeleton(),
+                onData: (_, expense, id) => id == widget.id
+                    ? _buildForm(initialExpense: expense)
+                    : _buildSkeleton(),
+                onError: (_, error, _, id) =>
+                    id == widget.id ? _buildLoadError(error) : _buildSkeleton(),
               ),
       ),
     );
   }
 
-  Widget _buildContent() {
-    if (isLoading) return _buildSkeleton();
-    if (expense != null) return _buildForm(initialExpense: expense);
-
+  Widget _buildLoadError(Object error) {
     return Center(
       child: SingleChildScrollView(
         padding: const .all(16.0),
@@ -74,7 +74,7 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
               textAlign: .center,
               style: context.typography.titleMedium,
             ),
-            Text(loadErrorDescription, textAlign: .center),
+            Text(loadErrorDescription(error), textAlign: .center),
             ElevatedButtonWidget(label: 'Tentar novamente', onTap: loadExpense),
           ],
         ),

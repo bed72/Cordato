@@ -7,7 +7,7 @@ import 'package:cordato/features/expense/presentation/screens/expenses/expenses_
 import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
 
@@ -253,7 +253,12 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
         return false;
       }
 
-      if (data case Right(value: true)) {
+      final snapshot = command.execute.results.value;
+      if (!snapshot.isRunning &&
+          !snapshot.hasError &&
+          snapshot.paramData == id &&
+          snapshot.data == true &&
+          data == true) {
         widget.onExpensesChanged?.call();
         deleted = true;
         context.showToast(
@@ -264,7 +269,12 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
         return true;
       }
 
-      if (data case Left(:final value)) {
+      showDeleteFailure();
+      return false;
+    } on CommandFailureException catch (failure) {
+      if (_isCurrentQuery(queryCommand, revision) &&
+          widget.deleteCommand == command) {
+        final value = failure.errors;
         context.showToast(
           variant: .error,
           title: value.errors.firstOrNull?.title ?? 'Erro ao excluir despesa',
@@ -276,10 +286,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
                     )
                     .join('\n'),
         );
-        return false;
       }
-
-      showDeleteFailure();
       return false;
     } catch (_) {
       if (_isCurrentQuery(queryCommand, revision) &&

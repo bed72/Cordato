@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/commands/update_expense_command.dart';
@@ -12,6 +13,7 @@ import 'package:cordato/features/expense/presentation/screens/expense/commands/u
 import '../../../../../../support/expense/mocks/expense_repository_mock.dart';
 
 void main() {
+  void onResult() {}
   late ExpenseRepositoryMock repository;
   late UpdateExpenseCommand command;
   late ExpenseEntity entity;
@@ -19,6 +21,7 @@ void main() {
   setUp(() {
     repository = ExpenseRepositoryMock();
     command = UpdateExpenseCommand(repository: repository);
+    command.execute.results.addListener(onResult);
     entity = ExpenseEntity(
       id: '8',
       cents: .create(cents: 1500).right,
@@ -28,7 +31,10 @@ void main() {
     );
   });
 
-  tearDown(() => command.dispose());
+  tearDown(() {
+    command.execute.results.removeListener(onResult);
+    command.dispose();
+  });
 
   test('waits for execution before updating an expense', () {
     expect(command.execute.value, isNull);
@@ -57,9 +63,10 @@ void main() {
 
       final result = await command.execute.runAsync(parameters);
 
-      expect(result, same(response));
-      expect(result?.right, same(entity));
-      expect(command.execute.value, same(response));
+      expect(result, same(entity));
+      expect(command.execute.value, same(entity));
+      expect(command.execute.results.value.data, same(entity));
+      expect(command.execute.results.value.hasError, isFalse);
       verify(
         () => repository.update(
           id: parameters.id,
@@ -96,10 +103,7 @@ void main() {
           ),
         ).thenAnswer((_) async => Right(entity));
 
-        expect(
-          (await command.execute.runAsync(parameters))?.right,
-          same(entity),
-        );
+        expect(await command.execute.runAsync(parameters), same(entity));
 
         verify(
           () => repository.update(
@@ -124,6 +128,7 @@ void main() {
             detail: 'Informe um valor positivo.',
             status: '422',
             pointer: '/data/attributes/amount',
+            parameter: 'amount',
           ),
           ErrorEntity(
             title: 'Descrição inválida',
@@ -142,16 +147,26 @@ void main() {
       when(() => repository.update(id: '8', cents: 0, description: ''))
           .thenAnswer((_) async => response);
 
-      final result = await command.execute.runAsync((
-        id: '8',
-        cents: 0,
-        description: '',
-        occurredOn: null,
-      ));
-
-      expect(result, same(response));
-      expect(result?.left, same(errors));
-      expect(command.execute.value, same(response));
+      await expectLater(
+        command.execute.runAsync((
+          id: '8',
+          cents: 0,
+          description: '',
+          occurredOn: null,
+        )),
+        throwsA(
+          isA<CommandFailureException>().having(
+            (failure) => failure.errors,
+            'errors',
+            same(errors),
+          ),
+        ),
+      );
+      final snapshot = command.execute.results.value;
+      expect(snapshot.hasError, isTrue);
+      expect(snapshot.data, isNull);
+      expect((snapshot.error as CommandFailureException).errors, same(errors));
+      expect(command.execute.errors.value?.error, same(snapshot.error));
       verify(() => repository.update(id: '8', cents: 0, description: ''))
           .called(1);
       verifyNoMoreInteractions(repository);
@@ -183,7 +198,7 @@ void main() {
     verify(() => repository.update(id: '8', cents: 1500)).called(1);
     pending.complete(Right(entity));
 
-    expect((await result)?.right, same(entity));
+    expect(await result, same(entity));
     expect(command.execute.isRunning.value, isFalse);
     verifyNoMoreInteractions(repository);
   });
@@ -201,12 +216,17 @@ void main() {
       when(() => repository.update(id: '8', cents: 1500))
           .thenAnswer((_) async => Left(errors));
 
-      expect((await command.execute.runAsync(parameters))?.left, same(errors));
+      await expectLater(
+        command.execute.runAsync(parameters),
+        throwsA(isA<CommandFailureException>()),
+      );
       when(() => repository.update(id: '8', cents: 1500))
           .thenAnswer((_) async => Right(entity));
 
-      expect((await command.execute.runAsync(parameters))?.right, same(entity));
-      expect(command.execute.value?.right, same(entity));
+      expect(await command.execute.runAsync(parameters), same(entity));
+      expect(command.execute.value, same(entity));
+      expect(command.execute.errors.value, isNull);
+      expect(command.execute.results.value.hasError, isFalse);
       verify(() => repository.update(id: '8', cents: 1500)).called(2);
       verifyNoMoreInteractions(repository);
     },
@@ -224,7 +244,7 @@ void main() {
         occurredOn: null,
       ));
 
-      expect(command.execute.value?.right, same(entity));
+      expect(command.execute.value, same(entity));
       expect(otherCommand.execute.value, isNull);
       expect(otherCommand.execute.isRunning.value, isFalse);
     } finally {
@@ -236,21 +256,71 @@ void main() {
     final failure = StateError('repository unavailable');
     when(() => repository.update(id: '8', cents: 1500))
         .thenAnswer((_) async => throw failure);
-    void onResult() {}
-    command.execute.results.addListener(onResult);
-    try {
-      await expectLater(
-        command.execute.runAsync((
-          id: '8',
-          cents: 1500,
-          description: null,
-          occurredOn: null,
-        )),
-        throwsA(same(failure)),
+    await expectLater(
+      command.execute.runAsync((
+        id: '8',
+        cents: 1500,
+        description: null,
+        occurredOn: null,
+      )),
+      throwsA(same(failure)),
+    );
+    expect(command.execute.results.value.error, same(failure));
+    expect(command.execute.errors.value?.error, same(failure));
+  });
+
+  test(
+    'prioritizes an empty failure after a previous successful update',
+    () async {
+      const parameters = (
+        id: '8',
+        cents: 1500,
+        description: null,
+        occurredOn: null,
       );
-    } finally {
-      command.execute.results.removeListener(onResult);
-    }
+      when(() => repository.update(id: '8', cents: 1500))
+          .thenAnswer((_) async => Right(entity));
+      await command.execute.runAsync(parameters);
+      const errors = ErrorsEntity(errors: []);
+      when(() => repository.update(id: '8', cents: 1500))
+          .thenAnswer((_) async => const Left(errors));
+      await expectLater(
+        command.execute.runAsync(parameters),
+        throwsA(
+          isA<CommandFailureException>().having(
+            (failure) => failure.errors,
+            'errors',
+            same(errors),
+          ),
+        ),
+      );
+      expect(command.execute.value, same(entity));
+      expect(command.execute.results.value.data, isNull);
+      expect(command.execute.results.value.hasError, isTrue);
+    },
+  );
+
+  test('does not publish an update after disposal while pending', () async {
+    final disposable = UpdateExpenseCommand(repository: repository);
+    final pending = Completer<UpdateRepositoryType>();
+    final started = Completer<void>();
+    when(() => repository.update(id: '8', cents: 1500)).thenAnswer((_) {
+      started.complete();
+      return pending.future;
+    });
+    final execution = disposable.execute.runAsync((
+      id: '8',
+      cents: 1500,
+      description: null,
+      occurredOn: null,
+    ));
+    await started.future;
+    disposable.dispose();
+    pending.complete(Right(entity));
+    expect(await execution, isNull);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(disposable.execute.results.value.data, isNull);
+    expect(disposable.execute.results.value.isRunning, isTrue);
   });
 
   test('disposes the observable execution and its loading state', () async {

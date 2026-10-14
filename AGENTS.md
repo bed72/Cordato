@@ -71,14 +71,22 @@ e preserva `Either` em `UpdateRepositoryType?`, inicialmente nulo. Implementa
 `ICommand` e é registrado por factory em `expenseDependenciesModule`; cada
 consumidor deve descartar sua instância. `GetExpenseCommand`, no mesmo diretório,
 consulta `IExpenseRepository.getById({required String id})`, preservando `Either`
-em `GetByIdRepositoryType?`. O data source executa GET relativo `expenses/<id>`
+em `ExpenseEntity?`: Right mantém a entidade e Left lança `CommandFailureException`
+com a falha original. O data source executa GET relativo `expenses/<id>`
 com ID codificado e retorna `ExpenseResponse`; o repository valida centavos,
 converte erros e traduz exceções como nas outras operações.
 `ExpenseScreen`, em `screens/expense/`, compartilha cadastro e edição em `/expense`.
 Sem ID abre criação; com argumento `String` busca a despesa por ID, apresenta
 skeleton do formulário com anúncio “Carregando despesa” e preenche descrição,
 centavos e data da API. Falhas de consulta apresentam “Tentar novamente”.
-`ExpenseScreenStateMixin` coordena a consulta, ignora respostas obsoletas e descarta
+`ExpenseScreenStateMixin` coordena somente consulta pendente, revisão e lifecycle,
+sem copiar loading, entidade ou erros. A tela usa `CommandBuilder` com `onData`,
+`onError`, `whileRunning` e `onNullData`; sucesso/erro exigem `paramData` igual ao ID
+vigente, mantendo skeleton para outro ID. Uma intenção coalescida aguarda o command
+ocupado e solicita somente o ID final em microtask com mounted/revisão/identidade
+válidos. Retry ocupado não enfileira consulta; remover o ID mantém criação sem GET.
+Falha tipada conserva as mensagens remotas, incluindo fallback para lista vazia;
+inesperada usa mensagem genérica. O mixin remove seu listener e descarta
 os commands de criação, consulta e atualização, todos recebidos por factory.
 Na edição, header, botão e toasts mudam para atualização; a data pode ser alterada
 pelo mesmo picker do cadastro. Somente atributos alterados são enviados,
@@ -911,7 +919,8 @@ A migração para dados nativos ocorre por command e todos os seus consumidores:
 repository continua com Either; o callback do command adapta Right para dados e
 Left para CommandFailureException, sem converter genérico. GetExpenses,
 GetInsights, GetExpenseMetrics, User e GetFirstExpenseMonth já usam dados nativos;
-GetExpense, mutações e Authentication ainda mantêm Either. Ao migrar, priorize o erro do snapshot
+GetExpense também usa dados nativos; mutações e Authentication ainda mantêm Either.
+Ao migrar, priorize o erro do snapshot
 terminal sobre dados, trate o Future de `runAsync` em erro e não duplique no catch
 um feedback já emitido por listener. Não use value anterior como sucesso atual.
 

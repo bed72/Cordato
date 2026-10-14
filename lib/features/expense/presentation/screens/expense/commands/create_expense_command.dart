@@ -1,26 +1,32 @@
 import 'package:command_it/command_it.dart';
 
+import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/commands/interface_command.dart';
+import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
 final class CreateExpenseCommand({required IExpenseRepository repository})
     implements ICommand {
   final Command<
     ({int cents, String description, DateTime? occurredOn}),
-    CreateRepositoryType?
+    ExpenseEntity?
   >
   execute =
       Command.createAsync<
         ({int cents, String description, DateTime? occurredOn}),
-        CreateRepositoryType?
-      >(
-        initialValue: null,
-        (parameters) => repository.create(
+        ExpenseEntity?
+      >(initialValue: null, (parameters) async {
+        final result = await repository.create(
           cents: parameters.cents,
           occurredOn: parameters.occurredOn,
           description: parameters.description,
-        ),
-      );
+        );
+        return switch (result) {
+          Right(:final value) => value,
+          Left(:final value) => throw CommandFailureException(errors: value),
+        };
+      });
 
   @override
   void dispose() => execute.dispose();

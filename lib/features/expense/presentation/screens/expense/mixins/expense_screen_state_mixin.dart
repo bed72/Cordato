@@ -1,25 +1,31 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expense/expense_screen.dart';
 
 mixin ExpenseScreenStateMixin on State<ExpenseScreen> {
-  bool isLoading = false;
-  ExpenseEntity? expense;
-  ErrorsEntity? loadErrors;
+  int _queryRevision = 0;
+  bool _loadPending = false;
 
-  String get loadErrorDescription =>
-      loadErrors?.errors
-          .map((error) => error.detail ?? error.title ?? 'Tente novamente.')
-          .join('\n') ??
-      'Tente novamente para carregar os dados.';
+  String loadErrorDescription(Object error) {
+    final errors = error is CommandFailureException
+        ? error.errors
+        : ErrorsEntity.unknown();
+    if (errors.errors.isEmpty) {
+      return 'Tente novamente para carregar os dados.';
+    }
+    return errors.errors
+        .map((error) => error.detail ?? error.title ?? 'Tente novamente.')
+        .join('\n');
+  }
 
   @override
   void initState() {
     super.initState();
-    loadExpense();
+    widget.getCommand.execute.isRunning.addListener(_loadingChanged);
+    _requestExpense();
   }
 
   @override
@@ -32,19 +38,22 @@ mixin ExpenseScreenStateMixin on State<ExpenseScreen> {
       oldWidget.updateCommand.dispose();
     }
     if (oldWidget.getCommand != widget.getCommand) {
+      oldWidget.getCommand.execute.isRunning.removeListener(_loadingChanged);
       oldWidget.getCommand.dispose();
+      widget.getCommand.execute.isRunning.addListener(_loadingChanged);
     }
     if (oldWidget.id != widget.id ||
         oldWidget.getCommand != widget.getCommand) {
-      expense = null;
-      loadErrors = null;
-      isLoading = widget.id != null;
-      loadExpense();
+      _queryRevision++;
+      _requestExpense();
     }
   }
 
   @override
   void dispose() {
+    _queryRevision++;
+    _loadPending = false;
+    widget.getCommand.execute.isRunning.removeListener(_loadingChanged);
     widget.getCommand.dispose();
     widget.createCommand.dispose();
     widget.updateCommand.dispose();
@@ -52,39 +61,43 @@ mixin ExpenseScreenStateMixin on State<ExpenseScreen> {
     super.dispose();
   }
 
-  Future<void> loadExpense() async {
-    final id = widget.id;
-    final command = widget.getCommand;
-    if (id == null || command.execute.isRunning.value) return;
+  void loadExpense() {
+    if (!mounted || widget.getCommand.execute.isRunning.value) return;
+    _requestExpense();
+  }
 
-    setState(() {
-      isLoading = true;
-      loadErrors = null;
-    });
-    try {
-      final result = await command.execute.runAsync(id);
-      if (!mounted || widget.getCommand != command || widget.id != id) return;
-      setState(() {
-        switch (result) {
-          case Right(:final value):
-            expense = value;
-          case Left(:final value):
-            loadErrors = value;
-          case null:
-            loadErrors = .unknown();
-        }
-      });
-    } catch (_) {
-      if (!mounted || widget.getCommand != command || widget.id != id) return;
-      setState(() => loadErrors = .unknown());
-    } finally {
-      if (mounted && widget.getCommand == command) {
-        if (widget.id == id) {
-          setState(() => isLoading = false);
-        } else {
-          loadExpense();
-        }
-      }
+  void _requestExpense() {
+    _loadPending = widget.id != null;
+    _loadPendingExpense();
+  }
+
+  void _loadPendingExpense() {
+    if (!mounted ||
+        !_loadPending ||
+        widget.getCommand.execute.isRunning.value) {
+      return;
     }
+    final id = widget.id;
+    _loadPending = false;
+    if (id != null) widget.getCommand.execute.run(id);
+  }
+
+  void _loadingChanged() {
+    if (!mounted ||
+        !_loadPending ||
+        widget.getCommand.execute.isRunning.value) {
+      return;
+    }
+    final command = widget.getCommand;
+    final revision = _queryRevision;
+    Future<void>.microtask(() {
+      if (!mounted ||
+          revision != _queryRevision ||
+          command != widget.getCommand) {
+        return;
+      }
+
+      _loadPendingExpense();
+    });
   }
 }
