@@ -9,6 +9,9 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   int get recentExpensesLimit => 6;
 
   late DateTime selectedMonth;
+  late Listenable monthControlsListenable;
+  late Listenable retryControlsListenable;
+
   bool isRecovering = false;
   int _dependenciesVersion = 0;
   bool hasFinancialError = false;
@@ -55,12 +58,13 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
     final today = DateTime.now();
     selectedMonth = DateTime(today.year, today.month);
+    _updateControlListenables();
     _observeFinancialResults(widget);
-    widget.expensesCommand.execute.isRunning.addListener(_loadingChanged);
-    widget.insightsCommand.execute.isRunning.addListener(_loadingChanged);
-    widget.metricsCommand.execute.isRunning.addListener(_loadingChanged);
+    widget.expensesCommand.execute.isRunning.addListener(_executionChanged);
+    widget.insightsCommand.execute.isRunning.addListener(_executionChanged);
+    widget.metricsCommand.execute.isRunning.addListener(_executionChanged);
     widget.firstExpenseMonthCommand.execute.isRunning.addListener(
-      _loadingChanged,
+      _executionChanged,
     );
     widget.firstExpenseMonthCommand.execute.run();
     widget.userCommand.execute.isRunning.addListener(_userLoadingChanged);
@@ -83,6 +87,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
       _refreshPendingAfterNavigation = false;
       _isRefreshingDashboard = false;
       isRecovering = false;
+      _updateControlListenables();
       _removeFinancialObservers(oldWidget);
       _observeFinancialResults(widget);
     }
@@ -99,39 +104,39 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
     if (oldWidget.firstExpenseMonthCommand != widget.firstExpenseMonthCommand) {
       oldWidget.firstExpenseMonthCommand.execute.isRunning.removeListener(
-        _loadingChanged,
+        _executionChanged,
       );
       oldWidget.firstExpenseMonthCommand.dispose();
       widget.firstExpenseMonthCommand.execute.isRunning.addListener(
-        _loadingChanged,
+        _executionChanged,
       );
       widget.firstExpenseMonthCommand.execute.run();
     }
 
     if (oldWidget.expensesCommand != widget.expensesCommand) {
       oldWidget.expensesCommand.execute.isRunning.removeListener(
-        _loadingChanged,
+        _executionChanged,
       );
       oldWidget.expensesCommand.dispose();
-      widget.expensesCommand.execute.isRunning.addListener(_loadingChanged);
+      widget.expensesCommand.execute.isRunning.addListener(_executionChanged);
       loadExpenses();
     }
 
     if (oldWidget.insightsCommand != widget.insightsCommand) {
       oldWidget.insightsCommand.execute.isRunning.removeListener(
-        _loadingChanged,
+        _executionChanged,
       );
       oldWidget.insightsCommand.dispose();
-      widget.insightsCommand.execute.isRunning.addListener(_loadingChanged);
+      widget.insightsCommand.execute.isRunning.addListener(_executionChanged);
       loadInsights();
     }
 
     if (oldWidget.metricsCommand != widget.metricsCommand) {
       oldWidget.metricsCommand.execute.isRunning.removeListener(
-        _loadingChanged,
+        _executionChanged,
       );
       oldWidget.metricsCommand.dispose();
-      widget.metricsCommand.execute.isRunning.addListener(_loadingChanged);
+      widget.metricsCommand.execute.isRunning.addListener(_executionChanged);
       loadMetrics();
     }
   }
@@ -140,11 +145,11 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   void dispose() {
     _dependenciesVersion++;
     _removeFinancialObservers(widget);
-    widget.expensesCommand.execute.isRunning.removeListener(_loadingChanged);
-    widget.insightsCommand.execute.isRunning.removeListener(_loadingChanged);
-    widget.metricsCommand.execute.isRunning.removeListener(_loadingChanged);
+    widget.expensesCommand.execute.isRunning.removeListener(_executionChanged);
+    widget.insightsCommand.execute.isRunning.removeListener(_executionChanged);
+    widget.metricsCommand.execute.isRunning.removeListener(_executionChanged);
     widget.firstExpenseMonthCommand.execute.isRunning.removeListener(
-      _loadingChanged,
+      _executionChanged,
     );
     widget.firstExpenseMonthCommand.dispose();
     widget.expensesCommand.dispose();
@@ -155,11 +160,31 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
     super.dispose();
   }
 
-  void _loadingChanged() {
-    if (!mounted) return;
-    if (_hasFinancialFailure) hasFinancialError = true;
+  void _updateControlListenables() {
+    final executionSignals = [
+      widget.expensesCommand.execute.isRunning,
+      widget.insightsCommand.execute.isRunning,
+      widget.metricsCommand.execute.isRunning,
+      widget.firstExpenseMonthCommand.execute.isRunning,
+    ];
+    monthControlsListenable = Listenable.merge([
+      ...executionSignals,
+      widget.firstExpenseMonthCommand.execute,
+    ]);
+    retryControlsListenable = Listenable.merge([
+      ...executionSignals,
+      widget.userCommand.execute.isRunning,
+    ]);
+  }
 
-    setState(() {});
+  void _financialResultChanged() {
+    if (!mounted || hasFinancialError || !_hasFinancialFailure) return;
+
+    setState(() => hasFinancialError = true);
+  }
+
+  void _executionChanged() {
+    if (!mounted) return;
 
     if (_refreshPendingAfterNavigation &&
         !isLoading &&
@@ -176,22 +201,19 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
 
   List<Listenable> _financialSignals(DashboardScreen screen) => [
     screen.expensesCommand.execute.results,
-    screen.expensesCommand.execute.errors,
     screen.insightsCommand.execute.results,
-    screen.insightsCommand.execute.errors,
     screen.metricsCommand.execute.results,
-    screen.metricsCommand.execute.errors,
   ];
 
   void _observeFinancialResults(DashboardScreen screen) {
     for (final signal in _financialSignals(screen)) {
-      signal.addListener(_loadingChanged);
+      signal.addListener(_financialResultChanged);
     }
   }
 
   void _removeFinancialObservers(DashboardScreen screen) {
     for (final signal in _financialSignals(screen)) {
-      signal.removeListener(_loadingChanged);
+      signal.removeListener(_financialResultChanged);
     }
   }
 
@@ -205,10 +227,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   ) {
     final data = command.results.value;
 
-    return !data.isRunning &&
-        (data.hasError ||
-            command.errors.value != null ||
-            data.data?.isLeft == true);
+    return !data.isRunning && (data.hasError || data.data?.isLeft == true);
   }
 
   void loadExpenses() => widget.expensesCommand.execute.run((
@@ -302,7 +321,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
           _isRefreshingDashboard = false;
         });
 
-        _loadingChanged();
+        _executionChanged();
       }
     }
   }
@@ -401,7 +420,7 @@ mixin DashboardScreenStateMixin on State<DashboardScreen> {
   }
 
   void _userLoadingChanged() {
-    _loadingChanged();
+    _executionChanged();
 
     if (!mounted ||
         !_userRefreshPending ||

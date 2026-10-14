@@ -163,7 +163,8 @@ incluindo retry. Listeners de `isRunning` são removidos no lifecycle; retornos
 obsoletos de navegação são ignorados. A troca ativa skeletons sem dados anteriores
 sob o novo título. Falha de métricas, insights ou recentes (Left ou exceção
 observável) substitui imediatamente o Scaffold pela `ErrorScreen`, na mesma
-instância e sem mudar o mês. Cabeçalho e seus callbacks permanecem disponíveis;
+instância e sem mudar o mês. O código vigente não fornece cabeçalho à ErrorScreen,
+divergindo da intenção registrada em `unify-dashboard-error-screen`;
 seletor, seções e FAB ficam ocultos. O erro persiste após sucessos remanescentes.
 O retry único fica bloqueado enquanto houver consultas da Dashboard, inclusive
 User, ou recuperação em andamento, sem enfileirar toques. Recarrega User em
@@ -172,7 +173,12 @@ três seções em paralelo. A tela de erro mantém loading até o ciclo terminar
 somente os três resultados Right dessa tentativa restauram o conteúdo. Outra
 falha libera nova tentativa ao terminar. Falhas de User ou limite não ativam ou
 prolongam o erro financeiro; o limite com erro bloqueia a seta anterior. O mixin
-remove observações de resultados, erros e loading e invalida ciclos obsoletos
+observa somente `results` das três consultas para detectar Left ou exceção
+terminal, inclusive enquanto as seções estão ocultas. Os listeners de execução
+coordenam pendências; seletor e disponibilidade do retry observam seus listenables
+declarativamente, com composições estáveis por dependências. Não há `setState`
+global vazio para resultados já observados nas seções. O mixin remove observações
+de resultados e execução e invalida ciclos obsoletos
 na troca de dependências ou descarte. User mostra “Trocado” com avatar placeholder
 em Left ou exceção, sem retry no nome, preservando saudação e skeleton no loading.
 `InsightsSectionWidget` fica acima das
@@ -868,6 +874,22 @@ final class SignInCommand({required IAuthenticationRepository repository})
 Na screen, use `CommandBuilder` para renderizar estados de execução e resultado;
 trate `Left` como resultado quando o command retornar `Either`. Não faça
 `try/catch` da operação diretamente no `build`.
+
+`CommandFailureException`, em `core/presentation/commands/`, transporta a mesma
+`ErrorsEntity`, incluindo lista vazia, ordem e metadados anuláveis. O bootstrap
+configura `Command.globalExceptionHandler` depois de resolver `ICrashClient` e
+antes dos consumidores. Preserve `GlobalIfNoLocalErrorFilter`: falhas tipadas no
+fallback não produzem telemetry ou efeitos visuais; erros inesperados que chegam
+a ele são reportados como não fatais com erro e stack fornecidos pelo CommandIt.
+Não habilite `reportAllExceptions` nem altere `assertionsAlwaysThrow` por causa
+da adaptação de Left. Falhas locais não exigem reporte global adicional.
+
+A migração para dados nativos ocorre por command e todos os seus consumidores:
+repository continua com Either; o callback do command adapta Right para dados e
+Left para CommandFailureException, sem converter genérico. Nesta etapa os
+commands existentes ainda mantêm Either. Ao migrar, priorize o erro do snapshot
+terminal sobre dados, trate o Future de `runAsync` em erro e não duplique no catch
+um feedback já emitido por listener. Não use value anterior como sucesso atual.
 
 ### Gerenciamento global
 

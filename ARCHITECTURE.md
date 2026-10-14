@@ -68,6 +68,20 @@ do modo de build. O Android aplica o plugin Crashlytics, e o Runner executa
 `ios/upload_crashlytics_symbols.sh` após Thin Binary somente em Release para
 dispositivo, usando os checkouts do Swift Package Manager e FlutterFire CLI.
 
+Após resolver `ICrashClient` e antes de criar `AppWidget`, o bootstrap chama
+`configureCommandExceptionHandler`, em `lib/main.dart`, para atribuir
+`Command.globalExceptionHandler`. A função instala um callback, sem subscriptions
+ou novos registros de DI. Mantém `GlobalIfNoLocalErrorFilter`: um listener local
+de `results` ou `errors` recebe a falha; o fallback global atua quando não há
+handler local. `CommandFailureException` no fallback não produz feedback visual,
+retry, navegação ou telemetry. Outros erros que chegam ao fallback são delegados
+a `ICrashClient.recordError`, com o erro original, a stack fornecida pelo
+CommandIt e `fatal: false`, sem paramData ou identificação nova do command.
+Uma exceção tratada localmente não implica reporte global adicional.
+`reportAllExceptions` permanece desabilitado e `assertionsAlwaysThrow` mantém
+seu padrão nativo: AssertionError é relançado antes do filtro. Os handlers de
+FlutterError e PlatformDispatcher mantêm suas políticas anteriores.
+
 `MessagingClient` implementa `IMessagingClient`, recebe `FirebaseMessaging`
 e o stream `FirebaseMessaging.onMessage` por construtor. Identifica somente
 Android e iOS; demais plataformas são recusadas. `requestPermission()` retorna
@@ -257,9 +271,18 @@ anterior ao novo limite antes de consultar as seções, sem avançar além do m�
 Essa consulta percorre todo o histórico porque o contrato atual não fornece
 metadados do primeiro mês nem ordenação ascendente.
 As setas ficam desabilitadas enquanto qualquer command de seção estiver rodando,
-inclusive recuperação. O mixin observa resultados, erros observáveis e
-`isRunning` dos três commands, removendo os
-listeners antes de substituir ou descartar instâncias. Retornos de navegação
+inclusive recuperação. O mixin observa somente `results` dos três commands para
+detectar Left ou exceção terminal e ativar o erro financeiro persistente. Essa
+observação permanece durante a tela de erro, sem listeners adicionais de `errors`.
+Os listeners de `isRunning` coordenam exclusivamente as recargas pendentes,
+removendo as assinaturas antes de substituir ou descartar instâncias.
+O seletor observa declarativamente a execução das três seções e do limite, além
+do valor publicado pelo limite; a disponibilidade do retry observa também a
+execução de User. As composições `Listenable.merge` são estáveis por conjunto de
+dependências e seus builders gerenciam as assinaturas, sem notifiers derivados
+ou subscriptions criadas a cada build. Resultados das seções continuam nos seus
+próprios `CommandBuilder`s; `setState` global fica para mês, latch e ciclo local.
+Retornos de navegação
 após descarte ou substituição de dependências são ignorados.
 Voltar do cadastro ou da listagem sem alterações não dispara consultas nem skeletons.
 Os callbacks financeiros da Dashboard retornam `Future<bool>`: `true` somente
@@ -291,12 +314,16 @@ mantém apenas o total, sem carrossel nem mensagem de distribuição indisponív
 Falha de Metrics, Insights ou recentes (Left ou exceção observável) ativa
 imediatamente um erro financeiro persistente em `DashboardScreenStateMixin`,
 mesmo com consultas remanescentes em execução. `DashboardScreen` retorna
-`ErrorScreen` com o mesmo cabeçalho, título “Não foi possível carregar sua
+`ErrorScreen` com título “Não foi possível carregar sua
 Dashboard.”, descrição “Não conseguimos carregar suas informações agora. Tente
 novamente.” e ação “Tentar novamente”, sem seletor, seções ou FAB. Não navega nem
 cria outro State. Sucessos remanescentes não removem o erro; resultados nulos ou
 vazios não são falhas. Falha de User mostra “Trocado” e avatar placeholder sem
 retry no nome; falha do limite apenas bloqueia o retorno a meses anteriores.
+
+O código vigente não fornece `appBar` à ErrorScreen da Dashboard. Isso diverge
+da intenção de cabeçalho preservado registrada em `unify-dashboard-error-screen`;
+a simplificação reativa mantém essa estrutura visual atual.
 
 O retry único é bloqueado enquanto qualquer consulta, inclusive User, ou ciclo
 de recarga estiver em andamento. Não acumula toques bloqueados. User é consultado
@@ -1321,6 +1348,30 @@ efêmero pertence à screen ou widget. Quando lifecycle, controllers e handlers
 prejudicarem a leitura, use um mixin específico em `presentation/mixins/` ou
 no diretório da própria tela, restrito ao `State` correspondente e responsável
 por seu `dispose`.
+
+### Fronteira De Falha Dos Commands
+
+`CommandFailureException`, em `core/presentation/commands/`, é um tipo final
+constante que implementa Exception e transporta a mesma `ErrorsEntity` recebida.
+Não copia a lista, normaliza metadados, inventa itens para lista vazia nem acessa
+IO, DI ou contexto de UI. A identidade, ordem, title, detail, status, pointer e
+parameter, incluindo nulos e valores futuros, permanecem intactos.
+
+A fronteira aprovada para a migração é repository-Either/command-exception:
+repositories continuam retornando `Either<ErrorsEntity, T>`; cada command
+migrado adapta Right para o valor de sucesso e lança CommandFailureException
+para Left no callback específico. Exceções inesperadas do repository seguem
+como erros originais pelo CommandIt, sem encapsulamento tipado artificial.
+Não há converter genérico nem mudança para domínio orientado a exceptions.
+O tipo e o fallback já estão disponíveis; nesta etapa os commands existentes
+ainda preservam Either. Cada saída será migrada junto de todos os consumidores
+e testes na mesma unidade.
+
+Consumidores que aguardam `runAsync` precisam tratar seu Future em erro, mesmo
+quando um listener recebe a falha. O catch não deve repetir o feedback desse
+listener. Results terminal determina erro e dados da tentativa; value pode
+conservar sucesso anterior após falha. A política global é fallback sem efeitos
+visuais; feedback localizado permanece nos consumidores da apresentação.
 
 Estado efêmero usa `StatefulWidget` e `setState`; operações assíncronas usam
 `command_it`. Não há Bloc, Provider, Riverpod ou store global no app.

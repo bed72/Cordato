@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
-import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
 
 import 'package:cordato/features/insight/presentation/commands/get_insights_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
@@ -43,12 +43,15 @@ final class _DashboardScreenState extends State<DashboardScreen>
   @override
   Widget build(BuildContext context) {
     return hasFinancialError
-        ? ErrorScreen(
-            isLoading: isRecovering,
-            actionLabel: 'Tentar novamente',
-            title: 'Não foi possível carregar sua Dashboard.',
-            onAction: canRetryDashboard ? retryDashboard : null,
-            description: 'Não conseguimos carregar suas informações agora. Tente novamente.',
+        ? ListenableBuilder(
+            listenable: retryControlsListenable,
+            builder: (_, _) => ErrorScreen(
+              isLoading: isRecovering,
+              actionLabel: 'Tentar novamente',
+              title: 'Não foi possível carregar sua Dashboard.',
+              onAction: canRetryDashboard ? retryDashboard : null,
+              description: 'Não conseguimos carregar suas informações agora. Tente novamente.',
+            ),
           )
         : Scaffold(
             appBar: AppBarDashboardWidget(
@@ -64,16 +67,20 @@ final class _DashboardScreenState extends State<DashboardScreen>
                   padding: const .only(top: 20.0, bottom: 96.0),
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
-                    DashboardMonthSelectorWidget(
-                      selectedMonth: selectedMonth,
-                      formatter: widget.dateFormatter,
-                      showNavigation: canGoToPreviousMonth || canGoToNextMonth,
-                      onPreviousMonth: isLoading || !canGoToPreviousMonth
-                          ? null
-                          : previousMonth,
-                      onNextMonth: isLoading || !canGoToNextMonth
-                          ? null
-                          : nextMonth,
+                    ListenableBuilder(
+                      listenable: monthControlsListenable,
+                      builder: (_, _) => DashboardMonthSelectorWidget(
+                        selectedMonth: selectedMonth,
+                        formatter: widget.dateFormatter,
+                        showNavigation:
+                            canGoToPreviousMonth || canGoToNextMonth,
+                        onPreviousMonth: isLoading || !canGoToPreviousMonth
+                            ? null
+                            : previousMonth,
+                        onNextMonth: isLoading || !canGoToNextMonth
+                            ? null
+                            : nextMonth,
+                      ),
                     ),
                     MetricsSectionWidget(
                       key: ValueKey(('metrics', selectedMonth)),

@@ -192,6 +192,155 @@ void main() {
     verify(() => repository.get(pageSize: 6)).called(2);
   });
 
+  for (final outcome in ['right', 'left', 'exception']) {
+    test('publishes terminal $outcome before releasing execution', () async {
+      final started = Completer<void>();
+      final pending = Completer<GetRepositoryType>();
+      final idle = Completer<void>();
+      final failure = StateError('repository unavailable');
+      final errors = ErrorsEntity.unknown();
+      final events = <String>[];
+      bool? runningAtResult;
+      GetRepositoryType? valueAtResult;
+      GetRepositoryType? terminalData;
+      Object? terminalError;
+
+      when(() => repository.get(pageSize: 6)).thenAnswer((_) {
+        started.complete();
+        return pending.future;
+      });
+
+      void onResult() {
+        final result = command.execute.results.value;
+        if (result.isRunning) return;
+        events.add('result');
+        runningAtResult = command.execute.isRunning.value;
+        valueAtResult = command.execute.value;
+        terminalData = result.data;
+        terminalError = result.error;
+      }
+
+      void onValue() => events.add('value');
+
+      void onExecution() {
+        if (command.execute.isRunning.value) return;
+        events.add('idle');
+        idle.complete();
+      }
+
+      command.execute.results.addListener(onResult);
+      command.execute.addListener(onValue);
+      command.execute.isRunning.addListener(onExecution);
+      try {
+        final execution = command.execute.runAsync((
+          pageSize: 6,
+          pageLink: null,
+          from: null,
+          to: null,
+          category: null,
+        ));
+        final conclusion = outcome == 'exception'
+            ? expectLater(execution, throwsA(same(failure)))
+            : execution;
+        await started.future;
+
+        switch (outcome) {
+          case 'right':
+            pending.complete(Right(page));
+          case 'left':
+            pending.complete(Left(errors));
+          case 'exception':
+            pending.completeError(failure);
+        }
+
+        await conclusion;
+        await idle.future;
+
+        expect(runningAtResult, isTrue);
+        expect(valueAtResult, isNull);
+        expect(
+          events,
+          outcome == 'exception'
+              ? ['result', 'idle']
+              : ['result', 'value', 'idle'],
+        );
+        switch (outcome) {
+          case 'right':
+            expect(terminalData?.right, same(page));
+            expect(terminalError, isNull);
+          case 'left':
+            expect(terminalData?.left, same(errors));
+            expect(terminalError, isNull);
+          case 'exception':
+            expect(terminalData, isNull);
+            expect(terminalError, same(failure));
+        }
+      } finally {
+        command.execute.results.removeListener(onResult);
+        command.execute.removeListener(onValue);
+        command.execute.isRunning.removeListener(onExecution);
+      }
+    });
+  }
+
+  test(
+    'starts a fresh query from a microtask after execution becomes idle',
+    () async {
+      final started = Completer<void>();
+      final pending = Completer<GetRepositoryType>();
+      final refreshed = Completer<GetRepositoryType?>();
+      bool refreshPending = true;
+      when(() => repository.get(pageSize: 6)).thenAnswer((_) {
+        started.complete();
+        return pending.future;
+      });
+      final nextPage = ExpensePageEntity(items: [], next: null, prev: null);
+      when(() => repository.get(pageSize: 20))
+          .thenAnswer((_) async => Right(nextPage));
+
+      void onExecution() {
+        if (command.execute.isRunning.value || !refreshPending) return;
+        refreshPending = false;
+        Future<void>.microtask(() async {
+          try {
+            refreshed.complete(
+              await command.execute.runAsync((
+                pageSize: 20,
+                pageLink: null,
+                from: null,
+                to: null,
+                category: null,
+              )),
+            );
+          } catch (error, stackTrace) {
+            refreshed.completeError(error, stackTrace);
+          }
+        });
+      }
+
+      command.execute.isRunning.addListener(onExecution);
+      try {
+        final first = command.execute.runAsync((
+          pageSize: 6,
+          pageLink: null,
+          from: null,
+          to: null,
+          category: null,
+        ));
+        await started.future;
+        pending.complete(Right(page));
+
+        expect((await first)?.right, same(page));
+        expect((await refreshed.future)?.right, same(nextPage));
+        verify(() => repository.get(pageSize: 6)).called(1);
+        verify(() => repository.get(pageSize: 20)).called(1);
+        verifyNoMoreInteractions(repository);
+      } finally {
+        command.execute.isRunning.removeListener(onExecution);
+      }
+    },
+  );
+
   test('keeps query state isolated between command instances', () async {
     final otherCommand = GetExpensesCommand(repository: repository);
     when(() => repository.get(pageSize: 6))
