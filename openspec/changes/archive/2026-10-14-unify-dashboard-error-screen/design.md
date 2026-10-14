@@ -44,17 +44,17 @@ Foi considerada uma composição apenas de widget de corpo. A screen completa fo
 
 `DashboardScreen.build` retorna `ErrorScreen` quando há erro financeiro global e retorna o Scaffold atual nos demais estados. O mesmo `State` e seus commands permanecem montados.
 
-O cabeçalho recebe a mesma composição `AppBarDashboardWidget`, preservando avatar, notificações e Settings com seus callbacks existentes. A tela de erro usa:
+Por decisão explícita do usuário na conclusão desta change, a ErrorScreen da Dashboard não recebe appBar. Saudação, avatar, notificações e Settings ficam ocultos durante erro financeiro e recuperação, reaparecendo somente no conteúdo normal. A tela de erro usa:
 
 - Título: “Não foi possível carregar sua Dashboard.”
 - Descrição: “Não conseguimos carregar suas informações agora. Tente novamente.”
 - Ação principal: “Tentar novamente”.
 
-Seletor mensal, Metrics, Insights, recentes e FAB não são montados no erro. A Dashboard não exibe textos técnicos ou três mensagens separadas. As seções deixam de fornecer retries localizados nessa composição; componentes de falha e previews que perderem todos os consumidores devem ser removidos ou substituídos pelo preview global, após verificação dos usos.
+Cabeçalho, seletor mensal, Metrics, Insights, recentes e FAB não são montados no erro. A Dashboard não exibe textos técnicos ou três mensagens separadas. As seções deixam de fornecer retries localizados nessa composição; componentes de falha e previews que perderem todos os consumidores devem ser removidos ou substituídos pelo preview global, após verificação dos usos.
 
 ### 3. Erro imediato e persistente até recuperação completa
 
-A coordenação fica em `DashboardScreenStateMixin`. Observar tanto resultado quanto erro observável dos três commands, além de loading, garante captura de `Left` e exceções sem depender de ordem entre notificações.
+A coordenação fica em `DashboardScreenStateMixin`. Observar results terminais dos três commands garante captura de falhas tipadas e exceções sem depender dos builders de seções montadas. A migração concluída em `align-command-it-presentation-errors` adapta Left para CommandFailureException nos commands; não há observação adicional de errors para a mesma detecção. A execução dos commands coordena pendências e é observada declarativamente pelos controles.
 
 Uma falha financeira ativa um estado local persistente de erro. Não se espera que todas as consultas terminem para exibi-lo. Sucessos de consultas ainda em execução não removem esse estado. Ausência de resultado e listas vazias não são falhas.
 
@@ -63,7 +63,7 @@ Fluxo de apresentação:
 1. Normal/carregando: seções carregam como hoje; qualquer falha leva ao erro global.
 2. Erro: mensagem única; ação fica desabilitada enquanto ainda houver consulta da Dashboard em andamento, impedindo overlap com o ciclo que falhou.
 3. Recuperando: erro permanece; botão principal mostra loading e ações ficam desabilitadas.
-4. Fim da recuperação: restaurar o Scaffold normal apenas se as três seções da tentativa vigente concluíram com `Right`; outra falha mantém o erro e libera nova tentativa quando o ciclo terminar.
+4. Fim da recuperação: restaurar o Scaffold normal apenas se as três seções da tentativa vigente concluíram com dados nativos e snapshot terminal sem erro; outra falha mantém o erro e libera nova tentativa quando o ciclo terminar.
 
 Resultados de tentativas anteriores não podem satisfazer a recuperação atual. Cada ciclo possui identidade local para invalidar conclusões obsoletas após troca de dependências ou descarte. Isso evita remover a tela de erro com um sucesso antigo preservado pelo command.
 
@@ -79,13 +79,13 @@ Falha de User mantém “Trocado”; falha do limite mantém a seta anterior blo
 
 ### 5. Fallback do nome
 
-`UserNameWidget` conserva loading por skeleton e nome/avatar retornados no sucesso. `Left` e exceção renderizam a mesma composição com nome “Trocado” e avatar placeholder. O link de retry e seu import são removidos. O fallback não é persistido nem sobrescreve o usuário da API.
+`UserNameWidget` conserva loading por skeleton e nome/avatar retornados no sucesso. Falha tipada e exceção renderizam a mesma composição com nome “Trocado” e avatar placeholder. O link de retry e seu import são removidos. O fallback não é persistido nem sobrescreve o usuário da API.
 
 ### 6. Validação e documentação
 
 Previews devem cobrir `ErrorScreen` com e sem appBar, ação secundária, loading, temas claro/escuro e texto ampliado, além de Dashboard com erro global e fallback do nome. Recursos de commands dos previews devem ser descartados pelo mecanismo compartilhado.
 
-Maestro valida falha isolada de cada seção, falha enquanto outras consultas estão pendentes, erro via exceção, múltiplas falhas, retry repetido, recuperação, mês histórico, User e limite com erro independente e acesso ao cabeçalho. Usar respostas controladas nos cenários de falha, sem provocar indisponibilidade real da API. Executar `flutter analyze` e `flutter test` conforme as regras do projeto.
+Maestro valida falha isolada de cada seção, falha enquanto outras consultas estão pendentes, erro via exceção, múltiplas falhas, retry repetido, recuperação, mês histórico e User e limite com erro independente. No erro financeiro, o cabeçalho deve permanecer ausente. Usar respostas controladas nos cenários de falha, sem provocar indisponibilidade real da API. As pendências finais de Maestro foram encerradas por aceite explícito do usuário, sem recriar os recursos removidos anteriormente.
 
 Atualizar `ARCHITECTURE.md` e `AGENTS.md` para descrever a screen compartilhada e substituir o comportamento de retries por seção na Dashboard.
 

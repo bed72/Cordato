@@ -332,9 +332,12 @@ cria outro State. Sucessos remanescentes não removem o erro; resultados nulos o
 vazios não são falhas. Falha de User mostra “Trocado” e avatar placeholder sem
 retry no nome; falha do limite apenas bloqueia o retorno a meses anteriores.
 
-O código vigente não fornece `appBar` à ErrorScreen da Dashboard. Isso diverge
-da intenção de cabeçalho preservado registrada em `unify-dashboard-error-screen`;
-a simplificação reativa mantém essa estrutura visual atual.
+A ErrorScreen da Dashboard não recebe `appBar`: cabeçalho, seletor, seções e FAB
+ficam ocultos durante erro e recuperação. A ausência de cabeçalho é uma decisão
+explícita de apresentação. O AppBarDashboardWidget permanece somente no conteúdo
+normal. Os previews cobrem erro financeiro sem cabeçalho e falha isolada de User
+com fallback “Trocado” no conteúdo normal, nos temas claro e escuro. A Dashboard
+continua sendo a única proprietária do descarte dos commands desses previews.
 
 O retry único é bloqueado enquanto qualquer consulta, inclusive User, ou ciclo
 de recarga estiver em andamento. Não acumula toques bloqueados. User é consultado

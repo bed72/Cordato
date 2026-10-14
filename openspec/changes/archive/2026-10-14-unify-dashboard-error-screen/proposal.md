@@ -6,7 +6,7 @@ A Dashboard apresenta retries separados para nome, métricas, insights e despesa
 
 - Criar `ErrorScreen` no core, responsável pelo `Scaffold`, com cabeçalho opcional, ícone, título, descrição e footer com ações configuráveis e loading.
 - Substituir o Scaffold normal da Dashboard pela `ErrorScreen` assim que métricas, insights ou despesas falharem, mesmo com outras consultas em andamento ou concluídas com sucesso.
-- Manter o cabeçalho da Dashboard e exibir “Trocado” quando a consulta do usuário falhar, removendo seu retry localizado.
+- Ocultar o cabeçalho da Dashboard durante erro financeiro e recuperação. No conteúdo normal, exibir “Trocado” quando a consulta do usuário falhar, removendo seu retry localizado.
 - Ocultar seletor mensal, seções financeiras e botão flutuante no estado de erro, preservando a instância e o mês selecionado.
 - Oferecer um retry único coordenado pela Dashboard, recarregando usuário, limite do histórico e as três seções, com loading no footer e sem execuções concorrentes.
 - Restaurar o conteúdo somente quando as três consultas financeiras da tentativa vigente concluírem com sucesso; falha de usuário ou limite do histórico não dispara o erro global.

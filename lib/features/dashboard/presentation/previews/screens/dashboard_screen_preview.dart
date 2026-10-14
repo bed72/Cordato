@@ -69,17 +69,36 @@ Widget previewEmptyMonthlyDashboardScreen() => _screenPreview(empty: true);
 Widget previewPartialFailureMonthlyDashboardScreen() =>
     _screenPreview(failure: true);
 
+@CordatoPreview(
+  group: 'Dashboard / Telas',
+  name: 'Fallback do usuário / Claro',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.light,
+)
+@CordatoPreview(
+  group: 'Dashboard / Telas',
+  name: 'Fallback do usuário / Escuro',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.dark,
+)
+Widget previewDashboardUserFallback() => _screenPreview(userFailure: true);
+
 Widget _screenPreview({
   bool empty = false,
   bool loading = false,
   bool failure = false,
+  bool userFailure = false,
 }) {
   final today = DateTime.now();
   final month = DateTime(today.year, today.month);
   final end = DateTime(today.year, today.month + 1, 0);
 
   return PreviewResourceWidget<UserCommand>(
-    create: () => UserCommand(repository: DashboardUserPreviewRepository()),
+    create: () => UserCommand(
+      repository: DashboardUserPreviewRepository(
+        failure: userFailure ? ErrorsEntity.unknown() : null,
+      ),
+    ),
     dispose: (_) {},
     builder: (userCommand) => DashboardScreen(
       userCommand: userCommand,

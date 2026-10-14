@@ -63,7 +63,8 @@ O app já possui:
   seções, impede meses futuros e bloqueia as setas enquanto qualquer seção carrega.
   Cada seção possui skeleton no mês selecionado, sem dados do mês anterior sob
   o novo título. Falha financeira apresenta uma tela de erro com retry único,
-  preservando o mês até a recuperação das três seções. Insights vazios ocultam a seção; recentes
+  preservando o mês até a recuperação das três seções, sem cabeçalho durante o
+  erro e a recuperação. Insights vazios ocultam a seção; recentes
   vazios indicam ausência de despesas naquele mês. Refresh preserva a seleção;
 - listagem completa em `/expenses`, aberta por “Ver tudo” da Dashboard, com
   rolagem infinita em páginas de 20 itens, atualização por gesto, skeleton, vazio

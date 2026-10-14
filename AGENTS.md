@@ -199,9 +199,9 @@ incluindo retry. Listeners de `isRunning` são removidos no lifecycle; retornos
 obsoletos de navegação são ignorados. A troca ativa skeletons sem dados anteriores
 sob o novo título. Falha tipada ou inesperada de métricas, insights ou recentes
 substitui imediatamente o Scaffold pela `ErrorScreen`, na mesma
-instância e sem mudar o mês. O código vigente não fornece cabeçalho à ErrorScreen,
-divergindo da intenção registrada em `unify-dashboard-error-screen`;
-seletor, seções e FAB ficam ocultos. O erro persiste após sucessos remanescentes.
+instância e sem mudar o mês. A ErrorScreen da Dashboard não recebe AppBar.
+Cabeçalho, seletor, seções e FAB ficam ocultos durante erro e recuperação.
+O erro persiste após sucessos remanescentes.
 O retry único fica bloqueado enquanto houver consultas da Dashboard, inclusive
 User, ou recuperação em andamento, sem enfileirar toques. Recarrega User em
 paralelo ao limite histórico, aplica eventual ajuste civil do mês e consulta as

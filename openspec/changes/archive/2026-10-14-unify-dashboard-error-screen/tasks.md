@@ -13,7 +13,7 @@
 
 - [x] 3.1 Observar resultados, erros e loading dos três commands financeiros no `DashboardScreenStateMixin`, ativando erro global imediatamente após qualquer falha sem esperar outras consultas.
 - [x] 3.2 Manter o erro persistente após sucessos remanescentes, distinguindo falhas financeiras de resultados nulos, vazios e falhas auxiliares de User ou limite histórico.
-- [x] 3.3 Retornar `ErrorScreen` no lugar do Scaffold normal, com textos definidos e cabeçalho existente, sem seletor, seções ou FAB e sem criar rota ou State novo.
+- [x] 3.3 Retornar `ErrorScreen` no lugar do Scaffold normal, com textos definidos, sem cabeçalho, seletor, seções ou FAB e sem criar rota ou State novo.
 - [x] 3.4 Ajustar a composição das seções para remover retries localizados da Dashboard; verificar usos antes de remover widgets e previews de falha sem consumidores.
 
 ## 4. Recuperação coordenada e lifecycle
@@ -27,15 +27,15 @@
 ## 5. Previews e documentação
 
 - [x] 5.1 Adicionar previews de `ErrorScreen` com/sem cabeçalho, ação secundária, loading, temas claro/escuro e texto ampliado usando `@CordatoPreview`.
-- [ ] 5.2 Atualizar previews da Dashboard para erro global e fallback do usuário, preservando descarte dos recursos de preview.
+- [x] 5.2 Atualizar previews da Dashboard para erro global e fallback do usuário, preservando descarte dos recursos de preview.
 - [x] 5.3 Atualizar `ARCHITECTURE.md` e `AGENTS.md` para documentar `ErrorScreen`, erro financeiro único, retry coordenado e fallback do nome.
 
 ## 6. Verificação
 
 - [x] 6.1 Executar `flutter pub get` quando aplicável, `flutter analyze` e `flutter test`, registrando causas de eventuais falhas sem criar testes Flutter de UI, módulos ou rotas.
-- [ ] 6.2 Preparar cenários controlados e flows Maestro para falha isolada de cada seção, múltiplas falhas, falha antes de outras conclusões e erro observável por exceção.
+- [x] 6.2 Preparar cenários controlados e flows Maestro para falha isolada de cada seção, múltiplas falhas, falha antes de outras conclusões e erro observável por exceção.
 - [x] 6.3 Validar com Maestro retry bloqueado durante consultas, loading estável, toques repetidos, nova falha e recuperação financeira completa sem flashes de conteúdo.
-- [ ] 6.4 Validar com Maestro mês histórico preservado, ajuste por novo limite, falhas auxiliares independentes, fallback “Trocado” e navegação disponível pelo cabeçalho.
+- [x] 6.4 Validar com Maestro mês histórico preservado, ajuste por novo limite, falhas auxiliares independentes, fallback “Trocado” no conteúdo normal e ausência de cabeçalho no erro.
 - [x] 6.5 Validar previews e interação da tela compartilhada em ambos os temas, espaço reduzido e texto ampliado, incluindo acesso às ações no footer.
 
 ## Registro da etapa 1
@@ -65,3 +65,13 @@ executadas, não código de testes mantido no projeto. As tarefas 5.2 (fallback)
 e 6.2 não representam mais entregas completas; sua parte de simulação foi
 retirada. Os previews visuais da ErrorScreen solicitados na etapa 1 e o preview
 existente da Dashboard, atualizado para erro global, permanecem no catálogo.
+
+## Encerramento
+
+O usuário determinou explicitamente manter o erro da Dashboard sem AppBar;
+proposal, design e spec foram alinhados a essa decisão. Os previews de fallback
+no conteúdo normal foram concluídos. O usuário escolheu “Encerrar por aceite” para as
+pendências 6.2 e 6.4, preservando as evidências anteriores sem recriar harness ou
+flows removidos e sem ampliar a cobertura runtime demonstrada.
+
+Detalhes da conclusão e limites: [implementation-completion.md](implementation-completion.md).

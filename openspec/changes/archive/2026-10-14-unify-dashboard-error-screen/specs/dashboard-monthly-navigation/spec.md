@@ -24,7 +24,7 @@ A Dashboard SHALL desabilitar ambas as setas enquanto qualquer consulta de seç�
 
 #### Scenario: Falha parcial
 - **WHEN** insights falham e as outras duas consultas terminam com sucesso
-- **THEN** a Dashboard apresenta somente a tela de erro global com seu cabeçalho e uma ação de retry no footer
+- **THEN** a Dashboard apresenta somente a tela de erro global sem cabeçalho e com uma ação de retry no footer
 - **AND** não exibe métricas, insights, recentes, seletor mensal ou botão flutuante
 
 #### Scenario: Falha antes das outras conclusões
@@ -43,19 +43,26 @@ A Dashboard SHALL desabilitar ambas as setas enquanto qualquer consulta de seç�
 - **THEN** as três seções apresentam carregamento de setembro sem exibir dados de outubro sob o título de setembro
 
 #### Scenario: Tela descartada durante consulta
+
 - **WHEN** a Dashboard é descartada antes de uma consulta terminar
 - **THEN** a conclusão não atualiza o estado descartado e os recursos de observação criados pela tela são removidos
+
+#### Scenario: Retry localizado
+
+- **WHEN** uma seção financeira falha
+- **THEN** a Dashboard não oferece retry localizado nessa seção
+- **AND** apresenta somente a ação de recuperação global, que recarrega as três seções no mês vigente
 
 ## ADDED Requirements
 
 ### Requirement: Conteúdo único do erro financeiro
 
-A Dashboard SHALL usar `ErrorScreen` com o título “Não foi possível carregar sua Dashboard.”, descrição “Não conseguimos carregar suas informações agora. Tente novamente.” e ação principal “Tentar novamente”. O cabeçalho SHALL manter saudação, avatar e ações existentes. A substituição de Scaffold SHALL ocorrer no mesmo State, sem navegação ou nova instância da Dashboard.
+A Dashboard SHALL usar `ErrorScreen` com o título “Não foi possível carregar sua Dashboard.”, descrição “Não conseguimos carregar suas informações agora. Tente novamente.” e ação principal “Tentar novamente”. A ErrorScreen da Dashboard SHALL NOT receber appBar; saudação, avatar e ações do cabeçalho SHALL permanecer ocultos durante erro e recuperação. A substituição de Scaffold SHALL ocorrer no mesmo State, sem navegação ou nova instância da Dashboard.
 
 #### Scenario: Várias seções com erro
 - **WHEN** as três consultas financeiras falham
 - **THEN** há uma única mensagem com o título e a descrição definidos e um único botão “Tentar novamente” no footer
-- **AND** avatar, notificações e Settings mantêm seus callbacks disponíveis conforme a configuração da rota
+- **AND** avatar, notificações e Settings não são exibidos durante o erro
 
 ### Requirement: Recuperação única e estável da Dashboard
 
@@ -105,7 +112,7 @@ O cabeçalho SHALL mostrar “Trocado” e o avatar placeholder quando a consult
 
 #### Scenario: Usuário recuperado pelo retry global
 - **WHEN** User carrega com sucesso durante o retry financeiro
-- **THEN** o nome e avatar retornados substituem o fallback no cabeçalho
+- **THEN** o nome e avatar retornados substituem o fallback no cabeçalho quando o conteúdo normal for restaurado
 
 #### Scenario: Falha somente no limite
 - **WHEN** a consulta do limite do histórico falha e as três seções financeiras têm sucesso

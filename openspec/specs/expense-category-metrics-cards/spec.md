@@ -3,9 +3,7 @@
 ## Purpose
 
 Definir a apresentação da distribuição mensal de despesas da Dashboard em cards informativos de categorias, com destaque ilustrado, grade de duas linhas e carrossel horizontal, preservando os dados financeiros da API e a acessibilidade.
-
 ## Requirements
-
 ### Requirement: Distribuição mensal em cards de categorias
 
 A seção de Metrics SHALL substituir o gráfico segmentado por cards das categorias com `totalAmount > 0` no mês selecionado na Dashboard. A apresentação SHALL manter o total mensal acima dos cards, formatar valores em centavos pelo `IMoneyFormatter` e preservar o percentual fornecido pela API, sem recalcular agregações ou alterar as entidades recebidas. Os cards SHALL ser informativos, sem navegação para despesas ou seleção de categoria.
@@ -130,7 +128,7 @@ Somente o destaque de cada página SHALL usar a ilustração existente de sua ca
 
 ### Requirement: Estados da seção e acessibilidade
 
-A seção SHALL preservar loading, falha com retry localizado no mês selecionado e total zero. O skeleton SHALL representar a grade de três cards, com destaque em largura total acima e dois compactos lado a lado abaixo, usando altura medida pelo conteúdo, excluindo dados fictícios da semântica e anunciando “Carregando métricas de despesas”. A ilustração SHALL permanecer visível sem efeito de skeleton por `Skeleton.ignore`. Total zero SHALL mostrar a mensagem de período sem despesas, sem cards fictícios. Total positivo sem categorias positivas SHALL mostrar a mensagem de distribuição indisponível. Uma única categoria positiva SHALL manter somente o total, sem carrossel ou mensagem de distribuição indisponível.
+A seção SHALL preservar loading e total zero. Na Dashboard, falha de Metrics SHALL acionar a tela de erro financeiro global em vez de apresentar falha ou retry localizado da seção. A ação global SHALL recarregar as três seções no contexto mensal preservado, mantendo a tela de erro durante a recuperação. O skeleton SHALL representar a grade de três cards, com destaque em largura total acima e dois compactos lado a lado abaixo, usando altura medida pelo conteúdo, excluindo dados fictícios da semântica e anunciando “Carregando métricas de despesas”. A ilustração SHALL permanecer visível sem efeito de skeleton por `Skeleton.ignore`. Total zero SHALL mostrar a mensagem de período sem despesas, sem cards fictícios. Total positivo sem categorias positivas SHALL mostrar a mensagem de distribuição indisponível. Uma única categoria positiva SHALL manter somente o total, sem carrossel ou mensagem de distribuição indisponível.
 
 Cada card SHALL anunciar uma única descrição com nome, valor e percentual mensal, evitando anunciar o percentual duplicado do badge e do texto. Nome, valor e percentual SHALL permanecer legíveis com texto ampliado, sem truncamento de informação financeira. Nenhum teste Flutter automatizado de widgets, screens ou tema SHALL ser adicionado; a verificação dessas camadas SHALL usar previews e Maestro.
 
@@ -144,9 +142,9 @@ Cada card SHALL anunciar uma única descrição com nome, valor e percentual men
 - **THEN** a seção mostra o total e “A distribuição por categoria não está disponível.”
 
 #### Scenario: Falha e retry
-- **WHEN** a consulta falha e a pessoa aciona “Tentar novamente”
-- **THEN** somente a seção de Metrics consulta novamente o mês selecionado
-- **AND** apresenta o skeleton de cards durante a consulta
+- **WHEN** Metrics falha e a pessoa aciona “Tentar novamente” na tela de erro global
+- **THEN** a Dashboard coordena a recarga de Metrics, Insights e despesas recentes no mês efetivo da recuperação
+- **AND** a tela de erro continua visível com loading no botão em vez do skeleton localizado de Metrics
 
 #### Scenario: Leitor de tela e texto ampliado
 - **WHEN** a pessoa usa leitor de tela ou amplia o texto
@@ -161,3 +159,4 @@ A implementação SHALL compor as duas linhas com `Column`, `Row` e `Expanded` e
 - **WHEN** a substituição está implementada
 - **THEN** a distribuição mensal usa a grade de cards e não depende de `fl_chart`
 - **AND** a consulta permanece pelo command de Metrics e pelo contexto mensal existente da Dashboard
+
