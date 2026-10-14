@@ -44,23 +44,26 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
     return Scaffold(
       appBar: ExpensesAppBarWidget(onBackPressed: widget.onBackPressed),
       body: SafeArea(
-        child:
-            CommandBuilder<
-              ({
-                int pageSize,
-                DateTime? to,
-                DateTime? from,
-                String? category,
-                String? pageLink,
-              }),
-              ExpensePageEntity?
-            >(
-              command: widget.getCommand.execute,
-              onData: (_, _, _) => _buildContent(),
-              onNullData: (_, _) => _buildContent(),
-              onError: (_, _, _, _) => _buildContent(),
-              whileRunning: (_, _, _) => _buildContent(),
-            ),
+        child: ListenableBuilder(
+          listenable: widget.getCommand.execute.isRunning,
+          builder: (_, _) =>
+              CommandBuilder<
+                ({
+                  int pageSize,
+                  DateTime? to,
+                  DateTime? from,
+                  String? category,
+                  String? pageLink,
+                }),
+                ExpensePageEntity?
+              >(
+                command: widget.getCommand.execute,
+                onData: (_, _, _) => _buildContent(),
+                onNullData: (_, _) => _buildContent(),
+                onError: (_, _, _, _) => _buildContent(),
+                whileRunning: (_, _, _) => _buildContent(),
+              ),
+        ),
       ),
     );
   }

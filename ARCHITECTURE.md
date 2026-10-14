@@ -358,6 +358,23 @@ ciclo invalida conclusões após troca de qualquer command ou descarte, preserva
 a recarga pendente após navegação. Componentes e previews de erro localizado sem
 consumidores foram removidos.
 
+O total da Dashboard usa `AnimatedExpenseTotalWidget`, em
+`dashboard/presentation/widgets/metrics/`, com animações nativas do Flutter.
+Primeira carga e troca de intervalo civil exibem o total correto com entrada
+de opacidade de 180 ms, sem contar de zero nem interpolar entre meses.
+Atualizações do mesmo intervalo interpolam centavos inteiros do último total
+concluído até o novo durante 500 ms, com `easeOutCubic`, incluindo reduções e zero.
+Cada frame usa `IMoneyFormatter`, preservando BRL e separadores pt-BR.
+`MetricsSectionWidget` conserva somente o total e o intervalo anteriores como
+estado de animação, observando snapshots terminais com dados e sem erro; loading,
+entidades e falhas continuam no command e no `CommandBuilder`. O skeleton continua
+substituindo a seção durante as consultas. A chave mensal da Dashboard e a troca
+de command reiniciam o histórico visual; o listener é removido na troca e no
+descarte. A semântica anuncia somente o total final, e `disableAnimations` mostra
+esse valor imediatamente, sem contagem ou fade. Os previews interativos cobrem
+aumento, redução, zero, valor inalterado, valor alto e troca de mês, além de temas
+claro/escuro e movimento reduzido com texto ampliado.
+
 `ExpenseMetricsCategoriesExtension.cardPages`, na apresentação de Metrics,
 filtra totais positivos, ordena uma cópia por total decrescente com desempate
 pelo índice original e forma grupos consecutivos de duas ou três categorias.
@@ -734,9 +751,9 @@ singletons pelos contratos, com o HTTP do core, e é composto por `appModule`.
 `expense/presentation/screens/expense/commands/update_expense_command.dart`,
 recebe `IExpenseRepository` e delega os campos do record
 `({String id, int? cents, String? description, DateTime? occurredOn})` a `update` sem normalização,
-validação ou defaults. Seu `execute` começa em `null` e preserva
-`Either<ErrorsEntity, ExpenseEntity>` em `UpdateRepositoryType?`, incluindo os
-erros de domínio e seus pointers. Cada execução substitui o resultado anterior;
+validação ou defaults. Seu `execute` começa em `null` e publica
+`ExpenseEntity?`: Right preserva a entidade e Left lança `CommandFailureException`
+com a mesma ErrorsEntity, incluindo seus pointers. Cada execução substitui o resultado anterior;
 o estado de execução bloqueia novas chamadas enquanto uma atualização está
 pendente e permite nova tentativa após falha. Exceções inesperadas do repository
 são erros observáveis do command. Implementa `ICommand` e descarta `execute` em
@@ -755,9 +772,10 @@ permite repetir após falha. Implementa `ICommand` e é registrado por factory e
 `DeleteExpenseCommand`, em
 `expense/presentation/screens/expenses/commands/delete_expense_command.dart`,
 recebe `IExpenseRepository` e delega o ID sem normalização a `delete`.
-Seu `execute` é `Command<String, DeleteRepositoryType?>`, inicialmente nulo,
-preservando `Either<ErrorsEntity, bool>`, inclusive `Right(false)` e os erros
-de domínio. Cada execução substitui o resultado anterior; o estado de execução
+Seu `execute` é `Command<String, bool?>`, inicialmente nulo,
+publicando o booleano de Right, inclusive false, e lançando
+`CommandFailureException` com a ErrorsEntity original de Left.
+Cada execução substitui o resultado anterior; o estado de execução
 bloqueia novas chamadas enquanto uma exclusão está pendente e permite nova
 tentativa após falha. Exceções inesperadas do repository são erros observáveis
 do command. Implementa `ICommand` e descarta `execute` em `dispose`.
@@ -778,8 +796,19 @@ com a Dashboard e usa `Skeletonizer` sobre o layout real de `ExpenseItemWidget`.
 A listagem mostra oito placeholders quando não há itens e três no rodapé
 durante consultas com itens já carregados, preservando a lista visível e a
 semântica “Carregando despesas”, sem expor textos fictícios à acessibilidade.
-`ExpensesScreenStateMixin` mantém os itens acumulados, a continuação opaca `next`
-e os estados locais de loading, vazio e falha. Solicita páginas de 20 itens ao
+`ExpensesScreenStateMixin` mantém os itens acumulados, a continuação opaca `next`,
+`hasLoaded`, feedback aceito pela revisão e a operação de retry. `isLoading` é
+derivado de `getCommand.execute.isRunning` e da recarga pendente da revisão
+vigente, sem flag que copie a request. A tela observa execução declarativamente
+com `ListenableBuilder` e resultados com `CommandBuilder`. O listener de execução
+coordena somente a recarga pendente: após idle, uma microtask revalida mounted,
+command, revisão, intenção e disponibilidade antes de consumir a intenção e
+iniciar a primeira página. Uma consulta que ocupe o command antes da microtask
+mantém a intenção para a próxima liberação. O listener é removido antes da troca
+ou descarte; não há `finally` antigo alterando loading ou iniciando recarga.
+Cada página só é incorporada após snapshots distintos de início e conclusão
+com os parâmetros solicitados, dados idênticos ao retorno do Future e ausência
+de erro, sob command/revisão vigentes. Solicita páginas de 20 itens ao
 montar e ao restarem menos de 240 pixels de conteúdo; após uma página, também
 verifica se é preciso preencher a área visível. A apresentação mantém ordem
 decrescente pela data civil, preservando a ordem recebida entre itens do mesmo dia, e
@@ -817,8 +846,10 @@ arrastes curtos ou cancelados apenas retornam à posição original.
 O mesmo componente aceita arraste da esquerda para a direita para editar: o item
 se desloca para a direita e revela à esquerda um fundo `primaryContainer` com
 lápis `onPrimaryContainer`. O limite e o threshold são os mesmos da exclusão;
-soltar após o threshold inicia o spring de retorno e abre o editor em paralelo,
-sem confirmação ou remoção do item. A direção da ação permanece fixada durante
+soltar após o threshold conclui o spring de retorno e fixa o deslocamento em zero
+antes de abrir o editor, sem confirmação ou remoção do item. A navegação não pausa
+uma mola pendente: ao voltar, o item já está na posição original. Antes de navegar,
+o gesto revalida montagem, ID e disponibilidade da ação. A direção permanece fixada durante
 o retorno para o overshoot do spring não exibir a ação oposta. Não há abertura
 por toque simples. A ação de acessibilidade “Editar despesa” abre o mesmo editor.
 Sem callback de edição, somente o arraste de exclusão fica disponível.
@@ -828,8 +859,12 @@ Abre a confirmação compartilhada
 `showConfirmationBottomSheetWidget`, também usada em exclusão da conta e logout.
 Cancelar ou dispensar restaura o item sem requisição. A ação de acessibilidade
 “Excluir despesa” abre a mesma confirmação. Somente confirmar executa o
-`DeleteExpenseCommand`; a remoção ocorre após `Right(true)`, com toast de sucesso.
-Erros e `Right(false)` preservam o item e mostram toast. O mixin coordena a
+`DeleteExpenseCommand`; a remoção ocorre após true, com toast de sucesso.
+O await exige snapshot terminal sem erro, ID vigente e true tanto nos dados
+quanto no Future. Falha tipada é tratada no catch específico, preservando mensagens
+remotas e fallback seguro para lista vazia; exceções inesperadas e false usam
+o fallback existente. Cada caminho produz um único feedback contextual.
+Erros e false preservam o item. O mixin coordena a
 confirmação e a execução, bloqueia exclusões simultâneas e consultas enquanto a
 exclusão está pendente, e bloqueia exclusões durante carregamento de páginas.
 O item permanece na posição original durante a confirmação e a requisição,
@@ -843,9 +878,10 @@ sob o path `/` e é composto por `appModule`. “Ver tudo” na Dashboard abre `
 `expense/presentation/screens/expense/commands/create_expense_command.dart`,
 recebe `IExpenseRepository` e delega os campos do record
 `({int cents, String description, DateTime? occurredOn})` a `create`.
-Seu `execute` é `Command<({int cents, String description, DateTime? occurredOn}), CreateRepositoryType?>`, com valor
-inicial `null`, preservando `Either<ErrorsEntity, ExpenseEntity>` para a
-apresentação tratar sucesso e erros. O estado observável acompanha a execução e
+Seu `execute` é `Command<({int cents, String description, DateTime? occurredOn}), ExpenseEntity?>`, com valor
+inicial `null`: Right publica a entidade original e Left lança
+`CommandFailureException` com a ErrorsEntity original. Exceções inesperadas
+permanecem no canal nativo sem conversão. O estado observável acompanha a execução e
 impede chamadas adicionais enquanto uma criação está pendente; após erro permite
 nova tentativa. Implementa `ICommand` e descarta `execute` em `dispose`. O command
 é registrado por factory em `expenseDependenciesModule`, e é recebido por
@@ -911,6 +947,13 @@ o cadastro, e os handlers também impedem execução duplicada e abertura simult
 de pickers. Erros com pointers de `amount`, `description` e `occurred_on` são
 agrupados nos respectivos campos; demais erros e exceções recebem toast. O
 formulário preserva os dados para uma nova tentativa.
+Os listeners de criação/atualização interpretam somente o snapshot terminal de
+`results`, priorizando erro antes de dados e verificando os parâmetros pertinentes.
+Falhas tipadas preservam mensagens remotas; lista vazia recebe fallback localizado.
+Não usam `value` anterior como confirmação nem produzem efeitos no build.
+Controllers, validação, erros editáveis, exclusão mútua dos pickers e intenção de
+continuar por hold permanecem no formulário. O formulário remove suas assinaturas,
+inclusive na troca dos commands, sem descartar factories pertencentes à screen.
 O envio usa `HoldButtonWidget`: `onTap` cadastra e, somente em `Right`, exibe o
 toast de sucesso e chama `onExpenseCreated`, cujo destino é injetado pela rota:
 retorno à Dashboard existente quando iniciado por ela ou navegação para
@@ -1009,12 +1052,17 @@ com título “Deseja apagar sua conta?”, aviso de ação irreversível e bot�
 “Voltar” e “Confirmar”, seguindo o layout do logout. O handler fica em
 `UserScreenStateMixin`; somente a confirmação executa `DeleteUserCommand`,
 em `presentation/screens/user/commands/`, que delega a `IUserRepository.delete()`
-e preserva `Either<ErrorsEntity, bool>`. A tela recebe o command por construtor,
+e publica `bool?`, inicialmente nulo. Right mantém true/false e Left lança
+`CommandFailureException` com a ErrorsEntity original. A tela recebe o command por construtor,
 registrado como lazy singleton em `userRoutesModule`, com descarte pelo módulo.
 `CommandBuilder` mostra loading e desabilita o botão durante a exclusão; o handler
 também impede execução duplicada. O mixin registra e remove o listener de
-resultados e exibe toast para erros da API, exceções e `Right(false)`, permitindo
-nova tentativa. Em `Right(true)`, o repository já aguardou a limpeza do storage;
+resultados e exibe toast para falhas tipadas, exceções inesperadas e false,
+permitindo nova tentativa. O snapshot terminal é interpretado antes dos dados,
+sem usar `value` anterior; listas de erros vazias recebem fallback localizado.
+Ao confirmar, o callback revalida mounted e as instâncias capturadas antes de
+cancelar o timer do avatar e executar a exclusão. Em true, o repository já
+aguardou a limpeza do storage;
 a observação da sessão por `AppWidget` redireciona de `/user` para `/welcome`,
 sem navegação adicional na tela.
 Logout e exclusão reutilizam `showConfirmationBottomSheetWidget` do core,
@@ -1037,14 +1085,21 @@ enviada automaticamente. Não há botão “Salvar avatar”. O timer é cancela
 descarte da tela, na troca dos commands e ao confirmar exclusão da conta,
 impedindo envios pendentes fora desse lifecycle. Sair antes do prazo descarta
 a escolha ainda não enviada. `UpdateAvatarCommand`, em
-`screens/user/commands/`, recebe `String`, delega a `update(avatar: ...)`, preserva
-`Either` e é registrado por factory em `userRoutesModule`, com descarte pela tela.
+`screens/user/commands/`, recebe `String`, delega a `update(avatar: ...)` sem
+normalização e publica `UserEntity?`, inicialmente nulo. Right mantém a entidade
+e Left lança `CommandFailureException` com a falha original. É registrado por
+factory em `userRoutesModule`, com descarte pela tela.
 `CommandBuilder` preserva o formulário durante o envio, desabilitando geração
 e edição de nome. Sucesso usa o usuário retornado e
 exibe toast; falhas preservam a escolha e exibem erro, sem retries automáticos.
 Gerar outra imagem inicia um novo prazo e uma nova tentativa. A tela só confirma sucesso se a resposta
-contiver a semente enviada, evitando anunciar persistência quando a API ignora
-o atributo. O backend aceita `avatar` em PATCH e o retorna em GET
+contiver a semente enviada e o snapshot terminal pertencer à escolha pendente,
+sem erro. Erro tem precedência sobre os dados; `value` antigo não confirma outro
+salvamento. `avatarUser` preserva o último usuário confirmado para desenhar o
+avatar, enquanto a escolha temporária continua prioritária após falha. Falhas
+tipadas preservam as mensagens; erro inesperado ou lista vazia usa fallback.
+A tela não anuncia persistência quando a API ignora o atributo.
+O backend aceita `avatar` em PATCH e o retorna em GET
 e PATCH; a implementação Flutter não provisiona esse campo no servidor.
 Previews de User em `presentation/previews/screens/` usam repository fake sem
 rede para experimentar geração, debounce de dois segundos, salvamento automático
@@ -1054,15 +1109,21 @@ exibição.” e campo na área acima do botão “Atualizar”, com rolagem e a
 ao teclado, seguindo o layout da autenticação. Recebe nome inicial,
 `UpdateUserCommand` e callbacks de navegação por construtor.
 `EditUserScreenStateMixin` mantém a entrada e o erro do campo, registra e remove
-o listener do command e trata o resultado. A tela usa `CommandBuilder` para
+o listener do command e trata o snapshot terminal. Na troca do command, remove
+o listener da instância anterior e observa a nova sem descartar o singleton.
+A tela usa `CommandBuilder` para
 loading e desabilita campo e envio durante a requisição. O botão só habilita
 para nome não vazio após `trim()` e diferente do inicial; o nome é enviado sem
 espaços nas extremidades. Erros com pointer `/data/attributes/name` aparecem no
-campo e os demais por toast. Sucesso exibe toast e retorna o `UserEntity` pela
+campo e os demais por toast; lista vazia e exceção inesperada recebem fallback.
+Erro tem precedência sobre dados, sem usar `value` anterior como sucesso.
+Sucesso exibe toast e retorna o `UserEntity` pela
 navegação; `UserScreen` executa novamente `UserCommand` para consultar nome,
 e-mail e avatar atualizados. Reabrir `/user` também realiza uma nova consulta.
-`UpdateUserCommand`, em `edit_user/commands/`, delega a `update`,
-preserva `Either` e implementa `ICommand`; `userRoutesModule` o registra como lazy
+`UpdateUserCommand`, em `edit_user/commands/`, delega a `update(name: ...)` sem
+normalização no command e publica `UserEntity?`, inicialmente nulo: Right mantém
+a entidade e Left lança `CommandFailureException` com a ErrorsEntity original.
+Implementa `ICommand`; `userRoutesModule` o registra como lazy
 singleton, com descarte pelo módulo. O contexto não realiza autenticação ou leitura
 de sessão. `IUserLocalDataSource` e `UserLocalDataSource` ficam no mesmo arquivo,
 `infrastructure/local/user_local_data_source.dart`; a implementação recebe
@@ -1404,7 +1465,9 @@ como erros originais pelo CommandIt, sem encapsulamento tipado artificial.
 Não há converter genérico nem mudança para domínio orientado a exceptions.
 O tipo e o fallback estão disponíveis. GetExpenses, GetInsights,
 GetExpenseMetrics, User, GetFirstExpenseMonth e GetExpense já usam
-dados nativos; mutações e Authentication ainda preservam Either.
+dados nativos; CreateExpense e UpdateExpense também publicam ExpenseEntity anulável,
+e DeleteExpense publica bool anulável. UpdateUser e UpdateAvatar publicam UserEntity
+anulável, e DeleteUser publica bool anulável. Authentication ainda preserva Either.
 Cada saída é migrada junto de todos os consumidores e testes na mesma unidade.
 
 Consumidores que aguardam `runAsync` precisam tratar seu Future em erro, mesmo

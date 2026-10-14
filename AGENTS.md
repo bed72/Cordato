@@ -52,7 +52,8 @@ o contrato `IExpenseRepository.create`, `ExpenseResponse`
 e data source HTTP de criação, além de `CreateExpenseCommand` em
 `presentation/screens/expense/commands/`, e `ExpenseRepository` em `application/repositories/`.
 O command recebe um record com `cents`, `description` e `occurredOn` e delega
-esses parâmetros a `IExpenseRepository.create`, preserva `Either` e
+esses parâmetros a `IExpenseRepository.create`, publica `ExpenseEntity?`:
+Right mantém a entidade e Left lança `CommandFailureException` com a falha original, e
 implementa `ICommand`. `expenseDependenciesModule` registra data source e
 repository pelos contratos, commands por factory e validators
 e os injeta na tela. O formulário executa o cadastro pela API.
@@ -67,11 +68,12 @@ remotos para `ErrorsEntity`, valida os centavos da resposta por
 `ExpenseResponse.toEntity()` e traduz exceções em `ErrorsEntity.unknown()`.
 `UpdateExpenseCommand`, em `screens/expense/commands/`, recebe o record
 `({String id, int? cents, String? description, DateTime? occurredOn})`, delega a `update` sem normalização
-e preserva `Either` em `UpdateRepositoryType?`, inicialmente nulo. Implementa
+e publica `ExpenseEntity?`, inicialmente nulo: Right mantém a entidade e Left
+lança `CommandFailureException` com a ErrorsEntity original. Implementa
 `ICommand` e é registrado por factory em `expenseDependenciesModule`; cada
 consumidor deve descartar sua instância. `GetExpenseCommand`, no mesmo diretório,
-consulta `IExpenseRepository.getById({required String id})`, preservando `Either`
-em `ExpenseEntity?`: Right mantém a entidade e Left lança `CommandFailureException`
+consulta `IExpenseRepository.getById({required String id})`, publicando
+`ExpenseEntity?`: Right mantém a entidade e Left lança `CommandFailureException`
 com a falha original. O data source executa GET relativo `expenses/<id>`
 com ID codificado e retorna `ExpenseResponse`; o repository valida centavos,
 converte erros e traduz exceções como nas outras operações.
@@ -136,6 +138,16 @@ simples ou hold: após sucesso, ambos exibem toast; o toque simples chama o call
 de navegação injetado para Dashboard, e o hold limpa descrição, valor e erros,
 redefine a data para hoje e permanece na tela. Falhas preservam os dados nos dois
 modos; hold interrompido não envia. Cancelar pickers preserva a entrada.
+Os listeners de criação e atualização usam snapshot terminal de `results`,
+priorizando erro antes dos dados, sem interpretar `value` anterior como sucesso.
+Falha tipada preserva pointers e mensagens; lista vazia e erro inesperado usam
+fallback localizado. Efeitos de sucesso permanecem únicos fora do build.
+`DeleteExpenseCommand` publica `bool?`, inicialmente nulo: Right preserva true/false
+e Left lança `CommandFailureException` com a falha original. A confirmação da
+listagem trata falha tipada no catch e erro inesperado no fallback, sem duplicar
+feedback. Só true no Future e no snapshot terminal sem erro do ID vigente confirma
+exclusão; false preserva o item. `pendingDeleteId` permanece até a finalização do
+gesto pertinente; controller, continuação, filtros e ações acessíveis são preservados.
 A Dashboard abre `/expense` com `(returnToPrevious: true)`, record de tipo
 `({bool returnToPrevious})`. Após sucesso por toque simples, a rota usa
 `context.pop()` para preservar a instância da Dashboard e seu mês selecionado.
@@ -160,6 +172,13 @@ Os cards de categoria usam `BounceWidget` e abrem a mesma listagem de “Ver tud
 com categoria opcional e mês selecionado. Metrics emite somente a string da
 categoria por callback; Dashboard compõe a navegação. Expense delega `category`
 sem normalização e envia `filter[category]`, com precedência sobre o link.
+O loading da listagem deriva da execução de GetExpenses e da recarga pendente
+da revisão vigente, sem cópia local da request. A tela observa execução
+declarativamente; o listener coordena somente a pendência em microtask,
+revalidando mounted, command, revisão e disponibilidade antes de consumi-la.
+Cada página exige novos snapshots de início e conclusão com os parâmetros
+solicitados e dados do Future, sem erro e sob command/revisão válidos. Não há
+`finally` de consulta modificando loading ou disparando recarga obsoleta.
 Listagem preserva ambas as lentes na paginação, refresh e retry e remove itens
 editados que deixem de pertencer ao mês ou à categoria.
 A Dashboard recebe instâncias próprias de `GetInsightsCommand` e
@@ -488,6 +507,22 @@ exclusão e atualização do nome como lazy singletons.
   persistência caso o atributo seja ignorado.
 - User e Dashboard descartam `UserCommand`. Dashboard aguarda o retorno de User
   e Settings para recarregar nome e avatar, ignorando retornos obsoletos.
+- `UpdateUserCommand` e `UpdateAvatarCommand` publicam `UserEntity?`, inicialmente
+  nulo, preservando a entidade de Right e lançando `CommandFailureException` com
+  a ErrorsEntity original de Left. Os commands delegam nome/seed sem normalização.
+  A edição mantém trim e validação locais, `nameFailure`, feedback e retorno por
+  callback. Seu listener é religado na troca do command, sem descartar o singleton.
+- `DeleteUserCommand` publica `bool?`, inicialmente nulo, preservando true/false
+  e lançando a falha tipada de Left. Os handlers usam snapshot terminal e priorizam
+  erro antes dos dados, com fallback seguro para lista vazia ou erro inesperado,
+  sem confirmar mutação por `value` antigo. Exclusão true mantém limpeza somente
+  no repository e navegação pela observação de sessão. UpdateUser e DeleteUser
+  continuam lazy singletons descartados pelo módulo.
+- Avatar confirma sucesso somente com snapshot da seed pendente sem erro e
+  resposta contendo a mesma seed. `avatarUser` permanece como usuário confirmado
+  para o desenho; falha preserva esse cache e a escolha temporária. O timer não
+  faz retry automático. A confirmação de exclusão revalida mounted e commands
+  capturados antes de cancelar o timer e enviar a operação.
 
 O sign-up aceita `name` e `avatar` opcionais nos contratos de repository e
 data source. O repository delega sem normalização. O data source mantém
@@ -919,7 +954,9 @@ A migração para dados nativos ocorre por command e todos os seus consumidores:
 repository continua com Either; o callback do command adapta Right para dados e
 Left para CommandFailureException, sem converter genérico. GetExpenses,
 GetInsights, GetExpenseMetrics, User e GetFirstExpenseMonth já usam dados nativos;
-GetExpense também usa dados nativos; mutações e Authentication ainda mantêm Either.
+GetExpense, CreateExpense e UpdateExpense também usam dados nativos;
+DeleteExpense publica bool anulável. UpdateUser e UpdateAvatar publicam UserEntity
+anulável, e DeleteUser publica bool anulável. Authentication ainda mantém Either.
 Ao migrar, priorize o erro do snapshot
 terminal sobre dados, trate o Future de `runAsync` em erro e não duplique no catch
 um feedback já emitido por listener. Não use value anterior como sucesso atual.

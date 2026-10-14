@@ -6,7 +6,6 @@ import 'package:cordato/features/core/presentation/widgets/fields/text_field_wid
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
-import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';
 
 import 'package:cordato/features/user/presentation/screens/edit_user/commands/update_user_command.dart';
 import 'package:cordato/features/user/presentation/screens/edit_user/widgets/edit_user_app_bar_widget.dart';
@@ -27,7 +26,7 @@ final class _EditUserScreenState extends State<EditUserScreen>
     with EditUserScreenStateMixin {
   @override
   Widget build(BuildContext context) {
-    return CommandBuilder<String, UpdateRepositoryType?>(
+    return CommandBuilder<String, UserEntity?>(
       command: widget.command.execute,
       onSuccess: (_, _) => _buildContent(),
       onError: (_, _, _, _) => _buildContent(),

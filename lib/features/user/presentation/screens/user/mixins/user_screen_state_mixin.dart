@@ -3,9 +3,9 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
@@ -74,48 +74,63 @@ mixin UserScreenStateMixin on State<UserScreen> {
   }
 
   void _handleAvatarUpdate() {
-    final result = widget.avatarCommand.execute.results.value;
-    if (!mounted || result.isRunning) return;
-    if (result.data case Right(:final value)) {
-      if (!result.hasError &&
-          value.avatar == _pendingAvatarSeed &&
-          value.avatar != null) {
+    final data = widget.avatarCommand.execute.results.value;
+    if (!mounted ||
+        data.isRunning ||
+        data.paramData == null ||
+        data.paramData != _pendingAvatarSeed) {
+      return;
+    }
+    if (!data.hasError) {
+      if (data.data case final value?
+          when value.avatar == _pendingAvatarSeed && value.avatar != null) {
         setState(() {
           avatarUser = value;
           _pendingAvatarSeed = null;
         });
+
         context.showToast(
           variant: .success,
           title: 'Avatar atualizado',
           description: 'Seu novo avatar foi salvo com sucesso.',
         );
+
         return;
       }
     }
-    final errors = switch (result.data) {
-      Left(:final value) => value,
+    final errors = switch (data.error) {
+      CommandFailureException(:final errors) => errors,
       _ => ErrorsEntity.unknown(),
     };
     context.showToast(
       variant: .error,
-      title: 'Não foi possível salvar o avatar',
       description: error(errors),
+      title: 'Não foi possível salvar o avatar',
     );
   }
 
   Future<void> showDeleteAccountConfirmation() async {
     if (isSavingAvatar || widget.deleteCommand.execute.isRunning.value) return;
+    final command = widget.command;
+    final deleteCommand = widget.deleteCommand;
+    final avatarCommand = widget.avatarCommand;
+
     await showConfirmationBottomSheetWidget(
       context: context,
       title: 'Deseja apagar sua conta?',
       subtitle: 'Esta ação é irreversível. Sua conta e seus dados serão apagados permanentemente.',
       onConfirm: () {
-        if (isSavingAvatar || widget.deleteCommand.execute.isRunning.value) {
+        if (!mounted ||
+            command != widget.command ||
+            deleteCommand != widget.deleteCommand ||
+            avatarCommand != widget.avatarCommand ||
+            isSavingAvatar ||
+            deleteCommand.execute.isRunning.value) {
           return;
         }
         _avatarSaveTimer?.cancel();
         _avatarSaveTimer = null;
-        widget.deleteCommand.execute.run();
+        deleteCommand.execute.run();
       },
     );
   }
@@ -124,21 +139,8 @@ mixin UserScreenStateMixin on State<UserScreen> {
     final data = widget.deleteCommand.execute.results.value;
     if (!mounted || data.isRunning) return;
 
-    final rejected = switch (data.data) {
-      Right(value: false) => true,
-      _ => false,
-    };
-
-    if (data.hasError || rejected) {
-      context.showToast(
-        variant: .error,
-        title: 'Erro ao apagar conta',
-        description: 'Não foi possível apagar sua conta. Tente novamente.',
-      );
-      return;
-    }
-
-    if (data.data case Left(:final value)) {
+    if (data.error case CommandFailureException(:final errors)) {
+      final value = errors;
       context.showToast(
         variant: .error,
         title: value.errors.firstOrNull?.title ?? 'Erro ao apagar conta',
@@ -151,6 +153,15 @@ mixin UserScreenStateMixin on State<UserScreen> {
                         'Não foi possível apagar sua conta. Tente novamente.',
                   )
                   .join('\n'),
+      );
+      return;
+    }
+
+    if (data.hasError || data.data == false) {
+      context.showToast(
+        variant: .error,
+        title: 'Erro ao apagar conta',
+        description: 'Não foi possível apagar sua conta. Tente novamente.',
       );
     }
   }
@@ -179,6 +190,7 @@ mixin UserScreenStateMixin on State<UserScreen> {
       _avatarSaveTimer = null;
       _pendingAvatarSeed = null;
     }
+
     if (oldWidget.avatarCommand != widget.avatarCommand) {
       oldWidget.avatarCommand.execute.results.removeListener(
         _handleAvatarUpdate,
@@ -186,10 +198,12 @@ mixin UserScreenStateMixin on State<UserScreen> {
       oldWidget.avatarCommand.dispose();
       widget.avatarCommand.execute.results.addListener(_handleAvatarUpdate);
     }
+
     if (oldWidget.deleteCommand != widget.deleteCommand) {
       oldWidget.deleteCommand.execute.results.removeListener(_handleDelete);
       widget.deleteCommand.execute.results.addListener(_handleDelete);
     }
+
     if (oldWidget.command != widget.command) {
       oldWidget.command.dispose();
       _pendingAvatarSeed = null;

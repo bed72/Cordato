@@ -21,6 +21,7 @@ final class const DangerButtonWidget({
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           iconColor: context.colors.onError,
+          overlayColor: Colors.transparent,
           foregroundColor: context.colors.onError,
           backgroundColor: context.colors.error.withValues(alpha: 0.9),
         ),

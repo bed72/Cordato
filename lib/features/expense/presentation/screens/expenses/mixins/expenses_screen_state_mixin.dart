@@ -19,7 +19,6 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   String? deletingExpenseId;
 
   int _queryRevision = 0;
-  bool isLoading = false;
   bool hasLoaded = false;
   bool hasFailure = false;
   bool _retryRefresh = true;
@@ -31,10 +30,13 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
 
   int get pageSize => 20;
 
+  bool get isLoading =>
+      widget.getCommand.execute.isRunning.value ||
+      _pendingRefreshRevision == _queryRevision;
+
   bool get canRemoveFilters =>
       mounted &&
       !isLoading &&
-      !widget.getCommand.execute.isRunning.value &&
       !isEditingExpense &&
       pendingDeleteId == null &&
       deletingExpenseId == null &&
@@ -75,7 +77,8 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     activeCategory = widget.category;
     activePeriod = widget.period;
     scrollController.addListener(loadNearEnd);
-    refreshExpenses();
+    widget.getCommand.execute.isRunning.addListener(_schedulePendingRefresh);
+    _restartQuery();
   }
 
   @override
@@ -93,7 +96,13 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
         oldWidget.category != widget.category ||
         oldWidget.period != widget.period;
 
-    if (commandChanged) oldWidget.getCommand.dispose();
+    if (commandChanged) {
+      oldWidget.getCommand.execute.isRunning.removeListener(
+        _schedulePendingRefresh,
+      );
+      oldWidget.getCommand.dispose();
+      widget.getCommand.execute.isRunning.addListener(_schedulePendingRefresh);
+    }
 
     if (filtersChanged) {
       activeCategory = widget.category;
@@ -112,6 +121,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   void dispose() {
     _queryRevision++;
     _pendingRefreshRevision = null;
+    widget.getCommand.execute.isRunning.removeListener(_schedulePendingRefresh);
     scrollController.removeListener(loadNearEnd);
     scrollController.dispose();
     widget.getCommand.dispose();
@@ -153,8 +163,9 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       hasLoaded = false;
       hasFailure = false;
       _retryRefresh = true;
-      isLoading = command.execute.isRunning.value;
-      _pendingRefreshRevision = isLoading ? _queryRevision : null;
+      _pendingRefreshRevision = command.execute.isRunning.value
+          ? _queryRevision
+          : null;
     });
 
     final revision = _queryRevision;
@@ -169,6 +180,23 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     }
 
     if (_pendingRefreshRevision == null) await refreshExpenses();
+  }
+
+  void _schedulePendingRefresh() {
+    final command = widget.getCommand;
+    final revision = _pendingRefreshRevision;
+    if (revision == null || command.execute.isRunning.value) return;
+
+    Future<void>.microtask(() {
+      if (!_isCurrentQuery(command, revision) ||
+          _pendingRefreshRevision != revision ||
+          command.execute.isRunning.value) {
+        return;
+      }
+
+      _pendingRefreshRevision = null;
+      refreshExpenses();
+    });
   }
 
   Future<void> loadNextPage() async {
@@ -383,35 +411,45 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   }
 
   Future<void> _loadPage({required bool refresh}) async {
-    if (!mounted ||
-        isLoading ||
-        isEditingExpense ||
-        pendingDeleteId != null ||
-        widget.getCommand.execute.isRunning.value) {
+    if (!mounted || isLoading || isEditingExpense || pendingDeleteId != null) {
       return;
     }
     final command = widget.getCommand;
     final revision = _queryRevision;
 
     setState(() {
-      isLoading = true;
       hasFailure = false;
       _retryRefresh = refresh;
     });
 
     try {
-      final data = await command.execute.runAsync((
+      final parameters = (
         pageSize: pageSize,
         to: activePeriod?.to,
         category: activeCategory,
         from: activePeriod?.from,
         pageLink: refresh ? null : nextPageLink,
-      ));
+      );
+      final previous = command.execute.results.value;
+      final execution = command.execute.runAsync(parameters);
+      final started = command.execute.results.value;
+      final didStart =
+          !identical(previous, started) &&
+          started.isRunning &&
+          started.paramData == parameters;
+      final data = await execution;
 
       if (!_isCurrentQuery(command, revision)) return;
+      final snapshot = command.execute.results.value;
 
       setState(() {
-        if (data != null) {
+        if (didStart &&
+            !identical(started, snapshot) &&
+            !snapshot.isRunning &&
+            !snapshot.hasError &&
+            snapshot.paramData == parameters &&
+            data != null &&
+            identical(snapshot.data, data)) {
           if (refresh) expenses.clear();
           for (final expense in data.items) {
             _insertExpense(expense);
@@ -426,18 +464,6 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     } catch (_) {
       if (!_isCurrentQuery(command, revision)) return;
       setState(() => hasFailure = true);
-    } finally {
-      if (_isCurrentQuery(command, revision)) {
-        setState(() => isLoading = false);
-      }
-      final pendingRevision = _pendingRefreshRevision;
-      if (pendingRevision != null &&
-          _isCurrentQuery(command, pendingRevision) &&
-          !command.execute.isRunning.value) {
-        _pendingRefreshRevision = null;
-        setState(() => isLoading = false);
-        refreshExpenses();
-      }
     }
 
     if (!_isCurrentQuery(command, revision) || hasFailure) return;

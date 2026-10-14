@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/user/presentation/screens/edit_user/edit_user_screen.dart';
 
@@ -14,6 +14,14 @@ mixin EditUserScreenStateMixin on State<EditUserScreen> {
   @override
   void initState() {
     super.initState();
+    widget.command.execute.results.addListener(_handleUpdate);
+  }
+
+  @override
+  void didUpdateWidget(covariant EditUserScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.command == widget.command) return;
+    oldWidget.command.execute.results.removeListener(_handleUpdate);
     widget.command.execute.results.addListener(_handleUpdate);
   }
 
@@ -41,16 +49,8 @@ mixin EditUserScreenStateMixin on State<EditUserScreen> {
     final data = widget.command.execute.results.value;
     if (!mounted || data.isRunning || data.paramData == null) return;
 
-    if (data.hasError) {
-      context.showToast(
-        variant: .error,
-        title: 'Erro ao atualizar nome',
-        description: 'Não foi possível atualizar o nome. Tente novamente.',
-      );
-      return;
-    }
-
-    if (data.data case Left(:final value)) {
+    if (data.error case CommandFailureException(:final errors)) {
+      final value = errors;
       final fieldErrors = value.errors.where(
         (error) => error.pointer == '/data/attributes/name',
       );
@@ -79,11 +79,18 @@ mixin EditUserScreenStateMixin on State<EditUserScreen> {
               )
               .join('\n'),
         );
+      } else if (value.errors.isEmpty) {
+        _showUpdateFailure();
       }
       return;
     }
 
-    if (data.data case Right(:final value)) {
+    if (data.hasError) {
+      _showUpdateFailure();
+      return;
+    }
+
+    if (data.data case final value?) {
       context.showToast(
         variant: .success,
         title: 'Nome atualizado',
@@ -93,4 +100,10 @@ mixin EditUserScreenStateMixin on State<EditUserScreen> {
       widget.onUpdated(context, value);
     }
   }
+
+  void _showUpdateFailure() => context.showToast(
+    variant: .error,
+    title: 'Erro ao atualizar nome',
+    description: 'Não foi possível atualizar o nome. Tente novamente.',
+  );
 }

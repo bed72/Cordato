@@ -73,15 +73,18 @@ mixin ExpenseDismissibleWidgetStateMixin
             ),
           )
           .orCancel;
-      final action = activate && widget.enabled
-          ? editing
-                ? widget.onEdit!().then((_) => false)
-                : widget.onConfirmDelete()
+      final action = activate && widget.enabled && !editing
+          ? widget.onConfirmDelete()
           : Future<bool>.value(false);
 
       await returning;
       if (!mounted || widget.id != id) return;
       swipeController.value = 0.0;
+
+      if (editing && activate && widget.enabled) {
+        await widget.onEdit?.call();
+        return;
+      }
 
       final deleted = await action;
       if (mounted && widget.id == id && deleted) widget.onDeleted();

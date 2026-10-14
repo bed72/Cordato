@@ -11,7 +11,6 @@ import 'package:cordato/features/core/presentation/widgets/buttons/danger_button
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
-import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/delete_user_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/update_avatar_command.dart';
@@ -61,15 +60,12 @@ final class _UserScreenState extends State<UserScreen>
                         : .unknown(),
                   ),
                   onNullData: (_, _) => _buildSkeleton(),
-                  onData: (_, user, _) =>
-                      CommandBuilder<String, UpdateRepositoryType?>(
-                        command: widget.avatarCommand.execute,
-                        whileRunning: (_, _, _) =>
-                            _buildUser(avatarUser ?? user!),
-                        onSuccess: (_, _) => _buildUser(avatarUser ?? user!),
-                        onError: (_, _, _, _) =>
-                            _buildUser(avatarUser ?? user!),
-                      ),
+                  onData: (_, user, _) => CommandBuilder<String, UserEntity?>(
+                    command: widget.avatarCommand.execute,
+                    whileRunning: (_, _, _) => _buildUser(avatarUser ?? user!),
+                    onSuccess: (_, _) => _buildUser(avatarUser ?? user!),
+                    onError: (_, _, _, _) => _buildUser(avatarUser ?? user!),
+                  ),
                 ),
               ),
               const SizedBox(height: 8.0),

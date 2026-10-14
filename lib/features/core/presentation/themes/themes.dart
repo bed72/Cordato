@@ -53,6 +53,7 @@ abstract final class Themes {
         elevation: 0.0,
         backgroundColor: colors.primary,
         foregroundColor: colors.surface,
+        overlayColor: Colors.transparent,
         minimumSize: const Size(56.0, 56.0),
         shape: const RoundedRectangleBorder(
           borderRadius: .all(.circular(14.0)),
@@ -68,6 +69,7 @@ abstract final class Themes {
       style:
           OutlinedButton.styleFrom(
             foregroundColor: colors.primary,
+            overlayColor: Colors.transparent,
             minimumSize: const Size(56.0, 56.0),
             shape: const RoundedRectangleBorder(
               borderRadius: .all(.circular(14.0)),

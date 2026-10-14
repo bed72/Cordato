@@ -1,7 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/animations/animation.dart';
-import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/circular_progress_indicator_widget.dart';
 
@@ -19,11 +18,13 @@ final class const ElevatedButtonWidget({
       onPressed: onTap,
       child: SwitcherAnimation(
         child: (isLoading ?? false)
-            ? CircularProgressIndicatorWidget(
+            ? Builder(
                 key: const ValueKey('loading'),
-                width: 20.0,
-                height: 20.0,
-                color: context.colors.primary,
+                builder: (context) => CircularProgressIndicatorWidget(
+                  width: 20.0,
+                  height: 20.0,
+                  color: DefaultTextStyle.of(context).style.color,
+                ),
               )
             : Row(
                 key: const ValueKey('content'),

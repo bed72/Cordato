@@ -79,32 +79,48 @@ Registro do grupo 6: [consulta nativa, ID vigente, edição no iOS e validação
 
 ## 7. Mutações de Expense e feedback do formulário/listagem
 
-- [ ] 7.1 Migrar CreateExpenseCommand com ExpenseFormWidget/mixin, consumers/previews/testes para entidade nativa e falha tipada, preservando criação por toque e hold.
-- [ ] 7.2 Migrar UpdateExpenseCommand com formulário/screen/listagem e testes para entidade nativa, preservando PATCH parcial, ID, descrição, centavos e comparação civil.
-- [ ] 7.3 Adaptar `_handleCreation` e `_handleUpdate` para snapshot terminal, erro antes dos dados, pointers remotos preservados, fallback inesperado e efeitos uma única vez fora do build.
-- [ ] 7.4 Manter controllers, validação, `_isPickerOpen`, `_keepFormOpenAfterCreation`, dados em falha, reset após sucesso por hold e callbacks de alteração/navegação nos proprietários atuais.
-- [ ] 7.5 Migrar DeleteExpenseCommand com confirmação e testes para bool anulável, preservando false sem confirmação, true com remoção e falha tipada com feedback único.
-- [ ] 7.6 Preservar pendingDeleteId, finalização de dismiss, thresholds, ações acessíveis, rolagem, continuação, remoção/reposicionamento por filtros e verificação de necessidade de mais itens.
-- [ ] 7.7 Validar Maestro criação simples, hold bem-sucedido/falho/interrompido, picker cancelado, edição parcial e exclusão confirmada/cancelada/falha, sem alterar UX.
-- [ ] 7.8 Atualizar documentação dos contratos e executar testes de Create/Update/Delete e checks afetados na mesma unidade das alterações.
+- [x] 7.1 Migrar CreateExpenseCommand com ExpenseFormWidget/mixin, consumers/previews/testes para entidade nativa e falha tipada, preservando criação por toque e hold.
+- [x] 7.2 Migrar UpdateExpenseCommand com formulário/screen/listagem e testes para entidade nativa, preservando PATCH parcial, ID, descrição, centavos e comparação civil.
+- [x] 7.3 Adaptar `_handleCreation` e `_handleUpdate` para snapshot terminal, erro antes dos dados, pointers remotos preservados, fallback inesperado e efeitos uma única vez fora do build.
+- [x] 7.4 Manter controllers, validação, `_isPickerOpen`, `_keepFormOpenAfterCreation`, dados em falha, reset após sucesso por hold e callbacks de alteração/navegação nos proprietários atuais.
+- [x] 7.5 Migrar DeleteExpenseCommand com confirmação e testes para bool anulável, preservando false sem confirmação, true com remoção e falha tipada com feedback único.
+- [x] 7.6 Preservar pendingDeleteId, finalização de dismiss, thresholds, ações acessíveis, rolagem, continuação, remoção/reposicionamento por filtros e verificação de necessidade de mais itens.
+- [x] 7.7 Validar Maestro criação simples, hold bem-sucedido/falho/interrompido, picker cancelado, edição parcial e exclusão confirmada/cancelada/falha, sem alterar UX.
+- [x] 7.8 Atualizar documentação dos contratos e executar testes de Create/Update/Delete e checks afetados na mesma unidade das alterações.
+
+Registro do grupo 7: [mutações nativas, checks e evidências parciais de interação](implementation-part-6.md).
+A tarefa 7.7 foi encerrada por aceite explícito do usuário com as evidências
+registradas, sem execução adicional ou ampliação da cobertura demonstrada.
+O launcher temporário autorizado foi removido.
 
 ## 8. Listagem: remover somente loading derivável
 
-- [ ] 8.1 Revisar cada intervalo de isLoading na listagem e substituir cópia de request por execução do command quando equivalente; documentar intervalo local legítimo se algum controle precisar permanecer.
-- [ ] 8.2 Preservar expenses, hasLoaded, feedback aceito por revisão, nextPageLink, `_retryRefresh`, `_queryRevision`, `_pendingRefreshRevision`, filtros e controller.
-- [ ] 8.3 Garantir incorporação de página única por operação válida e ausência de efeitos de result/error/finally antigos após troca de lente ou command.
-- [ ] 8.4 Garantir que refresh/paginação falhos preservam itens e repetem operação correta; remover filtros limpa lente, mantém novos parâmetros e solicita primeira página ao ficar disponível.
-- [ ] 8.5 Verificar oito placeholders sem itens, três com itens, anúncio de loading, bloqueios de interação, agrupamentos e ausência de flash de vazio.
-- [ ] 8.6 Validar Maestro filtros combinados, remoção individual, paginação, refresh/retry, edição para fora da lente e exclusão do último item de grupo; registrar efeitos preservados e reduções reais.
+- [x] 8.1 Revisar cada intervalo de isLoading na listagem e substituir cópia de request por execução do command quando equivalente; documentar intervalo local legítimo se algum controle precisar permanecer.
+- [x] 8.2 Preservar expenses, hasLoaded, feedback aceito por revisão, nextPageLink, `_retryRefresh`, `_queryRevision`, `_pendingRefreshRevision`, filtros e controller.
+- [x] 8.3 Garantir incorporação de página única por operação válida e ausência de efeitos de result/error/finally antigos após troca de lente ou command.
+- [x] 8.4 Garantir que refresh/paginação falhos preservam itens e repetem operação correta; remover filtros limpa lente, mantém novos parâmetros e solicita primeira página ao ficar disponível.
+- [x] 8.5 Verificar oito placeholders sem itens, três com itens, anúncio de loading, bloqueios de interação, agrupamentos e ausência de flash de vazio.
+- [x] 8.6 Validar Maestro filtros combinados, remoção individual, paginação, refresh/retry, edição para fora da lente e exclusão do último item de grupo; registrar efeitos preservados e reduções reais.
+
+Registro do grupo 8: [loading derivado, tentativas válidas e checks](implementation-part-7.md).
+A tarefa 8.5 foi verificada por inspeção de composição e scheduling, sem execução
+visual adicional. O usuário recusou outro launcher temporário e posteriormente
+autorizou encerrar a tarefa 8.6 por aceite explícito e avançar ao step 9, sem
+repetir a matriz Maestro nem atribuir cobertura nova aos registros anteriores.
 
 ## 9. User: resultados nativos e estado legítimo de avatar
 
-- [ ] 9.1 Migrar UpdateUserCommand com EditUserScreen/mixin, consumers/previews/testes para UserEntity anulável, preservando nameFailure, validação, toast e retorno por callback injetado.
-- [ ] 9.2 Migrar UpdateAvatarCommand com UserScreen/mixin/previews/testes para UserEntity anulável e falha tipada, mantendo verificação de seed da resposta.
-- [ ] 9.3 Preservar timer de dois segundos, escolha temporária e avatarUser quando necessário; cancelar timer na troca/descarte/exclusão e manter ausência de retry automático.
-- [ ] 9.4 Migrar DeleteUserCommand e handlers/testes para bool anulável, preservando true/false, limpeza de storage exclusivamente pelo repository e navegação pela observação de sessão.
-- [ ] 9.5 Validar que erro tipado com lista vazia usa fallback sem throw secundário, e que value antigo não confirma nome/avatar/exclusão de uma tentativa falha.
+- [x] 9.1 Migrar UpdateUserCommand com EditUserScreen/mixin, consumers/previews/testes para UserEntity anulável, preservando nameFailure, validação, toast e retorno por callback injetado.
+- [x] 9.2 Migrar UpdateAvatarCommand com UserScreen/mixin/previews/testes para UserEntity anulável e falha tipada, mantendo verificação de seed da resposta.
+- [x] 9.3 Preservar timer de dois segundos, escolha temporária e avatarUser quando necessário; cancelar timer na troca/descarte/exclusão e manter ausência de retry automático.
+- [x] 9.4 Migrar DeleteUserCommand e handlers/testes para bool anulável, preservando true/false, limpeza de storage exclusivamente pelo repository e navegação pela observação de sessão.
+- [x] 9.5 Validar que erro tipado com lista vazia usa fallback sem throw secundário, e que value antigo não confirma nome/avatar/exclusão de uma tentativa falha.
 - [ ] 9.6 Validar via Maestro consulta, edição de nome, regeneração coalescida de avatar, seed não devolvida quando reproduzível e confirmação de exclusão em ambiente apropriado, sem descarte manual de singletons do módulo.
+
+Registro do grupo 9: [mutações nativas de User, lifecycle e checks](implementation-part-8.md).
+9.1–9.5 foram implementadas e verificadas por testes de commands e inspeção dos
+consumidores. 9.6 permanece pendente; nenhum launcher temporário foi criado ou
+solicitado novamente, e não houve alteração de dados da conta em dispositivo.
 
 ## 10. Authentication e Settings: migração completa dos consumers
 
