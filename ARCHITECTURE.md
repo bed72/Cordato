@@ -710,6 +710,8 @@ fixos. `ExpensesFiltersWidget` exibe categoria antes do período em `InputChip`
 com ícone de fechar e ação nativa de remoção, 12 pixels abaixo da descrição.
 Uma `Row` mantém os filtros em uma única linha, com espaçamento de 8 pixels,
 dentro de um `SingleChildScrollView` horizontal, como na listagem de Insights.
+O viewport ocupa toda a largura da tela, fora do padding do cabeçalho, e as
+margens laterais de 20 pixels pertencem ao conteúdo rolável.
 Os rótulos não quebram linha nem são truncados. A validação com texto ampliado e rótulos
 longos permanece pendente, registrada na change arquivada. Cores, tipografia e formato de pílula vêm do tema, com
 `BounceWidget` para pressão e alvo Material acessível. O corpo não possui ação.

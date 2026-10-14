@@ -75,30 +75,28 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const .fromLTRB(16.0, 24.0, 16.0, 0.0),
-            child: Column(
-              crossAxisAlignment: .stretch,
-              children: [
-                const HeaderWidget(
+          child: Column(
+            crossAxisAlignment: .stretch,
+            children: [
+              const Padding(
+                padding: .fromLTRB(16.0, 24.0, 16.0, 0.0),
+                child: HeaderWidget(
                   title: 'Despesas',
                   description: 'Acompanhe todas as suas despesas.',
                 ),
-                if (activeCategory != null || activePeriod != null) ...[
-                  const SizedBox(height: 12.0),
-                  ExpensesFiltersWidget(
-                    periodLabel: periodLabel,
-                    categoryLabel: categoryLabel,
-                    onRemoveCategory: canRemoveFilters
-                        ? removeCategoryFilter
-                        : null,
-                    onRemovePeriod: canRemoveFilters
-                        ? removePeriodFilter
-                        : null,
-                  ),
-                ],
+              ),
+              if (activeCategory != null || activePeriod != null) ...[
+                const SizedBox(height: 12.0),
+                ExpensesFiltersWidget(
+                  periodLabel: periodLabel,
+                  categoryLabel: categoryLabel,
+                  onRemoveCategory: canRemoveFilters
+                      ? removeCategoryFilter
+                      : null,
+                  onRemovePeriod: canRemoveFilters ? removePeriodFilter : null,
+                ),
               ],
-            ),
+            ],
           ),
         ),
         SliverList.builder(

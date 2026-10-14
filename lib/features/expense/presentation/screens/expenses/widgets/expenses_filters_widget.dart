@@ -16,6 +16,7 @@ final class const ExpensesFiltersWidget({
     return SingleChildScrollView(
       scrollDirection: .horizontal,
       primary: false,
+      padding: const .symmetric(horizontal: 20.0),
       child: Row(
         spacing: 8.0,
         children: [
