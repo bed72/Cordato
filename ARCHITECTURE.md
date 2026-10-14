@@ -1493,6 +1493,48 @@ SignUp, ResendEmail e Logout publicam bool anulável. Os repositories de
 Authentication continuam retornando Either.
 Cada saída é migrada junto de todos os consumidores e testes na mesma unidade.
 
+### Matriz De Resultados E Propriedade
+
+| Commands | Resultado de `execute` | Proprietário do descarte |
+| --- | --- | --- |
+| GetExpenses | `ExpensePageEntity?` | Tela consumidora, factory |
+| GetExpense, CreateExpense, UpdateExpense | `ExpenseEntity?` | ExpenseScreen, factories |
+| DeleteExpense | `bool?` | ExpensesScreen, factory |
+| GetInsights | `List<InsightEntity>?` | Tela consumidora, factory |
+| GetExpenseMetrics | `ExpenseMetricsEntity?` | Tela consumidora, factory |
+| GetFirstExpenseMonth | `DateTime?` | DashboardScreen, factory |
+| User, UpdateAvatar | `UserEntity?` | Tela consumidora, factories |
+| UpdateUser | `UserEntity?` | Modular, lazy singleton de User |
+| DeleteUser | `bool?` | Modular, lazy singleton de User |
+| SignIn | `SessionEntity?` | Modular, lazy singleton root |
+| SignUp, ResendEmail | `bool?` | Modular, lazy singletons root |
+| Logout | `bool?` | Modular, lazy singleton de Settings |
+
+Todos começam em null. False é dado válido, mas não confirma mutação, reenvio ou
+cadastro. Lista/página vazia e total zero são sucessos. No limite histórico,
+null só representa ausência de histórico após conclusão válida. Callback conserva
+`EmailVerificationStatusEnum?` e Session conserva seu command síncrono `bool?`;
+ambos pertencem ao escopo root. Seções somente observam; previews atribuem cada
+descarte à screen proprietária ou ao wrapper, nunca aos dois.
+
+Na versão instalada CommandIt 9.5.2, `run` ocupado não envia outra operação e
+`runAsync` ocupado pode devolver o mesmo Future, inclusive recebendo parâmetros
+diferentes. Isso não consulta os novos parâmetros nem cria fila. O snapshot
+terminal de results é publicado antes da atualização de value e da liberação de
+isRunning. Descartar não cancela HTTP e pode completar o Future pendente com
+value anterior; o snapshot pode permanecer em execução sem publicação terminal.
+Por isso consumidores mantêm mounted, identidade, revisão e prova de execução
+nova, sem contar conclusão por descarte como sucesso. Session não consulta
+isRunning de seu command síncrono.
+
+O estado local preservado tem responsabilidade distinta: Dashboard mantém lente
+mensal, latch de erro, ciclo de recuperação e intenções coalescidas; ExpenseScreen
+mantém intenção de consulta e revisão do ID; ExpensesScreen mantém páginas,
+continuação, filtros, feedback aceito, retry e revisão, derivando loading da
+execução e da recarga pendente. Formulários mantêm entrada, validação e modo hold;
+User mantém seed temporária, avatar confirmado e timer; ResendEmail mantém
+cooldown. Esses estados não duplicam a resposta corrente do command.
+
 Consumidores que aguardam `runAsync` precisam tratar seu Future em erro, mesmo
 quando um listener recebe a falha. O catch não deve repetir o feedback desse
 listener. Results terminal determina erro e dados da tentativa; value pode

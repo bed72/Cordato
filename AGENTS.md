@@ -990,6 +990,22 @@ um feedback já emitido por listener. Não use value anterior como sucesso atual
 
 ### Gerenciamento global
 
+A matriz canônica de resultados e descarte dos dezesseis commands migrados está
+em `ARCHITECTURE.md`, em “Matriz De Resultados E Propriedade”. Factories pertencem
+às telas consumidoras; UpdateUser/DeleteUser e Logout pertencem aos respectivos
+escopos Modular; commands root de Authentication e Session são compartilhados.
+Seções não descartam commands. Previews devem ter somente um proprietário por
+recurso.
+
+Preserve os limites comprovados de CommandIt 9.5.2: runAsync ocupado pode devolver
+o Future da execução anterior sem aceitar os novos parâmetros; results terminal
+antecede value e a liberação de isRunning; dispose não cancela a operação remota
+e pode concluir o Future com value anterior sem publicar sucesso terminal novo.
+Não use essa conclusão como confirmação da tentativa vigente. Coordenação de
+intenção, revisão, montagem e identidade continua pertencendo ao consumidor.
+Os testes verificam dados e parâmetros depois da execução aguardada, sem esperar
+que instalar um stub altere o estado observável.
+
 O projeto não usa Bloc, Provider, Riverpod ou store global no código atual. Não
 adicione um desses padrões por hábito. Primeiro verifique se o estado pertence
 à screen, a um command ou a um repositório.

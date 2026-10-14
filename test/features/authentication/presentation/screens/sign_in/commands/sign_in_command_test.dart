@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -192,6 +194,89 @@ void main() {
     expect(await command.execute.runAsync(input), same(session));
     verify(
       () => repository.signIn(email: input.email, password: input.password),
+    ).called(1);
+  });
+
+  test(
+    'shares pending sign-in without submitting different credentials',
+    () async {
+      final pending = Completer<SignInRepositoryType>();
+      final session = SessionEntity(
+        token: 'token',
+        userId: 'user',
+        expiresAt: DateTime(2026),
+      );
+      final other = SignInCommand(repository: repository);
+      addTearDown(other.dispose);
+      when(
+        () => repository.signIn(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).thenAnswer((_) => pending.future);
+
+      final execution = command.execute.runAsync(credentials);
+      command.execute.run(credentials);
+      final joined = command.execute.runAsync((
+        email: 'other@example.com',
+        password: 'other',
+      ));
+
+      expect(joined, same(execution));
+      expect(command.execute.isRunning.value, isTrue);
+      expect(command.execute.results.value.paramData, credentials);
+      pending.complete(Right(session));
+
+      expect(await joined, same(session));
+      expect(other.execute.value, isNull);
+      expect(await execution, same(session));
+      expect(other.execute.results.value.data, isNull);
+      expect(command.execute.results.value.paramData, credentials);
+      verify(
+        () => repository.signIn(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).called(1);
+      verifyNoMoreInteractions(repository);
+    },
+  );
+
+  test('does not publish a session when disposed during sign-in', () async {
+    final started = Completer<void>();
+    final pending = Completer<SignInRepositoryType>();
+    final disposable = SignInCommand(repository: repository);
+    when(
+      () => repository.signIn(
+        email: credentials.email,
+        password: credentials.password,
+      ),
+    ).thenAnswer((_) {
+      started.complete();
+      return pending.future;
+    });
+    final execution = disposable.execute.runAsync(credentials);
+    await started.future;
+    disposable.dispose();
+    pending.complete(
+      Right(
+        SessionEntity(
+          token: 'token',
+          userId: 'user',
+          expiresAt: DateTime(2026),
+        ),
+      ),
+    );
+
+    expect(await execution, isNull);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(disposable.execute.value, isNull);
+    expect(disposable.execute.results.value.data, isNull);
+    verify(
+      () => repository.signIn(
+        email: credentials.email,
+        password: credentials.password,
+      ),
     ).called(1);
   });
 }

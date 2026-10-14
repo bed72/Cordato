@@ -36,8 +36,12 @@ void main() {
       when(() => repository.confirmEmail('signed'))
           .thenAnswer((_) async => status);
 
+      final result = await command.execute.runAsync('signed');
+
+      expect(result, status);
       expect(command.execute.value, status);
-      expect(await command.execute.runAsync('signed'), status);
+      expect(command.execute.results.value.data, status);
+      expect(command.execute.results.value.hasError, isFalse);
     });
   }
 

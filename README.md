@@ -61,8 +61,9 @@ O app já possui:
   ao retornar do formulário de gasto e da listagem completa; insights e despesas
   são atualizados em paralelo com as métricas. O seletor mensal controla as três
   seções, impede meses futuros e bloqueia as setas enquanto qualquer seção carrega.
-  Cada seção possui skeleton e retry independente no mês selecionado, sem dados
-  do mês anterior sob o novo título. Insights vazios ocultam a seção; recentes
+  Cada seção possui skeleton no mês selecionado, sem dados do mês anterior sob
+  o novo título. Falha financeira apresenta uma tela de erro com retry único,
+  preservando o mês até a recuperação das três seções. Insights vazios ocultam a seção; recentes
   vazios indicam ausência de despesas naquele mês. Refresh preserva a seleção;
 - listagem completa em `/expenses`, aberta por “Ver tudo” da Dashboard, com
   rolagem infinita em páginas de 20 itens, atualização por gesto, skeleton, vazio

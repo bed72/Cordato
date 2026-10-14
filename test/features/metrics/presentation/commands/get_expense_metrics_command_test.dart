@@ -239,13 +239,33 @@ void main() {
     verifyZeroInteractions(repository);
   });
 
+  test('does not publish metrics after disposal during a query', () async {
+    final started = Completer<void>();
+    final pending = Completer<GetExpensesRepositoryType>();
+    final disposable = GetExpenseMetricsCommand(repository: repository);
+    when(() => repository.getExpenses()).thenAnswer((_) {
+      started.complete();
+      return pending.future;
+    });
+    final execution = disposable.execute.runAsync(defaultFilters);
+    await started.future;
+    disposable.dispose();
+    pending.complete(Right(metrics));
+
+    expect(await execution, isNull);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(disposable.execute.value, isNull);
+    expect(disposable.execute.results.value.data, isNull);
+    verify(() => repository.getExpenses()).called(1);
+  });
+
   test('keeps zero totals and absent grouping as successful data', () async {
     final empty = ExpenseMetricsEntity(
       id: 'empty',
       totalAmount: 0,
+      categories: null,
       startDate: DateTime(2026, 10),
       endDate: DateTime(2026, 10, 31),
-      categories: null,
     );
     when(() => repository.getExpenses()).thenAnswer((_) async => Right(empty));
 

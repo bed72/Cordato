@@ -3,8 +3,8 @@
 ## Escopo e aceite anterior
 
 A tarefa 10.7 foi encerrada a pedido explícito do usuário, por aceite, sem nova
-execução Maestro. A implementação desta etapa cobre 11.1–11.5; a validação de
-fluxos da 11.6 permanece pendente.
+execução Maestro. A implementação desta etapa cobre 11.1–11.5; a tarefa 11.6
+também foi encerrada por aceite explícito do usuário, sem execução adicional.
 
 ## Listeners e confirmação
 
@@ -106,7 +106,7 @@ ou seus proprietários; não foi executado o catálogo nesta etapa.
   `expense_dismissible_widget_state_mixin.dart` foi preservada e não pertence a
   esta implementação.
 
-## 11.6 — Fluxos pendentes
+## 11.6 — Encerrada por aceite
 
 Maestro listou o iPhone Air iOS 26.2 como conectado, mas inspect_screen retornou
 `Device became unreachable during deviceInfo`. Nenhum flow de entrada,
@@ -114,5 +114,6 @@ confirmação ou sessão foi executado nesta etapa. Nenhum harness temporário f
 criado e nenhuma substituição artificial de dependência foi executada em runtime.
 Não houve alteração de conta ou sessão no dispositivo.
 
-A tarefa 11.6 continua aberta para validação com app atualizado e dispositivo
-acessível; os cenários de substituição permanecem explicitamente inspecionados.
+O usuário autorizou explicitamente encerrar a tarefa 11.6. O encerramento por
+aceite não amplia a cobertura runtime demonstrada; os cenários de substituição
+permanecem explicitamente inspecionados.

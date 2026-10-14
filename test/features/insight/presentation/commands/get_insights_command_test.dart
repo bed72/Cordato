@@ -282,6 +282,27 @@ void main() {
     verifyZeroInteractions(repository);
   });
 
+  test('does not publish insights after disposal during a query', () async {
+    final started = Completer<void>();
+    final pending = Completer<GetRepositoryType>();
+    final disposable = GetInsightsCommand(repository: repository);
+    when(() => repository.get()).thenAnswer((_) {
+      started.complete();
+      return pending.future;
+    });
+
+    final execution = disposable.execute.runAsync((year: null, month: null));
+    await started.future;
+    disposable.dispose();
+    pending.complete(Right(insights));
+
+    expect(await execution, isNull);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(disposable.execute.value, isNull);
+    expect(disposable.execute.results.value.data, isNull);
+    verify(() => repository.get()).called(1);
+  });
+
   test(
     'preserves an empty failure after success without publishing old insights',
     () async {

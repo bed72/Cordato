@@ -148,8 +148,8 @@ void main() {
     when(() => repository.update(name: name))
         .thenAnswer((_) async => const Right(user));
 
-    expect(command.execute.results.value.paramData, name);
     expect(await command.execute.runAsync(name), same(user));
+    expect(command.execute.results.value.paramData, name);
     verify(() => repository.update(name: name)).called(1);
     verifyNoMoreInteractions(repository);
   });
@@ -189,8 +189,8 @@ void main() {
       when(() => repository.update(name: user.name))
           .thenAnswer((_) async => const Right(user));
 
-      expect(command.execute.results.value.hasError, isFalse);
       expect(await command.execute.runAsync(user.name), same(user));
+      expect(command.execute.results.value.hasError, isFalse);
       verify(() => repository.update(name: user.name)).called(3);
     },
   );

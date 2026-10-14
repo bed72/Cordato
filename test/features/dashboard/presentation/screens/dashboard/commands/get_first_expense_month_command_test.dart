@@ -104,7 +104,18 @@ void main() {
     'preserves later page errors without publishing a partial limit',
     () async {
       const next = '?page[after]=first';
-      final errors = ErrorsEntity.unknown();
+      const errors = ErrorsEntity(
+        errors: [
+          ErrorEntity(
+            status: '422',
+            pointer: '/data/id',
+            parameter: 'page[after]',
+            title: 'Filtro inválido',
+            detail: 'Continuação inválida.',
+          ),
+          ErrorEntity(),
+        ],
+      );
       when(() => repository.get()).thenAnswer(
         (_) async => Right(page([DateTime(2026, 10, 1)], next: next)),
       );
@@ -156,6 +167,19 @@ void main() {
     when(() => repository.get())
         .thenAnswer((_) async => Right(page([DateTime(2026, 9, 1)])));
     expect(await command.execute.runAsync(), DateTime(2026, 9));
+  });
+
+  test('keeps history limits isolated between instances', () async {
+    final other = GetFirstExpenseMonthCommand(repository: repository);
+    addTearDown(other.dispose);
+    when(() => repository.get())
+        .thenAnswer((_) async => Right(page([DateTime(2026, 9, 1)])));
+
+    await command.execute.runAsync();
+
+    expect(other.execute.value, isNull);
+    expect(other.execute.results.value.data, isNull);
+    expect(other.execute.isRunning.value, isFalse);
   });
 
   test('allows retry after a history query fails', () async {

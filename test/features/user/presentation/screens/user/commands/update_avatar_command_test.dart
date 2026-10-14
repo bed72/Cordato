@@ -96,8 +96,8 @@ void main() {
         .thenAnswer((_) async => const Right(user));
 
     expect(command.execute.value, same(user));
-    expect(command.execute.results.value.hasError, isFalse);
     expect(await command.execute.runAsync(seed), same(user));
+    expect(command.execute.results.value.hasError, isFalse);
   });
 
   test('prevents duplicate saves while an update is pending', () async {
@@ -152,9 +152,9 @@ void main() {
       when(() => repository.update(avatar: input))
           .thenAnswer((_) async => const Right(user));
 
+      expect(await command.execute.runAsync(input), same(user));
       expect(command.execute.results.value.paramData, input);
       expect(command.execute.results.value.data?.avatar, seed);
-      expect(await command.execute.runAsync(input), same(user));
       verify(() => repository.update(avatar: input)).called(1);
       verifyNoMoreInteractions(repository);
     },

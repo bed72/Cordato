@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -190,4 +192,77 @@ void main() {
       () => repository.signUp(email: input.email, password: input.password),
     ).called(1);
   });
+
+  test(
+    'shares pending registration without submitting other credentials',
+    () async {
+      final pending = Completer<SignUpRepositoryType>();
+      final other = SignUpCommand(repository: repository);
+      addTearDown(other.dispose);
+      when(
+        () => repository.signUp(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).thenAnswer((_) => pending.future);
+
+      final execution = command.execute.runAsync(credentials);
+      command.execute.run(credentials);
+      final joined = command.execute.runAsync((
+        password: 'other',
+        email: 'other@example.com',
+      ));
+
+      expect(joined, same(execution));
+      expect(command.execute.isRunning.value, isTrue);
+      pending.complete(const Right(true));
+
+      expect(await joined, isTrue);
+      expect(await execution, isTrue);
+      expect(other.execute.value, isNull);
+      expect(command.execute.results.value.paramData, credentials);
+      expect(other.execute.results.value.data, isNull);
+      verify(
+        () => repository.signUp(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).called(1);
+      verifyNoMoreInteractions(repository);
+    },
+  );
+
+  test(
+    'does not publish acceptance when disposed during registration',
+    () async {
+      final started = Completer<void>();
+      final pending = Completer<SignUpRepositoryType>();
+      final disposable = SignUpCommand(repository: repository);
+      when(
+        () => repository.signUp(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).thenAnswer((_) {
+        started.complete();
+        return pending.future;
+      });
+
+      final execution = disposable.execute.runAsync(credentials);
+      await started.future;
+      disposable.dispose();
+      pending.complete(const Right(true));
+
+      expect(await execution, isNull);
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(disposable.execute.value, isNull);
+      expect(disposable.execute.results.value.data, isNull);
+      verify(
+        () => repository.signUp(
+          email: credentials.email,
+          password: credentials.password,
+        ),
+      ).called(1);
+    },
+  );
 }

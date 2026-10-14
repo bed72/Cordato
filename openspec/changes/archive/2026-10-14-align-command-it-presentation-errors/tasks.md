@@ -147,22 +147,27 @@ ou sessão em dispositivo pelo agente.
 - [x] 11.3 Fazer Callback invalidar ciclo quando command muda, mesmo com URL igual, mantendo `_isRunning`, revisão, tentativa iniciada, enum e distinção entre mesmo link/link novo.
 - [x] 11.4 Verificar descarte e substituição com requests pendentes, inclusive Future completado com value anterior na 9.5.2; registrar que guards impedem aplicação/navegação tardia.
 - [x] 11.5 Revisar cancelamento de cadeias/operators e propriedade de previews, removendo subscriptions antigas sem descartar singletons compartilhados ou repetir dispose de factory.
-- [ ] 11.6 Validar fluxos de entrada/confirmação/session e registrar explicitamente quais cenários de substituição foram executados versus inspecionados; usar harness temporário somente se autorizado e removê-lo ao fim.
+- [x] 11.6 Validar fluxos de entrada/confirmação/session e registrar explicitamente quais cenários de substituição foram executados versus inspecionados; usar harness temporário somente se autorizado e removê-lo ao fim.
 
 Registro do grupo 11: [lifecycle, invalidação, testes e limites de validação](implementation-part-10.md).
 11.1–11.5 foram implementadas/revisadas, com testes unitários para os limites dos
-commands e inspeção técnica dos interleavings de State. 11.6 permanece pendente:
-o Maestro voltou a retornar dispositivo inacessível ao inspecionar o simulador.
-Não houve execução runtime dos fluxos ou substituição artificial de dependências.
+commands e inspeção técnica dos interleavings de State. 11.6 foi encerrada por
+aceite explícito do usuário, sem execução Maestro adicional. Esse aceite não
+amplia a cobertura demonstrada; não houve execução runtime dos fluxos ou
+substituição artificial de dependências pelo agente.
 
 ## 12. Regressão unitária, documentação e encerramento da implementação
 
-- [ ] 12.1 Garantir testes de todos os commands migrados para input intacto, null inicial, valor de sucesso, falha tipada com metadata, Throwable inesperado e retry após falha.
-- [ ] 12.2 Garantir casos relevantes de bool false, lista/página vazia, total zero e limite nulo, sem usar isSuccess/hasData como prova universal de sucesso de negócio.
-- [ ] 12.3 Garantir concorrência com Completer e observáveis: requests duplicadas bloqueadas, runAsync compartilhado com parâmetros diferentes, isolamento de instâncias e descarte pendente sem publicação tardia de sucesso.
-- [ ] 12.4 Auditar usos restantes de Either/Left em apresentação: permitir adaptação nos commands e consumo pelo algoritmo do limite, eliminar interpretação de Left nos consumers migrados sem alterar Either no domínio/infrastructure.
-- [ ] 12.5 Atualizar ARCHITECTURE.md e AGENTS.md na mesma change com matriz de resultados/propriedade, política de erros, estados locais preservados e limites reais da biblioteca; revisar README se orientação de execução mudar.
-- [ ] 12.6 Executar `flutter pub get` quando aplicável, `flutter analyze` e `flutter test` nesta ordem; registrar falhas existentes ou novas com causa sem esconder resultados e sem criar testes Flutter de UI/módulos/rotas.
-- [ ] 12.7 Executar/registrar a matriz Maestro aprovada, manter evidência dos cenários efetivamente validados e remover recursos temporários autorizados, sem afirmar cobertura completa não demonstrada.
-- [ ] 12.8 Revisar diff por camada/escopo, confirmar ausência de nova dependência, geração, comentários Dart, domínio alterado, código de simulação residual e mudanças visuais incidentais.
-- [ ] 12.9 Validar a change OpenSpec e registrar redução concreta de fontes de verdade/listeners/setState, controles mantidos com justificativa e pendências reais; não fazer commit, sync ou archive sem solicitação explícita.
+- [x] 12.1 Garantir testes de todos os commands migrados para input intacto, null inicial, valor de sucesso, falha tipada com metadata, Throwable inesperado e retry após falha.
+- [x] 12.2 Garantir casos relevantes de bool false, lista/página vazia, total zero e limite nulo, sem usar isSuccess/hasData como prova universal de sucesso de negócio.
+- [x] 12.3 Garantir concorrência com Completer e observáveis: requests duplicadas bloqueadas, runAsync compartilhado com parâmetros diferentes, isolamento de instâncias e descarte pendente sem publicação tardia de sucesso.
+- [x] 12.4 Auditar usos restantes de Either/Left em apresentação: permitir adaptação nos commands e consumo pelo algoritmo do limite, eliminar interpretação de Left nos consumers migrados sem alterar Either no domínio/infrastructure.
+- [x] 12.5 Atualizar ARCHITECTURE.md e AGENTS.md na mesma change com matriz de resultados/propriedade, política de erros, estados locais preservados e limites reais da biblioteca; revisar README se orientação de execução mudar.
+- [x] 12.6 Executar `flutter pub get` quando aplicável, `flutter analyze` e `flutter test` nesta ordem; registrar falhas existentes ou novas com causa sem esconder resultados e sem criar testes Flutter de UI/módulos/rotas.
+- [x] 12.7 Executar/registrar a matriz Maestro aprovada, manter evidência dos cenários efetivamente validados e remover recursos temporários autorizados, sem afirmar cobertura completa não demonstrada.
+- [x] 12.8 Revisar diff por camada/escopo, confirmar ausência de nova dependência, geração, comentários Dart, domínio alterado, código de simulação residual e mudanças visuais incidentais.
+- [x] 12.9 Validar a change OpenSpec e registrar redução concreta de fontes de verdade/listeners/setState, controles mantidos com justificativa e pendências reais; não fazer commit, sync ou archive sem solicitação explícita.
+
+Registro do grupo 12: [regressão, matriz consolidada, checks e encerramento](implementation-part-11.md).
+12.7 foi encerrada por aceite explícito do usuário após falha de acesso ao
+simulador, sem nova execução Maestro ou cobertura runtime adicional.

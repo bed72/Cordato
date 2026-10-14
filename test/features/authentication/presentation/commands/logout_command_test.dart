@@ -89,10 +89,13 @@ void main() {
     expect(command.execute.isRunning.value, isTrue);
 
     command.execute.run();
+    final joined = command.execute.runAsync();
+    expect(joined, same(data));
     verify(() => repository.logout()).called(1);
     pending.complete(const Right(true));
 
     expect(await data, isTrue);
+    expect(await joined, isTrue);
 
     await Future<void>.delayed(Duration.zero);
 
@@ -152,4 +155,36 @@ void main() {
       verify(() => repository.logout()).called(3);
     },
   );
+
+  test('keeps logout results isolated between instances', () async {
+    final other = LogoutCommand(repository: repository);
+    addTearDown(other.dispose);
+    when(() => repository.logout()).thenAnswer((_) async => const Right(true));
+
+    await command.execute.runAsync();
+
+    expect(other.execute.value, isNull);
+    expect(other.execute.results.value.data, isNull);
+    expect(other.execute.isRunning.value, isFalse);
+  });
+
+  test('does not publish confirmation when disposed during logout', () async {
+    final started = Completer<void>();
+    final pending = Completer<LogoutRepositoryType>();
+    final disposable = LogoutCommand(repository: repository);
+    when(() => repository.logout()).thenAnswer((_) {
+      started.complete();
+      return pending.future;
+    });
+    final execution = disposable.execute.runAsync();
+    await started.future;
+    disposable.dispose();
+    pending.complete(const Right(true));
+
+    expect(await execution, isNull);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(disposable.execute.results.value.data, isNull);
+    expect(disposable.execute.value, isNull);
+    verify(() => repository.logout()).called(1);
+  });
 }

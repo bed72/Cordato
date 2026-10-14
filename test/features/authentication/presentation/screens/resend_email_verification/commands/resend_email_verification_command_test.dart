@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -147,5 +149,48 @@ void main() {
         .thenAnswer((_) async => const Right(true));
     expect(await command.execute.runAsync(input), isTrue);
     verify(() => repository.resendEmail(email: input)).called(1);
+  });
+
+  test('shares pending resend without requesting another email', () async {
+    final pending = Completer<ResendEmailRepositoryType>();
+    final other = ResendEmailCommand(repository: repository);
+    addTearDown(other.dispose);
+    when(() => repository.resendEmail(email: email))
+        .thenAnswer((_) => pending.future);
+
+    final execution = command.execute.runAsync(email);
+    command.execute.run(email);
+    final joined = command.execute.runAsync('other@example.com');
+    expect(joined, same(execution));
+    expect(command.execute.isRunning.value, isTrue);
+    pending.complete(const Right(true));
+
+    expect(await joined, isTrue);
+    expect(await execution, isTrue);
+    expect(other.execute.value, isNull);
+    expect(other.execute.results.value.data, isNull);
+    expect(command.execute.results.value.paramData, email);
+    verify(() => repository.resendEmail(email: email)).called(1);
+    verifyNoMoreInteractions(repository);
+  });
+
+  test('does not publish acceptance when disposed during resend', () async {
+    final started = Completer<void>();
+    final pending = Completer<ResendEmailRepositoryType>();
+    final disposable = ResendEmailCommand(repository: repository);
+    when(() => repository.resendEmail(email: email)).thenAnswer((_) {
+      started.complete();
+      return pending.future;
+    });
+    final execution = disposable.execute.runAsync(email);
+    await started.future;
+    disposable.dispose();
+    pending.complete(const Right(true));
+
+    expect(await execution, isNull);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(disposable.execute.value, isNull);
+    expect(disposable.execute.results.value.data, isNull);
+    verify(() => repository.resendEmail(email: email)).called(1);
   });
 }
