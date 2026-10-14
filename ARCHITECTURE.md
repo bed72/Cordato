@@ -1422,6 +1422,21 @@ Responsabilidades e implementações atuais:
   Voltar no sign-in retorna a Welcome mesmo após um deep link com o app fechado.
   A API não cria sessão nesse fluxo.
 
+`CallbackScreenStateMixin` invalida o ciclo tanto por URL quanto por troca de
+CallbackCommand, inclusive com o mesmo link. `_isRunning` mantém exclusão mútua
+do fluxo local; revisão e tentativa iniciada impedem callbacks obsoletos ou
+duplicados. Ao terminar uma confirmação antiga, agenda somente a revisão final
+vigente e solicita um frame. Confirmação já em andamento do mesmo link pode ser
+compartilhada; outro link aguarda e depois inicia sua própria requisição, mesmo
+que a anterior tenha falhado. Toast e navegação exigem montagem e revisão válidas.
+
+SignIn, SignUp, ResendEmail, EditUser e Settings removem explicitamente o listener
+do command anterior em `didUpdateWidget` antes de observar o novo. Dispose remove
+a assinatura vigente, sem descartar singletons. A confirmação de logout captura
+o command e revalida montagem, identidade e disponibilidade antes de executar;
+uma sheet aberta para outra dependência não dispara logout no command novo.
+Não há cadeias de operators ou notifiers derivados nesses consumidores.
+
 O fluxo da autenticação é:
 
 ```text
@@ -1564,6 +1579,16 @@ Os listeners de sessão de `AppScreenStateMixin` e `AppWidgetStateMixin` agendam
 a navegação após o frame e solicitam `ensureVisualUpdate()`. Assim, uma leitura
 assíncrona concluída com o scheduler ocioso não deixa o redirecionamento esperando
 um frame que nenhuma mudança visual solicitou.
+
+Na troca de SessionCommand, ambos removem o listener da instância anterior e
+observam a nova sem descartar o command root. AppScreen invalida leituras e
+callbacks antigos por versão de dependências, reinicia a decisão única para a
+nova instância e usa a sessão mais recente no frame de navegação. AppWidget
+invalida callbacks por revisão de evento, command e navigatorKey; somente o
+último sinal vigente pode navegar. A checagem da rota inicial lê o contexto
+vigente no próprio frame, sem capturar uma sessão ou dependência antiga.
+SessionCommand também invalida sua leitura pendente ao ser descartado, sem
+publicar no command síncrono depois do descarte.
 
 No primeiro frame, `AppWidget` encaminha uma abertura inicial em Dashboard,
 Settings, User, edição de User, cadastro ou listagem de despesas para `/`,

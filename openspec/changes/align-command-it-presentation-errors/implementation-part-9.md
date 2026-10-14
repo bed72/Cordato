@@ -60,14 +60,15 @@ Os quatro listeners existentes continuam pertencendo às telas; nenhum singleton
   Esses arquivos e seus commands não foram modificados nesta etapa.
 - `openspec validate align-command-it-presentation-errors`: válido.
 
-## Validação de interação pendente — 10.7
+## Validação de interação — 10.7 encerrada por aceite
 
 Maestro listou o iPhone Air iOS 26.2 como conectado, mas `inspect_screen` retornou
 `Device became unreachable during deviceInfo`. Nenhum flow foi executado e não
 há evidência runtime de sign-in, cadastro, reenvio ou logout nesta etapa.
 Não foi criado launcher ou harness temporário, nem alterado storage ou conta em
-dispositivo. A tarefa 10.7 permanece aberta para execução com app atualizado,
-dispositivo acessível e credenciais/ambiente de teste disponíveis.
+dispositivo. O usuário autorizou explicitamente encerrar a tarefa 10.7 e avançar
+ao step 11. O encerramento por aceite não representa execução adicional nem
+amplia a cobertura runtime demonstrada.
 
 Por inspeção, erros preservam entrada, cadastro false não navega, reenvio false
 não reinicia o cooldown nem anuncia sucesso, e logout não força limpeza ou

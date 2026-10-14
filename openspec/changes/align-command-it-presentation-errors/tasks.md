@@ -131,22 +131,29 @@ e não houve alteração de dados da conta em dispositivo.
 - [x] 10.4 Migrar LogoutCommand com SettingsScreen/mixin/previews/testes para bool anulável, mantendo confirmação, revogação/limpeza no repository e um feedback de erro contextual.
 - [x] 10.5 Interpretar CommandFailureException para pointers/toasts e Throwable inesperado para fallback, sem navegação em builders ou commands e sem reintroduzir contracts históricos de Supabase.
 - [x] 10.6 Atualizar todos os testes que esperavam Left em execute.value, comprovando falhas em results/errors/Future e sucesso dos valores nativos, com subscriptions e configuração global restauradas.
-- [ ] 10.7 Validar Maestro sign-in falho/bem-sucedido, sign-up/reenvio e logout confirmado/cancelado/falho, preservando storage e sessão conforme as respostas reais do ambiente.
+- [x] 10.7 Validar Maestro sign-in falho/bem-sucedido, sign-up/reenvio e logout confirmado/cancelado/falho, preservando storage e sessão conforme as respostas reais do ambiente.
 
 Registro do grupo 10: [Authentication, Settings, checks e validação pendente](implementation-part-9.md).
 10.1–10.6 foram implementadas e verificadas por testes de commands e inspeção dos
-consumidores. 10.7 permanece pendente: o simulador listado pelo Maestro ficou
-inacessível ao inspecionar a tela. Não houve execução dos fluxos nem alteração
-de conta ou sessão em dispositivo nesta etapa.
+consumidores. 10.7 foi encerrada por aceite explícito do usuário, sem execução
+Maestro adicional. O simulador ficou inacessível na tentativa anterior; esse
+aceite não amplia a cobertura demonstrada nem representa alteração de conta
+ou sessão em dispositivo pelo agente.
 
 ## 11. Lifecycle dos demais consumidores e fluxos não Either
 
-- [ ] 11.1 Implementar religação de listener quando command muda em SignIn, SignUp, ResendEmail, EditUser e Settings, cancelando a assinatura da instância efetivamente observada.
-- [ ] 11.2 Corrigir observação substituível em AppScreen/AppWidget, preservando SessionCommand root, redirecionamento único, leitura inicial e validade de callbacks pós-frame.
-- [ ] 11.3 Fazer Callback invalidar ciclo quando command muda, mesmo com URL igual, mantendo `_isRunning`, revisão, tentativa iniciada, enum e distinção entre mesmo link/link novo.
-- [ ] 11.4 Verificar descarte e substituição com requests pendentes, inclusive Future completado com value anterior na 9.5.2; registrar que guards impedem aplicação/navegação tardia.
-- [ ] 11.5 Revisar cancelamento de cadeias/operators e propriedade de previews, removendo subscriptions antigas sem descartar singletons compartilhados ou repetir dispose de factory.
+- [x] 11.1 Implementar religação de listener quando command muda em SignIn, SignUp, ResendEmail, EditUser e Settings, cancelando a assinatura da instância efetivamente observada.
+- [x] 11.2 Corrigir observação substituível em AppScreen/AppWidget, preservando SessionCommand root, redirecionamento único, leitura inicial e validade de callbacks pós-frame.
+- [x] 11.3 Fazer Callback invalidar ciclo quando command muda, mesmo com URL igual, mantendo `_isRunning`, revisão, tentativa iniciada, enum e distinção entre mesmo link/link novo.
+- [x] 11.4 Verificar descarte e substituição com requests pendentes, inclusive Future completado com value anterior na 9.5.2; registrar que guards impedem aplicação/navegação tardia.
+- [x] 11.5 Revisar cancelamento de cadeias/operators e propriedade de previews, removendo subscriptions antigas sem descartar singletons compartilhados ou repetir dispose de factory.
 - [ ] 11.6 Validar fluxos de entrada/confirmação/session e registrar explicitamente quais cenários de substituição foram executados versus inspecionados; usar harness temporário somente se autorizado e removê-lo ao fim.
+
+Registro do grupo 11: [lifecycle, invalidação, testes e limites de validação](implementation-part-10.md).
+11.1–11.5 foram implementadas/revisadas, com testes unitários para os limites dos
+commands e inspeção técnica dos interleavings de State. 11.6 permanece pendente:
+o Maestro voltou a retornar dispositivo inacessível ao inspecionar o simulador.
+Não houve execução runtime dos fluxos ou substituição artificial de dependências.
 
 ## 12. Regressão unitária, documentação e encerramento da implementação
 

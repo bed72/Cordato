@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/form_sign_up_widget.dart';
@@ -12,6 +12,14 @@ mixin SignUpScreenStateMixin on State<SignUpScreen> {
   @override
   void initState() {
     super.initState();
+    widget.command.execute.results.addListener(_handleSignUp);
+  }
+
+  @override
+  void didUpdateWidget(covariant SignUpScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.command == widget.command) return;
+    oldWidget.command.execute.results.removeListener(_handleSignUp);
     widget.command.execute.results.addListener(_handleSignUp);
   }
 

@@ -6,10 +6,9 @@ import 'package:cordato/features/core/presentation/commands/interface_command.da
 import 'package:cordato/features/session/domain/repositories/interface_session_repository.dart';
 
 final class SessionCommand implements ICommand {
+  int _revision = 0;
   final ISessionRepository _repository;
   late final StreamSubscription<bool> _subscription;
-
-  int _revision = 0;
 
   SessionCommand({required ISessionRepository repository})
     : _repository = repository {
@@ -32,6 +31,7 @@ final class SessionCommand implements ICommand {
 
   @override
   void dispose() {
+    _revision++;
     unawaited(_subscription.cancel());
     execute.dispose();
   }

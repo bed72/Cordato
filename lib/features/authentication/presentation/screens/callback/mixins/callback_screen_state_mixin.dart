@@ -21,23 +21,30 @@ mixin CallbackScreenStateMixin on State<CallbackScreen> {
   @override
   void didUpdateWidget(covariant CallbackScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.verificationUrl != widget.verificationUrl) {
+    if (oldWidget.verificationUrl != widget.verificationUrl ||
+        oldWidget.command != widget.command) {
       _revision++;
       _scheduleConfirmation();
     }
   }
 
   void _scheduleConfirmation() {
+    final revision = _revision;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_isRunning && _startedRevision != _revision) {
+      if (mounted &&
+          revision == _revision &&
+          !_isRunning &&
+          _startedRevision != _revision) {
         unawaited(_confirm());
       }
     });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   Future<void> _confirm() async {
     final revision = _revision;
     final url = widget.verificationUrl;
+    final command = widget.command.execute;
     EmailVerificationStatusEnum? status;
 
     _isRunning = true;
@@ -48,12 +55,14 @@ mixin CallbackScreenStateMixin on State<CallbackScreen> {
         status = .invalid;
       } else {
         bool joinedSameLink = false;
-        final command = widget.command.execute;
-
         if (command.isRunning.value) {
           joinedSameLink = command.results.value.paramData == url;
-          final pendingResult = await command.runAsync();
-          if (joinedSameLink) status = pendingResult;
+          try {
+            final pendingResult = await command.runAsync();
+            if (joinedSameLink) status = pendingResult;
+          } catch (_) {
+            if (joinedSameLink) rethrow;
+          }
         }
 
         if (!mounted || revision != _revision) return;
@@ -91,5 +100,11 @@ mixin CallbackScreenStateMixin on State<CallbackScreen> {
     }
 
     widget.onSignIn(context);
+  }
+
+  @override
+  void dispose() {
+    _revision++;
+    super.dispose();
   }
 }

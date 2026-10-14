@@ -952,6 +952,19 @@ somente em true. False permanece dado válido sem esses efeitos. SignIn mantém 
 transição pela observação da sessão, e Logout mantém confirmação em Settings,
 revogação/limpeza no repository e um único feedback contextual em falha.
 As telas não descartam os lazy singletons de Authentication ou Settings.
+SignIn, SignUp, ResendEmail, EditUser e Settings religam os listeners em
+`didUpdateWidget`, removendo a assinatura da instância anterior antes de observar
+a nova. A confirmação de logout revalida montagem e command capturado antes do
+envio. AppScreen e AppWidget também religam SessionCommand sem descartá-lo;
+leituras e callbacks pós-frame obsoletos não navegam. AppScreen preserva decisão
+única por dependência e usa a sessão mais recente no frame; AppWidget invalida
+sinais antigos por revisão, command e navigatorKey. SessionCommand invalida sua
+leitura pendente ao ser descartado.
+Callback invalida a revisão por URL ou command, inclusive com o mesmo link,
+mantendo exclusão mútua local e tentativa iniciada. Outro link aguarda a execução
+anterior e inicia sua própria confirmação, mesmo após falha da anterior. Mesmo
+link pode compartilhar a confirmação vigente; montagem e revisão bloqueiam
+toast e navegação tardios. O agendamento pós-frame solicita atualização visual.
 
 `CommandFailureException`, em `core/presentation/commands/`, transporta a mesma
 `ErrorsEntity`, incluindo lista vazia, ordem e metadados anuláveis. O bootstrap

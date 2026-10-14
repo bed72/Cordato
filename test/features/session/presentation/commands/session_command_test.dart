@@ -8,9 +8,9 @@ import 'package:cordato/features/session/presentation/commands/session_command.d
 import '../../../../support/session/mocks/session_repository_mock.dart';
 
 void main() {
-  late SessionRepositoryMock repository;
-  late StreamController<bool> changes;
   late SessionCommand command;
+  late StreamController<bool> changes;
+  late SessionRepositoryMock repository;
 
   setUp(() {
     repository = SessionRepositoryMock();
@@ -72,6 +72,19 @@ void main() {
     command.dispose();
     await Future<void>.delayed(Duration.zero);
     expect(changes.hasListener, isFalse);
+    command = SessionCommand(repository: repository);
+  });
+
+  test('does not publish a pending session read after disposal', () async {
+    final pendingRead = Completer<bool>();
+    when(repository.loadSession).thenAnswer((_) => pendingRead.future);
+    final loading = command.loadSession();
+
+    command.dispose();
+    pendingRead.complete(true);
+    await loading;
+
+    expect(command.execute.value, isNull);
     command = SessionCommand(repository: repository);
   });
 }

@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
-import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
+
+import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
 
 mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
   static const _cooldown = Duration(seconds: 60);
@@ -18,6 +19,14 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
     super.initState();
     widget.command.execute.results.addListener(_handleResend);
     _startCooldown();
+  }
+
+  @override
+  void didUpdateWidget(covariant ResendEmailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.command == widget.command) return;
+    oldWidget.command.execute.results.removeListener(_handleResend);
+    widget.command.execute.results.addListener(_handleResend);
   }
 
   @override

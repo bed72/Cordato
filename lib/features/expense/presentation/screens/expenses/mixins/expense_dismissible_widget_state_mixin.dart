@@ -24,7 +24,9 @@ mixin ExpenseDismissibleWidgetStateMixin
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!TickerMode.of(context) && _isHandlingSwipe && _returningFromEdit) {
+    if (!TickerMode.valuesOf(context).enabled &&
+        _isHandlingSwipe &&
+        _returningFromEdit) {
       _finishReturn();
     }
   }
