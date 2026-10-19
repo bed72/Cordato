@@ -238,7 +238,7 @@ void main() {
         parameter: const Requests(path: 'expenses/1'),
       );
 
-      expect(response.left.statusCode, 401);
+      expect(response.left.status, 401);
       expect(captured!.headers['Authorization'], 'Bearer opaque-token');
       verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
           .called(1);
@@ -254,7 +254,7 @@ void main() {
       parameter: const Requests(path: 'expenses/1'),
     );
 
-    expect(response.left.statusCode, 403);
+    expect(response.left.status, 403);
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');
     verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
   });
@@ -287,7 +287,7 @@ void main() {
       parameter: const Requests(path: 'users/10'),
     );
 
-    expect(response.left.statusCode, 401);
+    expect(response.left.status, 401);
     verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
   });
 
@@ -386,7 +386,7 @@ void main() {
     );
 
     expect(response.isLeft, isTrue);
-    expect(response.left.statusCode, 401);
+    expect(response.left.status, 401);
     verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
   });
 
@@ -397,7 +397,7 @@ void main() {
       parameter: const Requests(path: 'authentication/sign-in'),
     );
 
-    expect(response.left.statusCode, 401);
+    expect(response.left.status, 401);
     verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
   });
 
@@ -410,7 +410,7 @@ void main() {
       parameter: const Requests(path: 'expenses'),
     );
 
-    expect(response.left.statusCode, 403);
+    expect(response.left.status, 403);
     verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
   });
 
@@ -426,7 +426,7 @@ void main() {
         parameter: const Requests(path: 'expenses'),
       );
 
-      expect(response.left.statusCode, 401);
+      expect(response.left.status, 401);
       verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
     },
   );
@@ -442,6 +442,6 @@ void main() {
       parameter: const Requests(path: 'expenses'),
     );
 
-    expect(response.left.statusCode, 401);
+    expect(response.left.status, 401);
   });
 }

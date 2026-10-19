@@ -2,7 +2,7 @@ import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 final class const Reponse({
-  required final int statusCode,
+  required final int status,
   required final Map<String, dynamic> body,
 });
 

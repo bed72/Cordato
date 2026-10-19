@@ -80,7 +80,7 @@ void main() {
       );
 
       expect(response.right.body, {'id': 1});
-      expect(response.right.statusCode, 200);
+      expect(response.right.status, 200);
       expect(captured!.headers['X-Request-Id'], '123');
       expect(captured!.uri.queryParameters, {
         'existing': '1',
@@ -97,7 +97,7 @@ void main() {
       parameter: const Requests(path: 'items'),
     );
 
-    expect(response.left.statusCode, 422);
+    expect(response.left.status, 422);
     expect(response.left.body, {
       'errors': [
         {'code': 'invalid'},
@@ -128,7 +128,7 @@ void main() {
     );
 
     expect(response.right.body, isEmpty);
-    expect(response.right.statusCode, 202);
+    expect(response.right.status, 202);
     expect(
       captured!.uri.toString(),
       'https://example.com/api/authentication/email-verification/resend',
@@ -152,7 +152,7 @@ void main() {
 
     final response = await client.get(parameter: const Requests(path: 'items'));
 
-    expect(response.left.statusCode, 0);
+    expect(response.left.status, 0);
     final error = ErrorsResponse.fromJson(response.left.body).errors.single;
 
     expect(error.status, isNull);

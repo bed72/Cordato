@@ -27,10 +27,9 @@ void main() {
     test(
       'logout deletes the protected sign-out endpoint without a body',
       () async {
-        when(() => client.delete(parameter: any(named: 'parameter')))
-            .thenAnswer(
-              (_) async => const Right(Reponse(statusCode: 204, body: {})),
-            );
+        when(
+          () => client.delete(parameter: any(named: 'parameter')),
+        ).thenAnswer((_) async => const Right(Reponse(status: 204, body: {})));
 
         expect((await dataSource.logout()).right, isTrue);
         final request =
@@ -51,7 +50,7 @@ void main() {
       when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
           Reponse(
-            statusCode: 403,
+            status: 403,
             body: {
               'errors': [
                 {
@@ -91,9 +90,8 @@ void main() {
           {},
           {'errors': []},
         ]) {
-          when(
-            () => client.delete(parameter: any(named: 'parameter')),
-          ).thenAnswer((_) async => Left(Reponse(statusCode: 500, body: body)));
+          when(() => client.delete(parameter: any(named: 'parameter')))
+              .thenAnswer((_) async => Left(Reponse(status: 500, body: body)));
           expect(
             (await dataSource.logout()).left.errors.single.title,
             'Erro desconhecido',
@@ -106,7 +104,7 @@ void main() {
       when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
           Reponse(
-            statusCode: 0,
+            status: 0,
             body: {
               'errors': [
                 {
@@ -128,9 +126,8 @@ void main() {
     test('confirmation passes the original URL and status', () async {
       const url =
           'https://other.example/api/email-verification/12/abc?signature=123&expires=456';
-      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 204, body: {})),
-      );
+      when(() => client.get(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Right(Reponse(status: 204, body: {})));
 
       expect(await dataSource.confirmEmail(url), 204);
       final request =
@@ -155,21 +152,18 @@ void main() {
       },
     );
     test('confirmation maps 403 and transport failure by status', () async {
-      when(
-        () => client.get(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => const Left(Reponse(statusCode: 403, body: {})));
+      when(() => client.get(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Left(Reponse(status: 403, body: {})));
       expect(await dataSource.confirmEmail('signed'), 403);
 
-      when(
-        () => client.get(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => const Left(Reponse(statusCode: 0, body: {})));
+      when(() => client.get(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Left(Reponse(status: 0, body: {})));
       expect(await dataSource.confirmEmail('signed'), isNull);
     });
 
     test('confirmation preserves an unexpected HTTP status', () async {
-      when(
-        () => client.get(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => const Left(Reponse(statusCode: 500, body: {})));
+      when(() => client.get(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Left(Reponse(status: 500, body: {})));
 
       expect(await dataSource.confirmEmail('signed'), 500);
     });
@@ -178,7 +172,7 @@ void main() {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': {
                 'id': '2',
@@ -224,7 +218,7 @@ void main() {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Right(
           Reponse(
-            statusCode: 201,
+            status: 201,
             body: {
               'data': {'id': '3'},
             },
@@ -265,7 +259,7 @@ void main() {
               .thenAnswer(
                 (_) async => const Right(
                   Reponse(
-                    statusCode: 201,
+                    status: 201,
                     body: {
                       'data': {
                         'id': '18',
@@ -318,7 +312,7 @@ void main() {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
           Reponse(
-            statusCode: 422,
+            status: 422,
             body: {
               'errors': [
                 {
@@ -343,9 +337,8 @@ void main() {
     });
 
     test('resend accepts a successful response without a body', () async {
-      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 202, body: {})),
-      );
+      when(() => client.post(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Right(Reponse(status: 202, body: {})));
 
       final data = await dataSource.resendEmail(email: email);
 
@@ -369,7 +362,7 @@ void main() {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
           Reponse(
-            statusCode: 429,
+            status: 429,
             body: {
               'errors': [
                 {'status': '429', 'detail': 'Aguarde antes de reenviar.'},
@@ -399,7 +392,7 @@ void main() {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Left(
           Reponse(
-            statusCode: 401,
+            status: 401,
             body: {
               'errors': [
                 {
@@ -429,7 +422,7 @@ void main() {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Left(
           Reponse(
-            statusCode: 422,
+            status: 422,
             body: {
               'errors': [
                 {'detail': 'E-mail já cadastrado.', 'status': '422'},
@@ -446,9 +439,8 @@ void main() {
     });
 
     test('returns an error for a malformed success response', () async {
-      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 200, body: {})),
-      );
+      when(() => client.post(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Right(Reponse(status: 200, body: {})));
 
       final data = await dataSource.signIn(email: email, password: password);
 
@@ -457,9 +449,8 @@ void main() {
     });
 
     test('rejects a malformed successful sign-up response', () async {
-      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 201, body: {})),
-      );
+      when(() => client.post(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Right(Reponse(status: 201, body: {})));
 
       final data = await dataSource.signUp(email: email, password: password);
 
@@ -471,7 +462,7 @@ void main() {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': {
                 'id': '2',
@@ -492,9 +483,8 @@ void main() {
     });
 
     test('returns an error for a malformed API error response', () async {
-      when(
-        () => client.post(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => const Left(Reponse(statusCode: 422, body: {})));
+      when(() => client.post(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Left(Reponse(status: 422, body: {})));
 
       final data = await dataSource.signUp(email: email, password: password);
 
@@ -504,7 +494,7 @@ void main() {
 
     test('returns an error when the API error list is empty', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Left(Reponse(statusCode: 422, body: {'errors': []})),
+        (_) async => const Left(Reponse(status: 422, body: {'errors': []})),
       );
 
       final data = await dataSource.signUp(email: email, password: password);
@@ -515,7 +505,7 @@ void main() {
 
     test('resend maps an empty API error list to a generic error', () async {
       when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Left(Reponse(statusCode: 429, body: {'errors': []})),
+        (_) async => const Left(Reponse(status: 429, body: {'errors': []})),
       );
 
       final data = await dataSource.resendEmail(email: email);

@@ -39,7 +39,7 @@ void main() {
       'gets a protected relative resource and preserves every response field',
       () async {
         when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => const Right(Reponse(statusCode: 200, body: body)),
+          (_) async => const Right(Reponse(status: 200, body: body)),
         );
 
         final expense = (await dataSource.getById(id: 'a/b?c#d')).right;
@@ -70,7 +70,7 @@ void main() {
           when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
             (_) async => Left(
               Reponse(
-                statusCode: status,
+                status: status,
                 body: {
                   'errors': [
                     {
@@ -103,9 +103,8 @@ void main() {
         {'errors': []},
         {'errors': 'invalid'},
       ]) {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => Left(Reponse(statusCode: 500, body: invalid)),
-        );
+        when(() => client.get(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => Left(Reponse(status: 500, body: invalid)));
         expect(
           (await dataSource.getById(id: '8')).left.errors.single.title,
           'Erro desconhecido',
@@ -129,9 +128,9 @@ void main() {
               'data': {'id': '8', 'attributes': value},
             },
         ]) {
-          when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-            (_) async => Right(Reponse(statusCode: 200, body: invalid)),
-          );
+          when(
+            () => client.get(parameter: any(named: 'parameter')),
+          ).thenAnswer((_) async => Right(Reponse(status: 200, body: invalid)));
           expect(
             (await dataSource.getById(id: '8')).left.errors.single.title,
             'Erro desconhecido',
@@ -150,9 +149,9 @@ void main() {
   test(
     'patches JSON:API attributes and preserves the returned expense',
     () async {
-      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 200, body: body)),
-      );
+      when(
+        () => client.patch(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
 
       final expense = (await dataSource.update(
         id: '8',
@@ -190,9 +189,8 @@ void main() {
   );
 
   test('encodes the update id as a single resource path segment', () async {
-    when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(Reponse(statusCode: 200, body: body)),
-    );
+    when(() => client.patch(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
 
     await dataSource.update(id: 'a/b?c#d', cents: 1500);
 
@@ -206,9 +204,8 @@ void main() {
   });
 
   test('omits null update attributes and preserves supplied values', () async {
-    when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(Reponse(statusCode: 200, body: body)),
-    );
+    when(() => client.patch(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
 
     for (final scenario in [
       (
@@ -257,7 +254,7 @@ void main() {
     when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
       (_) async => const Left(
         Reponse(
-          statusCode: 422,
+          status: 422,
           body: {
             'errors': [
               {
@@ -305,7 +302,7 @@ void main() {
         when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
           (_) async => Left(
             Reponse(
-              statusCode: status,
+              status: status,
               body: {
                 'errors': [
                   {'title': 'Falha na edição', 'status': '$status'},
@@ -329,9 +326,8 @@ void main() {
       {'errors': []},
       {'errors': 'invalid'},
     ]) {
-      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Left(Reponse(statusCode: 500, body: errorBody)),
-      );
+      when(() => client.patch(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => Left(Reponse(status: 500, body: errorBody)));
 
       expect(
         (await dataSource.update(id: '8')).left.errors.single.title,
@@ -354,9 +350,9 @@ void main() {
           'data': {'id': '8', 'attributes': invalidAttributes},
         },
     ]) {
-      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Right(Reponse(statusCode: 200, body: invalidBody)),
-      );
+      when(
+        () => client.patch(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => Right(Reponse(status: 200, body: invalidBody)));
 
       expect(
         (await dataSource.update(id: '8')).left.errors.single.title,
@@ -376,9 +372,8 @@ void main() {
   });
 
   test('deletes the expense and accepts 204 without a body', () async {
-    when(
-      () => client.delete(parameter: any(named: 'parameter')),
-    ).thenAnswer((_) async => const Right(Reponse(statusCode: 204, body: {})));
+    when(() => client.delete(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right(Reponse(status: 204, body: {})));
 
     expect((await dataSource.delete(id: '1')).right, isTrue);
 
@@ -395,9 +390,8 @@ void main() {
   });
 
   test('encodes the expense id as a single resource path segment', () async {
-    when(
-      () => client.delete(parameter: any(named: 'parameter')),
-    ).thenAnswer((_) async => const Right(Reponse(statusCode: 204, body: {})));
+    when(() => client.delete(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right(Reponse(status: 204, body: {})));
 
     await dataSource.delete(id: 'a/b?c#d');
 
@@ -412,9 +406,8 @@ void main() {
 
   test('does not confirm deletion for other successful statuses', () async {
     for (final status in [200, 202]) {
-      when(
-        () => client.delete(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => Right(Reponse(statusCode: status, body: {})));
+      when(() => client.delete(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => Right(Reponse(status: status, body: {})));
 
       expect((await dataSource.delete(id: '1')).right, isFalse);
     }
@@ -424,7 +417,7 @@ void main() {
     when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
       (_) async => const Left(
         Reponse(
-          statusCode: 403,
+          status: 403,
           body: {
             'errors': [
               {'title': 'Outro erro', 'status': '403'},
@@ -459,7 +452,7 @@ void main() {
             .thenAnswer(
               (_) async => Left(
                 Reponse(
-                  statusCode: status,
+                  status: status,
                   body: {
                     'errors': [
                       {'title': 'Falha na exclusão', 'status': '$status'},
@@ -483,9 +476,8 @@ void main() {
       {'errors': []},
       {'errors': 'invalid'},
     ]) {
-      when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Left(Reponse(statusCode: 500, body: errorBody)),
-      );
+      when(() => client.delete(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => Left(Reponse(status: 500, body: errorBody)));
 
       expect(
         (await dataSource.delete(id: '1')).left.errors.single.title,
@@ -510,7 +502,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': [
                 {'id': '9', 'type': 'expenses', 'attributes': attributes},
@@ -547,7 +539,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': [],
               'links': {'next': null, 'prev': null},
@@ -580,7 +572,7 @@ void main() {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
       (_) async => const Right(
         Reponse(
-          statusCode: 200,
+          status: 200,
           body: {
             'data': [],
             'links': {'next': null, 'prev': null},
@@ -614,7 +606,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': [],
               'links': {'next': null, 'prev': null},
@@ -654,7 +646,7 @@ void main() {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
       (_) async => const Right(
         Reponse(
-          statusCode: 200,
+          status: 200,
           body: {
             'data': [],
             'links': {'next': null, 'prev': null},
@@ -697,7 +689,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': [],
               'links': {'next': null, 'prev': null},
@@ -733,7 +725,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
           Reponse(
-            statusCode: 422,
+            status: 422,
             body: {
               'errors': [
                 {
@@ -780,7 +772,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Left(
           Reponse(
-            statusCode: status,
+            status: status,
             body: {
               'errors': [
                 {'title': 'Falha na consulta', 'status': '$status'},
@@ -803,7 +795,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': [],
               'links': {'next': null, 'prev': null},
@@ -846,7 +838,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': [],
               'links': {'next': null, 'prev': null},
@@ -894,7 +886,7 @@ void main() {
         },
       ]) {
         when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => Right(Reponse(statusCode: 200, body: invalidBody)),
+          (_) async => Right(Reponse(status: 200, body: invalidBody)),
         );
         expect((await dataSource.get(pageSize: 6)).isLeft, isTrue);
       }
@@ -907,9 +899,9 @@ void main() {
   test(
     'posts creation parameters as JSON:API and preserves the returned expense',
     () async {
-      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 201, body: body)),
-      );
+      when(
+        () => client.post(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Right(Reponse(status: 201, body: body)));
 
       final expense = (await dataSource.create(
         cents: 300,
@@ -946,9 +938,8 @@ void main() {
   );
 
   test('formats the supplied civil date without time or timezone', () async {
-    when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(Reponse(statusCode: 201, body: body)),
-    );
+    when(() => client.post(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right(Reponse(status: 201, body: body)));
 
     await dataSource.create(
       cents: 1,
@@ -970,9 +961,8 @@ void main() {
   });
 
   test('defaults the occurrence date to today when omitted or null', () async {
-    when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(Reponse(statusCode: 201, body: body)),
-    );
+    when(() => client.post(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right(Reponse(status: 201, body: body)));
     for (final explicitNull in [false, true]) {
       final before = DateTime.now();
       if (explicitNull) {
@@ -1007,7 +997,7 @@ void main() {
     when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
       (_) async => const Left(
         Reponse(
-          statusCode: 422,
+          status: 422,
           body: {
             'errors': [
               {
@@ -1050,7 +1040,7 @@ void main() {
         when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
           (_) async => Left(
             Reponse(
-              statusCode: status,
+              status: status,
               body: {
                 'errors': [
                   {'title': 'Falha', 'status': '$status'},
@@ -1092,9 +1082,9 @@ void main() {
     test(
       'translates malformed error envelope $errorBody to a generic error',
       () async {
-        when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => Left(Reponse(statusCode: 500, body: errorBody)),
-        );
+        when(
+          () => client.post(parameter: any(named: 'parameter')),
+        ).thenAnswer((_) async => Left(Reponse(status: 500, body: errorBody)));
 
         final data = await dataSource.create(
           cents: 300,
@@ -1139,7 +1129,7 @@ void main() {
       'translates invalid expense response $invalidBody to a generic error',
       () async {
         when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => Right(Reponse(statusCode: 201, body: invalidBody)),
+          (_) async => Right(Reponse(status: 201, body: invalidBody)),
         );
 
         final data = await dataSource.create(

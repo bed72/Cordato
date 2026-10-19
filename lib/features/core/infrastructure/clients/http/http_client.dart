@@ -53,21 +53,21 @@ final class HttpClient({required final Dio _dio}) implements IHttpClient {
       );
 
       final data = response.data;
-      final statusCode = response.statusCode ?? 0;
-      final isSuccess = statusCode >= 200 && statusCode < 300;
+      final status = response.statusCode ?? 0;
+      final isSuccess = status >= 200 && status < 300;
       final body = data == null || data == '' ? <String, dynamic>{} : data;
 
       if (body is! Map<String, dynamic>) {
-        return Left(Reponse(statusCode: statusCode, body: _unknown));
+        return Left(Reponse(status: status, body: _unknown));
       }
 
-      final value = Reponse(statusCode: statusCode, body: body);
+      final value = Reponse(status: status, body: body);
 
       return isSuccess ? Right(value) : Left(value);
     } on DioException catch (_) {
-      return Left(Reponse(statusCode: 0, body: _unknown));
+      return Left(Reponse(status: 500, body: _unknown));
     } catch (_) {
-      return Left(Reponse(statusCode: 0, body: _unknown));
+      return Left(Reponse(status: 500, body: _unknown));
     }
   }
 

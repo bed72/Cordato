@@ -75,7 +75,7 @@ void main() {
             parameter: const Requests(path: 'expenses'),
           );
 
-          expect(response.left.statusCode, 401);
+          expect(response.left.status, 401);
           expect(captured!.uri.path, '/api/expenses');
           expect(captured!.headers['Authorization'], 'Bearer opaque-token');
           verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))

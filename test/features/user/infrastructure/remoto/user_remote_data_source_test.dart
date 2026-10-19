@@ -35,9 +35,8 @@ void main() {
   });
 
   test('gets the protected user resource and preserves its response', () async {
-    when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(Reponse(statusCode: 200, body: body)),
-    );
+    when(() => client.get(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
 
     final user = (await dataSource.getById(id: '9')).right;
 
@@ -60,9 +59,9 @@ void main() {
   test(
     'patches only the name and returns the user supplied by the API',
     () async {
-      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 200, body: body)),
-      );
+      when(
+        () => client.patch(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
 
       final user = (await dataSource.update(
         id: '10',
@@ -93,15 +92,14 @@ void main() {
     'encodes the id in all resource paths without changing the payload id',
     () async {
       const id = 'a/b?c#d';
-      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 200, body: body)),
-      );
-      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 200, body: body)),
-      );
-      when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 204, body: {})),
-      );
+      when(
+        () => client.get(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
+      when(
+        () => client.patch(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
+      when(() => client.delete(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Right(Reponse(status: 204, body: {})));
 
       await dataSource.getById(id: id);
       await dataSource.update(id: id, name: 'Gabriel');
@@ -130,9 +128,8 @@ void main() {
   );
 
   test('omits the name when it was not supplied', () async {
-    when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(Reponse(statusCode: 200, body: body)),
-    );
+    when(() => client.patch(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
 
     await dataSource.update(id: '9');
 
@@ -146,9 +143,9 @@ void main() {
 
   for (final name in <String?>[null, 'Gabriel']) {
     test('patches the avatar and preserves optional name $name', () async {
-      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 200, body: body)),
-      );
+      when(
+        () => client.patch(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
       final user = (await dataSource.update(
         id: '9',
         name: name,
@@ -173,7 +170,7 @@ void main() {
     when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
       (_) async => const Right(
         Reponse(
-          statusCode: 200,
+          status: 200,
           body: {
             'data': {
               'id': '13',
@@ -219,9 +216,8 @@ void main() {
   });
 
   test('deletes the protected user and accepts 204 without a body', () async {
-    when(
-      () => client.delete(parameter: any(named: 'parameter')),
-    ).thenAnswer((_) async => const Right(Reponse(statusCode: 204, body: {})));
+    when(() => client.delete(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right(Reponse(status: 204, body: {})));
 
     expect((await dataSource.delete(id: '10')).right, isTrue);
     final request =
@@ -236,9 +232,8 @@ void main() {
   });
 
   test('does not report deletion for an unexpected success status', () async {
-    when(
-      () => client.delete(parameter: any(named: 'parameter')),
-    ).thenAnswer((_) async => const Right(Reponse(statusCode: 200, body: {})));
+    when(() => client.delete(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => const Right(Reponse(status: 200, body: {})));
     expect((await dataSource.delete(id: '10')).right, isFalse);
   });
 
@@ -258,7 +253,7 @@ void main() {
       when(request).thenAnswer(
         (_) async => const Left(
           Reponse(
-            statusCode: 422,
+            status: 422,
             body: {
               'errors': [
                 {
@@ -286,10 +281,10 @@ void main() {
       '$operation translates malformed errors and transport failures',
       () async {
         for (final response in [
-          const Reponse(statusCode: 500, body: {}),
-          const Reponse(statusCode: 500, body: {'errors': []}),
+          const Reponse(status: 500, body: {}),
+          const Reponse(status: 500, body: {'errors': []}),
           Reponse(
-            statusCode: 0,
+            status: 0,
             body: {
               'errors': [
                 {'title': 'Sem conexão', 'detail': 'Tente novamente.'},
@@ -301,7 +296,7 @@ void main() {
           final error = (await execute()).left.errors.single;
           expect(
             error.title,
-            response.statusCode == 0 ? 'Sem conexão' : 'Erro desconhecido',
+            response.status == 0 ? 'Sem conexão' : 'Erro desconhecido',
           );
         }
       },
@@ -330,12 +325,12 @@ void main() {
         },
       },
     ]) {
-      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Right(Reponse(statusCode: 200, body: malformed)),
-      );
-      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Right(Reponse(statusCode: 200, body: malformed)),
-      );
+      when(
+        () => client.get(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => Right(Reponse(status: 200, body: malformed)));
+      when(
+        () => client.patch(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => Right(Reponse(status: 200, body: malformed)));
       expect((await dataSource.getById(id: '10')).isLeft, isTrue);
       expect(
         (await dataSource.update(id: '10', name: 'Gabriel')).isLeft,

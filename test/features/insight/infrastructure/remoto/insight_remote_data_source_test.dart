@@ -35,7 +35,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': [
                 item,
@@ -80,7 +80,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': [onboarding, item],
             },
@@ -105,7 +105,7 @@ void main() {
 
   test('returns success when the API has no insights', () async {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(Reponse(statusCode: 200, body: {'data': []})),
+      (_) async => const Right(Reponse(status: 200, body: {'data': []})),
     );
 
     expect((await dataSource.get(year: 2026, month: 9)).right, isEmpty);
@@ -115,7 +115,7 @@ void main() {
     'serializes only non-null year and month without defaults or validation',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(statusCode: 200, body: {'data': []})),
+        (_) async => const Right(Reponse(status: 200, body: {'data': []})),
       );
       for (final filters in [
         (year: 2026, month: 9),
@@ -146,7 +146,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => Right(
           Reponse(
-            statusCode: 200,
+            status: 200,
             body: {
               'data': [
                 {
@@ -183,7 +183,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
           Reponse(
-            statusCode: 422,
+            status: 422,
             body: {
               'errors': [
                 {
@@ -222,7 +222,7 @@ void main() {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
       (_) async => const Left(
         Reponse(
-          statusCode: 403,
+          status: 403,
           body: {
             'errors': [
               {
@@ -261,7 +261,7 @@ void main() {
       },
     ]) {
       when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Right(Reponse(statusCode: 200, body: body)));
+          .thenAnswer((_) async => Right(Reponse(status: 200, body: body)));
 
       expect(
         (await dataSource.get(year: 2026, month: 9)).left.errors.single.title,
@@ -277,7 +277,7 @@ void main() {
       {'errors': 'invalid'},
     ]) {
       when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Left(Reponse(statusCode: 0, body: body)));
+          .thenAnswer((_) async => Left(Reponse(status: 0, body: body)));
 
       expect(
         (await dataSource.get()).left.errors.single.title,

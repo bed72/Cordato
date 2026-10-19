@@ -11,7 +11,7 @@ void main() {
       final data = await response<int>(
         execute: () async => const Left(
           Reponse(
-            statusCode: 422,
+            status: 422,
             body: {
               'errors': [
                 {
@@ -60,14 +60,14 @@ void main() {
           },
           from: (success) {
             conversions++;
-            return '${success.statusCode}: ${success.body['name']}';
+            return '${success.status}: ${success.body['name']}';
           },
         );
 
         expect(executions, 1);
         expect(conversions, 0);
         pending.complete(
-          const Right(Reponse(statusCode: 200, body: {'name': 'Gabriel'})),
+          const Right(Reponse(status: 200, body: {'name': 'Gabriel'})),
         );
 
         final value = await data;
@@ -79,8 +79,8 @@ void main() {
     test('supports boolean datas for responses without a body', () async {
       for (final status in [204, 200]) {
         final data = await response<bool>(
-          execute: () async => Right(Reponse(statusCode: status, body: {})),
-          from: (success) => success.statusCode == 204,
+          execute: () async => Right(Reponse(status: status, body: {})),
+          from: (success) => success.status == 204,
         );
 
         expect(data.isRight, isTrue);
@@ -94,7 +94,7 @@ void main() {
         final data = await response<String>(
           execute: () async => const Left(
             Reponse(
-              statusCode: 422,
+              status: 422,
               body: {
                 'errors': [
                   {
@@ -124,7 +124,7 @@ void main() {
       final data = await response<int>(
         execute: () async => const Left(
           Reponse(
-            statusCode: 0,
+            status: 0,
             body: {
               'errors': [
                 {'title': 'Sem conexão', 'detail': 'Tente novamente.'},
@@ -151,7 +151,7 @@ void main() {
           },
         ]) {
           final data = await response<int>(
-            execute: () async => Left(Reponse(statusCode: 500, body: body)),
+            execute: () async => Left(Reponse(status: 500, body: body)),
             from: (_) => 1,
           );
 
@@ -190,9 +190,8 @@ void main() {
 
     test('returns an unknown error when success conversion fails', () async {
       final data = await response<DateTime>(
-        execute: () async => const Right(
-          Reponse(statusCode: 200, body: {'created_at': 'invalid'}),
-        ),
+        execute: () async =>
+            const Right(Reponse(status: 200, body: {'created_at': 'invalid'})),
         from: (success) => DateTime.parse(success.body['created_at'] as String),
       );
 

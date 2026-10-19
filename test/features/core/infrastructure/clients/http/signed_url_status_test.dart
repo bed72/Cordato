@@ -45,7 +45,7 @@ void main() {
 
     expect(request!.method, 'GET');
     expect(request!.uri.toString(), url);
-    expect(response.right.statusCode, 204);
+    expect(response.right.status, 204);
     expect(request!.headers.containsKey('Authorization'), isFalse);
 
     verifyNever(() => storage.read(key: any(named: 'key')));
@@ -54,17 +54,17 @@ void main() {
   test('preserves failure and redirect response statuses', () async {
     status = 403;
     final forbidden = await client.get(parameter: const Requests(path: url));
-    expect(forbidden.left.statusCode, 403);
+    expect(forbidden.left.status, 403);
 
     status = 302;
     final redirect = await client.get(parameter: const Requests(path: url));
-    expect(redirect.left.statusCode, 302);
+    expect(redirect.left.status, 302);
   });
 
   test('returns status zero on connection failure', () async {
     connectionFails = true;
     final response = await client.get(parameter: const Requests(path: url));
 
-    expect(response.left.statusCode, 0);
+    expect(response.left.status, 0);
   });
 }

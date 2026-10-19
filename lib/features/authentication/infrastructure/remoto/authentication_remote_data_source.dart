@@ -63,8 +63,8 @@ final class AuthenticationRemoteDataSource({required final IHttpClient _client})
     final response = await _client.get(parameter: Requests(path: url));
 
     final status = response.fold(
-      (failure) => failure.statusCode,
-      (success) => success.statusCode,
+      (failure) => failure.status,
+      (success) => success.status,
     );
 
     return status == 0 ? null : status;

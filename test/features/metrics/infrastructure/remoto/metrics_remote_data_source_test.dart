@@ -29,8 +29,7 @@ void main() {
     client = HttpClientMock();
     dataSource = MetricsRemoteDataSource(client: client);
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async =>
-          const Right(Reponse(statusCode: 200, body: {'data': resource})),
+      (_) async => const Right(Reponse(status: 200, body: {'data': resource})),
     );
   });
 
@@ -129,7 +128,7 @@ void main() {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
       (_) async => Right(
         Reponse(
-          statusCode: 200,
+          status: 200,
           body: {
             'data': {
               ...resource,
@@ -170,7 +169,7 @@ void main() {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
       (_) async => Right(
         Reponse(
-          statusCode: 200,
+          status: 200,
           body: {
             'data': {
               ...resource,
@@ -197,7 +196,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Left(
           Reponse(
-            statusCode: 422,
+            status: 422,
             body: {
               'errors': [
                 {
@@ -271,7 +270,7 @@ void main() {
       },
     ]) {
       when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Right(Reponse(statusCode: 200, body: body)));
+          .thenAnswer((_) async => Right(Reponse(status: 200, body: body)));
 
       expect(
         (await dataSource.getExpenses()).left.errors.single.title,
@@ -284,7 +283,7 @@ void main() {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
       (_) async => const Left(
         Reponse(
-          statusCode: 0,
+          status: 0,
           body: {
             'errors': [
               {'title': 'Sem conexão', 'detail': 'Tente novamente.'},
@@ -304,7 +303,7 @@ void main() {
       {'errors': 'invalid'},
     ]) {
       when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Left(Reponse(statusCode: 0, body: body)));
+          .thenAnswer((_) async => Left(Reponse(status: 0, body: body)));
       expect(
         (await dataSource.getExpenses()).left.errors.single.title,
         'Erro desconhecido',

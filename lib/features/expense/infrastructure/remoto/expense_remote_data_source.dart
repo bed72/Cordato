@@ -55,7 +55,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
 
   @override
   Future<DeleteDataSourceType> delete({required String id}) => response(
-    from: (response) => response.statusCode == 204,
+    from: (response) => response.status == 204,
     execute: () => _client.delete(
       parameter: Requests(
         path: '${HttpPathEnum.expenses.path}/${Uri.encodeComponent(id)}',
