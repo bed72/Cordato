@@ -12,6 +12,7 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
 
   @override
   Future<GetRepositoryType> get({
+    String? sort,
     int pageSize = 30,
     DateTime? to,
     DateTime? from,

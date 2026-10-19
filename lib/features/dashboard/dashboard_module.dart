@@ -4,58 +4,31 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
-import 'package:cordato/features/insight/presentation/commands/get_insights_command.dart';
-import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
-import 'package:cordato/features/metrics/presentation/commands/get_expense_metrics_command.dart';
+import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';
+import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
+import 'package:cordato/features/metrics/domain/repositories/interface_metrics_repository.dart';
+import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
+
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
-import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/commands/get_first_expense_month_command.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
 
 final dashboardRoutesModule = createModule(
   path: RouteEnum.dashboard.path,
   register: (context) {
-    context.add(GetFirstExpenseMonthCommand.new);
+    context.add<DashboardBloc>(
+      () => DashboardBloc(
+        userRepository: inject<IUserRepository>(),
+        expenseRepository: inject<IExpenseRepository>(),
+        insightRepository: inject<IInsightRepository>(),
+        metricsRepository: inject<IMetricsRepository>(),
+      ),
+    );
     context.route(
       RouteEnum.app.path,
-      child: (context, _) => DashboardScreen(
-        onNotificationsPressed: () {},
-        userCommand: inject<UserCommand>(),
+      child: (_, _) => DashboardScreen(
+        bloc: inject<DashboardBloc>,
         dateFormatter: inject<IDateFormatter>(),
         moneyFormatter: inject<IMoneyFormatter>(),
-        expensesCommand: inject<GetExpensesCommand>(),
-        insightsCommand: inject<GetInsightsCommand>(),
-        metricsCommand: inject<GetExpenseMetricsCommand>(),
-        firstExpenseMonthCommand: inject<GetFirstExpenseMonthCommand>(),
-
-        onAvatarPressed: () async =>
-            await context.pushNamed(RouteEnum.user.path),
-        onMenuPressed: () async =>
-            await context.pushNamed(RouteEnum.settings.path),
-        onExpensePressed: () async {
-          bool changed = false;
-          await context.pushNamed(
-            RouteEnum.expense.path,
-            arguments: (
-              returnToPrevious: true,
-              onExpensesChanged: () => changed = true,
-            ),
-          );
-
-          return changed;
-        },
-        onSeeAllExpensesPressed: (month, {category}) async {
-          bool changed = false;
-          await context.pushNamed(
-            RouteEnum.expenses.path,
-            arguments: (
-              category: category,
-              onExpensesChanged: () => changed = true,
-              from: DateTime(month.year, month.month),
-              to: DateTime(month.year, month.month + 1, 0),
-            ),
-          );
-          return changed;
-        },
       ),
     );
   },

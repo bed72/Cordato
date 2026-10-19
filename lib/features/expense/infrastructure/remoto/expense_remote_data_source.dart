@@ -20,6 +20,7 @@ abstract interface class IExpenseRemoteDataSource {
   Future<GetByIdDataSourceType> getById({required String id});
 
   Future<GetDataSourceType> get({
+    String? sort,
     required int pageSize,
     DateTime? to,
     DateTime? from,
@@ -65,6 +66,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
 
   @override
   Future<GetDataSourceType> get({
+    String? sort,
     String? category,
     required int pageSize,
     DateTime? to,
@@ -76,6 +78,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
       parameter: Requests(
         path: HttpPathEnum.expenses.path,
         query: _pageQuery(
+          sort: sort,
           to: to,
           from: from,
           category: category,
@@ -137,6 +140,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
   );
 
   Map<String, dynamic> _pageQuery({
+    String? sort,
     required int pageSize,
     DateTime? to,
     DateTime? from,
@@ -158,6 +162,7 @@ final class ExpenseRemoteDataSource({required final IHttpClient _client})
       }
     }
     query['page[size]'] = pageSize;
+    if (sort != null) query['sort'] = sort;
     if (category != null) query['filter[category]'] = category;
 
     if (from != null || to != null) {

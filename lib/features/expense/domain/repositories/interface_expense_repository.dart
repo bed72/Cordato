@@ -14,6 +14,7 @@ abstract interface class IExpenseRepository {
   Future<DeleteRepositoryType> delete({required String id});
 
   Future<GetRepositoryType> get({
+    String? sort,
     int pageSize = 30,
     DateTime? to,
     DateTime? from,

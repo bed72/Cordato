@@ -5,26 +5,20 @@ import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
-import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
-
-import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
 
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
-import 'package:cordato/features/metrics/presentation/commands/get_expense_metrics_command.dart';
 import 'package:cordato/features/metrics/presentation/previews/fakes/metrics_preview_repository.dart';
 
 import 'package:cordato/features/insight/domain/entities/insight_entity.dart';
 import 'package:cordato/features/insight/domain/entities/insight_period_entity.dart';
-import 'package:cordato/features/insight/presentation/commands/get_insights_command.dart';
 import 'package:cordato/features/insight/presentation/previews/fakes/insights_preview_repository.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 import 'package:cordato/features/expense/presentation/previews/fakes/expenses_list_preview_repository.dart';
 
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/previews/fakes/dashboard_user_preview_repository.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/commands/get_first_expense_month_command.dart';
 
 @CordatoPreview(
   group: 'Dashboard / Telas',
@@ -93,96 +87,68 @@ Widget _screenPreview({
   final month = DateTime(today.year, today.month);
   final end = DateTime(today.year, today.month + 1, 0);
 
-  return PreviewResourceWidget<UserCommand>(
-    create: () => UserCommand(
-      repository: DashboardUserPreviewRepository(
+  return DashboardScreen(
+    dateFormatter: DateFormatter(),
+    moneyFormatter: MoneyFormatter(),
+    bloc: () => DashboardBloc(
+      userRepository: DashboardUserPreviewRepository(
         failure: userFailure ? ErrorsEntity.unknown() : null,
       ),
-    ),
-    dispose: (_) {},
-    builder: (userCommand) => DashboardScreen(
-      userCommand: userCommand,
-      dateFormatter: DateFormatter(),
-      moneyFormatter: MoneyFormatter(),
-      firstExpenseMonthCommand: GetFirstExpenseMonthCommand(
-        repository: ExpensesListPreviewRepository(
-          loading: loading,
-          items: empty
-              ? []
-              : [
+      expenseRepository: ExpensesListPreviewRepository(
+        loading: loading,
+        items: empty
+            ? []
+            : [
+                for (int index = 0; index < 6; index++)
                   ExpenseEntity(
-                    id: 'first-expense',
+                    id: 'monthly-$index',
                     category: .food,
-                    description: 'Primeiro gasto',
-                    cents: .create(cents: 1500).right,
-                    occurredOn: DateTime(month.year, month.month - 2),
-                  ),
-                ],
-        ),
-      ),
-      expensesCommand: GetExpensesCommand(
-        repository: ExpensesListPreviewRepository(
-          loading: loading,
-          items: empty
-              ? []
-              : [
-                  for (int index = 0; index < 6; index++)
-                    ExpenseEntity(
-                      id: 'monthly-$index',
-                      category: .food,
-                      description: 'Gasto do mês ${index + 1}',
-                      cents: .create(cents: 1500 + index * 100).right,
-                      occurredOn: DateTime(
-                        month.year,
-                        month.month,
-                        today.day - index.clamp(0, today.day - 1),
-                      ),
+                    description: 'Gasto do mês ${index + 1}',
+                    cents: .create(cents: 1500 + index * 100).right,
+                    occurredOn: DateTime(
+                      month.year,
+                      month.month,
+                      today.day - index.clamp(0, today.day - 1),
                     ),
-                ],
-        ),
-      ),
-      insightsCommand: GetInsightsCommand(
-        repository: InsightsPreviewRepository(
-          loading: loading,
-          type: failure
-              ? Left(ErrorsEntity.unknown())
-              : Right(
-                  empty
-                      ? []
-                      : [
-                          InsightEntity(
-                            id: 'monthly-insight',
-                            group: 'comparison',
-                            type: 'category_lead_streak',
-                            title: 'Uma liderança recorrente',
-                            description: 'Alimentação segue líder nos registros deste mês.',
-                            period: InsightPeriodEntity(
-                              to: end,
-                              from: DateTime(month.year, month.month - 2),
-                            ),
-                          ),
-                        ],
-                ),
-        ),
-      ),
-      metricsCommand: GetExpenseMetricsCommand(
-        repository: MetricsPreviewRepository(
-          loading: loading,
-          type: empty
-              ? Right(
-                  ExpenseMetricsEntity(
-                    id: 'empty-month',
-                    endDate: end,
-                    categories: [],
-                    totalAmount: 0,
-                    startDate: month,
                   ),
-                )
-              : null,
-        ),
+              ],
       ),
-      onExpensePressed: () async => false,
-      onSeeAllExpensesPressed: (_, {category}) async => false,
+      insightRepository: InsightsPreviewRepository(
+        loading: loading,
+        type: failure
+            ? Left(ErrorsEntity.unknown())
+            : Right(
+                empty
+                    ? []
+                    : [
+                        InsightEntity(
+                          id: 'monthly-insight',
+                          group: 'comparison',
+                          type: 'category_lead_streak',
+                          title: 'Uma liderança recorrente',
+                          description: 'Alimentação segue líder nos registros deste mês.',
+                          period: InsightPeriodEntity(
+                            to: end,
+                            from: DateTime(month.year, month.month - 2),
+                          ),
+                        ),
+                      ],
+              ),
+      ),
+      metricsRepository: MetricsPreviewRepository(
+        loading: loading,
+        type: empty
+            ? Right(
+                ExpenseMetricsEntity(
+                  id: 'empty-month',
+                  endDate: end,
+                  categories: [],
+                  totalAmount: 0,
+                  startDate: month,
+                ),
+              )
+            : null,
+      ),
     ),
   );
 }

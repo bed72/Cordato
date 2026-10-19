@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
+import 'package:cordato/features/user/domain/entities/user_entity.dart';
 
 import 'package:cordato/features/dashboard/presentation/widgets/user/user_name_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/menu_button_dashboard_widget.dart';
@@ -8,10 +8,8 @@ import 'package:cordato/features/dashboard/presentation/widgets/notification_but
 
 final class const AppBarDashboardWidget({
   super.key,
-  required final UserCommand command,
-  final VoidCallback? onAvatarPressed,
-  final VoidCallback? onMenuPressed,
-  final VoidCallback? onNotificationsPressed,
+  required final UserEntity? user,
+  final bool isLoading = false,
 }) extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(64.0);
@@ -20,7 +18,7 @@ final class const AppBarDashboardWidget({
   Widget build(BuildContext context) {
     return AppBar(
       titleSpacing: 16.0,
-      title: UserNameWidget(command: command, onAvatarPressed: onAvatarPressed),
+      title: UserNameWidget(user: user, isLoading: isLoading),
       toolbarHeight: preferredSize.height,
       actions: [
         Padding(
@@ -29,10 +27,8 @@ final class const AppBarDashboardWidget({
             spacing: 8.0,
             mainAxisSize: .min,
             children: [
-              NotificationButtonDashboardWidget(
-                onPress: onNotificationsPressed,
-              ),
-              MenuButtonDashboardWidget(onPress: onMenuPressed),
+              const NotificationButtonDashboardWidget(),
+              const MenuButtonDashboardWidget(),
             ],
           ),
         ),

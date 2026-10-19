@@ -2,15 +2,12 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
-import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
 
 import 'package:cordato/features/dashboard/presentation/widgets/insights/insights_section_widget.dart';
 
 import 'package:cordato/features/insight/domain/entities/insight_entity.dart';
 import 'package:cordato/features/insight/domain/entities/insight_period_entity.dart';
-import 'package:cordato/features/insight/presentation/commands/get_insights_command.dart';
 import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
-import 'package:cordato/features/insight/presentation/previews/fakes/insights_preview_repository.dart';
 
 @CordatoPreview(
   group: 'Dashboard / Insights',
@@ -55,23 +52,12 @@ Widget previewLargeTextInsightsSectionWidget() => Builder(
   ),
 );
 
-Widget _sectionPreview({GetRepositoryType? type}) =>
-    PreviewResourceWidget<GetInsightsCommand>(
-      dispose: (command) => command.dispose(),
-      create: () {
-        final command = GetInsightsCommand(
-          repository: InsightsPreviewRepository(type: type ?? const Right([])),
-        );
-        if (type != null) command.execute.run((year: 2026, month: 10));
-        return command;
-      },
-      builder: (command) => Scaffold(
-        body: SingleChildScrollView(
-          padding: const .symmetric(vertical: 24.0),
-          child: InsightsSectionWidget(command: command),
-        ),
-      ),
-    );
+Widget _sectionPreview({GetRepositoryType? type}) => Scaffold(
+  body: SingleChildScrollView(
+    padding: const .symmetric(vertical: 24.0),
+    child: InsightsSectionWidget(insights: type?.right),
+  ),
+);
 
 List<InsightEntity> _insights() => [
   for (final (index, fixture) in [

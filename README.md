@@ -49,7 +49,9 @@ O app já possui:
 - tela de sign-up com validação e tela de reenvio da verificação que mostra o e-mail
   cadastrado em um campo desabilitado após o sucesso, com reenvio do link de
   verificação após uma espera de 60 segundos e feedback da API;
-- dashboard com nome e avatar gerado a partir da semente consultada na API por `UserCommand`,
+- dashboard com estado e consultas coordenados por `DashboardBloc` (piloto restrito
+  a essa tela, com carga única e estados de loading, conteúdo ou erro, sem cancelamento HTTP),
+  nome e avatar consultados na API,
   carrossel de cards de distribuição dos gastos por categoria no topo, com
   total em BRL, navegação mensal, valores e percentuais por categoria. As páginas
   têm um card ilustrado acima e dois menores abaixo; a última página com duas
@@ -59,12 +61,14 @@ O app já possui:
   e seção de despesas recentes com as seis primeiras despesas do mês na API, skeleton,
   estado vazio, erro com título e descrição e atualização por gesto ou
   ao retornar do formulário de gasto e da listagem completa; insights e despesas
-  são atualizados em paralelo com as métricas. O seletor mensal controla as três
-  seções, impede meses futuros e bloqueia as setas enquanto qualquer seção carrega.
+  são consultados em paralelo com as métricas e publicados juntos ao concluir a carga.
+  Cada carga relê User e limite antes das seções, inclusive na troca de mês.
+  O seletor mensal controla as três
+  seções, impede meses futuros e mostra skeletons no lugar das setas durante loading.
   Cada seção possui skeleton no mês selecionado, sem dados do mês anterior sob
   o novo título. Falha financeira apresenta uma tela de erro com retry único,
-  preservando o mês até a recuperação das três seções, sem cabeçalho durante o
-  erro e a recuperação. Insights vazios ocultam a seção; recentes
+  preservando o mês. Retry inicia o mesmo skeleton da abertura, sem fase especial
+  de recuperação. Insights vazios ocultam a seção; recentes
   vazios indicam ausência de despesas naquele mês. Refresh preserva a seleção;
 - listagem completa em `/expenses`, aberta por “Ver tudo” da Dashboard, com
   rolagem infinita em páginas de 20 itens, atualização por gesto, skeleton, vazio

@@ -1,13 +1,12 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
-
-import 'package:cordato/features/insight/presentation/commands/get_insights_command.dart';
-import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
-import 'package:cordato/features/metrics/presentation/commands/get_expense_metrics_command.dart';
-import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_state.dart';
 
 import 'package:cordato/features/dashboard/presentation/widgets/app_bar_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/action_button_dashboard_widget.dart';
@@ -16,23 +15,12 @@ import 'package:cordato/features/dashboard/presentation/widgets/dashboard_month_
 import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_section_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/insights/insights_section_widget.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/mixins/dashboard_screen_state_mixin.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/commands/get_first_expense_month_command.dart';
 
 final class const DashboardScreen({
   super.key,
-  required final UserCommand userCommand,
   required final IDateFormatter dateFormatter,
   required final IMoneyFormatter moneyFormatter,
-  required final GetExpensesCommand expensesCommand,
-  required final GetInsightsCommand insightsCommand,
-  required final GetExpenseMetricsCommand metricsCommand,
-  required final GetFirstExpenseMonthCommand firstExpenseMonthCommand,
-  final VoidCallback? onNotificationsPressed,
-  final Future<void> Function()? onMenuPressed,
-  final Future<void> Function()? onAvatarPressed,
-  final Future<bool> Function()? onExpensePressed,
-  final Future<bool> Function(DateTime month, {String? category})?
-  onSeeAllExpensesPressed,
+  required final DashboardBloc Function() bloc,
 }) extends StatefulWidget {
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -42,77 +30,64 @@ final class _DashboardScreenState extends State<DashboardScreen>
     with DashboardScreenStateMixin {
   @override
   Widget build(BuildContext context) {
-    return hasFinancialError
-        ? ListenableBuilder(
-            listenable: retryControlsListenable,
-            builder: (_, _) => ErrorScreen(
-              isLoading: isRecovering,
-              actionLabel: 'Tentar novamente',
-              title: 'Não foi possível carregar sua Dashboard.',
-              onAction: canRetryDashboard ? retryDashboard : null,
-              description: 'Não conseguimos carregar suas informações agora. Tente novamente.',
-            ),
-          )
-        : Scaffold(
-            appBar: AppBarDashboardWidget(
-              command: widget.userCommand,
-              onNotificationsPressed: widget.onNotificationsPressed,
-              onMenuPressed: widget.onMenuPressed == null ? null : openSettings,
-              onAvatarPressed: widget.onAvatarPressed == null ? null : openUser,
-            ),
-            body: SafeArea(
-              child: RefreshIndicator(
-                onRefresh: refreshDashboard,
-                child: ListView(
-                  padding: const .only(top: 20.0, bottom: 96.0),
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    ListenableBuilder(
-                      listenable: monthControlsListenable,
-                      builder: (_, _) => DashboardMonthSelectorWidget(
-                        selectedMonth: selectedMonth,
-                        formatter: widget.dateFormatter,
-                        showNavigation:
-                            canGoToPreviousMonth || canGoToNextMonth,
-                        onPreviousMonth: isLoading || !canGoToPreviousMonth
-                            ? null
-                            : previousMonth,
-                        onNextMonth: isLoading || !canGoToNextMonth
-                            ? null
-                            : nextMonth,
-                      ),
-                    ),
-                    MetricsSectionWidget(
-                      key: ValueKey(('metrics', selectedMonth)),
-                      command: widget.metricsCommand,
-                      moneyFormatter: widget.moneyFormatter,
-                      onCategoryPressed: widget.onSeeAllExpensesPressed == null
-                          ? null
-                          : (category) => openExpenses(category: category),
-                    ),
-                    InsightsSectionWidget(
-                      key: ValueKey(('insights', selectedMonth)),
-                      command: widget.insightsCommand,
-                    ),
-                    ExpensesSectionWidget(
-                      key: ValueKey(('expenses', selectedMonth)),
-                      limit: recentExpensesLimit,
-                      command: widget.expensesCommand,
-                      dateFormatter: widget.dateFormatter,
-                      moneyFormatter: widget.moneyFormatter,
-                      onSeeAllExpensesPressed:
-                          widget.onSeeAllExpensesPressed == null
-                          ? null
-                          : openExpenses,
-                    ),
-                  ],
+    return BlocProvider.value(
+      value: bloc,
+      child: BlocBuilder<DashboardBloc, DashboardState>(
+        bloc: bloc,
+        builder: (_, state) => state.hasFinancialError
+            ? ErrorScreen(
+                actionLabel: 'Tentar novamente',
+                title: 'Não foi possível carregar sua Dashboard.',
+                description: 'Não conseguimos carregar suas informações agora.',
+                onAction: state.canRetry
+                    ? () => bloc.add(DashboardRetryRequested())
+                    : null,
+              )
+            : Scaffold(
+                appBar: AppBarDashboardWidget(
+                  user: state.user,
+                  isLoading: state.isLoading,
                 ),
+                body: SafeArea(
+                  child: RefreshIndicator(
+                    onRefresh: refreshDashboard,
+                    child: ListView(
+                      padding: const .only(top: 20.0, bottom: 96.0),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        DashboardMonthSelectorWidget(
+                          selectedMonth: state.selectedMonth,
+                          formatter: widget.dateFormatter,
+                          isLoading: state.isLoading,
+                          showNavigation: state.canGoBack || state.canGoForward,
+                          onPreviousMonth: state.canGoBack && !state.isLoading
+                              ? () =>
+                                    bloc.add(DashboardPreviousMonthRequested())
+                              : null,
+                          onNextMonth: state.canGoForward && !state.isLoading
+                              ? () => bloc.add(DashboardNextMonthRequested())
+                              : null,
+                        ),
+                        MetricsSectionWidget(
+                          key: ValueKey(('metrics', state.selectedMonth)),
+                          metrics: state.metrics,
+                          moneyFormatter: widget.moneyFormatter,
+                        ),
+                        InsightsSectionWidget(insights: state.insights),
+                        ExpensesSectionWidget(
+                          limit: 6,
+                          page: state.expenses,
+                          dateFormatter: widget.dateFormatter,
+                          moneyFormatter: widget.moneyFormatter,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                floatingActionButtonLocation: .endFloat,
+                floatingActionButton: const ActionButtonDashboardWidget(),
               ),
-            ),
-            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-            floatingActionButton: ActionButtonDashboardWidget(
-              onExpense: widget.onExpensePressed == null ? null : openExpense,
-            ),
-          );
+      ),
+    );
   }
 }

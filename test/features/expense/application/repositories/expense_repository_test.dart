@@ -22,6 +22,19 @@ void main() {
     repository = ExpenseRepository(remoteDataSource: dataSource);
   });
 
+  test('delegates ascending sorting and a single item without changing other readers', () async {
+    when(() => dataSource.get(pageSize: 1, sort: 'occurred_on')).thenAnswer(
+      (_) async => Right(
+        ExpensePageResponse(items: [], next: '?page[cursor]=next', prev: null),
+      ),
+    );
+    final result = await repository.get(pageSize: 1, sort: 'occurred_on');
+    expect(result.right.items, isEmpty);
+    expect(result.right.next, '?page[cursor]=next');
+    verify(() => dataSource.get(pageSize: 1, sort: 'occurred_on')).called(1);
+    verifyNoMoreInteractions(dataSource);
+  });
+
   group('getById', () {
     test(
       'delegates the unchanged id and maps the resource returned by the API',

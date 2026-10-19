@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:command_it/command_it.dart';
 
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
@@ -344,9 +345,20 @@ Widget _sectionPreview({
                     ),
                   ),
                   const SizedBox(height: 8.0),
-                  MetricsSectionWidget(
-                    command: command,
-                    moneyFormatter: MoneyFormatter(),
+                  CommandBuilder(
+                    command: command.execute,
+                    whileRunning: (_, _, _) => MetricsSectionWidget(
+                      metrics: null,
+                      moneyFormatter: MoneyFormatter(),
+                    ),
+                    onNullData: (_, _) => MetricsSectionWidget(
+                      metrics: null,
+                      moneyFormatter: MoneyFormatter(),
+                    ),
+                    onData: (_, metrics, _) => MetricsSectionWidget(
+                      metrics: metrics,
+                      moneyFormatter: MoneyFormatter(),
+                    ),
                   ),
                 ],
               ),

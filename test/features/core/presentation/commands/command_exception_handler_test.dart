@@ -11,7 +11,6 @@ import 'package:cordato/features/core/presentation/commands/command_failure_exce
 
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/commands/get_first_expense_month_command.dart';
 import 'package:cordato/features/user/presentation/screens/user/commands/user_command.dart';
 
 import '../../../../support/core/mocks/crash_client_mock.dart';
@@ -143,72 +142,57 @@ void main() {
     },
   );
 
-  for (final auxiliary in ['user', 'history']) {
-    for (final typed in [true, false]) {
-      test(
-        'routes ${typed ? 'typed' : 'unexpected'} $auxiliary failure to the real fallback without builders',
-        () async {
-          final errors = ErrorsEntity.unknown();
-          final failure = StateError('auxiliary unavailable');
-          final userRepository = UserRepositoryMock();
-          final user = UserCommand(repository: userRepository);
-          final history = GetFirstExpenseMonthCommand(repository: repository);
-          addTearDown(user.dispose);
-          addTearDown(history.dispose);
+  for (final typed in [true, false]) {
+    test(
+      'routes ${typed ? 'typed' : 'unexpected'} user failure to the real fallback without builders',
+      () async {
+        final errors = ErrorsEntity.unknown();
+        final failure = StateError('auxiliary unavailable');
+        final userRepository = UserRepositoryMock();
+        final user = UserCommand(repository: userRepository);
+        addTearDown(user.dispose);
 
-          if (typed) {
-            when(() => userRepository.getById())
-                .thenAnswer((_) async => Left(errors));
-            when(() => repository.get()).thenAnswer((_) async => Left(errors));
-          } else {
-            when(() => userRepository.getById()).thenThrow(failure);
-            when(() => repository.get()).thenThrow(failure);
-          }
+        if (typed) {
+          when(() => userRepository.getById())
+              .thenAnswer((_) async => Left(errors));
+        } else {
+          when(() => userRepository.getById()).thenThrow(failure);
+        }
 
-          final execution = auxiliary == 'user'
-              ? user.execute.runAsync()
-              : history.execute.runAsync();
-          await expectLater(
-            execution,
-            throwsA(
-              typed
-                  ? isA<CommandFailureException>().having(
-                      (exception) => exception.errors,
-                      'errors',
-                      same(errors),
-                    )
-                  : same(failure),
+        final execution = user.execute.runAsync();
+        await expectLater(
+          execution,
+          throwsA(
+            typed
+                ? isA<CommandFailureException>().having(
+                    (exception) => exception.errors,
+                    'errors',
+                    same(errors),
+                  )
+                : same(failure),
+          ),
+        );
+
+        final data = user.execute.results.value;
+        expect(data.hasError, isTrue);
+        expect(data.isRunning, isFalse);
+        expect(data.errorReaction, ErrorReaction.firstLocalThenGlobalHandler);
+        if (typed) {
+          verifyZeroInteractions(client);
+        } else {
+          verify(
+            () => client.recordError(
+              fatal: false,
+              error: failure,
+              stackTrace: data.stackTrace!,
             ),
-          );
-
-          final data = auxiliary == 'user'
-              ? user.execute.results.value
-              : history.execute.results.value;
-          expect(data.hasError, isTrue);
-          expect(data.isRunning, isFalse);
-          expect(data.errorReaction, ErrorReaction.firstLocalThenGlobalHandler);
-          if (typed) {
-            verifyZeroInteractions(client);
-          } else {
-            verify(
-              () => client.recordError(
-                fatal: false,
-                error: failure,
-                stackTrace: data.stackTrace!,
-              ),
-            ).called(1);
-            verifyNoMoreInteractions(client);
-          }
-          if (auxiliary == 'user') {
-            verify(() => userRepository.getById()).called(1);
-            verifyZeroInteractions(repository);
-          } else {
-            verify(() => repository.get()).called(1);
-            verifyZeroInteractions(userRepository);
-          }
-        },
-      );
-    }
+          ).called(1);
+          verifyNoMoreInteractions(client);
+        }
+        verify(() => userRepository.getById()).called(1);
+        verifyZeroInteractions(repository);
+      },
+    );
   }
 
   for (final channel in ['results', 'errors']) {

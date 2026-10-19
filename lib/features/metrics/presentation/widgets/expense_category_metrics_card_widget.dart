@@ -2,9 +2,11 @@ import 'dart:math' as math;
 
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/images/image_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
@@ -17,7 +19,8 @@ final class const ExpenseCategoryMetricsCardWidget({
   super.key,
   required final IMoneyFormatter moneyFormatter,
   required final ExpenseCategoryMetricsEntity category,
-  final VoidCallback? onTap,
+  final ({DateTime from, DateTime to})? period,
+  final VoidCallback? onExpensesChanged,
   final bool highlighted = false,
   final bool illustrated = false,
   final bool compact = false,
@@ -26,8 +29,27 @@ final class const ExpenseCategoryMetricsCardWidget({
 
   double get illustrationHeight => compact ? 60.0 : 180.0;
 
+  Future<void> _openExpenses(BuildContext context) async {
+    final range = period;
+    if (range == null || ModalRoute.of(context)?.isCurrent == false) return;
+    bool changed = false;
+    await context.pushNamed(
+      RouteEnum.expenses.path,
+      arguments: (
+        from: range.from,
+        to: range.to,
+        category: category.category,
+        onExpensesChanged: () => changed = true,
+      ),
+    );
+    if (changed && context.mounted) onExpensesChanged?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final VoidCallback? onTap = period == null
+        ? null
+        : () => _openExpenses(context);
     final color = category.color(context);
     final amount = moneyFormatter.formatCents(category.totalAmount);
     final percentage = _buildPercentageLabel(percentage: category.percentage);

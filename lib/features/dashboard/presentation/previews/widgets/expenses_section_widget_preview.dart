@@ -5,18 +5,14 @@ import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
-import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
 
 import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_section_widget.dart';
-import 'package:cordato/features/dashboard/presentation/previews/fakes/expenses_preview_repository.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/value_objects/amount_value_object.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
-
-import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 
 @CordatoPreview(
   group: 'Dashboard / Despesas',
@@ -39,52 +35,17 @@ Widget previewEmptyExpensesSectionWidget() => _sectionPreview(
   name: 'Seção com despesas e ver tudo',
   size: Size(390.0, 520.0),
 )
-Widget previewExpensesSectionWidget() => _sectionPreview(
-  type: Right(_expensesPage()),
-  onSeeAllExpensesPressed: () {},
-);
-
-@CordatoPreview(
-  group: 'Dashboard / Despesas',
-  name: 'Seção com despesas sem ver tudo',
-  size: Size(390.0, 520.0),
-)
-Widget previewExpensesSectionWithoutSeeAllWidget() =>
+Widget previewExpensesSectionWidget() =>
     _sectionPreview(type: Right(_expensesPage()));
 
-Widget _sectionPreview({
-  GetRepositoryType? type,
-  VoidCallback? onSeeAllExpensesPressed,
-}) => PreviewResourceWidget<GetExpensesCommand>(
-  create: () {
-    final command = GetExpensesCommand(
-      repository: ExpensesPreviewRepository(
-        type:
-            type ?? Right(ExpensePageEntity(items: [], next: null, prev: null)),
-      ),
-    );
-    if (type != null) {
-      command.execute.run((
-        pageSize: 6,
-        category: null,
-        pageLink: null,
-        from: DateTime(2026, 10),
-        to: DateTime(2026, 10, 31),
-      ));
-    }
-    return command;
-  },
-  dispose: (command) => command.dispose(),
-  builder: (command) => Scaffold(
-    body: SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 24.0),
-      child: ExpensesSectionWidget(
-        limit: 6,
-        command: command,
-        moneyFormatter: MoneyFormatter(),
-        onSeeAllExpensesPressed: onSeeAllExpensesPressed,
-        dateFormatter: DateFormatter(now: () => DateTime(2026, 10, 7)),
-      ),
+Widget _sectionPreview({GetRepositoryType? type}) => Scaffold(
+  body: SingleChildScrollView(
+    padding: const EdgeInsets.symmetric(vertical: 24.0),
+    child: ExpensesSectionWidget(
+      limit: 6,
+      page: type?.right,
+      moneyFormatter: MoneyFormatter(),
+      dateFormatter: DateFormatter(now: () => DateTime(2026, 10, 7)),
     ),
   ),
 );

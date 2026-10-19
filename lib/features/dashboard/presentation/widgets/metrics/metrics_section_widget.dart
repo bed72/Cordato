@@ -1,12 +1,14 @@
-import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/metrics/animated_expense_total_widget.dart';
 
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
-import 'package:cordato/features/metrics/presentation/commands/get_expense_metrics_command.dart';
 import 'package:cordato/features/metrics/presentation/widgets/expense_metrics_carousel_widget.dart';
 import 'package:cordato/features/metrics/presentation/widgets/expense_metrics_skeleton_widget.dart';
 import 'package:cordato/features/metrics/presentation/extensions/expense_metrics_categories_extension.dart';
@@ -14,8 +16,7 @@ import 'package:cordato/features/metrics/presentation/extensions/expense_metrics
 final class const MetricsSectionWidget({
   super.key,
   required final IMoneyFormatter moneyFormatter,
-  required final GetExpenseMetricsCommand command,
-  final ValueChanged<String>? onCategoryPressed,
+  required final ExpenseMetricsEntity? metrics,
 }) extends StatefulWidget {
   @override
   State<MetricsSectionWidget> createState() => _MetricsSectionWidgetState();
@@ -29,34 +30,19 @@ final class _MetricsSectionWidgetState extends State<MetricsSectionWidget> {
   @override
   void initState() {
     super.initState();
-    widget.command.execute.results.addListener(_rememberTotal);
     _rememberTotal();
   }
 
   @override
   void didUpdateWidget(covariant MetricsSectionWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (identical(oldWidget.command, widget.command)) return;
-
-    oldWidget.command.execute.results.removeListener(_rememberTotal);
-    _previousTotalCents = null;
-    _initialTotalCents = null;
-    _previousPeriod = null;
-    widget.command.execute.results.addListener(_rememberTotal);
+    if (identical(oldWidget.metrics, widget.metrics)) return;
     _rememberTotal();
   }
 
-  @override
-  void dispose() {
-    widget.command.execute.results.removeListener(_rememberTotal);
-    super.dispose();
-  }
-
   void _rememberTotal() {
-    final data = widget.command.execute.results.value;
-    if (data.isRunning || data.hasError || data.data == null) return;
-
-    final metrics = data.data!;
+    final metrics = widget.metrics;
+    if (metrics == null) return;
     final period = (
       from: DateTime(
         metrics.startDate.year,
@@ -76,18 +62,13 @@ final class _MetricsSectionWidgetState extends State<MetricsSectionWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return CommandBuilder(
-      command: widget.command.execute,
-      whileRunning: (_, _, _) =>
-          _buildSection(child: const ExpenseMetricsSkeletonWidget()),
-      onError: (_, _, _, _) => const SizedBox.shrink(),
-      onData: (_, metrics, _) => Padding(
-        padding: const .only(top: 8.0, bottom: 20.0),
-        child: _buildMetrics(metrics: metrics!),
-      ),
-      onNullData: (_, _) =>
-          _buildSection(child: const ExpenseMetricsSkeletonWidget()),
-    );
+    final metrics = widget.metrics;
+    return metrics == null
+        ? _buildSection(child: const ExpenseMetricsSkeletonWidget())
+        : Padding(
+            padding: const .only(top: 8.0, bottom: 20.0),
+            child: _buildMetrics(metrics: metrics),
+          );
   }
 
   Padding _buildSection({required Widget child}) =>
@@ -95,6 +76,7 @@ final class _MetricsSectionWidgetState extends State<MetricsSectionWidget> {
 
   Column _buildMetrics({required ExpenseMetricsEntity metrics}) {
     final pages = metrics.categories?.cardPages ?? [];
+    final month = context.read<DashboardBloc?>()?.state.selectedMonth;
 
     return Column(
       spacing: 12.0,
@@ -126,11 +108,29 @@ final class _MetricsSectionWidgetState extends State<MetricsSectionWidget> {
             key: ObjectKey(metrics),
             pages: pages,
             moneyFormatter: widget.moneyFormatter,
-            onCategoryPressed: widget.onCategoryPressed,
+            period: month == null
+                ? null
+                : (
+                    from: DateTime(month.year, month.month),
+                    to: DateTime(month.year, month.month + 1, 0),
+                  ),
+            onExpensesChanged: _expensesChangedCallback(),
           ),
         },
       ],
     );
+  }
+
+  VoidCallback? _expensesChangedCallback() {
+    final captured = context.read<DashboardBloc?>();
+    if (captured == null) return null;
+    return () {
+      if (mounted &&
+          !captured.isClosed &&
+          identical(context.read<DashboardBloc?>(), captured)) {
+        captured.add(DashboardExpensesChanged());
+      }
+    };
   }
 
   Padding _buildMessage({required String message}) => Padding(

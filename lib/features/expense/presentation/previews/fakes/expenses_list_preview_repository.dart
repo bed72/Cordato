@@ -13,6 +13,7 @@ final class ExpensesListPreviewRepository({
 }) implements IExpenseRepository {
   @override
   Future<GetRepositoryType> get({
+    String? sort,
     int pageSize = 30,
     DateTime? to,
     DateTime? from,
@@ -29,6 +30,13 @@ final class ExpensesListPreviewRepository({
           (category == null || expense.category.value == category) &&
           (to == null || !day.isAfter(_civilDay(to)));
     }).toList();
+
+    if (sort == 'occurred_on') {
+      filtered.sort(
+        (left, right) =>
+            _civilDay(left.occurredOn).compareTo(_civilDay(right.occurredOn)),
+      );
+    }
 
     final offset = pageLink == null
         ? 0

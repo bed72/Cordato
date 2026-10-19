@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
@@ -10,6 +11,7 @@ final class const DashboardMonthSelectorWidget({
   required final IDateFormatter formatter,
   required final VoidCallback? onNextMonth,
   required final VoidCallback? onPreviousMonth,
+  final bool isLoading = false,
   final bool showNavigation = true,
 }) extends StatelessWidget {
   @override
@@ -30,7 +32,29 @@ final class const DashboardMonthSelectorWidget({
               ),
             ),
           ),
-          if (showNavigation) ...[
+          if (isLoading)
+            Semantics(
+              label: 'Carregando Dashboard',
+              child: ExcludeSemantics(
+                child: Skeletonizer(
+                  child: Row(
+                    spacing: 8.0,
+                    children: [
+                      for (int index = 0; index < 2; index++)
+                        SizedBox(
+                          width: 48.0,
+                          height: 48.0,
+                          child: Bone.square(
+                            size: 48.0,
+                            borderRadius: context.radius.cornerRadius100,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else if (showNavigation) ...[
             _buildMonthButton(
               context: context,
               label: 'Mês anterior',

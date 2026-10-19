@@ -3,15 +3,13 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
 
-final class const NotificationButtonDashboardWidget({
-  super.key,
-  required final VoidCallback? onPress,
-}) extends StatelessWidget {
+final class const NotificationButtonDashboardWidget({super.key})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
     label: 'Notificações',
-    enabled: onPress != null,
+    enabled: false,
     child: Stack(
       clipBehavior: .none,
       children: [
@@ -20,7 +18,7 @@ final class const NotificationButtonDashboardWidget({
             width: 48.0,
             height: 48.0,
             iconSize: 26.0,
-            onPress: onPress,
+            onPress: null,
             iconColor: context.colors.onSurface,
             icon: Icons.notifications_none_rounded,
             borderRadius: context.radius.cornerRadius100,

@@ -12,7 +12,8 @@ final class const ExpenseMetricsCarouselWidget({
   super.key,
   required final IMoneyFormatter moneyFormatter,
   required final List<List<ExpenseCategoryMetricsEntity>> pages,
-  final ValueChanged<String>? onCategoryPressed,
+  final ({DateTime from, DateTime to})? period,
+  final VoidCallback? onExpensesChanged,
 }) extends StatefulWidget {
   @override
   State<ExpenseMetricsCarouselWidget> createState() =>
@@ -62,7 +63,8 @@ final class _ExpenseMetricsCarouselWidgetState
                       lowerHeight: lowerHeight,
                       categories: widget.pages[index],
                       moneyFormatter: widget.moneyFormatter,
-                      onCategoryPressed: widget.onCategoryPressed,
+                      period: widget.period,
+                      onExpensesChanged: widget.onExpensesChanged,
                     ),
                   ),
                 ),

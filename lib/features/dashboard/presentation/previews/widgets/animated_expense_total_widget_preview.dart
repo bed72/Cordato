@@ -114,10 +114,16 @@ Widget _animationPreview() =>
                         onNextMonth: running ? null : () => changeMonth(1),
                       ),
                     ),
-                    MetricsSectionWidget(
-                      key: ValueKey(selectedMonth),
-                      command: resource.command,
-                      moneyFormatter: MoneyFormatter(),
+                    ListenableBuilder(
+                      listenable: resource.command.execute.results,
+                      builder: (_, _) => MetricsSectionWidget(
+                        key: ValueKey(selectedMonth),
+                        metrics:
+                            resource.command.execute.results.value.isRunning
+                            ? null
+                            : resource.command.execute.results.value.data,
+                        moneyFormatter: MoneyFormatter(),
+                      ),
                     ),
                     Padding(
                       padding: const .symmetric(horizontal: 20.0),

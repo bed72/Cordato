@@ -89,6 +89,7 @@ final class ExpenseRepository({
 
   @override
   Future<GetRepositoryType> get({
+    String? sort,
     String? category,
     int pageSize = 30,
     DateTime? to,
@@ -97,6 +98,7 @@ final class ExpenseRepository({
   }) async {
     try {
       final response = await _remoteDataSource.get(
+        sort: sort,
         to: to,
         from: from,
         category: category,

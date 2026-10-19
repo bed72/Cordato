@@ -34,6 +34,65 @@ void main() {
     dataSource = ExpenseRemoteDataSource(client: client);
   });
 
+  for (final sort in <String?>[null, 'occurred_on']) {
+    test(
+      'serializes optional sort $sort with requested size and opaque cursor',
+      () async {
+        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+          (_) async => const Right(
+            Reponse(
+              status: 200,
+              body: {
+                'data': [],
+                'links': {'next': null, 'prev': null},
+              },
+            ),
+          ),
+        );
+        final result = await dataSource.get(
+          pageSize: 1,
+          sort: sort,
+          pageLink: '?page[cursor]=opaque&sort=-occurred_on&page[size]=30',
+        );
+        expect(result.isRight, isTrue);
+        final request =
+            verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                    .captured
+                    .single
+                as Requests;
+        expect(request.path, 'expenses');
+        expect(request.query, {
+          'page[cursor]': 'opaque',
+          'sort': sort ?? '-occurred_on',
+          'page[size]': 1,
+        });
+        verifyNoMoreInteractions(client);
+      },
+    );
+  }
+
+  test('requests only the oldest expense in one ascending query', () async {
+    when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+      (_) async => const Right(
+        Reponse(
+          status: 200,
+          body: {
+            'data': [],
+            'links': {'next': null, 'prev': null},
+          },
+        ),
+      ),
+    );
+    await dataSource.get(pageSize: 1, sort: 'occurred_on');
+    final request =
+        verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                .captured
+                .single
+            as Requests;
+    expect(request.query, {'page[size]': 1, 'sort': 'occurred_on'});
+    verifyNoMoreInteractions(client);
+  });
+
   group('getById', () {
     test(
       'gets a protected relative resource and preserves every response field',

@@ -20,19 +20,19 @@ final appModule = createModule(
   register: (context) {
     context
       ..module(coreDependenciesModule)
-      ..module(userDependenciesModule)
-      ..module(sessionDependenciesModule)
-      ..module(expenseDependenciesModule)
-      ..module(insightDependenciesModule)
-      ..module(metricsDependenciesModule)
+      // ..module(userDependenciesModule)
+      // ..module(sessionDependenciesModule)
+      // ..module(expenseDependenciesModule)
+      // ..module(insightDependenciesModule)
+      // ..module(metricsDependenciesModule)
       ..module(authenticationDependenciesModule);
 
     context
-      ..module(userRoutesModule)
-      ..module(welcomeRoutesModule)
-      ..module(expenseRoutesModule)
-      ..module(settingsRoutesModule)
-      ..module(dashboardRoutesModule)
+      // ..module(userRoutesModule)
+      // ..module(welcomeRoutesModule)
+      // ..module(expenseRoutesModule)
+      // ..module(settingsRoutesModule)
+      // ..module(dashboardRoutesModule)
       ..module(authenticationRoutesModule)
       ..route(
         RouteEnum.app.path,

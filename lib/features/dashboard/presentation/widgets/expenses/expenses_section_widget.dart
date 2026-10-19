@@ -1,5 +1,10 @@
-import 'package:command_it/command_it.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
+
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/text_button_widget.dart';
@@ -7,7 +12,6 @@ import 'package:cordato/features/core/presentation/formatters/interface_date_for
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_item_widget.dart';
-import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
@@ -18,37 +22,22 @@ import 'package:cordato/features/expense/presentation/screens/expenses/widgets/e
 final class const ExpensesSectionWidget({
   super.key,
   required final int limit,
-  required final GetExpensesCommand command,
+  required final ExpensePageEntity? page,
   required final IDateFormatter dateFormatter,
   required final IMoneyFormatter moneyFormatter,
-  final VoidCallback? onSeeAllExpensesPressed,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return CommandBuilder<
-      ({
-        int pageSize,
-        DateTime? to,
-        DateTime? from,
-        String? category,
-        String? pageLink,
-      }),
-      ExpensePageEntity?
-    >(
-      command: command.execute,
-      onError: (_, _, _, _) => const SizedBox.shrink(),
-      whileRunning: (_, _, _) =>
-          _buildSection(context: context, child: _buildLoading()),
-      onNullData: (_, _) =>
-          _buildSection(context: context, child: _buildLoading()),
-      onData: (_, page, _) => page!.items.isEmpty
-          ? _buildSection(context: context, child: const ExpensesEmptyWidget())
-          : _buildSection(
-              context: context,
-              hasItems: true,
-              child: _buildItems(page.items),
-            ),
-    );
+    final value = page;
+    return value == null
+        ? _buildSection(context: context, child: _buildLoading())
+        : value.items.isEmpty
+        ? _buildSection(context: context, child: const ExpensesEmptyWidget())
+        : _buildSection(
+            context: context,
+            hasItems: true,
+            child: _buildItems(value.items),
+          );
   }
 
   Column _buildSection({
@@ -77,10 +66,10 @@ final class const ExpensesSectionWidget({
                 ),
               ),
             ),
-            if (hasItems && onSeeAllExpensesPressed != null)
+            if (hasItems)
               TextButtonWidget(
                 label: 'Ver tudo',
-                onTap: onSeeAllExpensesPressed,
+                onTap: () => _openExpenses(context),
               ),
           ],
         ),
@@ -91,6 +80,27 @@ final class const ExpensesSectionWidget({
 
   ExpensesSkeletonWidget _buildLoading() =>
       ExpensesSkeletonWidget(count: limit);
+
+  Future<void> _openExpenses(BuildContext context) async {
+    if (ModalRoute.of(context)?.isCurrent == false) return;
+    final bloc = context.read<DashboardBloc>();
+    final month = bloc.state.selectedMonth;
+    bool changed = false;
+    await context.pushNamed(
+      RouteEnum.expenses.path,
+      arguments: (
+        from: DateTime(month.year, month.month),
+        to: DateTime(month.year, month.month + 1, 0),
+        onExpensesChanged: () => changed = true,
+      ),
+    );
+    if (changed &&
+        context.mounted &&
+        !bloc.isClosed &&
+        identical(context.read<DashboardBloc>(), bloc)) {
+      bloc.add(DashboardExpensesChanged());
+    }
+  }
 
   Column _buildItems(List<ExpenseEntity> expenses) => Column(
     mainAxisSize: .min,

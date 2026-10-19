@@ -1,60 +1,75 @@
+## Escopo
+
+Cancelamento HTTP foi adiado por solicitação explícita do usuário. As tarefas de
+capacidade neutra, CancelToken, propagação e testes de transporte foram retiradas
+deste piloto. Identidade e invalidação lógica continuam obrigatórias no Bloc.
+
 ## 1. Baseline e dependências
 
-- [ ] 1.1 Revisar alterações locais de HTTP e a change introduce-exception-http-insight; confirmar os contratos executáveis e registrar sobreposições sem sobrescrever trabalho existente.
-- [ ] 1.2 Mapear consumidores de commands, seções, cabeçalho e previews da Dashboard e registrar baseline de análise/testes e comportamento visual.
-- [ ] 1.3 Adicionar versões compatíveis de bloc, flutter_bloc e bloc_concurrency, e bloc_test como dependência de desenvolvimento; executar flutter pub get.
+- [x] 1.1 Registrar contratos executáveis, alterações existentes e disponibilidade da change HTTP referenciada, sem sobrescrever trabalho externo.
+- [x] 1.2 Mapear comandos, seções, cabeçalho e previews; registrar baseline de análise e testes.
+- [x] 1.3 Adicionar bloc, flutter_bloc, bloc_concurrency e bloc_test compatíveis; executar pub get.
 
-## 2. Cancelamento independente do Dio
+## 2. Estado e coordenação Bloc
 
-- [ ] 2.1 Criar capacidade framework-free de sinal/cancelamento e cancelamento tipado em core/domain, com testes de idempotência, sinal previamente cancelado e liberação de assinaturas.
-- [ ] 2.2 Integrar sinal opcional ao HTTP e ponte por request para CancelToken, preservando requests sem sinal e removendo assinaturas em todos os caminhos terminais.
-- [ ] 2.3 Testar com adapter controlável: cancelamento ativo, sinal cancelado antes do envio, várias requests do mesmo ciclo e isolamento de requests independentes ao mesmo endpoint.
-- [ ] 2.4 Preservar cancelamento tipado antes dos catches genéricos do cliente e helper de resposta; testar que não vira status artificial, erro genérico ou sucesso vazio.
+- [x] 2.1 Criar DashboardBloc, eventos e estado imutável específicos da tela, dependendo somente dos contratos de repositories, sem telemetry.
+- [x] 2.2 Compartilhar coordenação financeira entre intenções; filtrar eventos bloqueados antes de restartable e identificar cada ciclo.
+- [x] 2.3 Implementar abertura paralela, mês civil, seis recentes, agrupamento de métricas e ano/mês de insights com resultados independentes.
+- [x] 2.4 Consultar limite histórico com uma única request ascendente de um item, sem seguir next, preservando ausência e invalidação lógica.
+- [x] 2.5 Implementar refresh e alteração confirmada com releitura do limite; alteração substitui imediatamente o ciclo anterior.
+- [x] 2.6 Implementar erro financeiro imediato e recuperação completa, sem efeitos de resultados/catches/finalizações antigos.
+- [x] 2.7 Implementar User independente e substituível e fechamento idempotente, sem ICrashClient ou callback de reporte.
 
-## 3. Propagação pelas leituras da Dashboard
+## 3. Testes determinísticos
 
-- [ ] 3.1 Adicionar sinal opcional aos contratos e implementações de User.getById, Expense.get, Insight.get e Metrics.getExpenses e seus data sources, sem adicionar cancelamento às escritas.
-- [ ] 3.2 Propagar cancelamento tipado antes dos catches genéricos dos repositories/data sources e manter mapeamentos atuais de falhas reais.
-- [ ] 3.3 Atualizar todos os consumidores, mocks, fakes e previews afetados pelas assinaturas; preservar chamadas existentes sem sinal e commands fora da Dashboard.
-- [ ] 3.4 Testar delegação do sinal e propagação de cancelamento por cada cadeia repository/data source/HTTP, incluindo leituras sem sinal, filtros, paginação e falhas reais.
+- [x] 3.1 Reutilizar doubles públicos de test/support; testar abertura, tempos distintos, vazios, total zero, limites civis, virada de ano e fevereiro bissexto.
+- [x] 3.2 Testar eventos bloqueados entre tipos distintos, sem interrupção nem fila.
+- [x] 3.3 Testar alteração durante abertura, refresh e recuperação e respostas/falhas obsoletas sem encerrar loading novo.
+- [x] 3.4 Testar primeira falha, recuperação, falha repetida, auxiliares, User antigo e política visual para exceções inesperadas.
+- [x] 3.5 Testar request única de limite, cinco leituras na abertura mesmo com histórico grande, ausência, ajuste civil, invalidação e fechamento sem páginas tardias.
 
-## 4. Estado e ciclo financeiro do Bloc
+## 4. Integração visual
 
-- [ ] 4.1 Criar DashboardBloc, eventos e estado imutável específicos da tela, com mês, resultados/status das seções, usuário, limite e fase de recuperação; derivar disponibilidade das ações sem flags duplicadas no mixin.
-- [ ] 4.2 Implementar uma coordenação compartilhada entre tipos de eventos financeiros, rejeitando eventos bloqueados antes de poderem interromper handlers aceitos; adicionar identidade e escopo de cancelamento por ciclo.
-- [ ] 4.3 Implementar abertura paralela e troca mensal com intervalo civil, agrupamento de métricas, seis recentes e ano/mês de Insights; preservar limites, estados vazios e sucessos parciais independentes.
-- [ ] 4.4 Migrar a leitura do primeiro mês para o fluxo Bloc: páginas sem ordem presumida, next opaco, detecção de repetição, null válido e interrupção de paginação após cancelamento.
-- [ ] 4.5 Implementar refresh e alteração confirmada com releitura de limite, ajuste civil e três seções paralelas; alteração confirmada cancela e substitui imediatamente o ciclo vigente.
-- [ ] 4.6 Implementar primeira falha financeira com ErrorScreen imediata, cancelamento das demais leituras financeiras e proteção contra conclusões, catches e finally antigos.
-- [ ] 4.7 Implementar recuperação completa: User paralelo ao limite, seções após o limite, erro persistente até sucessos vigentes, bloqueio de retry repetido e isolamento de falhas auxiliares.
-- [ ] 4.8 Implementar leitura de User com geração/cancelamento independentes, substituição após retorno de User/Settings e preservação de fallback e avatar; alteração financeira não cancela User.
-- [ ] 4.9 Implementar fechamento idempotente e invalidação de retornos de navegação; cancelar todos os escopos e impedir novas páginas ou emissões tardias.
-- [ ] 4.10 Conectar reporte único de exceções inesperadas expostas ao Bloc ao ICrashClient, sem reporte de falhas de negócio/cancelamentos nem alterações no handler global de CommandIt.
+- [x] 4.1 Criar um Bloc por Dashboard no módulo da rota com propriedade única do fechamento e callbacks/records preservados.
+- [x] 4.2 Adaptar tela, cabeçalho e seções a dados do Bloc via BlocBuilder, sem commands ou estado financeiro duplicado no mixin.
+- [x] 4.3 Restringir mixin a lifecycle/navegação; revalidar Bloc e montagem ao retornar das rotas.
+- [x] 4.4 Substituir controles mensais por skeletons durante loading normal, sem callbacks, foco ou ações acessíveis.
+- [x] 4.5 Preservar ErrorScreen sem AppBar, textos, FAB, avatar, categorias, seis recentes e estados vazios.
+- [x] 4.6 Adaptar previews e remover GetFirstExpenseMonthCommand e testes exclusivos após cobertura equivalente no Bloc.
 
-## 5. Testes determinísticos do Bloc
+## 5. Documentação e verificação
 
-- [ ] 5.1 Criar doubles públicos em test/support e testar abertura, consultas com durações distintas, vazios válidos, limites mensais, virada de ano e fevereiro bissexto.
-- [ ] 5.2 Testar bloqueio de seta, refresh e retry durante ocupação: sem cancelamento acidental, enfileiramento ou perda do ciclo vigente, inclusive entre tipos distintos de eventos.
-- [ ] 5.3 Testar alteração confirmada durante abertura, refresh e recuperação: cancelamento imediato, leitura nova e nenhuma espera por Future antigo.
-- [ ] 5.4 Testar resultados, erros e finally obsoletos com adapter que ignore cancelamento, garantindo que não alteram dados, mês, loading ou erro do ciclo novo.
-- [ ] 5.5 Testar primeira falha e recuperação completa, falha repetida, falhas auxiliares, leitura antiga de User e reporte único de exceção inesperada.
-- [ ] 5.6 Testar paginação histórica fora de ordem, continuação repetida, histórico vazio, ajuste do mês e interrupção antes da página seguinte após cancelamento.
-- [ ] 5.7 Testar fechamento/substituição durante consulta e retornos obsoletos de navegação; remover subscriptions e fechar todos os recursos criados nos testes.
+- [x] 5.1 Atualizar ARCHITECTURE.md, AGENTS.md e README sobre piloto, recursos e convivência com commands, explicitando ausência de cancelamento HTTP.
+- [x] 5.2 Atualizar testes arquiteturais: domínio sem Dio/Bloc/Flutter e apresentação sem clientes HTTP.
+- [x] 5.3 Executar pub get, analyze, test e test/architecture, registrando falhas anteriores/externas.
+- [ ] 5.4 Validar com Maestro abertura, skeleton, bloqueio mensal, troca, erro/retry e retornos; registrar bloqueios quando não houver dispositivo/app disponível.
+- [x] 5.5 Validar OpenSpec strict e revisar diff, sem alterações core HTTP, somente sort opcional em Expense e sem commands em produção na Dashboard.
+- [x] 5.6 Comparar complexidade total com o baseline, eliminando snapshots e microtasks em vez de transferir o mixin.
 
-## 6. Integração visual e propriedade dos recursos
+## 6. Refatoração de legibilidade solicitada na revisão
 
-- [ ] 6.1 Registrar/criar um Bloc por Dashboard no módulo da rota, definir único proprietário do fechamento e preservar callbacks e argumentos de navegação existentes.
-- [ ] 6.2 Adaptar DashboardScreen, cabeçalho e seções para dados/status do Bloc com BlocBuilder/BlocSelector, sem commands ou cópias de estado no mixin.
-- [ ] 6.3 Reduzir ou remover DashboardScreenStateMixin conforme necessidade visual; manter navegação fora do Bloc e encaminhar alteração confirmada somente ao Bloc vigente.
-- [ ] 6.4 Adicionar skeletons no lugar dos dois controles mensais durante carregamento normal, preservando mês/ano, dimensões e ausência de foco/callbacks/ações semânticas nos placeholders.
-- [ ] 6.5 Preservar ErrorScreen sem AppBar, textos, FAB, seis recentes, cards, avatar, estados vazios e navegação; manter seletor e conteúdo normal ocultos no erro/recuperação.
-- [ ] 6.6 Adaptar previews e seus recursos; remover GetFirstExpenseMonthCommand e testes exclusivos após confirmar ausência de outros consumidores e cobertura equivalente do Bloc.
+- [x] 6.1 Substituir intenção genérica e offsets por eventos concretos, atualizando todos os consumidores.
+- [x] 6.2 Modelar fases financeiras e status auxiliares explícitos, preservando as falhas tipadas no estado.
+- [x] 6.3 Separar preparação mensal, consultas e conclusão da recuperação, mantendo filtro anterior ao restartable e isolamento de ciclos.
+- [x] 6.4 Cobrir transições emitidas, recuperação substituída, erros preservados e fechamento durante espera de User; executar análise e suítes.
+- [x] 6.5 Atualizar documentação canônica e registrar a verificação e os bloqueios visuais desta revisão.
 
-## 7. Documentação e verificação final
+## 7. Simplificação da orquestração
 
-- [ ] 7.1 Atualizar ARCHITECTURE.md e AGENTS.md com o piloto Bloc, propriedade de recursos, direção de dependências, cancelamento e convivência temporária com commands; revisar README conforme impacto.
-- [ ] 7.2 Atualizar testes arquiteturais aplicáveis para manter domínio livre de Dio/Bloc/Flutter e apresentação livre de clientes HTTP, sem criar testes de widgets ou módulos Modular.
-- [ ] 7.3 Executar flutter pub get, flutter analyze e flutter test, incluindo test/architecture; registrar falhas anteriores ou externas sem ocultá-las.
-- [ ] 7.4 Validar com Maestro abertura, skeleton dos controles e bloqueio mensal, troca de mês, erro global/retry e retorno com e sem alterações; confirmar dispositivos e hierarquia antes de executar flows.
-- [ ] 7.5 Validar a change com openspec validate migrate-dashboard-to-bloc --strict e revisar o diff final: sem mudanças de telas fora do escopo além de adaptações obrigatórias de contratos, sem commands na Dashboard e sem estado financeiro duplicado.
-- [ ] 7.6 Comparar a complexidade total com o baseline: eliminar validações de snapshots e microtasks de pendência em vez de somente transferir o mixin para outro arquivo; registrar resultado antes de propor expansão para outra tela.
+- [x] 7.1 Concentrar a sequência financeira no handler, eliminando encaminhamentos e identificadores que duplicavam o controle do emitter.
+- [x] 7.2 Tornar copyWith uma cópia sem regras de limpeza e substituir observação do próprio stream pela conclusão vigente de User.
+- [x] 7.3 Testar substituição sem esperar User obsoleto, recuperação sucessiva e cópia explícita de erros; executar verificações e registrar resultados.
+
+## 8. Carga atômica aprovada pelo usuário
+
+Esta decisão substitui os requisitos anteriores de publicação parcial, falha
+imediata, User independente e fases especiais de recuperação.
+
+- [x] 8.1 Reduzir a loading/ready/failure, eliminar barreira, status auxiliares e publicação parcial; unificar a sequência de consultas.
+- [x] 8.2 Adaptar tela e testes para publicação única, retry normal, fallbacks e invalidação de respostas obsoletas.
+- [x] 8.3 Sincronizar documentação e specs com a decisão e executar análise, suítes e validação visual possível.
+
+## 9. Remover controle redundante de fechamento
+
+- [x] 9.1 Definir o mês padrão em DashboardState(), mantendo somente _opened no Bloc e usando isClosed/emit.isDone.
+- [x] 9.2 Remover a exigência de identidade do Future de close, atualizar documentação e validar conclusões tardias.

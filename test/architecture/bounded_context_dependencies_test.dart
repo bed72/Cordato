@@ -8,12 +8,17 @@ final _importPattern = RegExp(
 
 const _financialContexts = {'expense', 'budget', 'family', 'insight'};
 const _forbiddenDomainImports = {
+  'package:dio/',
+  'package:bloc/',
+  'package:flutter_bloc/',
+  'package:bloc_concurrency/',
   'package:flutter/',
   'package:material_ui/',
   'package:supabase_flutter/',
   'package:flutter_secure_storage/',
 };
 const _forbiddenPresentationImports = {
+  'package:dio/',
   'package:supabase_flutter/',
   'package:flutter_secure_storage/',
 };

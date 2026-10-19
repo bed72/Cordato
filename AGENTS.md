@@ -153,24 +153,41 @@ A Dashboard abre `/expense` com `(returnToPrevious: true)`, record de tipo
 `context.pop()` para preservar a instância da Dashboard e seu mês selecionado.
 Cancelar também retorna à mesma instância. Voltar sem alterações não recarrega.
 Após alterações confirmadas, as três seções
-são recarregadas no mês preservado; se alguma consulta ainda estiver rodando,
-a recarga aguarda o fim de todas. Troca de dependências invalida a recarga pendente
-e descarte impede sua execução. Sem argumento ou com `returnToPrevious: false`,
+são recarregadas pelo Bloc no mês preservado, invalidando imediatamente o ciclo
+anterior sem esperar suas consultas. Descarte impede conclusões tardias.
+Sem argumento ou com `returnToPrevious: false`,
 o cadastro independente mantém a navegação para `/dashboard` após sucesso.
 A data inicial do formulário continua sendo hoje e hold não fecha a rota.
-Dashboard consulta nome e semente do avatar por `UserCommand` e as seis primeiras
-despesas por uma instância própria de `GetExpensesCommand`, descartada pela tela.
-`DashboardScreenStateMixin` concentra consulta inicial, atualização por gesto e
-retorno assíncrono do formulário e da listagem completa, recarregando as despesas
-recentes, insights e métricas somente após alterações confirmadas, quando a mesma instância permanece montada.
-Os callbacks financeiros retornam `Future<bool>` e o módulo transporta
+Dashboard é um piloto localizado de Bloc. `DashboardBloc`, eventos e estado
+imutável ficam em `presentation/screens/dashboard/bloc/`. Recebe contratos de
+User, Expense, Insight e Metrics. A abertura usa `DateTime.now()`; datas fixas
+pertencem somente aos testes. Não recebe commands,
+ICrashClient ou callback de telemetry, nem conhece HTTP, SDKs,
+BuildContext ou Modular. `DashboardScreen` cria um Bloc por factory injetada e
+é a única proprietária do fechamento, inclusive na substituição da factory.
+`BlocBuilder` compõe dados e disponibilidade das ações. O mixin cuida somente
+de lifecycle e refresh. A tela fornece `BlocProvider.value` sem transferir a
+propriedade do fechamento. Os widgets de ação navegam pelo próprio contexto,
+validando montagem e identidade do Bloc no retorno.
+Não reintroduza snapshots ou microtasks de pendência nesse fluxo.
+Cancelamento HTTP foi adiado: requests antigas continuam, mas suas conclusões
+não publicam no ciclo novo. Expense.get aceita `String? sort` opcional, delegado
+sem normalização ao data source. O módulo registra DashboardBloc por factory no
+injector, recuperando repositories com `inject<T>()` dentro do binding. A rota
+usa `bloc: inject<DashboardBloc>`, tear-off estável para que rebuilds não
+recriem o Bloc nem repitam a abertura. A tela continua proprietária do fechamento.
+DashboardScreen, AppBar e widgets de ação não recebem callbacks de navegação.
+Avatar, menu, FAB, “Ver tudo” e cards de categoria usam `context.pushNamed`
+diretamente; notificações fica desabilitado até existir rota implementada.
+Os widgets financeiros mantêm o sinal local de alterações e transportam
 `VoidCallback onExpensesChanged` no record de argumentos junto a `returnToPrevious`
 ou `from`/`to`. O formulário sinaliza criações confirmadas, inclusive hold, e
 atualizações; a listagem sinaliza edições e exclusões confirmadas. O sinal é local
 à navegação e independe do modo de voltar. Records sem callback continuam aceitos.
 Os cards de categoria usam `BounceWidget` e abrem a mesma listagem de “Ver tudo”
-com categoria opcional e mês selecionado. Metrics emite somente a string da
-categoria por callback; Dashboard compõe a navegação. Expense delega `category`
+com categoria opcional e mês selecionado. O card de Metrics recebe o intervalo
+civil e navega diretamente, sem depender do Bloc da Dashboard; o callback
+`onExpensesChanged` somente notifica mutações confirmadas no retorno. Expense delega `category`
 sem normalização e envia `filter[category]`, com precedência sobre o link.
 O loading da listagem deriva da execução de GetExpenses e da recarga pendente
 da revisão vigente, sem cópia local da request. A tela observa execução
@@ -181,67 +198,56 @@ solicitados e dados do Future, sem erro e sob command/revisão válidos. Não h�
 `finally` de consulta modificando loading ou disparando recarga obsoleta.
 Listagem preserva ambas as lentes na paginação, refresh e retry e remove itens
 editados que deixem de pertencer ao mês ou à categoria.
-A Dashboard recebe instâncias próprias de `GetInsightsCommand` e
-`GetExpenseMetricsCommand`, descartadas pela tela. Metrics publica
-`ExpenseMetricsEntity?`, preservando total zero e categorias ausentes/vazias;
-Right mantém a entidade e Left lança CommandFailureException com a falha original.
-O limite histórico usa `GetFirstExpenseMonthCommand`, com `DateTime?`: null após
-conclusão válida significa ausência de histórico. Percorre páginas gerais sem
-presumir ordem, preserva next opaco e lança falha tipada em erro ou continuação
-repetida. Após descarte, interrompe novas páginas sem gerar erro artificial;
-mounted/identidade/versão impedem aplicar sua conclusão neutra.
-`selectedMonth` é o contexto
-compartilhado das três seções: intervalo civil para métricas e recentes, ano/mês
-para insights. Consultas são paralelas na abertura, troca, refresh e retorno;
-refresh preserva o mês. `DashboardMonthSelectorWidget` mantém mês/ano visíveis,
-impede meses futuros e desabilita as setas enquanto qualquer seção carrega,
-incluindo retry. Listeners de `isRunning` são removidos no lifecycle; retornos
-obsoletos de navegação são ignorados. A troca ativa skeletons sem dados anteriores
-sob o novo título. Falha tipada ou inesperada de métricas, insights ou recentes
-substitui imediatamente o Scaffold pela `ErrorScreen`, na mesma
-instância e sem mudar o mês. A ErrorScreen da Dashboard não recebe AppBar.
-Cabeçalho, seletor, seções e FAB ficam ocultos durante erro e recuperação.
-O erro persiste após sucessos remanescentes.
-O retry único fica bloqueado enquanto houver consultas da Dashboard, inclusive
-User, ou recuperação em andamento, sem enfileirar toques. Recarrega User em
-paralelo ao limite histórico, aplica eventual ajuste civil do mês e consulta as
-três seções em paralelo. A tela de erro mantém loading até o ciclo terminar;
-somente as três consultas com dados nativos e snapshot terminal sem erro da
-tentativa vigente restauram o conteúdo. Outra
-consulta só conta para recuperação se `runAsync` publicar um novo snapshot de
-início com os parâmetros solicitados e, depois, um terminal distinto com os mesmos
-parâmetros e dados do Future, sob mounted/versão/identidade válidos. O limite
-também exige início e conclusão novos, aceitando null concluído. Intenções de
-recarga financeira e de User permanecem pendentes até revalidar disponibilidade
-na microtask que inicia a leitura nova; sinais coalescem e uma consulta que ocupe
-o command antes da microtask não consome a intenção. Troca de dependências ou
-descarte limpa pendências e invalida continuations e finally antigos.
-Outra
-falha libera nova tentativa ao terminar. Falhas de User ou limite não ativam ou
-prolongam o erro financeiro; o limite com erro bloqueia a seta anterior. O mixin
-observa somente `results` das três consultas para detectar `hasError` terminal,
-inclusive enquanto as seções estão ocultas. Os listeners de execução
-coordenam pendências; seletor e disponibilidade do retry observam seus listenables
-declarativamente, com composições estáveis por dependências. Não há `setState`
-global vazio para resultados já observados nas seções. O mixin remove observações
-de resultados e execução e invalida ciclos obsoletos
-na troca de dependências ou descarte. User mostra “Trocado” com avatar placeholder
-em falha tipada ou inesperada, sem retry no nome, preservando saudação e skeleton no loading.
+O Bloc usa um único handler de `DashboardEvent` com `restartable`, filtrando
+eventos bloqueados antes do transformer. Mês, refresh e retry ocupados são
+rejeitados sem fila; alteração confirmada e retorno de User substituem a carga.
+Os eventos são concretos, sem intenção genérica com offset. `DashboardPhaseEnum`
+possui somente `loading`, `ready` e `failure`. Cada carga publica loading sem dados
+e depois um único conteúdo completo ou erro. Não publique seções parciais nem
+reintroduza fases de recuperação, status auxiliares, barreiras, IDs de ciclo,
+observação do próprio stream ou `copyWith` com política de limpeza.
+A carga financeira tem sequência única, inclusive na abertura e troca mensal:
+User e limite em paralelo, ajuste civil, três seções em paralelo, publicação final.
+As seções aguardam todas as conclusões, inclusive em falha, sem `eagerError`.
+Falhas financeiras tipadas preservam a ErrorsEntity de Left, inclusive lista vazia
+e metadados; exceções inesperadas usam `ErrorsEntity.unknown()`. Erros auxiliares
+usam os fallbacks existentes sem status ou cache de erros próprios. `isClosed` e
+`emit.isDone` impedem conclusões obsoletas. Use o fechamento nativo do Bloc, sem
+override, flag ou Future paralelo; não há cancelamento de rede. Somente `_opened`
+é mantido para garantir abertura única. `DashboardState()` define o mês inicial.
+O limite histórico foi incorporado ao Bloc; `GetFirstExpenseMonthCommand` foi
+removido. O limite usa uma única consulta `get(pageSize: 1, sort: 'occurred_on')`,
+com ordenação ascendente garantida pela API; não segue next nem varre histórico.
+Lista vazia significa ausência de histórico. Conclusões invalidadas são ignoradas.
+`selectedMonth` é compartilhado: intervalo civil completo para métricas com
+categoria e seis recentes; ano/mês para insights. Toda carga financeira faz cinco
+leituras, sem varrer histórico. O estado inicia com referência e seleção no mês
+civil atual, normalizado sem helper de inicialização no Bloc. Refresh e alteração
+preservam seleção válida e não ultrapassam o mês atual.
+O seletor mantém mês/ano visíveis e controles em skeleton sem foco, callback ou
+ações semânticas enquanto carrega. Não mostra resultados antigos sob novo mês.
+Erro financeiro mostra ErrorScreen sem AppBar, seletor, seções ou FAB após concluir
+as seções. Retry é uma carga normal: sai do erro para o mesmo skeleton da abertura,
+sem fase especial. Outra falha libera retry manual, sem repetição automática.
+Falha de limite bloqueia a seta anterior; User mostra “Trocado” e avatar placeholder.
+Retorno de User/Settings com conteúdo pronto consulta somente User e preserva os
+dados financeiros; durante loading/erro substitui o ciclo por uma carga completa,
+sem aguardar a leitura antiga. Alteração financeira também relê User. O Bloc trata
+falhas pela política visual da tela, sem realizar reporte de crashes.
 `InsightsSectionWidget` fica acima das
 despesas, com skeleton e seção oculta quando vazia.
-`ExpensesSectionWidget` usa `CommandBuilder`
+`ExpensesSectionWidget` recebe página anulável do Bloc
 para loading, vazio mensal e sucesso, sem paginação na UI. As três seções não
 possuem retry localizado: a Dashboard coordena o erro e a recuperação.
 Reutiliza `ExpenseItemWidget` de Expense, `IMoneyFormatter` e datas pt-BR sem
-conversão de fuso. “Ver tudo” requer itens e callback de navegação disponível;
-a rota fornece o destino `/expenses` para a listagem completa.
+conversão de fuso. “Ver tudo” requer itens e abre `/expenses` diretamente pelo
+contexto, lendo o mês selecionado do Bloc fornecido pela Dashboard.
 `ExpensesScreen`, em `expense/presentation/screens/expenses/`, usa uma instância
 própria de `GetExpensesCommand` e reutiliza `ExpenseItemWidget` e os formatters
 do core. `ExpensesScreenStateMixin` acumula páginas de 20 itens em ordem
 decrescente pela data civil. A rota `/expenses` recebe o record opcional
 `({DateTime from, DateTime to})` e o repassa como `period`; sem argumento mantém
-a consulta geral. “Ver tudo” recebe o mês selecionado pelo callback
-`Future<bool> Function(DateTime month)?` da Dashboard e transporta seu intervalo
+a consulta geral. “Ver tudo” lê o mês selecionado do Bloc da Dashboard e transporta seu intervalo
 civil completo. O título “Despesas” e a descrição “Acompanhe todas as suas
 despesas.” são fixos. `ExpensesFiltersWidget` mostra categoria antes do período,
 12 pixels abaixo da descrição, em `InputChip` com ícone de fechar, ação nativa
@@ -485,7 +491,7 @@ exclusão e atualização do nome como lazy singletons.
   `UserRepository.delete` aguarda a exclusão remota e limpa o storage pelo data
   source local somente em `Right(true)` (status 204), antes de retornar sucesso.
   `Left` e `Right(false)` não acionam a limpeza; falha local retorna erro
-  genérico. Dashboard consome `UserCommand` para preencher nome e semente do avatar.
+  genérico. Dashboard consulta o contrato de User pelo seu Bloc.
 - `UserRepository`, em `application/repositories/`, implementa `IUserRepository` por
   delegação a `IUserRemoteDataSource` e coordenação de `IUserLocalDataSource`, converte responses para entidades e
   traduz exceções inesperadas em `ErrorsEntity.unknown()`. Exclusão preserva
@@ -508,7 +514,7 @@ exclusão e atualização do nome como lazy singletons.
   sem retries automáticos; regenerar agenda outra tentativa. Sucesso exige que a API devolva a semente
   enviada. O atributo HTTP é `avatar`; não simule
   persistência caso o atributo seja ignorado.
-- User e Dashboard descartam `UserCommand`. Dashboard aguarda o retorno de User
+- User descarta `UserCommand`; Dashboard possui seu Bloc. Dashboard aguarda o retorno de User
   e Settings para recarregar nome e avatar, ignorando retornos obsoletos.
 - `UpdateUserCommand` e `UpdateAvatarCommand` publicam `UserEntity?`, inicialmente
   nulo, preservando a entidade de Right e lançando `CommandFailureException` com
@@ -899,8 +905,8 @@ pelo ciclo de vida do módulo.
 
 Expense organiza commands, mixins e validators sob a tela proprietária em
 `presentation/screens/expense/` ou `presentation/screens/expenses/`.
-O uso de `GetExpensesCommand` pela Dashboard não muda sua localização em
-`screens/expenses/commands/` nem seu registro por factory nas dependências de Expense.
+`GetExpensesCommand` mantém sua localização em `screens/expenses/commands/`
+e registro por factory; Dashboard consulta o contrato pelo Bloc, sem esse command.
 
 Coloque cada command específico de uma tela em
 `presentation/screens/<screen>/commands/<nome>_command.dart`; espelhe esse
@@ -981,7 +987,7 @@ da adaptação de Left. Falhas locais não exigem reporte global adicional.
 A migração para dados nativos ocorre por command e todos os seus consumidores:
 repository continua com Either; o callback do command adapta Right para dados e
 Left para CommandFailureException, sem converter genérico. GetExpenses,
-GetInsights, GetExpenseMetrics, User e GetFirstExpenseMonth já usam dados nativos;
+GetInsights, GetExpenseMetrics e User já usam dados nativos;
 GetExpense, CreateExpense e UpdateExpense também usam dados nativos;
 DeleteExpense publica bool anulável. UpdateUser e UpdateAvatar publicam UserEntity
 anulável, e DeleteUser publica bool anulável. SignIn publica SessionEntity anulável;
@@ -993,7 +999,7 @@ um feedback já emitido por listener. Não use value anterior como sucesso atual
 
 ### Gerenciamento global
 
-A matriz canônica de resultados e descarte dos dezesseis commands migrados está
+A matriz canônica de resultados e descarte dos commands migrados está
 em `ARCHITECTURE.md`, em “Matriz De Resultados E Propriedade”. Factories pertencem
 às telas consumidoras; UpdateUser/DeleteUser e Logout pertencem aos respectivos
 escopos Modular; commands root de Authentication e Session são compartilhados.
@@ -1009,9 +1015,10 @@ intenção, revisão, montagem e identidade continua pertencendo ao consumidor.
 Os testes verificam dados e parâmetros depois da execução aguardada, sem esperar
 que instalar um stub altere o estado observável.
 
-O projeto não usa Bloc, Provider, Riverpod ou store global no código atual. Não
-adicione um desses padrões por hábito. Primeiro verifique se o estado pertence
-à screen, a um command ou a um repositório.
+Dashboard usa Bloc como piloto específico; as demais telas continuam com
+CommandIt. Não expanda a migração por hábito nem introduza BaseBloc ou store global.
+Primeiro verifique se o estado pertence à screen, ao Bloc da Dashboard,
+a um command ou a um repository.
 
 ## Arquitetura Em Camadas
 

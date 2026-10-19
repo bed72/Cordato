@@ -239,60 +239,107 @@ tela proprietária em Metrics, portanto o command fica no diretório da feature.
 `metricsDependenciesModule` registra `IMetricsRemoteDataSource` e
 `IMetricsRepository` como lazy singletons e `GetExpenseMetricsCommand` por
 factory, composto por `appModule`. A rota da Dashboard injeta uma instância
-própria do command, descartada por `DashboardScreenStateMixin`. O mixin mantém
-`selectedMonth`, iniciado no primeiro dia civil do mês atual, e calcula o último
-dia com `DateTime(year, month + 1, 0)`. As três seções consultam esse mesmo mês
-em paralelo: Metrics com intervalo e `groupBy: category`, Insights com ano/mês
-e recentes com intervalo e tamanho seis. Abertura, troca pelas setas, refresh e
-retorno à instância existente da Dashboard usam esse contexto; refresh não muda
-a seleção. `DashboardMonthSelectorWidget` pertence à Dashboard, permanece visível
-nos estados normais e impede avanço além do mês atual, sem swipe mensal.
-No erro financeiro global e durante recuperação, o seletor fica oculto e o mês
-permanece no estado da mesma instância da Dashboard.
-As setas reutilizam o fundo, raio e tamanho do botão de voltar do core e
-mostram o ícone com opacidade reduzida quando desabilitadas.
-O retorno é limitado ao mês da primeira despesa; meses vazios intermediários
-continuam navegáveis. Quando não há outro mês disponível, inclusive sem despesas
-ou com histórico somente no mês atual, `showNavigation` oculta ambas as setas,
-preservando o título do mês. Havendo meses navegáveis, as setas permanecem
-visíveis e desabilitadas durante loading. O total de gastos e seu skeleton usam
-espaçamento superior de 8 pixels após o seletor.
-`GetFirstExpenseMonthCommand`, em `dashboard/presentation/screens/dashboard/commands/`,
-consulta o histórico geral por `IExpenseRepository.get`, com o tamanho padrão
-de página, seguindo `next` como continuação opaca e calculando o menor mês civil
-sem acumular despesas. Não pressupõe ordenação nem encerra em uma página vazia
-que ainda tenha continuação. Publica `DateTime?`; null após conclusão válida
-significa histórico ausente. Falhas invalidam o limite inteiro e continuações
-repetidas lançam `CommandFailureException`. O command é registrado por factory no módulo de rotas
-da Dashboard e descartado pela tela, interrompendo novas páginas após descarte.
-Ao detectar o próprio descarte depois de receber uma página, encerra com null
-sem lançar falha artificial nem publicar limite parcial. A Dashboard invalida
-esse retorno por mounted, identidade e versão, sem contá-lo como recuperação.
-O limite é consultado na abertura, refresh e retorno de cadastro/listagem com alterações confirmadas;
-trocas de mês reutilizam o resultado. Durante a consulta, as setas ficam
-desabilitadas; falha mantém o retorno bloqueado até uma nova consulta por refresh.
-Se a primeira despesa for removida ou mudar de mês, a recarga ajusta uma seleção
-anterior ao novo limite antes de consultar as seções, sem avançar além do mês atual.
-Essa consulta percorre todo o histórico porque o contrato atual não fornece
-metadados do primeiro mês nem ordenação ascendente.
-As setas ficam desabilitadas enquanto qualquer command de seção estiver rodando,
-inclusive recuperação. O mixin observa somente `results` dos três commands para
-detectar `hasError` terminal e ativar o erro financeiro persistente. Essa
-observação permanece durante a tela de erro, sem listeners adicionais de `errors`.
-Os listeners de `isRunning` coordenam exclusivamente as recargas pendentes,
-removendo as assinaturas antes de substituir ou descartar instâncias.
-O seletor observa declarativamente a execução das três seções e do limite, além
-do snapshot de `results` do limite; a disponibilidade do retry observa também a
-execução de User. As composições `Listenable.merge` são estáveis por conjunto de
-dependências e seus builders gerenciam as assinaturas, sem notifiers derivados
-ou subscriptions criadas a cada build. Resultados das seções continuam nos seus
-próprios `CommandBuilder`s; `setState` global fica para mês, latch e ciclo local.
-Retornos de navegação
-após descarte ou substituição de dependências são ignorados.
-Voltar do cadastro ou da listagem sem alterações não dispara consultas nem skeletons.
-Os callbacks financeiros da Dashboard retornam `Future<bool>`: `true` somente
-quando houve criação, edição ou exclusão bem-sucedida durante a navegação.
-O módulo de Dashboard mantém esse sinal local a cada abertura e transporta
+de `DashboardBloc` por factory, sem usar o command nesse fluxo.
+
+### Piloto Bloc Da Dashboard
+
+`DashboardBloc`, eventos e estado imutável ficam em
+`dashboard/presentation/screens/dashboard/bloc/`. É uma exceção localizada ao
+padrão CommandIt, não uma migração geral. O Bloc depende dos contratos de User,
+Expense, Insight e Metrics, sem HTTP, Flutter, Modular ou SDKs. O Bloc não recebe
+ICrashClient nem callback de telemetry; falhas seguem a política visual da tela.
+O handler global de CommandIt permanece inalterado.
+
+`DashboardScreen` recebe `bloc`, factory que cria uma instância no lifecycle e é sua
+única proprietária: fecha ao sair ou substituir a factory. `BlocBuilder` compõe
+o estado; seções e cabeçalho recebem dados, não commands. `BlocProvider.value`
+disponibiliza a instância aos descendentes sem assumir seu fechamento. O mixin
+mantém lifecycle e refresh, sem navegação, estado financeiro, snapshots ou microtasks pendentes.
+Retornos de rotas exigem montagem e a mesma identidade de Bloc. O módulo registra
+DashboardBloc por factory no injector. O binding recupera os quatro repositories
+com `inject<T>()`, sem dependência de crash no binding.
+A screen recebe `bloc: inject<DashboardBloc>`, um tear-off estável: rebuild
+não deve ser interpretado como troca de dependência. Não há helper manual de criação.
+
+O mês inicia no primeiro dia civil atual. Metrics usa intervalo completo e
+`groupBy: category`, Insights recebe ano/mês e recentes usa seis itens no mesmo
+intervalo. Toda carga financeira, incluindo abertura, troca mensal, refresh,
+retry e alteração confirmada, consulta User e histórico em paralelo, ajusta a
+seleção civil e então consulta as três seções em paralelo. São cinco leituras
+por carga; a troca mensal relê os auxiliares para manter a mesma sequência.
+Não avança além do mês atual. O limite usa uma única leitura de Expense com
+`pageSize: 1` e `sort: 'occurred_on'`, obtendo a despesa mais antiga por ordenação
+ascendente explícita da API. Não segue next nem percorre histórico. Lista vazia
+significa ausência de histórico. Falha bloqueia a seta
+anterior, sem ErrorScreen. `GetFirstExpenseMonthCommand` foi removido.
+
+`IExpenseRepository.get` e `IExpenseRemoteDataSource.get` recebem `String? sort`
+opcional. Repository delega sem normalizar; data source envia `sort` na query
+quando informado, prevalecendo sobre sort do link. Sem valor explícito, preserva
+o sort da continuação ou o default remoto quando não há link. Commands de outros
+consumidores não precisam informar esse parâmetro. A abertura da Dashboard requer
+cinco leituras independentemente do volume de despesas: User, limite e três seções.
+
+Todos os eventos compartilham um handler `restartable`, com filtro antes do
+transformer. Abertura é única; mês, refresh e retry ocupados são rejeitados,
+sem fila nem interrupção do ciclo aceito. Alteração confirmada e retorno de User
+substituem imediatamente o ciclo, sem esperar Futures antigos. Cada handler tem
+seu próprio emitter; `restartable` invalida o anterior. Resultados e catches exigem
+emitter ativo e Bloc não fechado, sem IDs de ciclo paralelos.
+**Não há cancelamento HTTP neste piloto:** requisições antigas continuam no
+transporte, mas seus resultados são ignorados e nenhuma página seguinte é pedida.
+
+Os eventos financeiros são concretos: `DashboardOpened`,
+`DashboardPreviousMonthRequested`, `DashboardNextMonthRequested`,
+`DashboardRefreshRequested`, `DashboardRetryRequested` e
+`DashboardExpensesChanged`. Não há enum de intenção com offset genérico.
+O estado usa somente três fases mutuamente exclusivas em `DashboardPhaseEnum`:
+
+| Fase | Significado |
+| --- | --- |
+| `loading` | Dashboard inteira em skeleton, sem dados parciais ou antigos. |
+| `ready` | User, limite e três seções publicados juntos, com fallbacks auxiliares. |
+| `failure` | Carga concluída com erro financeiro e retry manual disponível. |
+
+`DashboardState()` captura a data atual uma vez e fornece o mês civil como
+referência e seleção inicial, sem data obrigatória ou `_initial` no Bloc. O estado não possui status/erros auxiliares,
+`copyWith`, resultados parciais ou fases especiais de recuperação. São publicados
+somente loading e um resultado terminal por carga vigente. As listas de insights
+publicadas são não modificáveis. `financialError` preserva a mesma `ErrorsEntity`
+de Left, inclusive lista vazia e metadados; exceções inesperadas usam erro desconhecido.
+
+A sequência fica no próprio handler, com helpers apenas para os fallbacks de
+User e histórico. Records de Futures usam `wait`, aguardando as três seções mesmo
+em falha. Somente depois aplica os resultados ou apresenta o erro, sem `eagerError`,
+barreira de User, leitura do próprio stream ou coordenador adicional.
+
+Retorno de User/Settings com conteúdo pronto consulta somente User e reutiliza os
+dados financeiros confirmados, com loading único até sua conclusão. Durante carga
+ou erro, o retorno inicia uma carga completa para não reutilizar dados incompletos.
+Uma nova intenção invalida o handler anterior. Falha de User mantém “Trocado” e
+avatar placeholder. Alteração financeira relê User como parte da carga completa.
+O fechamento é o nativo do Bloc. `isClosed` e `emit.isDone` bloqueiam conclusões
+tardias, sem `_closing`, `_closeFuture` ou override de `close()`. Não há garantia
+adicional de identidade do Future nem cancelamento do servidor. `_opened` existe
+somente para rejeitar aberturas repetidas na mesma instância.
+
+Mês/ano permanece legível no loading normal; os dois controles são skeletons
+sem callback, foco ou ações acessíveis. Ao terminar, as setas respeitam o limite
+histórico e o mês atual; sem meses navegáveis ambas ficam ocultas. Conteúdo e
+vazios das seções aparecem juntos. Falha financeira mostra ErrorScreen sem AppBar,
+seletor, seções ou FAB após concluir a carga. Não há retries localizados. Retry
+sai do erro para o mesmo loading da abertura e executa outra carga completa.
+Falhas auxiliares não impedem conteúdo: User usa placeholder, histórico falho
+desabilita a seta anterior e preserva a seleção; histórico vazio bem-sucedido
+ajusta a seleção para o mês atual. Outra falha financeira libera retry manual.
+
+Voltar do cadastro ou da listagem sem alterações não consulta nem mostra skeleton.
+DashboardScreen e seus descendentes não recebem callbacks de navegação. Avatar,
+menu, FAB, “Ver tudo” e cards de categoria usam `context.pushNamed` no widget
+responsável pela ação. O módulo registra dependências e compõe a tela, sem handlers
+de navegação. Avatar/menu solicitam User novamente somente após retorno vigente.
+Notificações permanece desabilitado enquanto não houver rota implementada.
+Cada abertura financeira mantém seu sinal local e transporta
 `VoidCallback onExpensesChanged` no record de argumentos da rota, junto a
 `returnToPrevious` no cadastro ou `from`/`to` na listagem. As rotas continuam
 aceitando os records anteriores sem callback. As telas recebem o callback
@@ -300,19 +347,12 @@ anulável por construtor; o formulário o chama em cada criação confirmada,
 inclusive hold, e em atualização confirmada. A listagem o chama após receber
 uma edição bem-sucedida ou confirmar a exclusão na API. O sinal independe do
 modo de fechamento da rota, incluindo botão, gesto e voltar do sistema.
-Quando o retorno com alterações ocorre durante uma consulta, o mixin adia a recarga das três
-seções até todas terminarem, inclusive com erro, mantendo o mês selecionado.
-A recarga pendente é invalidada na troca de dependências e não executa após
-descarte da tela.
-As intenções financeira e de User permanecem pendentes até a microtask que
-revalida disponibilidade, versão e identidade e inicia a nova leitura. Sinais
-adicionais são coalescidos; se outra consulta ocupar o command antes dessa
-microtask, a intenção aguarda a próxima liberação. O retorno de User/Settings
-também valida a versão de dependências. Troca de dependências invalida pendências
-e a exclusão mútua da listagem; um `finally` antigo não libera uma navegação nova.
+Retorno com alterações envia uma única intenção ao Bloc vigente; hold mantém
+seu sinal local até o retorno. Montagem e identidade do Bloc protegem retornos
+obsoletos, e a rota atual impede aberturas repetidas enquanto outro destino está ativo.
 
 `MetricsSectionWidget`, na Dashboard, fica antes dos insights. Usa
-`CommandBuilder` para skeleton, total zero e sucesso. O total
+dados do Bloc para skeleton, total zero e sucesso. O total
 é formatado pelo `IMoneyFormatter`; o mês do seletor vem do estado da Dashboard,
 independentemente da resposta da API. A troca de período inicia loading nas três
 seções e renova suas chaves pelo mês, sem renderizar resultados antigos sob o
@@ -322,44 +362,10 @@ mensagem de distribuição indisponível, inclusive quando nenhum total de categ
 é positivo; total zero não produz cards fictícios. Uma única categoria positiva
 mantém apenas o total, sem carrossel nem mensagem de distribuição indisponível.
 
-Falha tipada ou inesperada de Metrics, Insights ou recentes ativa
-imediatamente um erro financeiro persistente em `DashboardScreenStateMixin`,
-mesmo com consultas remanescentes em execução. `DashboardScreen` retorna
-`ErrorScreen` com título “Não foi possível carregar sua
-Dashboard.”, descrição “Não conseguimos carregar suas informações agora. Tente
-novamente.” e ação “Tentar novamente”, sem seletor, seções ou FAB. Não navega nem
-cria outro State. Sucessos remanescentes não removem o erro; resultados nulos ou
-vazios não são falhas. Falha de User mostra “Trocado” e avatar placeholder sem
-retry no nome; falha do limite apenas bloqueia o retorno a meses anteriores.
-
-A ErrorScreen da Dashboard não recebe `appBar`: cabeçalho, seletor, seções e FAB
-ficam ocultos durante erro e recuperação. A ausência de cabeçalho é uma decisão
-explícita de apresentação. O AppBarDashboardWidget permanece somente no conteúdo
-normal. Os previews cobrem erro financeiro sem cabeçalho e falha isolada de User
-com fallback “Trocado” no conteúdo normal, nos temas claro e escuro. A Dashboard
-continua sendo a única proprietária do descarte dos commands desses previews.
-
-O retry único é bloqueado enquanto qualquer consulta, inclusive User, ou ciclo
-de recarga estiver em andamento. Não acumula toques bloqueados. User é consultado
-em paralelo ao limite; depois do limite resolver, aplica o ajuste civil vigente
-do mês e inicia as três consultas financeiras em paralelo. Loading permanece na
-tela de erro durante o ciclo. Somente as três consultas com dados nativos,
-snapshot terminal sem erro e command/versão vigentes restauram o conteúdo,
-sem contar valores preservados nos commands ou adesão a uma leitura ocupada.
-Cada consulta financeira confirma que `runAsync` publicou sincronicamente um
-novo snapshot de início com seus parâmetros antes de aguardar o Future. Depois,
-exige snapshot terminal distinto, parâmetros solicitados, dados nativos iguais
-por identidade ao retorno e ausência de erro, com State, versão e command ainda
-válidos. O limite usa a mesma prova de início e conclusão, permitindo null
-concluído como histórico ausente. Nenhuma decisão usa `value` antigo ou
-`isSuccess` inicial. User e limite sem builders locais mantêm o fallback global
-real instalado no bootstrap; falhas auxiliares são absorvidas pelos awaits sem
-duplicar feedback ou ativar o latch financeiro.
-Falhas auxiliares não impedem a recuperação financeira. Uma nova falha mantém a
-tela e libera outro retry ao terminar; não há retry automático. A identidade do
-ciclo invalida conclusões após troca de qualquer command ou descarte, preservando
-a recarga pendente após navegação. Componentes e previews de erro localizado sem
-consumidores foram removidos.
+ErrorScreen preserva o título “Não foi possível carregar sua Dashboard.”,
+descrição “Não conseguimos carregar suas informações agora. Tente novamente.”
+e ação “Tentar novamente”. Previews da tela usam o Bloc real com repositories
+de catálogo, com fechamento exclusivamente pela screen.
 
 O total da Dashboard usa `AnimatedExpenseTotalWidget`, em
 `dashboard/presentation/widgets/metrics/`, com animações nativas do Flutter.
@@ -369,11 +375,10 @@ Atualizações do mesmo intervalo interpolam centavos inteiros do último total
 concluído até o novo durante 500 ms, com `easeOutCubic`, incluindo reduções e zero.
 Cada frame usa `IMoneyFormatter`, preservando BRL e separadores pt-BR.
 `MetricsSectionWidget` conserva somente o total e o intervalo anteriores como
-estado de animação, observando snapshots terminais com dados e sem erro; loading,
-entidades e falhas continuam no command e no `CommandBuilder`. O skeleton continua
-substituindo a seção durante as consultas. A chave mensal da Dashboard e a troca
-de command reiniciam o histórico visual; o listener é removido na troca e no
-descarte. A semântica anuncia somente o total final, e `disableAnimations` mostra
+estado de animação, recebendo entidades concluídas por construtor. Loading,
+entidades e falhas pertencem ao Bloc. O skeleton continua substituindo a seção
+durante consultas; a chave mensal reinicia o histórico visual, sem listener de command.
+A semântica anuncia somente o total final, e `disableAnimations` mostra
 esse valor imediatamente, sem contagem ou fade. Os previews interativos cobrem
 aumento, redução, zero, valor inalterado, valor alto e troca de mês, além de temas
 claro/escuro e movimento reduzido com texto ampliado.
@@ -387,13 +392,14 @@ Não altera
 entidades, ordem de domínio, valores ou percentuais recebidos da API.
 `ExpenseCategoryMetricsCardWidget` mostra nome completo, valor pelo
 `IMoneyFormatter`, badge e percentual pt-BR com uma casa decimal seguido de
-“do total”. Cada card anuncia esses dados uma única vez. Com callback disponível,
+“do total”. Cada card anuncia esses dados uma única vez. Com período disponível,
 reutiliza `BounceWidget` e oferece a ação de acessibilidade para consultar despesas
-da categoria. O toque abre `/expenses` pelo mesmo callback de “Ver tudo”, com
-o intervalo do mês selecionado e a categoria como string da API; arrastar o
-carrossel não abre a listagem. Metrics apenas emite a categoria, sem conhecer
-Expense ou navegação. Dashboard compõe o destino e preserva o sinal de alterações
-e a recarga no retorno. Toques repetidos durante a navegação são ignorados.
+da categoria. O próprio card abre `/expenses` via contexto, com o intervalo civil
+recebido de MetricsSectionWidget e a categoria como string da API; arrastar o
+carrossel não abre a listagem. Metrics não importa Dashboard ou seu Bloc: somente
+notifica `onExpensesChanged` após retorno com mutações confirmadas. A seção valida
+montagem e identidade do Bloc antes de solicitar recarga. Toques repetidos durante
+a navegação são ignorados.
 Categoria, valor e percentual usam o mesmo espaçamento vertical de 8 pixels.
 O primeiro card de cada página tem valor maior e ilustração decorativa por
 `ImageWidget`, sem tint, ancorada no canto inferior direito, sem padding textual
@@ -513,10 +519,9 @@ Implementa `ICommand`, descarta `execute` em `dispose` e deve ser descartado
 pelo consumidor. Não há tela proprietária de Insight, portanto o command fica
 no diretório de commands da feature.
 
-`InsightsSectionWidget`, na Dashboard, usa `CommandBuilder` com `onData` e
-`onNullData` para dados e entrada sem resultado, `whileRunning` para skeleton
-com anúncio “Carregando insights” e `onError` para ocultar a seção enquanto a
-Dashboard apresenta seu erro global. Lista vazia não cria seção ou espaçamento.
+`InsightsSectionWidget`, na Dashboard, recebe lista anulável do Bloc: null mostra
+skeleton com anúncio “Carregando insights”; lista vazia não cria seção nem
+espaçamento. A tela substitui todo o conteúdo pelo erro global quando necessário.
 `InsightsListWidget`, na apresentação de Insight, preserva a ordem da API em
 `SingleChildScrollView` horizontal e `Row`, com margens de 20 pixels, espaçamento
 de 12 e cards com toda a largura disponível descontando as margens laterais
@@ -748,7 +753,7 @@ automaticamente. Durante a execução, o estado do `command_it` bloqueia novas
 chamadas; após erro permite tentativa novamente. Exceções inesperadas são erros
 observáveis do command. Implementa `ICommand` e descarta `execute` em `dispose`.
 `expenseDependenciesModule` registra o command por factory (`add`), permitindo
-instâncias independentes para Dashboard e a listagem completa. O consumidor
+instâncias independentes para consumidores de CommandIt. O consumidor
 que obtiver uma instância é responsável por descartá-la ao encerrar seu lifecycle.
 
 `expenseDependenciesModule` registra o data source e o repository como lazy
@@ -1054,7 +1059,7 @@ visuais e `Skeletonizer`, que bloqueia interação durante o carregamento.
 encapsula recarregamento, edição de nome e descrição dos erros; a screen mantém
 a composição visual. O nome identifica o avatar na semântica; o desenho usa a semente.
 `userDependenciesModule` registra `UserCommand` por factory, fornecendo instâncias
-independentes para User e Dashboard. Os mixins dessas telas descartam suas instâncias
+independentes para consumidores de CommandIt. User descarta sua instância
 de `UserCommand`, inclusive quando substituídas.
 “Excluir conta” abre a bottom sheet de confirmação
 com título “Deseja apagar sua conta?”, aviso de ação irreversível e botões
@@ -1316,10 +1321,8 @@ Direções de dependência aprovadas:
   escrita e observação de `StorageKeyEnum.opaqueToken` no storage do core;
 - Settings recebe `LogoutCommand` de Authentication como dependência de
   apresentação; o command conhece somente `IAuthenticationRepository`;
-- Dashboard recebe uma instância de `UserCommand` de User como dependência de
-  apresentação, sem acessar repository, HTTP ou storage diretamente;
-- Dashboard recebe uma instância própria de `GetExpensesCommand` de Expense e
-  reutiliza `ExpenseItemWidget`, sem acessar repository ou data source diretamente;
+- DashboardBloc consome contratos de User, Expense, Insight e Metrics; a tela
+  reutiliza ExpenseItemWidget, sem commands, HTTP, storage ou data sources;
 - `root` compõe a apresentação global e consome `SessionCommand`, sem assumir
   a escrita do token ou as operações de autenticação;
 - `expense` e `budget` não importam contextos financeiros irmãos; `family`
@@ -1457,8 +1460,8 @@ Screen/widget -> Command -> IAuthenticationRepository -> AuthenticationRepositor
 Commands usam `command_it` e implementam `ICommand` quando precisam de descarte.
 Em Expense, cada fluxo reúne seus commands, mixins e validators sob a tela
 proprietária em `presentation/screens/`. `GetExpensesCommand` pertence a
-`screens/expenses/commands/`, mesmo sendo consumido também pela Dashboard;
-o compartilhamento mantém o registro por factory em `expenseDependenciesModule`.
+`screens/expenses/commands/`, mantendo registro por factory em
+`expenseDependenciesModule`. Dashboard consulta o contrato pelo Bloc.
 Commands específicos de uma tela ficam em `presentation/screens/<tela>/commands/`,
 junto da screen, com testes no caminho espelhado. O command do fluxo principal
 usa o nome-base da tela (`CallbackScreen` → `CallbackCommand`); operações
@@ -1492,7 +1495,7 @@ para Left no callback específico. Exceções inesperadas do repository seguem
 como erros originais pelo CommandIt, sem encapsulamento tipado artificial.
 Não há converter genérico nem mudança para domínio orientado a exceptions.
 O tipo e o fallback estão disponíveis. GetExpenses, GetInsights,
-GetExpenseMetrics, User, GetFirstExpenseMonth e GetExpense já usam
+GetExpenseMetrics, User e GetExpense já usam
 dados nativos; CreateExpense e UpdateExpense também publicam ExpenseEntity anulável,
 e DeleteExpense publica bool anulável. UpdateUser e UpdateAvatar publicam UserEntity
 anulável, e DeleteUser publica bool anulável. SignIn publica SessionEntity anulável;
@@ -1509,7 +1512,6 @@ Cada saída é migrada junto de todos os consumidores e testes na mesma unidade.
 | DeleteExpense | `bool?` | ExpensesScreen, factory |
 | GetInsights | `List<InsightEntity>?` | Tela consumidora, factory |
 | GetExpenseMetrics | `ExpenseMetricsEntity?` | Tela consumidora, factory |
-| GetFirstExpenseMonth | `DateTime?` | DashboardScreen, factory |
 | User, UpdateAvatar | `UserEntity?` | Tela consumidora, factories |
 | UpdateUser | `UserEntity?` | Modular, lazy singleton de User |
 | DeleteUser | `bool?` | Modular, lazy singleton de User |
@@ -1534,8 +1536,8 @@ Por isso consumidores mantêm mounted, identidade, revisão e prova de execuçã
 nova, sem contar conclusão por descarte como sucesso. Session não consulta
 isRunning de seu command síncrono.
 
-O estado local preservado tem responsabilidade distinta: Dashboard mantém lente
-mensal, latch de erro, ciclo de recuperação e intenções coalescidas; ExpenseScreen
+O estado local preservado tem responsabilidade distinta: DashboardBloc mantém
+lente mensal, erro e recuperação; ExpenseScreen
 mantém intenção de consulta e revisão do ID; ExpensesScreen mantém páginas,
 continuação, filtros, feedback aceito, retry e revisão, derivando loading da
 execução e da recarga pendente. Formulários mantêm entrada, validação e modo hold;
@@ -1549,7 +1551,7 @@ conservar sucesso anterior após falha. A política global é fallback sem efeit
 visuais; feedback localizado permanece nos consumidores da apresentação.
 
 Estado efêmero usa `StatefulWidget` e `setState`; operações assíncronas usam
-`command_it`. Não há Bloc, Provider, Riverpod ou store global no app.
+`command_it`, exceto Dashboard, cujo piloto usa Bloc e flutter_bloc sem store global.
 `listen_it` está declarado, mas sem uso direto. Listeners e recursos de UI
 pertencem ao lifecycle do widget; commands registrados como dependências
 descartáveis implementam `ICommand`.
@@ -1704,7 +1706,7 @@ Registros importantes:
   `HeadersInterceptor`, `SessionInterceptor` e, apenas em debug, o logger.
 - `userDependenciesModule`: registra `IUserRemoteDataSource`, `IUserLocalDataSource`
   e `IUserRepository` como lazy singletons, usando o HTTP e o storage do core;
-  também registra `UserCommand` por factory para Dashboard e dados pessoais.
+  também registra `UserCommand` por factory para dados pessoais.
 - `userRoutesModule`: registra `/user` e `/user/edit`, compõe consulta, edição
   e exclusão com commands e callbacks de navegação e registra `DeleteUserCommand`
   e `UpdateUserCommand` como lazy singletons, com descarte pelo módulo, além de
@@ -1724,47 +1726,17 @@ Registros importantes:
   Após o sucesso do sign-up, a
   rota é substituída por `ResendEmailScreen`, que recebe o e-mail
   cadastrado para exibi-lo em um campo desabilitado e permitir o reenvio do link.
-- `dashboardRoutesModule`: injeta `UserCommand` na tela inicial, que consulta
-  o usuário ao montar. O AppBar recebe o command e `UserNameWidget` usa
-  `CommandBuilder` para mostrar nome e avatar gerado a partir da API, skeleton durante a consulta
-  e “Trocado” com avatar placeholder em Left ou exceção, sem retry localizado.
-  Nomes longos usam ellipsis. A saudação
-  continua baseada na hora local. Dashboard e User recebem instâncias distintas
-  do command. Ao retornar de User ou Settings, a Dashboard consulta novamente
-  User para atualizar nome e avatar. Os callbacks dessas navegações retornam
-  `Future<void>`; o mixin ignora retornos após descarte ou troca de command e
-  aguarda consultas em andamento por listener antes da recarga pendente.
-  O avatar reutiliza `BounceWidget` e abre `/user` ao tocar, com navegação
-  injetada por callback e sem acesso ao router no widget.
-  Também injeta instâncias por factory de `GetExpensesCommand` e
-  `GetInsightsCommand`, além do
-  `IMoneyFormatter` e o `IDateFormatter` do core. `DashboardScreenStateMixin` consulta a primeira
-  página com `pageSize: 6` e os insights em paralelo ao montar, recarrega ambos
-  após o retorno do formulário e da listagem completa com alterações confirmadas e
-  descarta os commands de despesas, insights e User ao sair. A ação de gasto recebe um callback assíncrono para aguardar
-  o retorno da rota; após navegação que removeu a Dashboard, o handler não consulta
-  novamente a instância descartada. A nova Dashboard carrega ao montar.
-  O corpo usa `ListView` com rolagem sempre habilitada, padding inferior para o FAB
-  e `RefreshIndicator` para recarregar a primeira página e os insights em paralelo,
-   inclusive com lista vazia. Falhas financeiras acionam o erro global;
-   `InsightsSectionWidget`
-  aparece antes de `ExpensesSectionWidget`.
-  `ExpensesSectionWidget` usa `CommandBuilder` para skeleton de seis itens,
-   vazio com “Sem despesas neste mês” e sucesso; erros são coordenados pela Dashboard.
-  Exibe no máximo seis itens, preservando a ordem e as datas da API. Valores usam
-  `IMoneyFormatter.formatCents` e datas usam `IDateFormatter.formatLongDate`, como
-  `07 de Out`, incluindo o ano quando diferente do atual, em `pt_BR` e sem conversão
-  de fuso. Não acumula páginas nem carrega continuações. Erros de execução da
-   atualização acionam a tela de erro global, sem toast adicional.
-  `ExpenseItemWidget`, em `expense/presentation/widgets/`, recebe descrição,
-  categoria e textos formatados de valor e data, sem estado ou acesso a rede.
-  Reutiliza `BackgroundIconWidget` e os rótulos, ícones e cores semânticas de
-  `ExpenseCategoryExtension`. Descrição e textos longos usam ellipsis.
-  O callback opcional `onSeeAllExpensesPressed` fica preparado para a listagem
-  completa: “Ver tudo” aparece somente com itens e callback disponível. A rota
-  fornece esse callback para abrir `/expenses`.
-  Menu abre `/settings` e a ação de gasto abre `/expense`; orçamento e notificações
-  não têm integração.
+- `dashboardRoutesModule`: fornece a factory de DashboardBloc e os formatters
+  do core, com callbacks para `/user`, `/settings`, `/expense` e `/expenses`.
+  A screen cria e fecha o Bloc; não usa commands. Cabeçalho mostra nome/seed,
+  skeleton ou fallback “Trocado”, com saudação local e ellipsis. Avatar reutiliza
+  BounceWidget. O mixin protege retornos assíncronos pela identidade do Bloc.
+  ListView mantém rolagem sempre habilitada, RefreshIndicator e espaço para FAB.
+  Metrics antecede Insights e recentes. As seções recebem dados/status do Bloc;
+  recentes exibe seis itens na ordem da API, sem acumular páginas, usando
+  ExpenseItemWidget e formatação civil pt-BR/BRL do core. “Ver tudo” exige itens
+  e callback disponível. Erro financeiro substitui todo o Scaffold, sem toast
+  ou retry localizado. Orçamento e notificações não têm integração.
 - `expenseDependenciesModule`: registra `IExpenseRemoteDataSource` e
   `IExpenseRepository` como lazy singletons, sem `path`, e os commands de criação,
   atualização, consulta por ID, listagem e exclusão por factory para estados
@@ -1945,7 +1917,7 @@ sem criar sessão ou gravar token/ID no storage. O perfil é consultado
 posteriormente por User, preservando `avatar` nulo ou ausente.
 
 O formulário de Expense executa o cadastro pela API através do command e repository.
-Dashboard consulta o perfil pelo `UserCommand`, mas não existe feature Flutter de orçamento.
+Dashboard consulta o perfil pelo seu Bloc, mas não existe feature Flutter de orçamento.
 Ao conectar persistência financeira, preserve propriedade
 individual e invariantes no serviço responsável, com testes de autorização e
 regras de domínio; a UI não é fronteira de autorização.
