@@ -1,9 +1,9 @@
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/infrastructure/remoto/expense_remote_data_source.dart';
@@ -39,14 +39,12 @@ void main() {
       'serializes optional sort $sort with requested size and opaque cursor',
       () async {
         when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => const Right(
-            Reponse(
-              status: 200,
-              body: {
-                'data': [],
-                'links': {'next': null, 'prev': null},
-              },
-            ),
+          (_) async => const Responses(
+            status: 200,
+            body: {
+              'data': [],
+              'links': {'next': null, 'prev': null},
+            },
           ),
         );
         final result = await dataSource.get(
@@ -73,14 +71,12 @@ void main() {
 
   test('requests only the oldest expense in one ascending query', () async {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(
-        Reponse(
-          status: 200,
-          body: {
-            'data': [],
-            'links': {'next': null, 'prev': null},
-          },
-        ),
+      (_) async => const Responses(
+        status: 200,
+        body: {
+          'data': [],
+          'links': {'next': null, 'prev': null},
+        },
       ),
     );
     await dataSource.get(pageSize: 1, sort: 'occurred_on');
@@ -97,9 +93,8 @@ void main() {
     test(
       'gets a protected relative resource and preserves every response field',
       () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => const Right(Reponse(status: 200, body: body)),
-        );
+        when(() => client.get(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => const Responses(status: 200, body: body));
 
         final expense = (await dataSource.getById(id: 'a/b?c#d')).right;
 
@@ -127,8 +122,8 @@ void main() {
       () async {
         for (final status in [401, 403, 404, 0]) {
           when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-            (_) async => Left(
-              Reponse(
+            (_) async => throw HttpResponseException.fromResponse(
+              Responses(
                 status: status,
                 body: {
                   'errors': [
@@ -162,8 +157,11 @@ void main() {
         {'errors': []},
         {'errors': 'invalid'},
       ]) {
-        when(() => client.get(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => Left(Reponse(status: 500, body: invalid)));
+        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+          (_) async => throw HttpResponseException.fromResponse(
+            Responses(status: 500, body: invalid),
+          ),
+        );
         expect(
           (await dataSource.getById(id: '8')).left.errors.single.title,
           'Erro desconhecido',
@@ -187,9 +185,8 @@ void main() {
               'data': {'id': '8', 'attributes': value},
             },
         ]) {
-          when(
-            () => client.get(parameter: any(named: 'parameter')),
-          ).thenAnswer((_) async => Right(Reponse(status: 200, body: invalid)));
+          when(() => client.get(parameter: any(named: 'parameter')))
+              .thenAnswer((_) async => Responses(status: 200, body: invalid));
           expect(
             (await dataSource.getById(id: '8')).left.errors.single.title,
             'Erro desconhecido',
@@ -208,9 +205,8 @@ void main() {
   test(
     'patches JSON:API attributes and preserves the returned expense',
     () async {
-      when(
-        () => client.patch(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
+      when(() => client.patch(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Responses(status: 200, body: body));
 
       final expense = (await dataSource.update(
         id: '8',
@@ -249,7 +245,7 @@ void main() {
 
   test('encodes the update id as a single resource path segment', () async {
     when(() => client.patch(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
+        .thenAnswer((_) async => const Responses(status: 200, body: body));
 
     await dataSource.update(id: 'a/b?c#d', cents: 1500);
 
@@ -264,7 +260,7 @@ void main() {
 
   test('omits null update attributes and preserves supplied values', () async {
     when(() => client.patch(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
+        .thenAnswer((_) async => const Responses(status: 200, body: body));
 
     for (final scenario in [
       (
@@ -311,8 +307,8 @@ void main() {
 
   test('preserves all JSON:API update errors and field pointers', () async {
     when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Left(
-        Reponse(
+      (_) async => throw HttpResponseException.fromResponse(
+        Responses(
           status: 422,
           body: {
             'errors': [
@@ -359,8 +355,8 @@ void main() {
     () async {
       for (final status in [401, 403, 404, 0]) {
         when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => Left(
-            Reponse(
+          (_) async => throw HttpResponseException.fromResponse(
+            Responses(
               status: status,
               body: {
                 'errors': [
@@ -385,8 +381,11 @@ void main() {
       {'errors': []},
       {'errors': 'invalid'},
     ]) {
-      when(() => client.patch(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Left(Reponse(status: 500, body: errorBody)));
+      when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => throw HttpResponseException.fromResponse(
+          Responses(status: 500, body: errorBody),
+        ),
+      );
 
       expect(
         (await dataSource.update(id: '8')).left.errors.single.title,
@@ -409,9 +408,8 @@ void main() {
           'data': {'id': '8', 'attributes': invalidAttributes},
         },
     ]) {
-      when(
-        () => client.patch(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => Right(Reponse(status: 200, body: invalidBody)));
+      when(() => client.patch(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => Responses(status: 200, body: invalidBody));
 
       expect(
         (await dataSource.update(id: '8')).left.errors.single.title,
@@ -432,7 +430,7 @@ void main() {
 
   test('deletes the expense and accepts 204 without a body', () async {
     when(() => client.delete(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => const Right(Reponse(status: 204, body: {})));
+        .thenAnswer((_) async => const Responses(status: 204, body: {}));
 
     expect((await dataSource.delete(id: '1')).right, isTrue);
 
@@ -450,7 +448,7 @@ void main() {
 
   test('encodes the expense id as a single resource path segment', () async {
     when(() => client.delete(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => const Right(Reponse(status: 204, body: {})));
+        .thenAnswer((_) async => const Responses(status: 204, body: {}));
 
     await dataSource.delete(id: 'a/b?c#d');
 
@@ -466,7 +464,7 @@ void main() {
   test('does not confirm deletion for other successful statuses', () async {
     for (final status in [200, 202]) {
       when(() => client.delete(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Right(Reponse(status: status, body: {})));
+          .thenAnswer((_) async => Responses(status: status, body: {}));
 
       expect((await dataSource.delete(id: '1')).right, isFalse);
     }
@@ -474,8 +472,8 @@ void main() {
 
   test('preserves every JSON:API deletion error', () async {
     when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Left(
-        Reponse(
+      (_) async => throw HttpResponseException.fromResponse(
+        Responses(
           status: 403,
           body: {
             'errors': [
@@ -509,8 +507,8 @@ void main() {
       for (final status in [401, 404, 0]) {
         when(() => client.delete(parameter: any(named: 'parameter')))
             .thenAnswer(
-              (_) async => Left(
-                Reponse(
+              (_) async => throw HttpResponseException.fromResponse(
+                Responses(
                   status: status,
                   body: {
                     'errors': [
@@ -535,8 +533,11 @@ void main() {
       {'errors': []},
       {'errors': 'invalid'},
     ]) {
-      when(() => client.delete(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Left(Reponse(status: 500, body: errorBody)));
+      when(() => client.delete(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => throw HttpResponseException.fromResponse(
+          Responses(status: 500, body: errorBody),
+        ),
+      );
 
       expect(
         (await dataSource.delete(id: '1')).left.errors.single.title,
@@ -559,17 +560,15 @@ void main() {
     'gets the first page with an explicit size and preserves order',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(
-          Reponse(
-            status: 200,
-            body: {
-              'data': [
-                {'id': '9', 'type': 'expenses', 'attributes': attributes},
-                {'id': '2', 'type': 'expenses', 'attributes': attributes},
-              ],
-              'links': {'next': '?page%5Bafter%5D=2', 'prev': null},
-            },
-          ),
+        (_) async => const Responses(
+          status: 200,
+          body: {
+            'data': [
+              {'id': '9', 'type': 'expenses', 'attributes': attributes},
+              {'id': '2', 'type': 'expenses', 'attributes': attributes},
+            ],
+            'links': {'next': '?page%5Bafter%5D=2', 'prev': null},
+          },
         ),
       );
 
@@ -596,14 +595,12 @@ void main() {
     'uses continuation queries on the protected relative endpoint',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(
-          Reponse(
-            status: 200,
-            body: {
-              'data': [],
-              'links': {'next': null, 'prev': null},
-            },
-          ),
+        (_) async => const Responses(
+          status: 200,
+          body: {
+            'data': [],
+            'links': {'next': null, 'prev': null},
+          },
         ),
       );
 
@@ -629,14 +626,12 @@ void main() {
 
   test('preserves repeated continuation query parameters', () async {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(
-        Reponse(
-          status: 200,
-          body: {
-            'data': [],
-            'links': {'next': null, 'prev': null},
-          },
-        ),
+      (_) async => const Responses(
+        status: 200,
+        body: {
+          'data': [],
+          'links': {'next': null, 'prev': null},
+        },
       ),
     );
 
@@ -663,14 +658,12 @@ void main() {
     'serializes only supplied civil limits without timezone conversion',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(
-          Reponse(
-            status: 200,
-            body: {
-              'data': [],
-              'links': {'next': null, 'prev': null},
-            },
-          ),
+        (_) async => const Responses(
+          status: 200,
+          body: {
+            'data': [],
+            'links': {'next': null, 'prev': null},
+          },
         ),
       );
 
@@ -703,14 +696,12 @@ void main() {
 
   test('reapplies explicit interval and size preserving opaque continuation parameters', () async {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(
-        Reponse(
-          status: 200,
-          body: {
-            'data': [],
-            'links': {'next': null, 'prev': null},
-          },
-        ),
+      (_) async => const Responses(
+        status: 200,
+        body: {
+          'data': [],
+          'links': {'next': null, 'prev': null},
+        },
       ),
     );
     for (final suffix in [
@@ -746,14 +737,12 @@ void main() {
     'preserves temporal filters from continuation when no interval is supplied',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(
-          Reponse(
-            status: 200,
-            body: {
-              'data': [],
-              'links': {'next': null, 'prev': null},
-            },
-          ),
+        (_) async => const Responses(
+          status: 200,
+          body: {
+            'data': [],
+            'links': {'next': null, 'prev': null},
+          },
         ),
       );
       await dataSource.get(
@@ -782,8 +771,8 @@ void main() {
     'preserves filter validation pointers without completing the interval',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Left(
-          Reponse(
+        (_) async => throw HttpResponseException.fromResponse(
+          Responses(
             status: 422,
             body: {
               'errors': [
@@ -829,8 +818,8 @@ void main() {
   test('preserves listing authentication and transport errors', () async {
     for (final status in [401, 0]) {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Left(
-          Reponse(
+        (_) async => throw HttpResponseException.fromResponse(
+          Responses(
             status: status,
             body: {
               'errors': [
@@ -852,14 +841,12 @@ void main() {
     'keeps explicit category and month on first and subsequent pages',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(
-          Reponse(
-            status: 200,
-            body: {
-              'data': [],
-              'links': {'next': null, 'prev': null},
-            },
-          ),
+        (_) async => const Responses(
+          status: 200,
+          body: {
+            'data': [],
+            'links': {'next': null, 'prev': null},
+          },
         ),
       );
       for (final link in [
@@ -895,14 +882,12 @@ void main() {
     'preserves continuation category when no category is supplied',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(
-          Reponse(
-            status: 200,
-            body: {
-              'data': [],
-              'links': {'next': null, 'prev': null},
-            },
-          ),
+        (_) async => const Responses(
+          status: 200,
+          body: {
+            'data': [],
+            'links': {'next': null, 'prev': null},
+          },
         ),
       );
       await dataSource.get(
@@ -944,9 +929,8 @@ void main() {
           'links': {'next': 1, 'prev': null},
         },
       ]) {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => Right(Reponse(status: 200, body: invalidBody)),
-        );
+        when(() => client.get(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => Responses(status: 200, body: invalidBody));
         expect((await dataSource.get(pageSize: 6)).isLeft, isTrue);
       }
       when(() => client.get(parameter: any(named: 'parameter')))
@@ -958,9 +942,8 @@ void main() {
   test(
     'posts creation parameters as JSON:API and preserves the returned expense',
     () async {
-      when(
-        () => client.post(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => const Right(Reponse(status: 201, body: body)));
+      when(() => client.post(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Responses(status: 201, body: body));
 
       final expense = (await dataSource.create(
         cents: 300,
@@ -998,7 +981,7 @@ void main() {
 
   test('formats the supplied civil date without time or timezone', () async {
     when(() => client.post(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => const Right(Reponse(status: 201, body: body)));
+        .thenAnswer((_) async => const Responses(status: 201, body: body));
 
     await dataSource.create(
       cents: 1,
@@ -1021,7 +1004,7 @@ void main() {
 
   test('defaults the occurrence date to today when omitted or null', () async {
     when(() => client.post(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => const Right(Reponse(status: 201, body: body)));
+        .thenAnswer((_) async => const Responses(status: 201, body: body));
     for (final explicitNull in [false, true]) {
       final before = DateTime.now();
       if (explicitNull) {
@@ -1054,8 +1037,8 @@ void main() {
 
   test('preserves all JSON:API error details and field pointers', () async {
     when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Left(
-        Reponse(
+      (_) async => throw HttpResponseException.fromResponse(
+        Responses(
           status: 422,
           body: {
             'errors': [
@@ -1097,8 +1080,8 @@ void main() {
     () async {
       for (final status in [401, 0]) {
         when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => Left(
-            Reponse(
+          (_) async => throw HttpResponseException.fromResponse(
+            Responses(
               status: status,
               body: {
                 'errors': [
@@ -1141,9 +1124,11 @@ void main() {
     test(
       'translates malformed error envelope $errorBody to a generic error',
       () async {
-        when(
-          () => client.post(parameter: any(named: 'parameter')),
-        ).thenAnswer((_) async => Left(Reponse(status: 500, body: errorBody)));
+        when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
+          (_) async => throw HttpResponseException.fromResponse(
+            Responses(status: 500, body: errorBody),
+          ),
+        );
 
         final data = await dataSource.create(
           cents: 300,
@@ -1187,9 +1172,8 @@ void main() {
     test(
       'translates invalid expense response $invalidBody to a generic error',
       () async {
-        when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => Right(Reponse(status: 201, body: invalidBody)),
-        );
+        when(() => client.post(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => Responses(status: 201, body: invalidBody));
 
         final data = await dataSource.create(
           cents: 300,

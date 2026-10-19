@@ -25,7 +25,7 @@ final appModule = createModule(
       // ..module(expenseDependenciesModule)
       // ..module(insightDependenciesModule)
       // ..module(metricsDependenciesModule)
-      ..module(authenticationDependenciesModule);
+      ..module(authenticationModule);
 
     context
       // ..module(userRoutesModule)

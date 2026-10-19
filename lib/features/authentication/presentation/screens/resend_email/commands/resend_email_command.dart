@@ -1,22 +1,22 @@
 import 'package:command_it/command_it.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 import 'package:cordato/features/core/presentation/commands/interface_command.dart';
 import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
 
-import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
+import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 
 final class ResendEmailCommand({required IAuthenticationRepository repository})
     implements ICommand {
   final Command<String, bool?> execute = Command.createAsync<String, bool?>((
     email,
   ) async {
-    final data = await repository.resendEmail(email: email);
-
-    return switch (data) {
-      Right(:final value) => value,
-      Left(:final value) => throw CommandFailureException(errors: value),
-    };
+    try {
+      await repository.resendEmail(email: email);
+      return true;
+    } on AuthenticationException catch (error) {
+      throw CommandFailureException(errors: error.errors);
+    }
   }, initialValue: null);
 
   @override

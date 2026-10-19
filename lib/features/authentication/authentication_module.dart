@@ -3,46 +3,31 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
-import 'package:cordato/features/authentication/application/repositories/authentication_repository.dart';
-
-import 'package:cordato/features/authentication/infrastructure/local/authentication_local_data_source.dart';
-import 'package:cordato/features/authentication/infrastructure/remoto/authentication_remote_data_source.dart';
-
-import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
+import 'package:cordato/features/authentication/infrastructure/repositories/authentication_repository.dart';
+import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
 
-import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
-
 import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/callback/callback_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/commands/sign_up_command.dart';
-import 'package:cordato/features/authentication/presentation/screens/sign_in/commands/sign_in_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/commands/resend_email_command.dart';
 
-final authenticationDependenciesModule = createModule(
-  register: (ModularContext context) => context
-    ..addLazySingleton<IAuthenticationRemoteDataSource>(
-      AuthenticationRemoteDataSource.new,
-    )
-    ..addLazySingleton<IAuthenticationLocalDataSource>(
-      AuthenticationLocalDataSource.new,
-    )
-    ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
+final authenticationModule = createModule(
+  path: RouteEnum.app.path,
+  register: (context) => context
     ..add(EmailValidation.new)
     ..add(PasswordValidation.new)
-    ..addLazySingleton<SignInCommand>(SignInCommand.new)
+    ..add<SignInBloc>(SignInBloc.new)
     ..addLazySingleton<SignUpCommand>(SignUpCommand.new)
     ..addLazySingleton<CallbackCommand>(CallbackCommand.new)
-    ..addLazySingleton<ResendEmailCommand>(ResendEmailCommand.new),
-);
-
-final authenticationRoutesModule = createModule(
-  path: RouteEnum.app.path,
-  register: (ModularContext context) => context
+    ..addLazySingleton<ResendEmailCommand>(ResendEmailCommand.new)
+    ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
     ..route(
       RouteEnum.authenticationConfirm.path,
       child: (_, state) => ResendEmailScreen(
@@ -53,11 +38,9 @@ final authenticationRoutesModule = createModule(
     ..route(
       RouteEnum.authenticationSignIn.path,
       child: (_, _) => SignInScreen(
-        command: inject<SignInCommand>(),
+        bloc: inject<SignInBloc>,
         emailValidation: inject<EmailValidation>(),
         passwordValidation: inject<PasswordValidation>(),
-        onCreateAccount: (BuildContext context) =>
-            context.replace(RouteEnum.authenticationSignUp.path),
       ),
     )
     ..route(

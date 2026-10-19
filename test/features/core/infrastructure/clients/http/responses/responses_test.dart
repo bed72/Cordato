@@ -2,15 +2,16 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/enums/http_exception_enum.dart';
 
 void main() {
   group('response', () {
     test('preserves query parameters separately from JSON pointers', () async {
       final data = await response<int>(
-        execute: () async => const Left(
-          Reponse(
+        execute: () async => throw HttpResponseException.fromResponse(
+          Responses(
             status: 422,
             body: {
               'errors': [
@@ -67,7 +68,7 @@ void main() {
         expect(executions, 1);
         expect(conversions, 0);
         pending.complete(
-          const Right(Reponse(status: 200, body: {'name': 'Gabriel'})),
+          const Responses(status: 200, body: {'name': 'Gabriel'}),
         );
 
         final value = await data;
@@ -79,7 +80,7 @@ void main() {
     test('supports boolean datas for responses without a body', () async {
       for (final status in [204, 200]) {
         final data = await response<bool>(
-          execute: () async => Right(Reponse(status: status, body: {})),
+          execute: () async => Responses(status: status, body: {}),
           from: (success) => success.status == 204,
         );
 
@@ -92,8 +93,8 @@ void main() {
       'preserves all JSON:API errors without calling the success converter',
       () async {
         final data = await response<String>(
-          execute: () async => const Left(
-            Reponse(
+          execute: () async => throw HttpResponseException.fromResponse(
+            Responses(
               status: 422,
               body: {
                 'errors': [
@@ -120,11 +121,11 @@ void main() {
       },
     );
 
-    test('preserves the error returned for transport failures', () async {
+    test('preserves the error returned by an unavailable server', () async {
       final data = await response<int>(
-        execute: () async => const Left(
-          Reponse(
-            status: 0,
+        execute: () async => throw HttpResponseException.fromResponse(
+          Responses(
+            status: 503,
             body: {
               'errors': [
                 {'title': 'Sem conexão', 'detail': 'Tente novamente.'},
@@ -139,6 +140,37 @@ void main() {
       expect(data.left.errors.single.detail, 'Tente novamente.');
     });
 
+    test('preserves the same typed errors including an empty list', () async {
+      const errors = ErrorsResponse(errors: []);
+      final data = await response<int>(
+        execute: () async =>
+            throw HttpResponseException(status: 422, errors: errors),
+        from: (_) => throw StateError('must not convert an error'),
+      );
+
+      expect(data.left, same(errors));
+      expect(data.left.errors, isEmpty);
+    });
+
+    test(
+      'translates transport and invalid responses to unknown errors',
+      () async {
+        for (final failure in <HttpClientException>[
+          HttpTransportException(failure: HttpExceptionEnum.connection),
+          HttpTransportException(failure: HttpExceptionEnum.timeout),
+          HttpTransportException(failure: HttpExceptionEnum.cancelled),
+          HttpInvalidResponseException(status: 200),
+        ]) {
+          final data = await response<int>(
+            execute: () async => throw failure,
+            from: (_) => throw StateError('must not convert an error'),
+          );
+
+          expect(data.left.errors.single.title, 'Erro desconhecido');
+        }
+      },
+    );
+
     test(
       'returns an unknown error for malformed or empty error envelopes',
       () async {
@@ -151,7 +183,9 @@ void main() {
           },
         ]) {
           final data = await response<int>(
-            execute: () async => Left(Reponse(status: 500, body: body)),
+            execute: () async => throw HttpResponseException.fromResponse(
+              Responses(status: 500, body: body),
+            ),
             from: (_) => 1,
           );
 
@@ -191,7 +225,7 @@ void main() {
     test('returns an unknown error when success conversion fails', () async {
       final data = await response<DateTime>(
         execute: () async =>
-            const Right(Reponse(status: 200, body: {'created_at': 'invalid'})),
+            const Responses(status: 200, body: {'created_at': 'invalid'}),
         from: (success) => DateTime.parse(success.body['created_at'] as String),
       );
 

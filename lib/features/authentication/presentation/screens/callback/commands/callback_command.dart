@@ -3,7 +3,7 @@ import 'package:command_it/command_it.dart';
 import 'package:cordato/features/core/presentation/commands/interface_command.dart';
 
 import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
-import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
+import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 
 final class CallbackCommand({required IAuthenticationRepository repository})
     implements ICommand {

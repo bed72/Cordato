@@ -1,41 +1,46 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_bloc.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_event.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_state.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/form_sign_in_widget.dart';
 
 mixin SignInScreenStateMixin on State<SignInScreen> {
   final formKey = GlobalKey<FormSignInWidgetState>();
+  late SignInBloc bloc;
 
   @override
   void initState() {
     super.initState();
-    widget.command.execute.results.addListener(_handleSignIn);
+
+    bloc = widget.bloc();
   }
 
   @override
   void didUpdateWidget(covariant SignInScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.command == widget.command) return;
-    oldWidget.command.execute.results.removeListener(_handleSignIn);
-    widget.command.execute.results.addListener(_handleSignIn);
+
+    if (oldWidget.bloc == widget.bloc) return;
+
+    unawaited(bloc.close());
+    bloc = widget.bloc();
   }
 
   @override
   void dispose() {
-    widget.command.execute.results.removeListener(_handleSignIn);
+    unawaited(bloc.close());
+
     super.dispose();
   }
 
-  void _handleSignIn() {
-    final data = widget.command.execute.results.value;
-    if (!mounted || data.isRunning || data.paramData == null) return;
-
-    if (!data.hasError) return;
-    if (data.error case CommandFailureException(:final errors)
-        when errors.errors.isNotEmpty) {
+  void handleSignIn(SignInState state) {
+    if (!mounted || bloc.isClosed || state is! SignInFailure) return;
+    if (state case SignInFailure(:final errors) when errors.errors.isNotEmpty) {
       final remaining =
           formKey.currentState?.showErrors(errors.errors) ?? errors.errors;
 
@@ -53,6 +58,7 @@ mixin SignInScreenStateMixin on State<SignInScreen> {
       }
       return;
     }
+
     context.showToast(
       variant: .error,
       title: 'Erro ao entrar',
@@ -61,14 +67,21 @@ mixin SignInScreenStateMixin on State<SignInScreen> {
   }
 
   void signIn() {
-    if (widget.command.execute.isRunning.value) return;
+    if (!bloc.state.canSubmit) return;
     context.dismissKeyboard();
     formKey.currentState?.submit();
   }
 
   void submit(({String email, String password}) credentials) {
-    if (widget.command.execute.isRunning.value) return;
+    if (!bloc.state.canSubmit) return;
+
     context.dismissKeyboard();
-    widget.command.execute.run(credentials);
+
+    bloc.add(
+      SignInSubmittedEvent(
+        email: credentials.email,
+        password: credentials.password,
+      ),
+    );
   }
 }

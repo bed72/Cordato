@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 
 import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
 import 'package:cordato/features/metrics/infrastructure/remoto/metrics_remote_data_source.dart';
@@ -29,7 +29,7 @@ void main() {
     client = HttpClientMock();
     dataSource = MetricsRemoteDataSource(client: client);
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(Reponse(status: 200, body: {'data': resource})),
+      (_) async => const Responses(status: 200, body: {'data': resource}),
     );
   });
 
@@ -126,30 +126,28 @@ void main() {
 
   test('parses grouped metrics preserving categories and API order', () async {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => Right(
-        Reponse(
-          status: 200,
-          body: {
-            'data': {
-              ...resource,
-              'attributes': {
-                ...attributes,
-                'categories': [
-                  {
-                    'category': 'housing',
-                    'total_amount': '216000',
-                    'percentage': '55.50',
-                  },
-                  {
-                    'category': 'future_category',
-                    'total_amount': '7965',
-                    'percentage': '2.05',
-                  },
-                ],
-              },
+      (_) async => Responses(
+        status: 200,
+        body: {
+          'data': {
+            ...resource,
+            'attributes': {
+              ...attributes,
+              'categories': [
+                {
+                  'category': 'housing',
+                  'total_amount': '216000',
+                  'percentage': '55.50',
+                },
+                {
+                  'category': 'future_category',
+                  'total_amount': '7965',
+                  'percentage': '2.05',
+                },
+              ],
             },
           },
-        ),
+        },
       ),
     );
 
@@ -167,20 +165,18 @@ void main() {
 
   test('accepts zero totals with an empty grouping', () async {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => Right(
-        Reponse(
-          status: 200,
-          body: {
-            'data': {
-              ...resource,
-              'attributes': {
-                ...attributes,
-                'total_amount': '0',
-                'categories': [],
-              },
+      (_) async => Responses(
+        status: 200,
+        body: {
+          'data': {
+            ...resource,
+            'attributes': {
+              ...attributes,
+              'total_amount': '0',
+              'categories': [],
             },
           },
-        ),
+        },
       ),
     );
 
@@ -194,8 +190,8 @@ void main() {
     'preserves JSON:API validation errors and their query parameter',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Left(
-          Reponse(
+        (_) async => throw HttpResponseException.fromResponse(
+          Responses(
             status: 422,
             body: {
               'errors': [
@@ -270,7 +266,7 @@ void main() {
       },
     ]) {
       when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Right(Reponse(status: 200, body: body)));
+          .thenAnswer((_) async => Responses(status: 200, body: body));
 
       expect(
         (await dataSource.getExpenses()).left.errors.single.title,
@@ -281,9 +277,9 @@ void main() {
 
   test('preserves transport errors and translates malformed errors', () async {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Left(
-        Reponse(
-          status: 0,
+      (_) async => throw HttpResponseException.fromResponse(
+        Responses(
+          status: 503,
           body: {
             'errors': [
               {'title': 'Sem conexão', 'detail': 'Tente novamente.'},
@@ -302,8 +298,11 @@ void main() {
       {'errors': []},
       {'errors': 'invalid'},
     ]) {
-      when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Left(Reponse(status: 0, body: body)));
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => throw HttpResponseException.fromResponse(
+          Responses(status: 503, body: body),
+        ),
+      );
       expect(
         (await dataSource.getExpenses()).left.errors.single.title,
         'Erro desconhecido',

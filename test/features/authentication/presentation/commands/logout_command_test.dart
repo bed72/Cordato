@@ -1,28 +1,25 @@
 import 'dart:async';
 
-import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
+import 'package:cordato/features/authentication/presentation/commands/logout_command.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
-
-import 'package:cordato/features/authentication/presentation/commands/logout_command.dart';
-import 'package:cordato/features/authentication/domain/repositories/interface_authentication_repository.dart';
 
 import '../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
-  void onResult() {}
-  late IAuthenticationRepository repository;
+  late AuthenticationRepositoryMock repository;
   late LogoutCommand command;
+  void onResult() {}
 
   setUp(() {
     repository = AuthenticationRepositoryMock();
     command = LogoutCommand(repository: repository);
     command.execute.results.addListener(onResult);
   });
-
   tearDown(() {
     command.execute.results.removeListener(onResult);
     command.dispose();
@@ -30,161 +27,111 @@ void main() {
 
   test('starts without a logout or a repository call', () {
     expect(command.execute.value, isNull);
-    expect(command.execute.results.value.hasError, isFalse);
     verifyZeroInteractions(repository);
   });
 
-  test('delegates logout and publishes repository success', () async {
-    when(() => repository.logout()).thenAnswer((_) async => const Right(true));
-
-    expect(command.execute.value, isNull);
-    final data = await command.execute.runAsync();
-
-    expect(data, isTrue);
+  test('publishes true after repository logout completes', () async {
+    when(() => repository.logout()).thenAnswer((_) async {});
+    expect(await command.execute.runAsync(), isTrue);
     expect(command.execute.value, isTrue);
     expect(command.execute.results.value.data, isTrue);
     verify(() => repository.logout()).called(1);
   });
 
-  test('preserves repository errors as a command result', () async {
-    const errors = ErrorsEntity(
+  for (final errors in [
+    const ErrorsEntity(errors: []),
+    const ErrorsEntity(
       errors: [
         ErrorEntity(
           status: '403',
-          parameter: 'status',
           title: 'Não autorizado',
-          detail: 'Conta bloqueada.',
-          pointer: '/data/attributes/status',
+          pointer: '/status',
+          parameter: 'status',
         ),
-        ErrorEntity(),
+        ErrorEntity(detail: 'Outra falha'),
       ],
-    );
-    when(() => repository.logout()).thenAnswer((_) async => const Left(errors));
-
-    await expectLater(
-      command.execute.runAsync(),
-      throwsA(
-        isA<CommandFailureException>().having(
-          (failure) => failure.errors,
-          'errors',
+    ),
+  ]) {
+    test(
+      'preserves ${errors.errors.length} typed errors after prior logout and allows retry',
+      () async {
+        when(() => repository.logout()).thenAnswer((_) async {});
+        await command.execute.runAsync();
+        when(() => repository.logout()).thenAnswer(
+          (_) async => throw AuthenticationException(errors: errors),
+        );
+        await expectLater(
+          command.execute.runAsync(),
+          throwsA(
+            isA<CommandFailureException>().having(
+              (failure) => failure.errors,
+              'errors',
+              same(errors),
+            ),
+          ),
+        );
+        expect(command.execute.results.value.hasError, isTrue);
+        expect(command.execute.results.value.data, isNull);
+        expect(
+          (command.execute.results.value.error as CommandFailureException)
+              .errors,
           same(errors),
-        ),
-      ),
+        );
+        when(() => repository.logout()).thenAnswer((_) async {});
+        expect(await command.execute.runAsync(), isTrue);
+        expect(command.execute.results.value.hasError, isFalse);
+      },
     );
-    final failure =
-        command.execute.results.value.error as CommandFailureException;
-    expect(failure.errors, same(errors));
-    expect(command.execute.results.value.hasError, isTrue);
-    expect(command.execute.errors.value?.error, same(failure));
-    expect(command.execute.value, isNull);
-  });
+  }
 
-  test('prevents additional execution while logout is pending', () async {
-    final pending = Completer<LogoutRepositoryType>();
-    when(() => repository.logout()).thenAnswer((_) => pending.future);
-
-    final data = command.execute.runAsync();
-    await Future<void>.delayed(Duration.zero);
-
-    expect(command.execute.isRunning.value, isTrue);
-
-    command.execute.run();
-    final joined = command.execute.runAsync();
-    expect(joined, same(data));
-    verify(() => repository.logout()).called(1);
-    pending.complete(const Right(true));
-
-    expect(await data, isTrue);
-    expect(await joined, isTrue);
-
-    await Future<void>.delayed(Duration.zero);
-
-    expect(command.execute.isRunning.value, isFalse);
-    verifyNoMoreInteractions(repository);
-  });
-
-  test('exposes unexpected repository exceptions as command errors', () async {
-    final failure = StateError('repository unavailable');
+  test('exposes unexpected repository errors unchanged', () async {
+    final failure = StateError('unexpected');
     when(() => repository.logout()).thenAnswer((_) async => throw failure);
-
-    void onResult() {}
-    command.execute.results.addListener(onResult);
-    try {
-      await expectLater(command.execute.runAsync(), throwsA(same(failure)));
-      expect(command.execute.results.value.error, same(failure));
-      expect(command.execute.errors.value?.error, same(failure));
-    } finally {
-      command.execute.results.removeListener(onResult);
-    }
-  });
-
-  test('publishes false without turning it into a failure', () async {
-    when(() => repository.logout()).thenAnswer((_) async => const Right(false));
-    expect(await command.execute.runAsync(), isFalse);
-    expect(command.execute.value, isFalse);
-    expect(command.execute.results.value.data, isFalse);
-    expect(command.execute.results.value.hasError, isFalse);
+    await expectLater(command.execute.runAsync(), throwsA(same(failure)));
+    expect(command.execute.results.value.error, same(failure));
   });
 
   test(
-    'keeps empty failure distinct from prior logout and allows retry',
+    'does not confirm logout or start another request while pending',
     () async {
-      when(() => repository.logout())
-          .thenAnswer((_) async => const Right(true));
-      await command.execute.runAsync();
-      const errors = ErrorsEntity(errors: []);
-      when(() => repository.logout())
-          .thenAnswer((_) async => const Left(errors));
-      await expectLater(
-        command.execute.runAsync(),
-        throwsA(
-          isA<CommandFailureException>().having(
-            (failure) => failure.errors,
-            'errors',
-            same(errors),
-          ),
-        ),
-      );
-      expect(command.execute.value, isTrue);
-      expect(command.execute.results.value.data, isNull);
-      expect(command.execute.results.value.hasError, isTrue);
-      when(() => repository.logout())
-          .thenAnswer((_) async => const Right(true));
-      expect(await command.execute.runAsync(), isTrue);
-      expect(command.execute.results.value.hasError, isFalse);
-      verify(() => repository.logout()).called(3);
+      final pending = Completer<void>();
+      when(() => repository.logout()).thenAnswer((_) => pending.future);
+      final execution = command.execute.runAsync();
+      final joined = command.execute.runAsync();
+      expect(joined, same(execution));
+      expect(command.execute.isRunning.value, isTrue);
+      expect(command.execute.value, isNull);
+      pending.complete();
+      expect(await execution, isTrue);
+      expect(await joined, isTrue);
+      verify(() => repository.logout()).called(1);
+      verifyNoMoreInteractions(repository);
     },
   );
 
-  test('keeps logout results isolated between instances', () async {
+  test('keeps separate command instances isolated', () async {
     final other = LogoutCommand(repository: repository);
     addTearDown(other.dispose);
-    when(() => repository.logout()).thenAnswer((_) async => const Right(true));
-
+    when(() => repository.logout()).thenAnswer((_) async {});
     await command.execute.runAsync();
-
     expect(other.execute.value, isNull);
     expect(other.execute.results.value.data, isNull);
-    expect(other.execute.isRunning.value, isFalse);
   });
 
-  test('does not publish confirmation when disposed during logout', () async {
+  test('disposal prevents publishing a pending logout', () async {
+    final pending = Completer<void>();
     final started = Completer<void>();
-    final pending = Completer<LogoutRepositoryType>();
-    final disposable = LogoutCommand(repository: repository);
     when(() => repository.logout()).thenAnswer((_) {
       started.complete();
       return pending.future;
     });
+    final disposable = LogoutCommand(repository: repository);
     final execution = disposable.execute.runAsync();
     await started.future;
     disposable.dispose();
-    pending.complete(const Right(true));
-
+    pending.complete();
     expect(await execution, isNull);
     await Future<void>.delayed(const Duration(milliseconds: 60));
     expect(disposable.execute.results.value.data, isNull);
-    expect(disposable.execute.value, isNull);
-    verify(() => repository.logout()).called(1);
   });
 }

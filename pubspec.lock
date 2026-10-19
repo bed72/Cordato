@@ -137,14 +137,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.19.1"
-  command_it:
-    dependency: "direct main"
-    description:
-      name: command_it
-      sha256: "1d4705cb830a09917da5cb0007d4dacda187bbac9f7153552e56b4357825d1e6"
-      url: "https://pub.dev"
-    source: hosted
-    version: "9.5.2"
   convert:
     dependency: transitive
     description:
@@ -581,14 +573,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.0"
-  listen_it:
-    dependency: "direct main"
-    description:
-      name: listen_it
-      sha256: "137f2576048c1982863141547db0a3c5a200541f47216b507f9fe6545ea696f5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.0.0"
   logging:
     dependency: transitive
     description:
@@ -781,14 +765,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.1"
-  quiver:
-    dependency: transitive
-    description:
-      name: quiver
-      sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.2"
   record_use:
     dependency: transitive
     description:

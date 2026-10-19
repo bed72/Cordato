@@ -4,6 +4,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 import 'package:cordato/features/user/infrastructure/remoto/user_remote_data_source.dart';
 
 import '../../../../support/core/mocks/http_client_mock.dart';
@@ -36,7 +37,7 @@ void main() {
 
   test('gets the protected user resource and preserves its response', () async {
     when(() => client.get(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
+        .thenAnswer((_) async => const Responses(status: 200, body: body));
 
     final user = (await dataSource.getById(id: '9')).right;
 
@@ -59,9 +60,8 @@ void main() {
   test(
     'patches only the name and returns the user supplied by the API',
     () async {
-      when(
-        () => client.patch(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
+      when(() => client.patch(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Responses(status: 200, body: body));
 
       final user = (await dataSource.update(
         id: '10',
@@ -92,14 +92,12 @@ void main() {
     'encodes the id in all resource paths without changing the payload id',
     () async {
       const id = 'a/b?c#d';
-      when(
-        () => client.get(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
-      when(
-        () => client.patch(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
+      when(() => client.get(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Responses(status: 200, body: body));
+      when(() => client.patch(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Responses(status: 200, body: body));
       when(() => client.delete(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => const Right(Reponse(status: 204, body: {})));
+          .thenAnswer((_) async => const Responses(status: 204, body: {}));
 
       await dataSource.getById(id: id);
       await dataSource.update(id: id, name: 'Gabriel');
@@ -129,7 +127,7 @@ void main() {
 
   test('omits the name when it was not supplied', () async {
     when(() => client.patch(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
+        .thenAnswer((_) async => const Responses(status: 200, body: body));
 
     await dataSource.update(id: '9');
 
@@ -143,9 +141,8 @@ void main() {
 
   for (final name in <String?>[null, 'Gabriel']) {
     test('patches the avatar and preserves optional name $name', () async {
-      when(
-        () => client.patch(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => const Right(Reponse(status: 200, body: body)));
+      when(() => client.patch(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Responses(status: 200, body: body));
       final user = (await dataSource.update(
         id: '9',
         name: name,
@@ -168,25 +165,23 @@ void main() {
   test('patches name and avatar using the current JSON API contract', () async {
     const avatar = 'a3f79c0241b86e50d9c217fa6830be45';
     when(() => client.patch(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(
-        Reponse(
-          status: 200,
-          body: {
-            'data': {
-              'id': '13',
-              'type': 'users',
-              'attributes': {
-                'avatar': avatar,
-                'status': 'active',
-                'name': 'Maria Silva',
-                'email': 'person@example.com',
-                'created_at': '2026-10-09T17:27:36+00:00',
-                'updated_at': '2026-10-12T22:44:29+00:00',
-              },
-              'links': {'self': 'https://example.com/api/users/13'},
+      (_) async => const Responses(
+        status: 200,
+        body: {
+          'data': {
+            'id': '13',
+            'type': 'users',
+            'attributes': {
+              'avatar': avatar,
+              'status': 'active',
+              'name': 'Maria Silva',
+              'email': 'person@example.com',
+              'created_at': '2026-10-09T17:27:36+00:00',
+              'updated_at': '2026-10-12T22:44:29+00:00',
             },
+            'links': {'self': 'https://example.com/api/users/13'},
           },
-        ),
+        },
       ),
     );
 
@@ -217,7 +212,7 @@ void main() {
 
   test('deletes the protected user and accepts 204 without a body', () async {
     when(() => client.delete(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => const Right(Reponse(status: 204, body: {})));
+        .thenAnswer((_) async => const Responses(status: 204, body: {}));
 
     expect((await dataSource.delete(id: '10')).right, isTrue);
     final request =
@@ -233,7 +228,7 @@ void main() {
 
   test('does not report deletion for an unexpected success status', () async {
     when(() => client.delete(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => const Right(Reponse(status: 200, body: {})));
+        .thenAnswer((_) async => const Responses(status: 200, body: {}));
     expect((await dataSource.delete(id: '10')).right, isFalse);
   });
 
@@ -251,8 +246,8 @@ void main() {
 
     test('$operation preserves every JSON:API error', () async {
       when(request).thenAnswer(
-        (_) async => const Left(
-          Reponse(
+        (_) async => throw HttpResponseException.fromResponse(
+          Responses(
             status: 422,
             body: {
               'errors': [
@@ -281,10 +276,10 @@ void main() {
       '$operation translates malformed errors and transport failures',
       () async {
         for (final response in [
-          const Reponse(status: 500, body: {}),
-          const Reponse(status: 500, body: {'errors': []}),
-          Reponse(
-            status: 0,
+          const Responses(status: 500, body: {}),
+          const Responses(status: 500, body: {'errors': []}),
+          Responses(
+            status: 503,
             body: {
               'errors': [
                 {'title': 'Sem conexão', 'detail': 'Tente novamente.'},
@@ -292,11 +287,13 @@ void main() {
             },
           ),
         ]) {
-          when(request).thenAnswer((_) async => Left(response));
+          when(request).thenAnswer(
+            (_) async => throw HttpResponseException.fromResponse(response),
+          );
           final error = (await execute()).left.errors.single;
           expect(
             error.title,
-            response.status == 0 ? 'Sem conexão' : 'Erro desconhecido',
+            response.status == 503 ? 'Sem conexão' : 'Erro desconhecido',
           );
         }
       },
@@ -325,12 +322,10 @@ void main() {
         },
       },
     ]) {
-      when(
-        () => client.get(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => Right(Reponse(status: 200, body: malformed)));
-      when(
-        () => client.patch(parameter: any(named: 'parameter')),
-      ).thenAnswer((_) async => Right(Reponse(status: 200, body: malformed)));
+      when(() => client.get(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => Responses(status: 200, body: malformed));
+      when(() => client.patch(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => Responses(status: 200, body: malformed));
       expect((await dataSource.getById(id: '10')).isLeft, isTrue);
       expect(
         (await dataSource.update(id: '10', name: 'Gabriel')).isLeft,

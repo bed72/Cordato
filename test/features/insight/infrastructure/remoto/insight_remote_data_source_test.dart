@@ -1,9 +1,9 @@
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 import 'package:cordato/features/insight/infrastructure/remoto/insight_remote_data_source.dart';
 
 import '../../../../support/core/mocks/http_client_mock.dart';
@@ -33,16 +33,14 @@ void main() {
     'gets the relative insights endpoint and preserves list order',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Right(
-          Reponse(
-            status: 200,
-            body: {
-              'data': [
-                item,
-                {...item, 'id': 'insight-2'},
-              ],
-            },
-          ),
+        (_) async => Responses(
+          status: 200,
+          body: {
+            'data': [
+              item,
+              {...item, 'id': 'insight-2'},
+            ],
+          },
         ),
       );
 
@@ -78,13 +76,11 @@ void main() {
         },
       };
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(
-          Reponse(
-            status: 200,
-            body: {
-              'data': [onboarding, item],
-            },
-          ),
+        (_) async => const Responses(
+          status: 200,
+          body: {
+            'data': [onboarding, item],
+          },
         ),
       );
 
@@ -104,9 +100,9 @@ void main() {
   );
 
   test('returns success when the API has no insights', () async {
-    when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Right(Reponse(status: 200, body: {'data': []})),
-    );
+    when(
+      () => client.get(parameter: any(named: 'parameter')),
+    ).thenAnswer((_) async => const Responses(status: 200, body: {'data': []}));
 
     expect((await dataSource.get(year: 2026, month: 9)).right, isEmpty);
   });
@@ -115,7 +111,7 @@ void main() {
     'serializes only non-null year and month without defaults or validation',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Right(Reponse(status: 200, body: {'data': []})),
+        (_) async => const Responses(status: 200, body: {'data': []}),
       );
       for (final filters in [
         (year: 2026, month: 9),
@@ -144,25 +140,23 @@ void main() {
     'preserves multi-month periods for the requested reference month',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Right(
-          Reponse(
-            status: 200,
-            body: {
-              'data': [
-                {
-                  ...item,
-                  'attributes': {
-                    ...(item['attributes'] as Map<String, dynamic>),
-                    'period': {
-                      'to': '2026-09-30',
-                      'from': '2026-07-01',
-                      'comparison': {'from': '2026-04-01', 'to': '2026-06-30'},
-                    },
+        (_) async => Responses(
+          status: 200,
+          body: {
+            'data': [
+              {
+                ...item,
+                'attributes': {
+                  ...(item['attributes'] as Map<String, dynamic>),
+                  'period': {
+                    'to': '2026-09-30',
+                    'from': '2026-07-01',
+                    'comparison': {'from': '2026-04-01', 'to': '2026-06-30'},
                   },
                 },
-              ],
-            },
-          ),
+              },
+            ],
+          },
         ),
       );
 
@@ -181,8 +175,8 @@ void main() {
     'preserves missing-month validation metadata without inserting a month',
     () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Left(
-          Reponse(
+        (_) async => throw HttpResponseException.fromResponse(
+          Responses(
             status: 422,
             body: {
               'errors': [
@@ -220,8 +214,8 @@ void main() {
 
   test('preserves all JSON:API errors and metadata', () async {
     when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Left(
-        Reponse(
+      (_) async => throw HttpResponseException.fromResponse(
+        Responses(
           status: 403,
           body: {
             'errors': [
@@ -261,7 +255,7 @@ void main() {
       },
     ]) {
       when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Right(Reponse(status: 200, body: body)));
+          .thenAnswer((_) async => Responses(status: 200, body: body));
 
       expect(
         (await dataSource.get(year: 2026, month: 9)).left.errors.single.title,
@@ -276,8 +270,11 @@ void main() {
       {'errors': []},
       {'errors': 'invalid'},
     ]) {
-      when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => Left(Reponse(status: 0, body: body)));
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => throw HttpResponseException.fromResponse(
+          Responses(status: 503, body: body),
+        ),
+      );
 
       expect(
         (await dataSource.get()).left.errors.single.title,

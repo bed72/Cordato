@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_method_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/enums/http_exception_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 
 abstract interface class IHttpClient {
   Future<Responses> get({required Requests parameter});
@@ -52,31 +53,34 @@ final class HttpClient({required final Dio _dio}) implements IHttpClient {
         ),
       );
 
-      final data = response.data;
-      final status = response.statusCode ?? 0;
+      final status = response.statusCode;
+      if (status == null) throw HttpInvalidResponseException(status: null);
+
       final isSuccess = status >= 200 && status < 300;
-      final body = data == null || data == '' ? <String, dynamic>{} : data;
+      final body = switch (response.data) {
+        null || '' => <String, dynamic>{},
+        Map<String, dynamic> data => data,
+        _ => throw HttpInvalidResponseException(status: status),
+      };
 
-      if (body is! Map<String, dynamic>) {
-        return Left(Reponse(status: status, body: _unknown));
-      }
+      final data = Responses(status: status, body: body);
+      if (!isSuccess) throw HttpResponseException.fromResponse(data);
 
-      final value = Reponse(status: status, body: body);
-
-      return isSuccess ? Right(value) : Left(value);
-    } on DioException catch (_) {
-      return Left(Reponse(status: 500, body: _unknown));
-    } catch (_) {
-      return Left(Reponse(status: 500, body: _unknown));
+      return data;
+    } on DioException catch (error) {
+      throw switch (error.type) {
+        .badResponse || .unknown => HttpUnexpectedException(),
+        .cancel => HttpTransportException(failure: HttpExceptionEnum.cancelled),
+        .connectionError || .badCertificate => HttpTransportException(
+          failure: HttpExceptionEnum.connection,
+        ),
+        .sendTimeout ||
+        .receiveTimeout ||
+        .connectionTimeout ||
+        .transformTimeout => HttpTransportException(
+          failure: HttpExceptionEnum.timeout,
+        ),
+      };
     }
   }
-
-  Map<String, dynamic> get _unknown => {
-    'errors': [
-      {
-        'title': 'Erro desconhecido',
-        'detail': 'Não foi possível processar a resposta.',
-      },
-    ],
-  };
 }

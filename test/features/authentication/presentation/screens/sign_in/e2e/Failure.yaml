@@ -1,0 +1,70 @@
+appId: com.bed.cordato
+name: Sign-in - Failure
+tags: [sign-in, failure]
+env:
+  TEST_SERVER: http://127.0.0.1:8765
+  SCENARIO: failure
+  EMAIL: Person@Example.com
+  PASSWORD: Teste1
+---
+- runScript: scripts/configure.js
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    permissions:
+      notifications: allow
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- tapOn: Continuar
+- tapOn: Entrar
+- assertVisible: E-mail obrigatório
+- assertVisible: Senha obrigatória
+- runScript: scripts/stats.js
+- assertTrue: ${output.requests === 0}
+- tapOn: Digite seu e-mail
+- inputText: invalido
+- assertNotVisible: E-mail obrigatório
+- assertVisible: Senha obrigatória
+- hideKeyboard
+- tapOn: Entrar
+- assertVisible: E-mail inválido
+- assertVisible: Senha obrigatória
+- runScript: scripts/stats.js
+- assertTrue: ${output.requests === 0}
+- tapOn: invalido
+- eraseText
+- inputText: ${EMAIL}
+- assertNotVisible: E-mail inválido
+- tapOn: Digite sua senha
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    text: Entrar
+    retryTapIfNoChange: false
+- assertVisible: Credenciais inválidas
+- assertVisible: E-mail ou senha incorretos\.
+- assertVisible: Que bom ter você por aqui
+- assertVisible:
+    text: Entrar
+    enabled: true
+- assertVisible: Person@Example\.com
+- assertNotVisible: Digite sua senha
+- runScript: scripts/stats.js
+- assertTrue: ${output.requests === 1}
+- assertTrue: ${output.credentialsMatch === true}
+- extendedWaitUntil:
+    notVisible: E-mail ou senha incorretos\.
+    timeout: 10000
+- runScript: scripts/stats.js
+- assertTrue: ${output.requests === 1}
+- tapOn:
+    text: Entrar
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: Pessoa E2E
+    timeout: 15000
+- runScript: scripts/stats.js
+- assertTrue: ${output.requests === 2}
+- assertTrue: ${output.credentialsMatch === true}
+- assertTrue: ${output.unexpected.length === 0}

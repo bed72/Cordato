@@ -1,12 +1,11 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/link_button_widget.dart';
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
-final class const SignUpFooterWidget({
-  super.key,
-  required final ValueChanged<BuildContext> onCreateAccount,
-}) extends StatelessWidget {
+final class const SignUpFooterWidget({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
@@ -22,7 +21,7 @@ final class const SignUpFooterWidget({
         ),
         LinkButtonWidget(
           label: 'Crie agora',
-          onTap: () => onCreateAccount(context),
+          onTap: () => context.replace(RouteEnum.authenticationSignUp.path),
         ),
       ],
     );

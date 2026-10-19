@@ -1,0 +1,44 @@
+appId: com.bed.cordato
+name: Sign-in - Loading
+tags: [sign-in, loading]
+env:
+  TEST_SERVER: http://127.0.0.1:8765
+  SCENARIO: loading
+  EMAIL: Person@Example.com
+  PASSWORD: Teste1
+onFlowComplete:
+  - runScript: scripts/release.js
+---
+- runScript: scripts/configure.js
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    permissions:
+      notifications: allow
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- tapOn: Continuar
+- tapOn: Digite seu e-mail
+- inputText: ${EMAIL}
+- tapOn: Digite sua senha
+- inputText: ${PASSWORD}
+- hideKeyboard
+- doubleTapOn: Entrar
+- assertNotVisible: Entrar
+- assertVisible: Que bom ter você por aqui
+- assertVisible:
+    text: '(?s).*Person@Example\.com.*'
+    enabled: false
+- runScript: scripts/stats.js
+- assertTrue: ${output.requests === 1}
+- assertTrue: ${output.completed === 0}
+- assertTrue: ${output.credentialsMatch === true}
+- runScript: scripts/release.js
+- extendedWaitUntil:
+    visible: Pessoa E2E
+    timeout: 15000
+- assertNotVisible: Que bom ter você por aqui
+- runScript: scripts/stats.js
+- assertTrue: ${output.requests === 1}
+- assertTrue: ${output.unexpected.length === 0}

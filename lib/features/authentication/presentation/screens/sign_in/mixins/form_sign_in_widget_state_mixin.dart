@@ -40,8 +40,11 @@ mixin FormSignInWidgetStateMixin on State<FormSignInWidget> {
   }
 
   void submit() {
+    if (!widget.enabled) return;
+
     final validatedEmail = widget.emailValidation(email);
     final validatedPassword = widget.passwordValidation(password);
+
     setState(() {
       emailFailure = switch (validatedEmail) {
         Invalid(:final message) => message,

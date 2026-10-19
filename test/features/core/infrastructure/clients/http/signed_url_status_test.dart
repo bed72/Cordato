@@ -3,6 +3,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/enums/http_exception_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/factories/dio_factory.dart';
 
@@ -45,26 +47,39 @@ void main() {
 
     expect(request!.method, 'GET');
     expect(request!.uri.toString(), url);
-    expect(response.right.status, 204);
+    expect(response.status, 204);
     expect(request!.headers.containsKey('Authorization'), isFalse);
 
     verifyNever(() => storage.read(key: any(named: 'key')));
   });
 
   test('preserves failure and redirect response statuses', () async {
-    status = 403;
-    final forbidden = await client.get(parameter: const Requests(path: url));
-    expect(forbidden.left.status, 403);
-
-    status = 302;
-    final redirect = await client.get(parameter: const Requests(path: url));
-    expect(redirect.left.status, 302);
+    for (final code in [403, 302]) {
+      status = code;
+      await expectLater(
+        client.get(parameter: const Requests(path: url)),
+        throwsA(
+          isA<HttpResponseException>().having(
+            (error) => error.status,
+            'status',
+            code,
+          ),
+        ),
+      );
+    }
   });
 
-  test('returns status zero on connection failure', () async {
+  test('throws a transport exception on connection failure', () async {
     connectionFails = true;
-    final response = await client.get(parameter: const Requests(path: url));
-
-    expect(response.left.status, 0);
+    await expectLater(
+      client.get(parameter: const Requests(path: url)),
+      throwsA(
+        isA<HttpTransportException>().having(
+          (error) => error.failure,
+          'failure',
+          HttpExceptionEnum.connection,
+        ),
+      ),
+    );
   });
 }

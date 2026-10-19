@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/expense/infrastructure/remoto/expense_remote_data_source.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/interceptors/session_interceptor.dart';
@@ -95,7 +96,16 @@ void main() {
     when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async {});
 
-    await client.get(parameter: const Requests(path: 'metrics/expenses'));
+    await expectLater(
+      client.get(parameter: const Requests(path: 'metrics/expenses')),
+      throwsA(
+        isA<HttpResponseException>().having(
+          (error) => error.status,
+          'status',
+          401,
+        ),
+      ),
+    );
 
     verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
     verifyNever(() => storage.delete(key: StorageKeyEnum.userId.key));
@@ -133,7 +143,16 @@ void main() {
     when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async {});
 
-    await client.get(parameter: const Requests(path: 'insights'));
+    await expectLater(
+      client.get(parameter: const Requests(path: 'insights')),
+      throwsA(
+        isA<HttpResponseException>().having(
+          (error) => error.status,
+          'status',
+          401,
+        ),
+      ),
+    );
 
     verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
   });
@@ -234,11 +253,16 @@ void main() {
       when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
           .thenAnswer((_) async {});
 
-      final response = await client.delete(
-        parameter: const Requests(path: 'expenses/1'),
+      await expectLater(
+        client.delete(parameter: const Requests(path: 'expenses/1')),
+        throwsA(
+          isA<HttpResponseException>().having(
+            (error) => error.status,
+            'status',
+            401,
+          ),
+        ),
       );
-
-      expect(response.left.status, 401);
       expect(captured!.headers['Authorization'], 'Bearer opaque-token');
       verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
           .called(1);
@@ -250,11 +274,16 @@ void main() {
     when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async => 'opaque-token');
 
-    final response = await client.delete(
-      parameter: const Requests(path: 'expenses/1'),
+    await expectLater(
+      client.delete(parameter: const Requests(path: 'expenses/1')),
+      throwsA(
+        isA<HttpResponseException>().having(
+          (error) => error.status,
+          'status',
+          403,
+        ),
+      ),
     );
-
-    expect(response.left.status, 403);
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');
     verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
   });
@@ -283,11 +312,16 @@ void main() {
     when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async {});
 
-    final response = await client.get(
-      parameter: const Requests(path: 'users/10'),
+    await expectLater(
+      client.get(parameter: const Requests(path: 'users/10')),
+      throwsA(
+        isA<HttpResponseException>().having(
+          (error) => error.status,
+          'status',
+          401,
+        ),
+      ),
     );
-
-    expect(response.left.status, 401);
     verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
   });
 
@@ -366,12 +400,11 @@ void main() {
     when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
         .thenThrow(StateError('storage unavailable'));
 
-    final response = await client.get(
-      parameter: const Requests(path: 'expenses'),
+    await expectLater(
+      client.get(parameter: const Requests(path: 'expenses')),
+      throwsA(isA<HttpUnexpectedException>()),
     );
-
     expect(captured, isNull);
-    expect(response.isLeft, isTrue);
   });
 
   test('removes the token after a protected request returns 401', () async {
@@ -381,23 +414,32 @@ void main() {
     when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async {});
 
-    final response = await client.get(
-      parameter: const Requests(path: 'expenses'),
+    await expectLater(
+      client.get(parameter: const Requests(path: 'expenses')),
+      throwsA(
+        isA<HttpResponseException>().having(
+          (error) => error.status,
+          'status',
+          401,
+        ),
+      ),
     );
-
-    expect(response.isLeft, isTrue);
-    expect(response.left.status, 401);
     verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
   });
 
   test('does not remove the token for a public 401', () async {
     responseStatus = 401;
 
-    final response = await client.post(
-      parameter: const Requests(path: 'authentication/sign-in'),
+    await expectLater(
+      client.post(parameter: const Requests(path: 'authentication/sign-in')),
+      throwsA(
+        isA<HttpResponseException>().having(
+          (error) => error.status,
+          'status',
+          401,
+        ),
+      ),
     );
-
-    expect(response.left.status, 401);
     verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
   });
 
@@ -406,11 +448,16 @@ void main() {
     when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async => 'opaque-token');
 
-    final response = await client.get(
-      parameter: const Requests(path: 'expenses'),
+    await expectLater(
+      client.get(parameter: const Requests(path: 'expenses')),
+      throwsA(
+        isA<HttpResponseException>().having(
+          (error) => error.status,
+          'status',
+          403,
+        ),
+      ),
     );
-
-    expect(response.left.status, 403);
     verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
   });
 
@@ -422,11 +469,16 @@ void main() {
       when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
           .thenAnswer((_) async => ++reads == 1 ? 'old-token' : 'new-token');
 
-      final response = await client.get(
-        parameter: const Requests(path: 'expenses'),
+      await expectLater(
+        client.get(parameter: const Requests(path: 'expenses')),
+        throwsA(
+          isA<HttpResponseException>().having(
+            (error) => error.status,
+            'status',
+            401,
+          ),
+        ),
       );
-
-      expect(response.left.status, 401);
       verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
     },
   );
@@ -438,10 +490,15 @@ void main() {
     when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
         .thenThrow(StateError('storage unavailable'));
 
-    final response = await client.get(
-      parameter: const Requests(path: 'expenses'),
+    await expectLater(
+      client.get(parameter: const Requests(path: 'expenses')),
+      throwsA(
+        isA<HttpResponseException>().having(
+          (error) => error.status,
+          'status',
+          401,
+        ),
+      ),
     );
-
-    expect(response.left.status, 401);
   });
 }

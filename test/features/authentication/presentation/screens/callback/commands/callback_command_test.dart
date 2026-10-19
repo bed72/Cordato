@@ -9,153 +9,83 @@ import 'package:cordato/features/authentication/presentation/screens/callback/co
 import '../../../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
-  test('confirms the URL when the command is executed', () async {
-    final repository = AuthenticationRepositoryMock();
-    final command = CallbackCommand(repository: repository);
+  const url = 'https://other.example/confirm?signature=original&expires=123';
+  late AuthenticationRepositoryMock repository;
+  late CallbackCommand command;
+  void onResult() {}
 
-    addTearDown(command.dispose);
-    verifyZeroInteractions(repository);
-    when(() => repository.confirmEmail('signed'))
-        .thenAnswer((_) async => EmailVerificationStatusEnum.success);
-    expect(
-      await command.execute.runAsync('signed'),
-      EmailVerificationStatusEnum.success,
-    );
-    expect(command.execute.value, EmailVerificationStatusEnum.success);
-    verify(() => repository.confirmEmail('signed')).called(1);
+  setUp(() {
+    repository = AuthenticationRepositoryMock();
+    command = CallbackCommand(repository: repository);
+    command.execute.results.addListener(onResult);
+  });
+  tearDown(() {
+    command.execute.results.removeListener(onResult);
+    command.dispose();
   });
 
-  for (final status in [
-    EmailVerificationStatusEnum.invalid,
-    EmailVerificationStatusEnum.failure,
-  ]) {
-    test('exposes $status as a result of confirmation', () async {
-      final repository = AuthenticationRepositoryMock();
-      final command = CallbackCommand(repository: repository);
-      addTearDown(command.dispose);
-      when(() => repository.confirmEmail('signed'))
-          .thenAnswer((_) async => status);
+  test('starts without a result or a confirmation request', () {
+    expect(command.execute.value, isNull);
+    verifyZeroInteractions(repository);
+  });
 
-      final result = await command.execute.runAsync('signed');
-
-      expect(result, status);
-      expect(command.execute.value, status);
-      expect(command.execute.results.value.data, status);
-      expect(command.execute.results.value.hasError, isFalse);
-    });
+  for (final status in EmailVerificationStatusEnum.values) {
+    test(
+      'preserves ${status.name} as confirmation data and delegates the original URL',
+      () async {
+        when(() => repository.confirmEmail(url))
+            .thenAnswer((_) async => status);
+        expect(await command.execute.runAsync(url), status);
+        expect(command.execute.value, status);
+        expect(command.execute.results.value.data, status);
+        expect(command.execute.results.value.paramData, url);
+        expect(command.execute.results.value.hasError, isFalse);
+        verify(() => repository.confirmEmail(url)).called(1);
+      },
+    );
   }
 
-  test(
-    'exposes an unexpected repository exception as a command error',
-    () async {
-      final repository = AuthenticationRepositoryMock();
-      final command = CallbackCommand(repository: repository);
-
-      addTearDown(command.dispose);
-      final failure = StateError('repository unavailable');
-      when(() => repository.confirmEmail('signed'))
-          .thenAnswer((_) async => throw failure);
-
-      void onResult() {}
-
-      command.execute.results.addListener(onResult);
-      try {
-        await expectLater(
-          command.execute.runAsync('signed'),
-          throwsA(same(failure)),
-        );
-      } finally {
-        command.execute.results.removeListener(onResult);
-      }
-    },
-  );
-
-  test(
-    'shares an in-flight confirmation instead of repeating the GET',
-    () async {
-      final repository = AuthenticationRepositoryMock();
-      final command = CallbackCommand(repository: repository);
-
-      addTearDown(command.dispose);
-      final response = Completer<EmailVerificationStatusEnum>();
-
-      when(() => repository.confirmEmail('signed'))
-          .thenAnswer((_) => response.future);
-
-      final first = command.execute.runAsync('signed');
-      final second = command.execute.runAsync('signed');
-      response.complete(EmailVerificationStatusEnum.success);
-
-      expect(await first, EmailVerificationStatusEnum.success);
-      expect(await second, EmailVerificationStatusEnum.success);
-      verify(() => repository.confirmEmail('signed')).called(1);
-    },
-  );
-
-  test('does not query another link by joining an occupied command', () async {
-    final repository = AuthenticationRepositoryMock();
-    final command = CallbackCommand(repository: repository);
-
-    addTearDown(command.dispose);
-
-    final pending = Completer<EmailVerificationStatusEnum>();
-    when(() => repository.confirmEmail('first'))
-        .thenAnswer((_) => pending.future);
-
-    when(() => repository.confirmEmail('second'))
-        .thenAnswer((_) async => EmailVerificationStatusEnum.invalid);
-
-    final first = command.execute.runAsync('first');
-    final joined = command.execute.runAsync('second');
-
-    expect(joined, same(first));
-    pending.complete(EmailVerificationStatusEnum.success);
-
-    expect(command.execute.results.value.paramData, 'first');
-    expect(await joined, EmailVerificationStatusEnum.success);
-    verifyNever(() => repository.confirmEmail('second'));
-
-    expect(
-      await command.execute.runAsync('second'),
-      EmailVerificationStatusEnum.invalid,
-    );
-    expect(command.execute.results.value.paramData, 'second');
-    verify(() => repository.confirmEmail('first')).called(1);
-    verify(() => repository.confirmEmail('second')).called(1);
+  test('propagates unexpected confirmation errors', () async {
+    final failure = StateError('unexpected');
+    when(() => repository.confirmEmail(url))
+        .thenAnswer((_) async => throw failure);
+    await expectLater(command.execute.runAsync(url), throwsA(same(failure)));
+    expect(command.execute.results.value.error, same(failure));
   });
 
   test(
-    'disposal can complete a pending future with the previous status',
+    'joins pending confirmation without accepting a different URL',
     () async {
-      final repository = AuthenticationRepositoryMock();
-      final command = CallbackCommand(repository: repository);
-
-      when(() => repository.confirmEmail('first'))
-          .thenAnswer((_) async => EmailVerificationStatusEnum.success);
-      await command.execute.runAsync('first');
-
-      final started = Completer<void>();
       final pending = Completer<EmailVerificationStatusEnum>();
-      when(() => repository.confirmEmail('second')).thenAnswer((_) {
-        started.complete();
-        return pending.future;
-      });
-
-      final execution = command.execute.runAsync('second');
-      await started.future;
-      command.dispose();
-
+      when(() => repository.confirmEmail(url))
+          .thenAnswer((_) => pending.future);
+      final execution = command.execute.runAsync(url);
+      final joined = command.execute.runAsync('other-url');
+      expect(joined, same(execution));
+      expect(command.execute.isRunning.value, isTrue);
+      pending.complete(.success);
       expect(await execution, EmailVerificationStatusEnum.success);
-
-      pending.complete(EmailVerificationStatusEnum.invalid);
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-
-      expect(command.execute.value, EmailVerificationStatusEnum.success);
-      expect(
-        command.execute.results.value.data,
-        isNot(EmailVerificationStatusEnum.invalid),
-      );
-      verify(() => repository.confirmEmail('second')).called(1);
+      expect(await joined, EmailVerificationStatusEnum.success);
+      expect(command.execute.results.value.paramData, url);
+      verify(() => repository.confirmEmail(url)).called(1);
+      verifyNoMoreInteractions(repository);
     },
   );
+
+  test('disposal does not publish a pending confirmation', () async {
+    final pending = Completer<EmailVerificationStatusEnum>();
+    final started = Completer<void>();
+    when(() => repository.confirmEmail(url)).thenAnswer((_) {
+      started.complete();
+      return pending.future;
+    });
+    final disposable = CallbackCommand(repository: repository);
+    final execution = disposable.execute.runAsync(url);
+    await started.future;
+    disposable.dispose();
+    pending.complete(.success);
+    expect(await execution, isNull);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(disposable.execute.results.value.data, isNull);
+  });
 }

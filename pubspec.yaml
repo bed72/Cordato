@@ -35,8 +35,6 @@ dependencies:
 
   dio: ^5.11.1
   intl: ^0.20.3
-  listen_it: ^6.0.0
-  command_it: ^9.5.2
   flutter_modular: ^7.1.1
   flutter_secure_storage: ^11.2.0
 
@@ -72,9 +70,9 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   mocktail: ^1.0.4
+  bloc_test: ^10.0.0
   flutter_lints: ^6.0.0
   firebase_core_platform_interface: ^8.1.1
-  bloc_test: ^10.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

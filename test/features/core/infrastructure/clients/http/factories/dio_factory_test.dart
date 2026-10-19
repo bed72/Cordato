@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/factories/dio_factory.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
@@ -71,11 +72,16 @@ void main() {
         () async {
           responseStatus = 401;
 
-          final response = await client.get(
-            parameter: const Requests(path: 'expenses'),
+          await expectLater(
+            client.get(parameter: const Requests(path: 'expenses')),
+            throwsA(
+              isA<HttpResponseException>().having(
+                (error) => error.status,
+                'status',
+                401,
+              ),
+            ),
           );
-
-          expect(response.left.status, 401);
           expect(captured!.uri.path, '/api/expenses');
           expect(captured!.headers['Authorization'], 'Bearer opaque-token');
           verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))

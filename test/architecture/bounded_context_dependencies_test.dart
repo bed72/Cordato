@@ -117,16 +117,29 @@ void main() {
       final source = file.readAsStringSync();
       if (isDomain &&
           RegExp(
-            r'''package:cordato/features/[^/'"]+/(?:application/repositories|data|infrastructure|presentation)/''',
+            r'''package:cordato/features/[^/'"]+/(?:application/(?:repositories|models|exceptions)|data|infrastructure|presentation)/''',
           ).hasMatch(source)) {
         violations.add('${file.path}: domain imports an outer layer');
       }
 
-      if (isPresentation &&
-          RegExp(
-            r'''package:cordato/features/[^/'"]+/(?:application/repositories|data|infrastructure)/''',
-          ).hasMatch(source)) {
-        violations.add('${file.path}: presentation imports an outer adapter');
+      if (isPresentation) {
+        for (final match in _importPattern.allMatches(source)) {
+          final targetContext = match.group(1)!;
+          final targetPath = match.group(2)!;
+          final isAuthenticationContract =
+              targetContext == 'authentication' &&
+              targetPath ==
+                  'application/repositories/interface_authentication_repository.dart';
+          final isOuterAdapter =
+              targetPath.startsWith('application/repositories/') ||
+              targetPath.startsWith('data/') ||
+              targetPath.startsWith('infrastructure/');
+          if (isOuterAdapter && !isAuthenticationContract) {
+            violations.add(
+              '${file.path}: presentation imports an outer adapter (${match.group(0)})',
+            );
+          }
+        }
       }
 
       if (isApplication &&
@@ -158,6 +171,33 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
+  test('keeps Authentication application contracts independent from adapters', () {
+    final violations = <String>[];
+    for (final file in _dartFiles().where(
+      (file) =>
+          file.uri.pathSegments.contains('authentication') &&
+          file.uri.pathSegments.contains('application'),
+    )) {
+      final source = file.readAsStringSync();
+      for (final match in _importPattern.allMatches(source)) {
+        final targetPath = match.group(2)!;
+        if (targetPath.startsWith('infrastructure/') ||
+            targetPath.startsWith('presentation/')) {
+          violations.add(
+            '${file.path}: application contract imports an adapter (${match.group(0)})',
+          );
+        }
+      }
+      if (_forbiddenDomainImports.any(source.contains) ||
+          source.contains('package:command_it/')) {
+        violations.add(
+          '${file.path}: application contract imports a UI or external SDK dependency',
+        );
+      }
+    }
+    expect(violations, isEmpty, reason: violations.join('\n'));
+  });
+
   test('keeps Settings dependencies on Authentication contracts and logout command', () {
     final violations = <String>[];
 
@@ -169,13 +209,15 @@ void main() {
         final targetPath = match.group(2)!;
         if (targetContext != 'authentication' ||
             targetPath.startsWith('domain/') ||
+            targetPath ==
+                'application/repositories/interface_authentication_repository.dart' ||
             targetPath == 'presentation/commands/logout_command.dart') {
           continue;
         }
 
         violations.add(
-          '${file.path}: Settings can only import Authentication domain '
-          'or LogoutCommand, '
+          '${file.path}: Settings can only import Authentication domain, '
+          'repository contract or LogoutCommand, '
           'not $targetPath',
         );
       }
