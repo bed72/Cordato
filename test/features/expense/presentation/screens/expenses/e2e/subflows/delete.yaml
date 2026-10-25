@@ -1,0 +1,10 @@
+appId: com.bed.cordato
+---
+- swipe:
+    from:
+      text: '(?s).*Mercado E2E.*'
+    direction: LEFT
+- assertVisible: Deseja excluir esta despesa?
+- tapOn:
+    text: Excluir
+    retryTapIfNoChange: false

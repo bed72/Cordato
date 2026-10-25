@@ -1,16 +1,15 @@
-import 'package:command_it/command_it.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 
-import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
-import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 
-import 'package:cordato/features/expense/presentation/screens/expense/commands/get_expense_command.dart';
-import 'package:cordato/features/expense/presentation/screens/expense/commands/create_expense_command.dart';
-import 'package:cordato/features/expense/presentation/screens/expense/commands/update_expense_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_form_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_app_bar_widget.dart';
@@ -22,17 +21,11 @@ import 'package:cordato/features/expense/presentation/screens/expense/validators
 final class const ExpenseScreen({
   super.key,
   final String? id,
-  final VoidCallback? onExpensesChanged,
-  required final VoidCallback onBackPressed,
+  final bool returnToPrevious = false,
+  required final ExpenseBloc Function() bloc,
   required final IDateFormatter dateFormatter,
-  required final GetExpenseCommand getCommand,
   required final IMoneyFormatter moneyFormatter,
   required final ExpenseFormValidator validator,
-  required final CreateExpenseCommand createCommand,
-  required final UpdateExpenseCommand updateCommand,
-  required final ValueChanged<BuildContext> onExpenseCreated,
-  required final void Function(BuildContext context, ExpenseEntity expense)
-  onExpenseUpdated,
 }) extends StatefulWidget {
   @override
   State<ExpenseScreen> createState() => _ExpenseScreenState();
@@ -42,43 +35,43 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
     with ExpenseScreenStateMixin {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: ExpenseAppBarWidget(onBackPressed: widget.onBackPressed),
-      body: SafeArea(
-        child: widget.id == null
-            ? _buildForm()
-            : CommandBuilder<String, ExpenseEntity?>(
-                command: widget.getCommand.execute,
-                onNullData: (_, _) => _buildSkeleton(),
-                whileRunning: (_, _, _) => _buildSkeleton(),
-                onData: (_, expense, id) => id == widget.id
-                    ? _buildForm(initialExpense: expense)
-                    : _buildSkeleton(),
-                onError: (_, error, _, id) =>
-                    id == widget.id ? _buildLoadError(error) : _buildSkeleton(),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildLoadError(Object error) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const .all(16.0),
-        child: Column(
-          spacing: 16.0,
-          crossAxisAlignment: .stretch,
-          children: [
-            Text(
-              'Não foi possível carregar a despesa.',
-              textAlign: .center,
-              style: context.typography.titleMedium,
+    return BlocBuilder<ExpenseBloc, ExpenseState>(
+      bloc: bloc,
+      builder: (_, state) {
+        if (state case ExpenseLoadFailure(:final errors)) {
+          return ErrorScreen(
+            appBar: const ExpenseAppBarWidget(),
+            title: 'Não foi possível carregar a despesa.',
+            description: errors.errors.isEmpty
+                ? 'Tente novamente para carregar os dados.'
+                : errors.errors
+                      .map(
+                        (error) =>
+                            error.detail ?? error.title ?? 'Tente novamente.',
+                      )
+                      .join('\n'),
+            actionLabel: 'Tentar novamente',
+            onAction: loadExpense,
+          );
+        }
+        final savedExpense = widget.id == null ? state.expense : null;
+        return PopScope<Object?>(
+          canPop: savedExpense == null,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) context.pop(savedExpense);
+          },
+          child: Scaffold(
+            appBar: ExpenseAppBarWidget(result: savedExpense),
+            body: SafeArea(
+              child: widget.id == null
+                  ? _buildForm()
+                  : state.expense?.id == widget.id
+                  ? _buildForm(initialExpense: state.expense)
+                  : _buildSkeleton(),
             ),
-            Text(loadErrorDescription(error), textAlign: .center),
-            ElevatedButtonWidget(label: 'Tentar novamente', onTap: loadExpense),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -89,7 +82,7 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
         id: widget.id!,
         category: .other,
         occurredOn: .now(),
-        cents: .create(cents: 1500).right,
+        cents: .create(cents: 1500),
         description: 'Descrição do gasto',
       ),
     ),
@@ -99,17 +92,14 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
     ExpenseEntity? initialExpense,
     bool enabled = true,
   }) => ExpenseFormWidget(
-    key: ValueKey((widget.id, enabled)),
+    key: ValueKey((bloc, widget.id, enabled)),
     id: widget.id,
     enabled: enabled,
     validator: widget.validator,
     initialExpense: initialExpense,
-    createCommand: widget.createCommand,
-    updateCommand: widget.updateCommand,
+    bloc: bloc,
     dateFormatter: widget.dateFormatter,
     moneyFormatter: widget.moneyFormatter,
-    onExpenseCreated: widget.onExpenseCreated,
-    onExpenseUpdated: widget.onExpenseUpdated,
-    onExpensesChanged: widget.onExpensesChanged,
+    returnToPrevious: widget.returnToPrevious,
   );
 }

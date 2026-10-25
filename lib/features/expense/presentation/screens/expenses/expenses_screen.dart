@@ -1,4 +1,4 @@
-import 'package:command_it/command_it.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
@@ -6,10 +6,9 @@ import 'package:cordato/features/core/presentation/formatters/interface_date_for
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 
-import 'package:cordato/features/expense/presentation/screens/expenses/commands/get_expenses_command.dart';
-import 'package:cordato/features/expense/presentation/screens/expenses/commands/delete_expense_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
+import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_state.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/mixins/expenses_screen_state_mixin.dart';
 
@@ -25,9 +24,8 @@ final class const ExpensesScreen({
   super.key,
   required final VoidCallback onBackPressed,
   required final IDateFormatter dateFormatter,
-  required final GetExpensesCommand getCommand,
+  required final ExpensesBloc Function() bloc,
   required final IMoneyFormatter moneyFormatter,
-  required final DeleteExpenseCommand deleteCommand,
   final String? category,
   final VoidCallback? onExpensesChanged,
   final ({DateTime from, DateTime to})? period,
@@ -44,25 +42,10 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
     return Scaffold(
       appBar: ExpensesAppBarWidget(onBackPressed: widget.onBackPressed),
       body: SafeArea(
-        child: ListenableBuilder(
-          listenable: widget.getCommand.execute.isRunning,
-          builder: (_, _) =>
-              CommandBuilder<
-                ({
-                  int pageSize,
-                  DateTime? to,
-                  DateTime? from,
-                  String? category,
-                  String? pageLink,
-                }),
-                ExpensePageEntity?
-              >(
-                command: widget.getCommand.execute,
-                onData: (_, _, _) => _buildContent(),
-                onNullData: (_, _) => _buildContent(),
-                onError: (_, _, _, _) => _buildContent(),
-                whileRunning: (_, _, _) => _buildContent(),
-              ),
+        child: BlocConsumer<ExpensesBloc, ExpensesState>(
+          bloc: bloc,
+          listener: (_, state) => handleState(state),
+          builder: (_, _) => _buildContent(),
         ),
       ),
     );
@@ -132,7 +115,6 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
                       (pendingDeleteId == null ||
                           pendingDeleteId == expense.id),
                   isDeleting: deletingExpenseId == expense.id,
-                  onDeleted: () => removeDeletedExpense(expense.id),
                   onConfirmDelete: () => confirmDeleteExpense(expense.id),
                   onEdit:
                       widget.onExpensePressed == null ||

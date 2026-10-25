@@ -1,0 +1,19 @@
+appId: com.bed.cordato
+name: Expenses - Delete Loading
+tags: [expense, expenses, loading]
+env:
+  TEST_SERVER: http://127.0.0.1:8771
+  SCENARIO: loading
+onFlowComplete:
+  - runScript: ../../expense/e2e/scripts/release.js
+---
+- runFlow: subflows/list.yaml
+- runFlow: subflows/delete.yaml
+- assertVisible: Excluindo despesa
+- assertVisible: '(?s).*Mercado E2E.*'
+- runScript: ../../expense/e2e/scripts/stats.js
+- assertTrue: ${output.stats.operations.delete === 1}
+- runScript: ../../expense/e2e/scripts/release.js
+- extendedWaitUntil:
+    visible: Despesa excluída
+    timeout: 10000

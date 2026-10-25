@@ -32,8 +32,8 @@ Leia [ARCHITECTURE.md](ARCHITECTURE.md) para decisões e fronteiras e
 
 ## Estado Do Projeto
 
-**O checkout está em transição arquitetural e ainda possui bloqueios de
-compilação/composição. A documentação não significa que a migração foi concluída.**
+**O checkout está em transição arquitetural e ainda possui pendências de
+composição global. A suíte Flutter passa, mas isso não valida a navegação do app.**
 
 Authentication já possui contrato em application e repository em infrastructure.
 Sign-in, cadastro e reenvio usam Bloc, controle de submissões concorrentes, falhas tipadas
@@ -74,12 +74,38 @@ da consulta mais recente. O módulo fornece instâncias por factory e os preview
 consumidores usam BlocBuilder. Dashboard mantém seu próprio Bloc sobre o contrato,
 sem migrar os demais contextos financeiros.
 
-Outras features ainda referenciam `Either`, `response<T>` e CommandIt removidos.
-Session e Welcome estão ativos em `app_module.dart`; a referência duplicada ao
-módulo inexistente de rotas de Authentication foi removida. Dashboard, Settings
-e outros destinos continuam desativados, e testes do antigo handler CommandIt
-do bootstrap ainda precisam de migração. Esses pontos
-impedem tratar o app, a suíte completa e os flows E2E como prontos para execução.
+Insight agora usa contrato em application, `InsightException` e repository em
+infrastructure com HTTP direto, sem Either ou data source. Preserva filtros
+opcionais de mês/ano, ordem, conteúdo e períodos da API, inclusive onboarding sem
+período e lista vazia. Parsing inválido e falhas inesperadas propagam.
+`InsightsBloc` substitui o command, com estados sealed, lista de sucesso imutável,
+falhas tipadas, retry manual e precedência da consulta mais recente. O módulo
+registra instâncias por factory; Insight não depende mais de CommandIt.
+Dashboard mantém sua própria coordenação pelo contrato.
+
+Expense também usa contrato em application, `ExpenseException` e repository em
+infrastructure com HTTP direto, sem Either ou data source. Preserva CRUD JSON:API,
+centavos inteiros positivos, datas civis, filtros e paginação opaca. Consulta,
+criação e atualização retornam entidades; exclusão retorna `Future<void>` e só
+conclui após HTTP 204. `AmountValueObject.create` retorna o valor diretamente e
+rejeita centavos não positivos com `ArgumentError`. Parsing e falhas inesperadas
+propagam. `ExpenseBloc` substitui consulta/criação/edição e `ExpensesBloc` substitui
+listagem/exclusão, com estados sealed, factories estáveis e lifecycle das telas.
+Mantém validação, erros 422 por campo, retry manual, cadastro contínuo por hold,
+filtros, paginação opaca e confirmação de exclusão sem remoção otimista. Consultas
+obsoletas não sobrescrevem filtros recentes; mutações pendentes bloqueiam duplicatas.
+Expense não depende mais de CommandIt. Dashboard consome resultados diretos de
+todos os contextos consultados.
+
+Os testes do handler CommandIt removido foram excluídos; os testes de responses
+cobrem os DTOs e as exceções HTTP atuais, sem `Either` ou `response<T>`.
+Após a migração do Firebase Messaging para `register()` e `onRegistered`,
+`flutter test` passou com 907 testes, incluindo 10 de arquitetura, e
+`flutter analyze` concluiu sem problemas. O client expõe o registro e o stream
+de FIDs, sem usar as APIs depreciadas de token.
+Session e Welcome estão ativos em `app_module.dart`; Dashboard, Settings e outros
+destinos continuam desativados. A composição global e os flows E2E não foram
+validados por essa revisão.
 Os detalhes estão em [Estado atual e migração](ARCHITECTURE.md#estado-atual-e-migração).
 
 O código existente inclui os seguintes fluxos, cuja disponibilidade depende da
@@ -198,6 +224,8 @@ flutter test test/features/settings
 flutter test test/features/session test/features/root
 flutter test test/features/user
 flutter test test/architecture test/features/metrics
+flutter test test/features/insight
+flutter test test/architecture test/features/expense test/features/dashboard test/features/metrics test/features/insight test/features/core/infrastructure/clients/http/interceptors/session_interceptor_test.dart
 ```
 
 Os flows Maestro estão em
@@ -229,8 +257,8 @@ Session/Root têm 49 testes novos aprovados, incluindo o ciclo de sign-in/token/
 logout com repositories e Blocs reais sobre clients mockados. Os
 [flows de Session/Root](test/features/root/presentation/screens/app/e2e/README.md)
 reutilizam a fixture de logout na porta 8769 e ainda não foram executados em
-dispositivo. A suíte do SessionInterceptor continua bloqueada por dependência
-legada de Expense; a suíte global também não está aprovada.
+dispositivo. A suíte do SessionInterceptor voltou a passar após migrar o repository
+de Expense; a suíte global ainda não está aprovada.
 Dependem de build compilável e módulos de sessão/destinos ativos; sua existência
 não significa validação em dispositivo. Não há suíte Flutter `integration_test`.
 
@@ -238,12 +266,68 @@ O lote focado de arquitetura, Authentication, Settings, Session, Root, User e da
 camadas migradas de Metrics passou com 456 testes. A análise focada está limpa.
 Após substituir o command, `flutter test test/architecture test/features/metrics`
 passou com 106 testes, incluindo Bloc e módulo. A análise focada de Metrics e dos
-dois previews consumidores está limpa. Dashboard continua bloqueada pelos demais
-contratos financeiros legados; não houve execução visual de previews ou E2E.
+dois previews consumidores estava limpa. A Dashboard foi desbloqueada na primeira
+rodada de Expense; não houve execução visual de previews ou E2E.
 Os flows de [perfil](test/features/user/presentation/screens/user/e2e/README.md)
 e [edição de nome](test/features/user/presentation/screens/edit/e2e/README.md) usam
 a fixture local na porta 8770 e estão preparados, não executados em dispositivo.
 Análise e suíte globais permanecem bloqueadas pelo legado.
+
+Na primeira rodada de Insight, arquitetura, Metrics e as camadas migradas de
+Insight passaram com 134 testes, incluindo 28 de Insight. A análise focada dessas
+camadas estava limpa; módulo/command e Dashboard estavam bloqueados pelo legado.
+Após substituir o command, `flutter test test/architecture test/features/metrics
+test/features/insight` passou com 152 testes, incluindo 17 de InsightsBloc e o teste
+de módulo anteriormente bloqueado. A análise de toda a feature e seus testes está
+limpa nessa rodada. A análise e a suíte globais continuam falhando no legado;
+a dependência de Either da Dashboard foi removida na rodada de Expense.
+
+Na primeira rodada de Expense, o lote focado de arquitetura, camadas migradas de
+Expense, validators, DashboardBloc, Metrics, Insight e SessionInterceptor passou
+com 380 testes. A análise focada dessas camadas e consumidores está limpa.
+Na segunda rodada, os cinco commands de Expense foram removidos. Testes de Bloc,
+tela, DI e rotas verificam sucesso/falha, concorrência, descarte, paginação e retorno
+da edição com a entidade confirmada por HTTP. Os flows de
+[criação](test/features/expense/presentation/screens/expense/e2e/README.md) e
+[listagem/exclusão](test/features/expense/presentation/screens/expenses/e2e/README.md)
+usam fixture isolada na porta 8771; não foram executados em dispositivo.
+As rotas globais não foram reativadas. Análise/suíte globais seguem bloqueadas por
+testes antigos de responses/CommandIt, referência inexistente a
+`userDependenciesModule` e expectativas dos testes de HeadersInterceptor.
+
+Verificação da segunda rodada de Expense:
+
+- `flutter pub get`: concluído, sem restaurar dependências legadas.
+- `flutter analyze lib/features/expense test/features/expense test/architecture/expense_presentation_test.dart`:
+  sem issues.
+- O comando focado acima de arquitetura, Expense, Dashboard, Metrics, Insight e
+  SessionInterceptor passou com **435 testes**.
+- `flutter analyze` e `flutter test`: executados, ainda falham nos bloqueios fora
+  de Expense descritos acima; a análise também aponta deprecações Firebase e um
+  import não usado em Insight, sem alteração incidental dessas áreas.
+- `dart run tool/widget_preview.dart`: servidor iniciado e encerrado sem abrir
+  navegador; não houve validação visual dos previews.
+- Smoke HTTP da fixture local: autorização, consulta, criação, edição, exclusão e
+  estatísticas aprovados; isso não é execução Maestro em dispositivo.
+
+Após remover os callbacks de navegação de `ExpenseScreen` e `ExpenseFormWidget`,
+voltar e sucesso usam diretamente as extensões de `BuildContext` nos widgets.
+A edição devolve a entidade confirmada; a criação preserva `returnToPrevious` e
+o cadastro contínuo não navega.
+`flutter analyze lib/features/expense test/features/expense` passou sem issues;
+o mesmo lote focado passou com **438 testes**, incluindo navegação real em router.
+`flutter analyze` e `flutter test` globais foram repetidos e mantêm os bloqueios
+externos listados acima. Não houve execução Maestro nesta alteração.
+
+`onExpensesChanged` também foi removido de `ExpenseScreen`, do formulário e dos
+argumentos usados pela Dashboard para criação. A Dashboard aguarda uma despesa
+confirmada como resultado da rota; cancelar sem salvar não recarrega os dados.
+Após cadastro por hold, voltar pelo botão ou pelo sistema devolve a última despesa
+salva mesmo após outra tentativa falha ou ainda pendente, sem flag local espelhando
+o resultado do Bloc. Testes de navegação e do botão da Dashboard cobrem esse retorno.
+A análise focada de Expense e do consumidor da Dashboard passou sem issues; o
+mesmo comando focado de testes passou com **447 testes**. Os bloqueios globais
+preexistentes e a ausência de validação Maestro permanecem.
 
 ## API, Sessão E Segurança
 

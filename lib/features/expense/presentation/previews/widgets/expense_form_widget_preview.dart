@@ -6,8 +6,10 @@ import 'package:cordato/features/core/presentation/formatters/date_formatter.dar
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/presentation/previews/fakes/expense_preview_repository.dart';
-import 'package:cordato/features/expense/presentation/screens/expense/commands/create_expense_command.dart';
-import 'package:cordato/features/expense/presentation/screens/expense/commands/update_expense_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_event.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_app_bar_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_form_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_skeleton_widget.dart';
@@ -41,48 +43,42 @@ Widget previewLoadingExpenseFormWidget() =>
 Widget _formPreview({bool editing = false, bool loading = false}) {
   final expense = ExpenseEntity(
     id: 'preview-expense',
-    cents: .create(cents: 1500).right,
+    cents: .create(cents: 1500),
     description: 'Ônibus e metrô',
     occurredOn: DateTime(2026, 10, 5),
     category: .transport,
   );
-  return PreviewResourceWidget<
-    ({CreateExpenseCommand create, UpdateExpenseCommand update})
-  >(
+  return PreviewResourceWidget<ExpenseBloc>(
     create: () {
       final repository = ExpensePreviewRepository(expense: expense);
-      return (
-        create: CreateExpenseCommand(repository: repository),
-        update: UpdateExpenseCommand(repository: repository),
-      );
+      final bloc = ExpenseBloc(repository: repository);
+      if (editing) bloc.add(ExpenseRequestedEvent(id: expense.id));
+      return bloc;
     },
-    dispose: (commands) {
-      commands.create.dispose();
-      commands.update.dispose();
-    },
-    builder: (commands) {
-      final form = ExpenseFormWidget(
-        id: editing ? expense.id : null,
-        initialExpense: editing ? expense : null,
-        enabled: !loading,
-        createCommand: commands.create,
-        updateCommand: commands.update,
-        moneyFormatter: MoneyFormatter(),
-        dateFormatter: DateFormatter(),
-        validator: const ExpenseFormValidator(
-          centsValidation: ExpenseCentsValidation(),
-          dateValidation: ExpenseDateValidation(),
-          descriptionValidation: ExpenseDescriptionValidation(),
-        ),
-        onExpenseCreated: (_) {},
-        onExpenseUpdated: (_, _) {},
-      );
-      return Scaffold(
-        appBar: ExpenseAppBarWidget(onBackPressed: () {}),
-        body: SafeArea(
-          child: loading ? ExpenseSkeletonWidget(child: form) : form,
-        ),
-      );
-    },
+    dispose: (bloc) => bloc.close(),
+    builder: (bloc) => BlocBuilder<ExpenseBloc, ExpenseState>(
+      bloc: bloc,
+      builder: (_, _) {
+        final form = ExpenseFormWidget(
+          id: editing ? expense.id : null,
+          initialExpense: editing ? expense : null,
+          enabled: !loading,
+          bloc: bloc,
+          moneyFormatter: MoneyFormatter(),
+          dateFormatter: DateFormatter(),
+          validator: const ExpenseFormValidator(
+            centsValidation: ExpenseCentsValidation(),
+            dateValidation: ExpenseDateValidation(),
+            descriptionValidation: ExpenseDescriptionValidation(),
+          ),
+        );
+        return Scaffold(
+          appBar: const ExpenseAppBarWidget(),
+          body: SafeArea(
+            child: loading ? ExpenseSkeletonWidget(child: form) : form,
+          ),
+        );
+      },
+    ),
   );
 }

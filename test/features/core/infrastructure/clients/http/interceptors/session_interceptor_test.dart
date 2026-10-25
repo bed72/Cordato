@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/expense/infrastructure/remoto/expense_remote_data_source.dart';
+import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
@@ -182,31 +182,26 @@ void main() {
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');
   });
 
-  test(
-    'authenticates expense deletion through the remote data source',
-    () async {
-      responseStatus = 204;
-      when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
-          .thenAnswer((_) async => 'opaque-token');
-      final dataSource = ExpenseRemoteDataSource(client: client);
+  test('authenticates expense deletion through the repository', () async {
+    responseStatus = 204;
+    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+        .thenAnswer((_) async => 'opaque-token');
+    final repository = ExpenseRepository(httpClient: client);
 
-      final data = await dataSource.delete(id: '1');
-
-      expect(data.right, isTrue);
-      expect(captured!.method, 'DELETE');
-      expect(captured!.uri.path, '/api/expenses/1');
-      expect(captured!.headers['Authorization'], 'Bearer opaque-token');
-      verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
-      verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
-    },
-  );
+    await repository.delete(id: '1');
+    expect(captured!.method, 'DELETE');
+    expect(captured!.uri.path, '/api/expenses/1');
+    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
+    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
+  });
 
   test('authenticates an expense with an encoded id', () async {
     responseStatus = 204;
     when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async => 'opaque-token');
 
-    await ExpenseRemoteDataSource(client: client).delete(id: 'a/b?c#d');
+    await ExpenseRepository(httpClient: client).delete(id: 'a/b?c#d');
 
     expect(captured!.uri.pathSegments.last, 'a/b?c#d');
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');

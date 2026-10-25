@@ -1,7 +1,10 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_event.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
 import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
@@ -18,17 +21,16 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
   String? centsFailure;
   String? descriptionFailure;
   bool _isPickerOpen = false;
-  bool _keepFormOpenAfterCreation = false;
   DateTime occurredOn = DateUtils.dateOnly(.now());
 
   bool get isEditing => widget.id != null;
 
-  bool get _isRunning => isEditing
-      ? widget.updateCommand.execute.isRunning.value
-      : widget.createCommand.execute.isRunning.value;
+  bool get _isRunning => widget.bloc.state.isSubmitting;
 
   bool get canSubmit {
-    if (!widget.enabled || (isEditing && widget.initialExpense == null)) {
+    if (!widget.enabled ||
+        !widget.bloc.state.canSubmit ||
+        (isEditing && widget.initialExpense == null)) {
       return false;
     }
     if (!isEditing) return true;
@@ -57,28 +59,10 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     occurredOn =
         widget.initialExpense?.occurredOn ?? DateUtils.dateOnly(.now());
     descriptionController.addListener(_refreshSubmit);
-    widget.createCommand.execute.results.addListener(_handleCreation);
-    widget.updateCommand.execute.results.addListener(_handleUpdate);
-  }
-
-  @override
-  void didUpdateWidget(ExpenseFormWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (oldWidget.createCommand != widget.createCommand) {
-      oldWidget.createCommand.execute.results.removeListener(_handleCreation);
-      widget.createCommand.execute.results.addListener(_handleCreation);
-    }
-    if (oldWidget.updateCommand != widget.updateCommand) {
-      oldWidget.updateCommand.execute.results.removeListener(_handleUpdate);
-      widget.updateCommand.execute.results.addListener(_handleUpdate);
-    }
   }
 
   @override
   void dispose() {
-    widget.createCommand.execute.results.removeListener(_handleCreation);
-    widget.updateCommand.execute.results.removeListener(_handleUpdate);
     descriptionController.removeListener(_refreshSubmit);
     descriptionController.dispose();
     super.dispose();
@@ -175,93 +159,56 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     )) {
       if (isEditing) {
         final initial = widget.initialExpense!;
-        widget.updateCommand.execute.run((
-          id: widget.id!,
-          cents: validCents == initial.cents.cents ? null : validCents,
-          description: validDescription == initial.description.trim()
-              ? null
-              : validDescription,
-          occurredOn: DateUtils.isSameDay(validDate, initial.occurredOn)
-              ? null
-              : validDate,
-        ));
+        widget.bloc.add(
+          ExpenseSubmittedEvent(
+            id: widget.id!,
+            cents: validCents == initial.cents.cents ? null : validCents,
+            description: validDescription == initial.description.trim()
+                ? null
+                : validDescription,
+            occurredOn: DateUtils.isSameDay(validDate, initial.occurredOn)
+                ? null
+                : validDate,
+          ),
+        );
         return;
       }
-      _keepFormOpenAfterCreation = keepFormOpen;
-      widget.createCommand.execute.run((
-        cents: validCents,
-        occurredOn: validDate,
-        description: validDescription,
-      ));
+      widget.bloc.add(
+        ExpenseSubmittedEvent(
+          keepFormOpen: keepFormOpen,
+          cents: validCents,
+          occurredOn: validDate,
+          description: validDescription,
+        ),
+      );
     }
   }
 
-  void _handleCreation() {
-    final data = widget.createCommand.execute.results.value;
-    if (!mounted ||
-        isEditing ||
-        !widget.enabled ||
-        data.isRunning ||
-        data.paramData == null) {
-      return;
-    }
-
-    if (data.hasError) {
-      if (data.error case CommandFailureException(:final errors)) {
-        _showErrors(errors);
-        return;
-      }
-      context.showToast(
-        variant: .error,
-        title: 'Erro ao cadastrar gasto',
-        description: 'Não foi possível cadastrar o gasto. Tente novamente.',
-      );
-      return;
-    }
-
-    if (data.data != null) {
-      widget.onExpensesChanged?.call();
+  void handleState(ExpenseState state) {
+    if (!mounted || !widget.enabled) return;
+    if (state case ExpenseSubmissionFailure(:final errors)) {
+      _showErrors(errors);
+    } else if (state case ExpenseSuccess(
+      :final expense,
+      :final isEditing,
+      :final keepFormOpen,
+    )) {
       context.showToast(
         variant: .success,
-        title: 'Gasto cadastrado',
-        description: 'Seu gasto foi cadastrado com sucesso.',
+        title: isEditing ? 'Gasto atualizado' : 'Gasto cadastrado',
+        description: isEditing
+            ? 'Seu gasto foi atualizado com sucesso.'
+            : 'Seu gasto foi cadastrado com sucesso.',
       );
-
-      _keepFormOpenAfterCreation
-          ? _resetForm()
-          : widget.onExpenseCreated(context);
-    }
-  }
-
-  void _handleUpdate() {
-    final data = widget.updateCommand.execute.results.value;
-    if (!mounted ||
-        !isEditing ||
-        !widget.enabled ||
-        data.isRunning ||
-        data.paramData?.id != widget.id) {
-      return;
-    }
-    if (data.hasError) {
-      if (data.error case CommandFailureException(:final errors)) {
-        _showErrors(errors);
-        return;
+      if (isEditing) {
+        context.pop(expense);
+      } else if (keepFormOpen) {
+        _resetForm();
+      } else if (widget.returnToPrevious) {
+        context.pop(expense);
+      } else {
+        context.navigate(RouteEnum.dashboard.path);
       }
-      context.showToast(
-        variant: .error,
-        title: 'Erro ao atualizar gasto',
-        description: 'Não foi possível atualizar o gasto. Tente novamente.',
-      );
-      return;
-    }
-    if (data.data case final value?) {
-      widget.onExpensesChanged?.call();
-      context.showToast(
-        variant: .success,
-        title: 'Gasto atualizado',
-        description: 'Seu gasto foi atualizado com sucesso.',
-      );
-      widget.onExpenseUpdated(context, value);
     }
   }
 
@@ -273,7 +220,6 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
       dateFailure = null;
       centsFailure = null;
       descriptionFailure = null;
-      _keepFormOpenAfterCreation = false;
       occurredOn = DateUtils.dateOnly(.now());
     });
   }
@@ -286,6 +232,10 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
 
     for (final error in errors.errors) {
       final message = error.detail ?? error.title ?? 'Valor inválido.';
+      if (error.status != '422') {
+        remaining.add(error);
+        continue;
+      }
 
       switch (error.pointer) {
         case '/data/attributes/amount':

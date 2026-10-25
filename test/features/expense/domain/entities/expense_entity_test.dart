@@ -8,7 +8,7 @@ void main() {
   group('ExpenseEntity', () {
     test('represents a registered expense independently of JSON:API', () {
       final occurredOn = DateTime(2026, 10, 5);
-      final amount = AmountValueObject.create(cents: 200).right;
+      final amount = AmountValueObject.create(cents: 200);
       final expense = ExpenseEntity(
         id: '8',
         cents: amount,

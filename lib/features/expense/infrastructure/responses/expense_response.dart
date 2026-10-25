@@ -1,6 +1,3 @@
-import 'package:cordato/features/core/domain/either.dart';
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/domain/value_objects/amount_value_object.dart';
@@ -29,14 +26,11 @@ final class const ExpenseResponse({
 }
 
 extension ExpenseResponseToEntity on ExpenseResponse {
-  Either<ErrorsEntity, ExpenseEntity> toEntity() =>
-      AmountValueObject.create(cents: amount).mapRight(
-        (cents) => ExpenseEntity(
-          id: id,
-          cents: cents,
-          category: category,
-          occurredOn: occurredOn,
-          description: description,
-        ),
-      );
+  ExpenseEntity toEntity() => ExpenseEntity(
+    id: id,
+    cents: AmountValueObject.create(cents: amount),
+    category: category,
+    occurredOn: occurredOn,
+    description: description,
+  );
 }

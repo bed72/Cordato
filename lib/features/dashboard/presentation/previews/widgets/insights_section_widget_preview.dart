@@ -1,13 +1,11 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 
 import 'package:cordato/features/dashboard/presentation/widgets/insights/insights_section_widget.dart';
 
 import 'package:cordato/features/insight/domain/entities/insight_entity.dart';
 import 'package:cordato/features/insight/domain/entities/insight_period_entity.dart';
-import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
 
 @CordatoPreview(
   group: 'Dashboard / Insights',
@@ -21,8 +19,7 @@ Widget previewLoadingInsightsSectionWidget() => _sectionPreview();
   name: 'Sem insights',
   size: Size(390.0, 160.0),
 )
-Widget previewEmptyInsightsSectionWidget() =>
-    _sectionPreview(type: const Right([]));
+Widget previewEmptyInsightsSectionWidget() => _sectionPreview(data: const []);
 
 @CordatoPreview(
   group: 'Dashboard / Insights',
@@ -36,8 +33,7 @@ Widget previewEmptyInsightsSectionWidget() =>
   size: Size(390.0, 280.0),
   brightness: Brightness.dark,
 )
-Widget previewInsightsSectionWidget() =>
-    _sectionPreview(type: Right(_insights()));
+Widget previewInsightsSectionWidget() => _sectionPreview(data: _insights());
 
 @CordatoPreview(
   group: 'Dashboard / Insights',
@@ -48,14 +44,14 @@ Widget previewLargeTextInsightsSectionWidget() => Builder(
   builder: (context) => MediaQuery(
     data: MediaQuery.of(context)
         .copyWith(textScaler: const TextScaler.linear(1.6)),
-    child: _sectionPreview(type: Right(_insights())),
+    child: _sectionPreview(data: _insights()),
   ),
 );
 
-Widget _sectionPreview({GetRepositoryType? type}) => Scaffold(
+Widget _sectionPreview({List<InsightEntity>? data}) => Scaffold(
   body: SingleChildScrollView(
     padding: const .symmetric(vertical: 24.0),
-    child: InsightsSectionWidget(insights: type?.right),
+    child: InsightsSectionWidget(insights: data),
   ),
 );
 

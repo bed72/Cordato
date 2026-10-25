@@ -50,7 +50,6 @@ void main() {
             context
               ..addInstance<IHttpClient>(http)
               ..addInstance<IStorageClient>(storage);
-            userDependenciesModule.register(context);
             context.module(userModule);
           },
         ),

@@ -29,7 +29,7 @@ void main() {
     await messages.close();
   });
 
-  test('construction does not request permission or a registration token', () {
+  test('construction does not request permission or register', () {
     verifyZeroInteractions(messaging);
   });
 
@@ -51,38 +51,30 @@ void main() {
     expect(() => client.platform, throwsUnsupportedError);
   });
 
-  test('returns the Android FCM token without an APNs request', () async {
-    when(() => messaging.getToken()).thenAnswer((_) async => 'fcm-token');
+  for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
+    test('delegates registration on ${platform.name} to the SDK', () async {
+      debugDefaultTargetPlatformOverride = platform;
+      when(() => messaging.register()).thenAnswer((_) async {});
 
-    expect(await client.getToken(), 'fcm-token');
+      await client.register();
 
-    verify(() => messaging.getToken()).called(1);
-    verifyNever(() => messaging.getAPNSToken());
-  });
+      verify(() => messaging.register()).called(1);
+      verifyNoMoreInteractions(messaging);
+    });
+  }
 
-  test('preserves an absent registration token', () async {
-    when(() => messaging.getToken()).thenAnswer((_) async => null);
+  test('waits for SDK registration to complete', () async {
+    final pending = Completer<void>();
+    when(() => messaging.register()).thenAnswer((_) => pending.future);
+    var completed = false;
+    final registration = client.register().then((_) => completed = true);
 
-    expect(await client.getToken(), isNull);
-  });
+    expect(completed, isFalse);
+    pending.complete();
+    await registration;
 
-  test('does not request the iOS FCM token before APNs is ready', () async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-    when(() => messaging.getAPNSToken()).thenAnswer((_) async => null);
-
-    expect(await client.getToken(), isNull);
-
-    verifyNever(() => messaging.getToken());
-  });
-
-  test('returns the iOS FCM token once APNs is ready', () async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-    when(() => messaging.getToken()).thenAnswer((_) async => 'fcm-token');
-    when(() => messaging.getAPNSToken()).thenAnswer((_) async => 'apns-token');
-
-    expect(await client.getToken(), 'fcm-token');
-
-    verifyInOrder([() => messaging.getAPNSToken(), () => messaging.getToken()]);
+    expect(completed, isTrue);
+    verify(() => messaging.register()).called(1);
   });
 
   for (final status in AuthorizationStatus.values) {
@@ -116,34 +108,35 @@ void main() {
     );
   }
 
-  test(
-    'distinguishes SDK failures from missing tokens and denied permissions',
-    () async {
-      final failure = StateError('Messaging unavailable');
-      when(() => messaging.getToken()).thenAnswer((_) async => throw failure);
-      when(() => messaging.requestPermission())
-          .thenAnswer((_) async => throw failure);
+  test('propagates SDK registration and permission failures', () async {
+    final failure = StateError('Messaging unavailable');
+    when(() => messaging.register()).thenAnswer((_) async => throw failure);
+    when(() => messaging.requestPermission())
+        .thenAnswer((_) async => throw failure);
 
-      await expectLater(client.getToken(), throwsA(same(failure)));
-      await expectLater(client.requestPermission(), throwsA(same(failure)));
-    },
-  );
+    await expectLater(client.register(), throwsA(same(failure)));
+    await expectLater(client.requestPermission(), throwsA(same(failure)));
+  });
 
-  test('preserves the SDK token-refresh stream', () async {
-    final tokens = StreamController<String>.broadcast();
-    addTearDown(tokens.close);
-    when(() => messaging.onTokenRefresh).thenAnswer((_) => tokens.stream);
+  test('preserves the SDK registration stream', () async {
+    final registrations = StreamController<String>.broadcast();
+    addTearDown(registrations.close);
+    final stream = registrations.stream;
+    when(() => messaging.onRegistered).thenAnswer((_) => stream);
+    expect(client.onRegistered, same(stream));
     final received = <String>[];
-    final subscription = client.onTokenRefresh.listen(received.add);
+    final subscription = client.onRegistered.listen(received.add);
     addTearDown(subscription.cancel);
 
-    tokens.add('first-token');
-    tokens.add('replacement-token');
-    await Future<void>.delayed(Duration.zero);
+    final delivered = subscription.asFuture<void>();
+    registrations.add('first-fid');
+    registrations.add('replacement-fid');
+    await registrations.close();
+    await delivered;
 
-    expect(received, ['first-token', 'replacement-token']);
+    expect(received, ['first-fid', 'replacement-fid']);
     await subscription.cancel();
-    expect(tokens.hasListener, isFalse);
+    expect(registrations.hasListener, isFalse);
   });
 
   test('preserves notifications and data-only foreground messages', () async {

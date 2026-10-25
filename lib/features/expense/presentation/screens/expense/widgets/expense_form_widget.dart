@@ -1,4 +1,4 @@
-import 'package:command_it/command_it.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
@@ -14,8 +14,8 @@ import 'package:cordato/features/authentication/presentation/widgets/amount_fiel
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 
-import 'package:cordato/features/expense/presentation/screens/expense/commands/create_expense_command.dart';
-import 'package:cordato/features/expense/presentation/screens/expense/commands/update_expense_command.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/mixins/expense_form_widget_state_mixin.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/fields/expense_description_field_widget.dart';
@@ -24,16 +24,12 @@ final class const ExpenseFormWidget({
   super.key,
   final String? id,
   final bool enabled = true,
+  final bool returnToPrevious = false,
   final ExpenseEntity? initialExpense,
-  final VoidCallback? onExpensesChanged,
   required final IDateFormatter dateFormatter,
   required final IMoneyFormatter moneyFormatter,
   required final ExpenseFormValidator validator,
-  required final CreateExpenseCommand createCommand,
-  required final UpdateExpenseCommand updateCommand,
-  required final ValueChanged<BuildContext> onExpenseCreated,
-  required final void Function(BuildContext context, ExpenseEntity expense)
-  onExpenseUpdated,
+  required final ExpenseBloc bloc,
 }) extends StatefulWidget {
   @override
   State<ExpenseFormWidget> createState() => _ExpenseFormWidgetState();
@@ -43,25 +39,10 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
     with ExpenseFormWidgetStateMixin {
   @override
   Widget build(BuildContext context) {
-    if (isEditing) {
-      return CommandBuilder<
-        ({String id, int? cents, String? description, DateTime? occurredOn}),
-        ExpenseEntity?
-      >(
-        command: widget.updateCommand.execute,
-        onSuccess: (_, _) => _buildContent(),
-        onError: (_, _, _, _) => _buildContent(),
-        whileRunning: (_, _, _) => _buildContent(isLoading: true),
-      );
-    }
-    return CommandBuilder<
-      ({int cents, String description, DateTime? occurredOn}),
-      ExpenseEntity?
-    >(
-      command: widget.createCommand.execute,
-      onSuccess: (_, _) => _buildContent(),
-      onError: (_, _, _, _) => _buildContent(),
-      whileRunning: (_, _, _) => _buildContent(isLoading: true),
+    return BlocConsumer<ExpenseBloc, ExpenseState>(
+      bloc: widget.bloc,
+      listener: (_, state) => handleState(state),
+      builder: (_, state) => _buildContent(isLoading: state.isSubmitting),
     );
   }
 
@@ -121,10 +102,8 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
           HoldButtonWidget(
             label: 'Cadastrar',
             isLoading: isLoading,
-            onTap: widget.enabled && !isLoading ? submit : null,
-            onHoldComplete: widget.enabled && !isLoading
-                ? submitAndContinue
-                : null,
+            onTap: canSubmit && !isLoading ? submit : null,
+            onHoldComplete: canSubmit && !isLoading ? submitAndContinue : null,
           ),
       ],
     ),

@@ -10,7 +10,7 @@ void main() {
     () {
       final expense = ExpenseEntity(
         id: '15',
-        cents: AmountValueObject.create(cents: 10000).right,
+        cents: AmountValueObject.create(cents: 10000),
         occurredOn: DateTime(2026, 10, 8),
         description: 'Lanche',
         category: .other,

@@ -21,7 +21,7 @@ void main() {
       });
 
       expect(response.amount, 300);
-      final entity = response.toEntity().right;
+      final entity = response.toEntity();
 
       expect(entity.id, '9');
       expect(entity.cents.cents, 300);
@@ -45,7 +45,7 @@ void main() {
         });
 
         expect(response.category, category);
-        expect(response.toEntity().right.category, category);
+        expect(response.toEntity().category, category);
       });
     }
 
@@ -67,7 +67,7 @@ void main() {
     });
 
     for (final amount in [0, -300]) {
-      test('returns a domain error for $amount cents during conversion', () {
+      test('rejects $amount cents during conversion', () {
         final response = ExpenseResponse(
           id: '9',
           amount: amount,
@@ -76,10 +76,7 @@ void main() {
           occurredOn: DateTime(2026, 10, 5),
         );
 
-        final data = response.toEntity();
-
-        expect(data.isLeft, isTrue);
-        expect(data.left.errors.single.title, 'Valor inválido');
+        expect(response.toEntity, throwsArgumentError);
       });
     }
   });

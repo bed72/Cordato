@@ -87,14 +87,13 @@ mixin ExpenseDismissibleWidgetStateMixin
           ? editing
                 ? _editAndRestore(id)
                 : widget.onConfirmDelete()
-          : Future<bool>.value(false);
+          : Future<void>.value();
 
       await returning;
       if (!mounted || widget.id != id) return;
       swipeController.value = 0.0;
 
-      final deleted = await action;
-      if (mounted && widget.id == id && deleted) widget.onDeleted();
+      await action;
     } on TickerCanceled {
       return;
     } finally {
@@ -110,12 +109,11 @@ mixin ExpenseDismissibleWidgetStateMixin
     swipeController.value = 0.0;
   }
 
-  Future<bool> _editAndRestore(String id) async {
+  Future<void> _editAndRestore(String id) async {
     try {
       await widget.onEdit?.call();
     } finally {
       if (mounted && widget.id == id) _finishReturn();
     }
-    return false;
   }
 }

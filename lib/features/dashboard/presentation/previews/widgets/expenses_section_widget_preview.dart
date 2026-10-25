@@ -1,7 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
-
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
@@ -12,7 +10,6 @@ import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/value_objects/amount_value_object.dart';
-import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
 @CordatoPreview(
   group: 'Dashboard / Despesas',
@@ -26,24 +23,22 @@ Widget previewLoadingExpensesSectionWidget() => _sectionPreview();
   name: 'Seção vazia',
   size: Size(390.0, 220.0),
 )
-Widget previewEmptyExpensesSectionWidget() => _sectionPreview(
-  type: Right(ExpensePageEntity(items: [], next: null, prev: null)),
-);
+Widget previewEmptyExpensesSectionWidget() =>
+    _sectionPreview(data: ExpensePageEntity(items: [], next: null, prev: null));
 
 @CordatoPreview(
   group: 'Dashboard / Despesas',
   name: 'Seção com despesas e ver tudo',
   size: Size(390.0, 520.0),
 )
-Widget previewExpensesSectionWidget() =>
-    _sectionPreview(type: Right(_expensesPage()));
+Widget previewExpensesSectionWidget() => _sectionPreview(data: _expensesPage());
 
-Widget _sectionPreview({GetRepositoryType? type}) => Scaffold(
+Widget _sectionPreview({ExpensePageEntity? data}) => Scaffold(
   body: SingleChildScrollView(
     padding: const EdgeInsets.symmetric(vertical: 24.0),
     child: ExpensesSectionWidget(
       limit: 6,
-      page: type?.right,
+      page: data,
       moneyFormatter: MoneyFormatter(),
       dateFormatter: DateFormatter(now: () => DateTime(2026, 10, 7)),
     ),
@@ -75,7 +70,7 @@ ExpensePageEntity _expensesPage() {
           category: fixture.category,
           description: fixture.description,
           occurredOn: DateTime(2026, 10, 7 - index),
-          cents: AmountValueObject.create(cents: fixture.cents).right,
+          cents: AmountValueObject.create(cents: fixture.cents),
         ),
     ],
   );

@@ -217,8 +217,8 @@ são descartados, não substituem a request nem entram em fila. O guard de
 
 Outros fluxos devem definir sua própria política explícita de concorrência;
 `droppable` não deve ser aplicado cegamente a consultas substituíveis.
-Dashboard já usa `restartable` para sua coordenação de leituras, mas seu desenho
-de estado e seus contratos legados ainda não constituem a referência geral.
+Dashboard usa `restartable` para sua coordenação de leituras sobre contratos de
+aplicação. Seu estado agregado não constitui a referência geral para submissões.
 
 ### Falhas
 
@@ -492,7 +492,7 @@ uma única vez. O perfil recarrega ao receber esse resultado confirmado.
 User não depende mais de CommandIt. O teste composto do módulo verifica factories
 independentes dos dois Blocs, estabilidade, argumentos de edição, PATCH com o
 repository real sobre clients mockados e retorno/recarga após conclusão remota.
-Dashboard mantém os demais contratos financeiros legados. Os [flows de perfil](test/features/user/presentation/screens/user/e2e/README.md)
+Dashboard compõe os contratos de aplicação financeiros. Os [flows de perfil](test/features/user/presentation/screens/user/e2e/README.md)
 e de [edição de nome](test/features/user/presentation/screens/edit/e2e/README.md)
 preparam Success/Failure/Loading com fixture HTTP isolada, sem execução em dispositivo.
 
@@ -533,8 +533,144 @@ O módulo registra o repository pelo contrato e o Bloc por factory independente.
 Os dois previews consumidores usam BlocBuilder e PreviewResourceWidget como único
 dono do fechamento. Metrics não depende mais de CommandIt. A Dashboard mantém sua
 própria coordenação pelo contrato: preserva o erro esperado de Metrics quando a
-leitura paralela o envolve em `ParallelWaitError`, sem migrar Expense/Insight ou
-adicionar um Bloc intermediário à Dashboard.
+leitura paralela o envolve em `ParallelWaitError`, sem adicionar um Bloc
+intermediário à Dashboard.
+
+### Insight: Repository E Consulta Com Bloc
+
+`IInsightRepository` fica em `insight/application/repositories/` e retorna
+`Future<List<InsightEntity>> get({year, month})`. `InsightException`, em
+`application/exceptions/`, transporta `ErrorsEntity` nas falhas esperadas.
+`InsightRepository`, em `infrastructure/repositories/`, chama `IHttpClient`
+diretamente, absorvendo o antigo data source remoto, sem Either, storage ou escrita.
+
+O endpoint relativo `insights` recebe somente `filter[year]` e `filter[month]`
+fornecidos; ausência de ambos mantém query nula. O repository não inventa mês/ano,
+completa filtros ou valida intervalos que pertencem ao backend. DTOs permanecem
+internos a infrastructure. A lista preserva ordem, conteúdo original, tipos/grupos
+desconhecidos, onboarding com período nulo e períodos de comparação/múltiplos meses.
+Lista vazia é sucesso; não há persistência nem cálculo financeiro novo no app.
+
+`HttpResponseException` vira `InsightException`, preservando mensagens, ordem,
+status, pointer e parameter. Demais `HttpClientException` usam fallback seguro.
+Parsing inválido (`TypeError`/`FormatException`) e falhas inesperadas propagam,
+sem catch genérico que as transforme em erro esperado ou lista vazia.
+
+`InsightsBloc`, em `insight/presentation/bloc/`, substitui o command de consulta
+compartilhada, sem criar uma screen artificial. `InsightsRequestedEvent` delega
+mês/ano opcionais sem normalização ou validação adicional. Estados sealed são
+`Initial`, `Loading`, `Success(data)` e `Failure(errors)`; loading e disponibilidade
+dos dados derivam do estado. Sucesso contém uma cópia imutável da lista, preservando
+ordem e identidade das entidades. Lista vazia continua sendo sucesso.
+
+`restartable` dá precedência à consulta mais recente, sem cancelar HTTP. Resultados
+e falhas obsoletos ou posteriores ao fechamento não publicam estados nem reportam
+erros. Falhas esperadas preservam a mesma `ErrorsEntity`, inclusive vazia;
+inesperadas usam `addError` e fallback seguro. Sucesso permite refresh e falha
+permite retry manual; não há request na criação ou retry automático.
+
+O módulo registra o repository pelo contrato e o Bloc por factory independente.
+Insight não depende mais de CommandIt. Previews continuam usando listas e exceções,
+sem Either. Dashboard mantém sua própria coordenação sobre o contrato, consome a
+lista diretamente e preserva os erros esperados quando `ParallelWaitError` envolve
+uma falha isolada de Insight, sem adicionar um Bloc intermediário.
+
+### Expense: Repository, Formulário E Listagem Com Bloc
+
+`IExpenseRepository` fica em `expense/application/repositories/`. Consulta por ID,
+criação e atualização retornam `Future<ExpenseEntity>`; listagem retorna
+`Future<ExpensePageEntity>`; exclusão retorna `Future<void>`. `ExpenseException`
+transporta os erros esperados. O repository concreto fica em
+`expense/infrastructure/repositories/` e usa `IHttpClient` diretamente, sem data
+source, Either, storage ou dependência de outro contexto financeiro.
+
+GET/POST/PATCH/DELETE preservam o endpoint relativo `expenses`, ID codificado no
+caminho, payload JSON:API, descrição original e centavos inteiros. Atualização
+envia somente atributos fornecidos, sem inserir data ou normalizar o formulário.
+Criação preserva a data civil fornecida e usa o dia atual somente quando ausente,
+mantendo o comportamento anterior. Exclusão conclui somente após HTTP 204;
+outros status de sucesso geram `ExpenseException`, sem confirmar a exclusão.
+
+Listagem preserva ordem, links opacos, filtros opcionais e fallback de pageSize
+não positivo para 30. Continuações fornecem somente a query: host e caminho não
+são seguidos, mantendo a chamada no endpoint relativo protegido. Parâmetros
+repetidos são preservados; tamanho, categoria, ordenação e limites explícitos
+prevalecem sobre os respectivos filtros da continuação. Um intervalo explícito
+remove os filtros antigos de ano/mês/dia; sem intervalo eles permanecem. Não há
+complementação de limites ausentes. Links sem query ou com fragmento lançam
+`FormatException` antes de HTTP.
+
+`AmountValueObject.create` retorna o valor diretamente e rejeita centavos não
+positivos com `ArgumentError`, preservando igualdade por centavos e sem dependência
+de erros de aplicação. DTOs devolvem entidades diretamente. Respostas inválidas
+(casts, datas, categorias ou centavos não positivos) propagam sem virar falha
+esperada, página parcial ou sucesso vazio. Erros HTTP preservam ordem, mensagens,
+status, pointer e parameter em `ExpenseException`; demais falhas tipadas do client
+usam fallback seguro. Falhas inesperadas propagam sem catch genérico.
+
+`ExpenseBloc`, em `presentation/screens/expense/bloc/`, substitui consulta,
+criação e atualização. Estados sealed distinguem inicial, consulta, dados prontos,
+submissão e suas falhas/sucesso. Consultas usam `restartable`: o ID mais recente
+vence. Submissões são filtradas por `canSubmit` antes de `restartable`: intenções
+durante envio são descartadas sem invalidar o handler ativo; trocar o contexto
+do formulário permite substituir um handler obsoleto ainda pendente. Sucesso
+bloqueia novo envio, exceto criação contínua explicitamente solicitada por hold.
+Falhas preservam a entrada e permitem retry manual. Uma troca de ID invalida o
+resultado da submissão anterior, sem cancelar a operação remota.
+
+`ExpenseScreen` possui a factory estável `bloc: inject<ExpenseBloc>`, cria em
+`initState`, fecha no descarte e substitui somente quando a factory muda.
+Erro de consulta usa `ErrorScreen` e retry. O formulário mantém controllers,
+validação, trim da descrição, centavos, data civil e estado dos pickers; não fecha
+o Bloc recebido da tela. `BlocConsumer` renderiza loading e entrega efeitos únicos:
+422 por pointer conhecido vai ao campo; os demais erros vão ao toast. Sucesso
+contínuo limpa o formulário somente após confirmação remota. A navegação fica nos
+widgets responsáveis, pelas extensões de `BuildContext`, sem callbacks de entrada
+em `ExpenseScreen` ou `ExpenseFormWidget`: voltar faz `pop`, edição devolve a
+entidade confirmada por `pop(expense)` e criação faz `pop(expense)` quando
+`returnToPrevious` é verdadeiro, ou `navigate` para Dashboard nos demais casos.
+`ExpenseScreen` e `ExpenseFormWidget` não recebem `onExpensesChanged`; a Dashboard
+aguarda o resultado tipado da rota e atualiza somente se uma entidade confirmada
+for retornada. Após cadastro contínuo, voltar pelo botão ou pelo sistema devolve
+a última entidade salva, derivada do estado do Bloc, inclusive se a tentativa
+seguinte falhar ou estiver pendente. Sair sem salvar não sinaliza alteração;
+consulta de edição não é confundida com mutação. Não há cópia local do resultado
+ou store global para comunicar a mudança.
+
+`ExpensesBloc`, em `presentation/screens/expenses/bloc/`, possui os snapshots
+imutáveis de lista, filtros, continuação e estados de execução. Refresh/filtros
+usam `restartable` e revisão para invalidar páginas antigas. Paginação descarta
+novas intenções enquanto há operação ativa, mas uma página de uma consulta nova
+pode substituir uma página obsoleta ainda pendente. Os links permanecem opacos;
+IDs repetidos são deduplicados, com ordenação estável por data civil decrescente.
+Falha de página preserva itens e continuação para retry manual. Retorno da edição
+atualiza a lista ou remove o item quando deixa de corresponder aos filtros.
+
+Exclusão usa `droppable`, bloqueia consultas/mutações concorrentes e remove o item
+somente quando o contrato conclui. Falha mantém o item e permite nova confirmação.
+Se os filtros externos mudarem durante a exclusão, somente a última intenção fica
+pendente e é consultada depois da mutação, sem sobrepor leitura e escrita.
+O mixin da listagem possui somente scroll, diálogo de confirmação e navegação de
+edição; não mantém cópia local dos dados ou do loading. Factory, filtros e descarte
+invalidam retornos de diálogos/edições antigos. A tela é dona do fechamento do Bloc.
+Os Blocs preservam `ExpenseException.errors`, reportam inesperadas por `addError`
+com fallback seguro e verificam fechamento/handler invalidado antes de publicar.
+Isso não cancela HTTP ou desfaz mutações já iniciadas.
+
+O módulo registra os dois Blocs por factory, sem commands ou data source. Previews
+usam factories estáveis ou `PreviewResourceWidget` como único dono do recurso.
+Testes de Bloc, tela e módulo cobrem concorrência, retry, lifecycle e retorno da
+edição com repository real sobre HTTP mockado. Os flows de
+[criação](test/features/expense/presentation/screens/expense/e2e/README.md) e
+[listagem/exclusão](test/features/expense/presentation/screens/expenses/e2e/README.md)
+usam fixture HTTP isolada e estão preparados, não executados em dispositivo.
+
+Dashboard agora compõe somente resultados diretos de User, Metrics, Insight e
+Expense, sem Either. Uma falha no histórico continua sendo desconhecimento do
+limite inicial, não um histórico vazio confirmado. Falhas esperadas isoladas nas
+seções preservam a `ErrorsEntity` mesmo envolvidas em `ParallelWaitError`.
+Previews e testes consumidores usam entidades/resultados diretos. O teste de
+SessionInterceptor usa o repository real no lugar do data source removido.
 
 ### Clients Compartilhados
 
@@ -633,14 +769,20 @@ Firebase configuradas. Falha de inicialização impede o início do app.
 
 O bootstrap resolve `ICrashClient` e conecta FlutterError e PlatformDispatcher;
 erros do framework são não fatais e erros assíncronos não tratados são fatais.
-O handler global CommandIt foi removido de `main.dart`; seus testes legados ainda
-precisam ser migrados/removidos com os demais consumidores antigos. `addError`
+O handler global CommandIt foi removido de `main.dart`, assim como seus testes
+legados. `addError`
 usa o mecanismo de Bloc e não implica integração automática com Crashlytics.
 
 Clients Firebase ficam em `core/infrastructure/clients/firebase/`. Messaging
-expõe permissão, token e streams; NotificationClient encapsula o plugin local,
+expõe permissão, `register()`, `onRegistered` e mensagens em primeiro plano.
+O registro retorna `Future<void>` e delega ao SDK, sem bloquear por consulta
+prévia ao APNs; o stream entrega Firebase Installation IDs (FIDs), não tokens
+FCM legados. O consumidor deve assinar `onRegistered` antes de chamar `register()`
+e cancelar sua própria subscription. O client não registra automaticamente na
+construção nem solicita permissão durante o registro.
+NotificationClient encapsula o plugin local,
 exige `initialize()` antes de `show` e usa o canal `cordato_default`.
-O app não integra automaticamente envio de token ao backend, notificação em
+O app não integra automaticamente envio de FID ao backend, notificação em
 primeiro plano, navegação por toque ou handler Dart de background.
 APNs remoto e entrega real de push ainda exigem verificação.
 Símbolos iOS Release são enviados por `ios/upload_crashlytics_symbols.sh`.
@@ -805,17 +947,24 @@ isso não significa que todo o aplicativo esteja migrado ou componha seus destin
 | Session | Contrato em application, repository direto em infrastructure e SessionBloc contínuo. |
 | User | Contrato/repository migrados; perfil, avatar e exclusão com UserBloc; edição de nome com EditBloc; sem commands. |
 | Metrics | Contrato em application, repository direto em infrastructure e ExpenseMetricsBloc por factory, sem Either/data source/commands. |
-| Expense e Insight | Ainda possuem contratos/implementações/data sources no desenho anterior. |
-| Dashboard | Já usa Bloc, mas depende de contratos e resultados financeiros legados. |
+| Insight | Contrato em application, repository direto em infrastructure e InsightsBloc por factory, sem Either/data source/commands. |
+| Expense | ExpenseBloc e ExpensesBloc por factory; CRUD, cadastro contínuo, filtros e paginação; sem Either/data source/commands. |
+| Dashboard | Bloc agregado sobre contratos de aplicação e resultados diretos dos contextos consultados, sem Either. |
 | Bootstrap e Root | AppWidget é dono do SessionBloc; AppScreen apenas visual; handler CommandIt removido do bootstrap. |
-| Dependências/core | CommandIt não está no pubspec; Either e `response<T>` foram removidos, com consumidores ainda existentes. |
+| Dependências/core | CommandIt, Either e `response<T>` removidos; testes de core alinhados aos DTOs e exceções HTTP atuais. |
 | Composição global | Session/Welcome ativos e referência duplicada de Authentication removida; Dashboard/Settings e outros destinos seguem comentados. |
 | E2E | Flows presentes, dependentes de build compilável e composição de sessão/destinos restaurada corretamente. |
 
-Portanto, não há garantia de análise, build, suíte completa ou navegação E2E
-aprovados neste checkout. Não restaure dependências antigas apenas para esconder
+Após a revisão de testes e a migração do Firebase Messaging para registro por
+FID, a suíte completa passou com 907 testes, incluindo 10 de arquitetura e 15 do
+MessagingClient. `flutter pub get` e `flutter analyze` concluíram sem problemas.
+Build, entrega real de push e navegação E2E não foram validados.
+Não restaure dependências antigas apenas para esconder
 a migração incompleta; também não declare comportamento de módulo desativado
 como disponível no app em execução.
+
+Os registros a seguir descrevem resultados históricos das migrações, anteriores
+à revisão da suíte completa acima.
 
 Na migração de Sign-up, `flutter pub get` concluiu e o lote focado de arquitetura,
 application/infrastructure de Authentication, validators e telas Sign-in/Sign-up
@@ -927,6 +1076,53 @@ global terminou com 606 testes aprovados e 22 falhas, incluindo compilação leg
 por Either/CommandIt/response, testes antigos de headers e referência não resolvida
 a `userDependenciesModule` fora do escopo. Não houve execução visual dos previews
 ou E2E; a Dashboard ainda importa os contratos financeiros legados.
+
+Na primeira rodada de Insight, `flutter pub get` concluiu. A análise focada de
+domain/application/infrastructure, fake de preview, testes/suporte e check
+arquitetural passou sem problemas. `flutter test test/architecture
+test/features/metrics test/features/insight/application
+test/features/insight/infrastructure test/features/insight/domain` passou com 134
+testes, incluindo 28 de Insight. A cobertura verifica filtros opcionais, conteúdo
+e ordem, períodos, onboarding, lista vazia, parsing inválido, erros HTTP, falhas
+inesperadas e espera da resposta.
+
+Os testes de módulo/command de Insight e do consumidor Dashboard foram executados,
+mas falharam na compilação por CommandIt e pelo Either ainda usado em Expense.
+O teste novo do módulo não constitui DI aprovada enquanto o command o bloquear.
+`flutter analyze` global encontrou 288 problemas; `flutter test` global terminou
+com 626 testes aprovados e 21 falhas, incluindo bloqueios de compilação e os
+testes antigos de headers. Não houve execução visual dos previews ou E2E, nem
+restauração de dependências legadas. Nenhum Bloc foi criado em Insight nesta rodada.
+
+Na segunda rodada de Insight, `flutter pub get` concluiu. `dart analyze
+lib/features/insight test/features/insight test/support/insight
+test/architecture/bounded_context_dependencies_test.dart` passou sem problemas.
+`flutter test test/architecture test/features/metrics test/features/insight` passou
+com 152 testes, incluindo 17 de InsightsBloc e o teste de módulo anteriormente
+bloqueado, agora verificando factories independentes sobre repository real e
+client HTTP mockado. O command e seus testes legados foram removidos; a regra
+arquitetural impede commands em Insight. A análise global encontrou 284 problemas
+fora de Insight; a suíte global terminou com 644 testes aprovados e 19 falhas,
+incluindo compilação legada e testes antigos de headers. Não houve execução visual
+dos previews ou E2E. Dashboard ainda depende dos contratos legados de Expense.
+
+Na primeira rodada de Expense, `flutter pub get` concluiu. A análise focada de
+application/domain/infrastructure, fakes de preview, Dashboard, testes/suporte
+correspondentes, SessionInterceptor e check arquitetural passou sem problemas.
+O lote abaixo passou com 380 testes, incluindo CRUD, parsing, erros HTTP,
+paginação, centavos, datas civis, coordenação da Dashboard e autenticação Bearer:
+
+```bash
+flutter test test/architecture test/features/expense/application test/features/expense/infrastructure test/features/expense/domain test/features/expense/presentation/extensions test/features/expense/presentation/screens/expense/validators test/features/dashboard/presentation/screens/dashboard/bloc test/features/metrics test/features/insight test/features/core/infrastructure/clients/http/interceptors/session_interceptor_test.dart
+```
+
+`flutter analyze` global encontrou 75 problemas; `flutter test` global terminou
+com 831 testes aprovados e 11 falhas. Permanecem bloqueados os commands, telas e
+teste de módulo de Expense por CommandIt removido; testes antigos de response e
+do handler CommandIt, headers e a referência `userDependenciesModule` também
+continuam pendentes. A análise global ainda reporta um import não utilizado em
+Insight fora do escopo. Os testes dos commands foram adaptados ao novo contrato,
+não validados em execução. Não houve execução visual de previews ou E2E.
 
 O código financeiro existente inclui formulário compartilhado de criação/edição,
 listagem com paginação/filtros/gestos, métricas e insights na Dashboard, além de

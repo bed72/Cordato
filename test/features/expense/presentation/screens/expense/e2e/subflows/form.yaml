@@ -1,0 +1,11 @@
+appId: com.bed.cordato
+---
+- tapOn: Adicionar gasto
+- assertVisible: Novo gasto
+- tapOn: 'Ex: Mercado'
+- inputText: Gasto E2E
+- hideKeyboard
+- tapOn: '(?s)Valor.*'
+- tapOn: '1'
+- tapOn: '✓'
+- assertVisible: Cadastrar

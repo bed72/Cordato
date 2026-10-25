@@ -1,0 +1,24 @@
+appId: com.bed.cordato
+name: Expense - Creation Loading
+tags: [expense, loading]
+env:
+  TEST_SERVER: http://127.0.0.1:8771
+  SCENARIO: loading
+onFlowComplete:
+  - runScript: scripts/release.js
+---
+- runFlow: subflows/login.yaml
+- runFlow: subflows/form.yaml
+- tapOn:
+    text: Cadastrar
+    retryTapIfNoChange: false
+- assertVisible:
+    text: Gasto E2E
+    enabled: false
+- assertVisible: Novo gasto
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.operations.create === 1}
+- runScript: scripts/release.js
+- extendedWaitUntil:
+    visible: Gasto cadastrado
+    timeout: 10000

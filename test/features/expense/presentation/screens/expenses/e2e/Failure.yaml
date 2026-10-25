@@ -1,0 +1,17 @@
+appId: com.bed.cordato
+name: Expenses - Delete Failure
+tags: [expense, expenses, failure]
+env:
+  TEST_SERVER: http://127.0.0.1:8771
+  SCENARIO: failure
+---
+- runFlow: subflows/list.yaml
+- runFlow: subflows/delete.yaml
+- assertVisible: Despesa mantida
+- assertVisible: '(?s).*Mercado E2E.*'
+- runFlow: subflows/delete.yaml
+- extendedWaitUntil:
+    visible: Despesa excluída
+    timeout: 10000
+- runScript: ../../expense/e2e/scripts/stats.js
+- assertTrue: ${output.stats.operations.delete === 2 && output.stats.authorized}

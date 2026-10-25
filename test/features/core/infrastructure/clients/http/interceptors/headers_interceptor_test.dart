@@ -9,16 +9,17 @@ void main() {
   test('adds JSON:API headers to requests with a body', () async {
     final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
       ..interceptors.add(HeadersInterceptor());
+    addTearDown(() => dio.close(force: true));
     RequestOptions? captured;
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
           captured = options;
           handler.resolve(
-            Response<String>(
+            Response<Map<String, dynamic>>(
               requestOptions: options,
               statusCode: 200,
-              data: '{}',
+              data: {},
             ),
           );
         },
@@ -45,16 +46,17 @@ void main() {
   test('adds Accept without inventing a Content-Type for GET', () async {
     final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
       ..interceptors.add(HeadersInterceptor());
+    addTearDown(() => dio.close(force: true));
     RequestOptions? captured;
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
           captured = options;
           handler.resolve(
-            Response<String>(
+            Response<Map<String, dynamic>>(
               requestOptions: options,
               statusCode: 200,
-              data: '{}',
+              data: {},
             ),
           );
         },

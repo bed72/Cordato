@@ -5,14 +5,14 @@ import 'package:cordato/features/core/presentation/formatters/interface_date_for
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
-import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
+import 'package:cordato/features/insight/application/repositories/interface_insight_repository.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
-import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/dashboard_screen.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
 
-final dashboardRoutesModule = createModule(
+final dashboardModule = createModule(
   path: RouteEnum.dashboard.path,
   register: (context) {
     context.add<DashboardBloc>(

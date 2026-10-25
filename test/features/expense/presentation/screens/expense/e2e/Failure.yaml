@@ -1,0 +1,27 @@
+appId: com.bed.cordato
+name: Expense - Creation Failure
+tags: [expense, failure]
+env:
+  TEST_SERVER: http://127.0.0.1:8771
+  SCENARIO: failure
+---
+- runFlow: subflows/login.yaml
+- runFlow: subflows/form.yaml
+- tapOn:
+    text: Cadastrar
+    retryTapIfNoChange: false
+- assertVisible: Descrição recusada
+- assertVisible: Gasto E2E
+- tapOn: Gasto E2E
+- eraseText
+- inputText: Retry E2E
+- hideKeyboard
+- assertNotVisible: Descrição recusada
+- tapOn:
+    text: Cadastrar
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: Gasto cadastrado
+    timeout: 10000
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.operations.create === 2 && output.stats.authorized}

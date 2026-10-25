@@ -130,6 +130,8 @@ void main() {
               (targetContext == 'authentication' ||
                   targetContext == 'session' ||
                   targetContext == 'user' ||
+                  targetContext == 'insight' ||
+                  targetContext == 'expense' ||
                   targetContext == 'metrics') &&
               targetPath ==
                   'application/repositories/interface_${targetContext}_repository.dart';
@@ -181,6 +183,8 @@ void main() {
           (file.uri.pathSegments.contains('authentication') ||
               file.uri.pathSegments.contains('session') ||
               file.uri.pathSegments.contains('user') ||
+              file.uri.pathSegments.contains('insight') ||
+              file.uri.pathSegments.contains('expense') ||
               file.uri.pathSegments.contains('metrics')) &&
           file.uri.pathSegments.contains('application'),
     )) {
@@ -233,10 +237,10 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
-  test('keeps User and Metrics on direct repository results without data sources', () {
+  test('keeps migrated contexts on direct repository results without data sources', () {
     final violations = <String>[];
     for (final file in _dartFiles().where(
-      (file) => file.uri.pathSegments.contains('user') || file.uri.pathSegments.contains('metrics'),
+      (file) => file.uri.pathSegments.contains('user') || file.uri.pathSegments.contains('metrics') || file.uri.pathSegments.contains('insight') || file.uri.pathSegments.contains('expense'),
     )) {
       final source = file.readAsStringSync();
       if (source.contains('features/core/domain/either.dart') ||
@@ -265,10 +269,10 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
-  test('keeps User and Metrics presentation on Bloc without legacy commands', () {
+  test('keeps User, Metrics and Insight presentation on Bloc without legacy commands', () {
     final violations = <String>[];
     for (final file in _dartFiles().where(
-      (file) => file.path.startsWith('lib/features/user/') || file.path.startsWith('lib/features/metrics/'),
+      (file) => file.path.startsWith('lib/features/user/') || file.path.startsWith('lib/features/metrics/') || file.path.startsWith('lib/features/insight/'),
     )) {
       final source = file.readAsStringSync();
       if (file.uri.pathSegments.contains('commands') ||

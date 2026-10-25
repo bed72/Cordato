@@ -4,11 +4,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 abstract interface class IMessagingClient {
   String get platform;
 
-  Future<String?> getToken();
+  Future<void> register();
 
   Future<bool> requestPermission();
 
-  Stream<String> get onTokenRefresh;
+  Stream<String> get onRegistered;
 
   Stream<Map<String, dynamic>> get onForegroundMessage;
 }
@@ -25,13 +25,7 @@ final class MessagingClient({
   };
 
   @override
-  Future<String?> getToken() async {
-    if (platform == 'ios' && await messaging.getAPNSToken() == null) {
-      return null;
-    }
-
-    return messaging.getToken();
-  }
+  Future<void> register() => messaging.register();
 
   @override
   Future<bool> requestPermission() async {
@@ -41,7 +35,7 @@ final class MessagingClient({
   }
 
   @override
-  Stream<String> get onTokenRefresh => messaging.onTokenRefresh;
+  Stream<String> get onRegistered => messaging.onRegistered;
 
   @override
   Stream<Map<String, dynamic>> get onForegroundMessage =>

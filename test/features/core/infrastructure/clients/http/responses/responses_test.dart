@@ -1,235 +1,143 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_exception_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 
 void main() {
-  group('response', () {
-    test('preserves query parameters separately from JSON pointers', () async {
-      final data = await response<int>(
-        execute: () async => throw HttpResponseException.fromResponse(
-          Responses(
-            status: 422,
-            body: {
-              'errors': [
-                {
-                  'status': '422',
-                  'title': 'Parâmetro inválido',
-                  'detail':
-                      'As datas inicial e final devem ser informadas juntas.',
-                  'source': {'parameter': 'start_date'},
-                },
-                {
-                  'source': {
-                    'pointer': '/data/attributes/name',
-                    'parameter': 'filter',
-                  },
-                },
-                {'detail': 'Sem origem'},
-              ],
-            },
-          ),
-        ),
-        from: (_) => throw StateError('must not convert an error'),
-      );
-      final errors = data.left.toEntity().errors;
+  group('Responses', () {
+    test('preserves status and body', () {
+      final body = <String, dynamic>{'name': 'Pessoa'};
+      final response = Responses(status: 200, body: body);
 
-      expect(data.left.errors.first.parameter, 'start_date');
-      expect(errors.first.parameter, 'start_date');
-      expect(errors.first.pointer, isNull);
+      expect(response.status, 200);
+      expect(response.body, same(body));
+    });
+  });
+
+  group('ErrorsResponse', () {
+    test('preserves error order and metadata when converting to entities', () {
+      final response = ErrorsResponse.fromJson({
+        'errors': [
+          {
+            'status': '422',
+            'title': 'Parâmetro inválido',
+            'detail': 'Informe o período.',
+            'source': {'parameter': 'start_date'},
+          },
+          {
+            'source': {
+              'pointer': '/data/attributes/name',
+              'parameter': 'filter',
+            },
+          },
+          {'detail': 'Sem origem'},
+        ],
+      });
+      final errors = response.toEntity().errors;
+
+      expect(response.errors, hasLength(3));
+      expect(response.errors.first.parameter, 'start_date');
+      expect(errors, hasLength(3));
       expect(errors.first.status, '422');
       expect(errors.first.title, 'Parâmetro inválido');
+      expect(errors.first.detail, 'Informe o período.');
+      expect(errors.first.parameter, 'start_date');
+      expect(errors.first.pointer, isNull);
       expect(errors[1].pointer, '/data/attributes/name');
       expect(errors[1].parameter, 'filter');
-      expect(errors.last.parameter, isNull);
+      expect(errors[1].title, isNull);
+      expect(errors.last.detail, 'Sem origem');
       expect(errors.last.pointer, isNull);
+      expect(errors.last.parameter, isNull);
     });
 
-    test(
-      'waits for the request and exposes body and status to the converter',
-      () async {
-        final pending = Completer<Responses>();
-        int executions = 0;
-        int conversions = 0;
-        final data = response<String>(
-          execute: () {
-            executions++;
-            return pending.future;
-          },
-          from: (success) {
-            conversions++;
-            return '${success.status}: ${success.body['name']}';
-          },
-        );
+    test('uses fallback for an empty error envelope or entity conversion', () {
+      final parsed = ErrorsResponse.fromJson({'errors': []});
+      final entity = const ErrorsResponse(errors: []).toEntity();
 
-        expect(executions, 1);
-        expect(conversions, 0);
-        pending.complete(
-          const Responses(status: 200, body: {'name': 'Gabriel'}),
-        );
+      expect(parsed.errors.single.title, 'Erro desconhecido');
+      expect(
+        parsed.errors.single.detail,
+        'Não foi possível processar a resposta.',
+      );
+      expect(entity.errors.single.title, 'Erro desconhecido');
+    });
 
-        final value = await data;
-        expect(conversions, 1);
-        expect(value.right, '200: Gabriel');
-      },
-    );
-
-    test('supports boolean datas for responses without a body', () async {
-      for (final status in [204, 200]) {
-        final data = await response<bool>(
-          execute: () async => Responses(status: status, body: {}),
-          from: (success) => success.status == 204,
-        );
-
-        expect(data.isRight, isTrue);
-        expect(data.right, status == 204);
+    test('rejects malformed JSON instead of hiding parsing failures', () {
+      for (final body in <Map<String, dynamic>>[
+        {},
+        {'errors': 'invalid'},
+        {
+          'errors': [null],
+        },
+        {
+          'errors': [
+            {'status': 422},
+          ],
+        },
+        {
+          'errors': [
+            {'source': 'invalid'},
+          ],
+        },
+      ]) {
+        expect(() => ErrorsResponse.fromJson(body), throwsA(isA<TypeError>()));
       }
     });
+  });
 
-    test(
-      'preserves all JSON:API errors without calling the success converter',
-      () async {
-        final data = await response<String>(
-          execute: () async => throw HttpResponseException.fromResponse(
-            Responses(
-              status: 422,
-              body: {
-                'errors': [
-                  {
-                    'status': '422',
-                    'title': 'Nome inválido',
-                    'detail': 'Informe um nome.',
-                    'source': {'pointer': '/data/attributes/name'},
-                  },
-                  {'status': '403', 'title': 'Não autorizado'},
-                ],
-              },
-            ),
-          ),
-          from: (_) => throw StateError('must not convert an error'),
-        );
-
-        expect(data.left.errors, hasLength(2));
-        expect(data.left.errors.first.status, '422');
-        expect(data.left.errors.first.title, 'Nome inválido');
-        expect(data.left.errors.last.title, 'Não autorizado');
-        expect(data.left.errors.first.detail, 'Informe um nome.');
-        expect(data.left.errors.first.pointer, '/data/attributes/name');
-      },
-    );
-
-    test('preserves the error returned by an unavailable server', () async {
-      final data = await response<int>(
-        execute: () async => throw HttpResponseException.fromResponse(
-          Responses(
-            status: 503,
-            body: {
-              'errors': [
-                {'title': 'Sem conexão', 'detail': 'Tente novamente.'},
-              ],
-            },
-          ),
-        ),
-        from: (_) => 1,
-      );
-
-      expect(data.left.errors.single.title, 'Sem conexão');
-      expect(data.left.errors.single.detail, 'Tente novamente.');
-    });
-
-    test('preserves the same typed errors including an empty list', () async {
+  group('HttpResponseException', () {
+    test('preserves status and typed errors including an empty list', () {
       const errors = ErrorsResponse(errors: []);
-      final data = await response<int>(
-        execute: () async =>
-            throw HttpResponseException(status: 422, errors: errors),
-        from: (_) => throw StateError('must not convert an error'),
-      );
+      final exception = HttpResponseException(status: 422, errors: errors);
 
-      expect(data.left, same(errors));
-      expect(data.left.errors, isEmpty);
+      expect(exception.status, 422);
+      expect(exception.errors, same(errors));
+      expect(exception.errors.errors, isEmpty);
     });
 
-    test(
-      'translates transport and invalid responses to unknown errors',
-      () async {
-        for (final failure in <HttpClientException>[
-          HttpTransportException(failure: HttpExceptionEnum.connection),
-          HttpTransportException(failure: HttpExceptionEnum.timeout),
-          HttpTransportException(failure: HttpExceptionEnum.cancelled),
-          HttpInvalidResponseException(status: 200),
-        ]) {
-          final data = await response<int>(
-            execute: () async => throw failure,
-            from: (_) => throw StateError('must not convert an error'),
-          );
-
-          expect(data.left.errors.single.title, 'Erro desconhecido');
-        }
-      },
-    );
-
-    test(
-      'returns an unknown error for malformed or empty error envelopes',
-      () async {
-        for (final body in <Map<String, dynamic>>[
-          {},
-          {'errors': []},
-          {'errors': 'invalid'},
-          {
-            'errors': [null],
+    test('parses remote errors while preserving status', () {
+      final exception = HttpResponseException.fromResponse(
+        const Responses(
+          status: 503,
+          body: {
+            'errors': [
+              {'title': 'Sem conexão', 'detail': 'Tente novamente.'},
+            ],
           },
-        ]) {
-          final data = await response<int>(
-            execute: () async => throw HttpResponseException.fromResponse(
-              Responses(status: 500, body: body),
-            ),
-            from: (_) => 1,
-          );
-
-          expect(data.left.errors.single.title, 'Erro desconhecido');
-          expect(
-            data.left.errors.single.detail,
-            'Não foi possível processar a resposta.',
-          );
-        }
-      },
-    );
-
-    test(
-      'returns an unknown error for synchronous request exceptions',
-      () async {
-        final data = await response<int>(
-          execute: () => throw StateError('request failed'),
-          from: (_) => 1,
-        );
-
-        expect(data.left.errors.single.title, 'Erro desconhecido');
-      },
-    );
-
-    test(
-      'returns an unknown error for asynchronous request exceptions',
-      () async {
-        final data = await response<int>(
-          execute: () async => throw StateError('request failed'),
-          from: (_) => 1,
-        );
-
-        expect(data.left.errors.single.title, 'Erro desconhecido');
-      },
-    );
-
-    test('returns an unknown error when success conversion fails', () async {
-      final data = await response<DateTime>(
-        execute: () async =>
-            const Responses(status: 200, body: {'created_at': 'invalid'}),
-        from: (success) => DateTime.parse(success.body['created_at'] as String),
+        ),
       );
 
-      expect(data.left.errors.single.title, 'Erro desconhecido');
+      expect(exception.status, 503);
+      expect(exception.errors.errors.single.title, 'Sem conexão');
+      expect(exception.errors.errors.single.detail, 'Tente novamente.');
+    });
+
+    test('uses fallback for malformed or empty remote envelopes', () {
+      for (final body in <Map<String, dynamic>>[
+        {},
+        {'errors': []},
+        {'errors': 'invalid'},
+        {
+          'errors': [null],
+        },
+        {
+          'errors': [
+            {'source': 'invalid'},
+          ],
+        },
+      ]) {
+        final exception = HttpResponseException.fromResponse(
+          Responses(status: 500, body: body),
+        );
+
+        expect(exception.status, 500);
+        expect(exception.errors.errors.single.title, 'Erro desconhecido');
+        expect(
+          exception.errors.errors.single.detail,
+          'Não foi possível processar a resposta.',
+        );
+      }
     });
   });
 }

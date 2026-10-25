@@ -3,16 +3,14 @@ import 'dart:async';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
-import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart'
-    as expense;
-import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart'
-    as insight;
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+import 'package:cordato/features/insight/domain/entities/insight_entity.dart';
+import 'package:cordato/features/insight/application/exceptions/insight_exception.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
@@ -51,7 +49,7 @@ void main() {
               category: .food,
               occurredOn: date,
               description: 'Despesa',
-              cents: .create(cents: 100).right,
+              cents: .create(cents: 100),
             ),
         ],
       );
@@ -66,7 +64,7 @@ void main() {
       );
 
   Future<void> flush() => Future<void>.delayed(Duration.zero);
-  Future<expense.GetRepositoryType> history() =>
+  Future<ExpensePageEntity> history() =>
       expenses.get(pageSize: 1, sort: 'occurred_on');
 
   DashboardBloc create({DateTime? date}) {
@@ -101,7 +99,7 @@ void main() {
     ).thenAnswer((_) => response());
   }
 
-  void stubInsights(Future<insight.GetRepositoryType> Function() response) {
+  void stubInsights(Future<List<InsightEntity>> Function() response) {
     when(
       () => insights.get(
         year: any(named: 'year'),
@@ -110,7 +108,7 @@ void main() {
     ).thenAnswer((_) => response());
   }
 
-  void stubRecent(Future<expense.GetRepositoryType> Function() response) {
+  void stubRecent(Future<ExpensePageEntity> Function() response) {
     when(
       () => expenses.get(
         pageSize: 6,
@@ -127,9 +125,9 @@ void main() {
     insights = InsightRepositoryMock();
     metricsRepository = MetricsRepositoryMock();
     when(() => users.getById()).thenAnswer((_) async => profile);
-    when(history).thenAnswer((_) async => Right(page([DateTime(2024, 1)])));
-    stubRecent(() async => Right(page([])));
-    stubInsights(() async => const Right([]));
+    when(history).thenAnswer((_) async => page([DateTime(2024, 1)]));
+    stubRecent(() async => page([]));
+    stubInsights(() async => const []);
     when(
       () => metricsRepository.getExpenses(
         groupBy: .category,
@@ -208,7 +206,7 @@ void main() {
     'reads User and history in parallel before starting the sections',
     () async {
       final pendingUser = Completer<UserEntity>();
-      final pendingHistory = Completer<expense.GetRepositoryType>();
+      final pendingHistory = Completer<ExpensePageEntity>();
       when(() => users.getById()).thenAnswer((_) => pendingUser.future);
       when(history).thenAnswer((_) => pendingHistory.future);
       await send(DashboardOpened());
@@ -220,7 +218,7 @@ void main() {
       await flush();
       expect(bloc.state.user, isNull);
       verifyZeroInteractions(metricsRepository);
-      pendingHistory.complete(Right(page([])));
+      pendingHistory.complete(page([]));
       await flush();
       expect(bloc.state.phase, DashboardPhaseEnum.ready);
     },
@@ -231,14 +229,14 @@ void main() {
     () async {
       final states = recordStates();
       final pendingMetrics = Completer<ExpenseMetricsEntity>();
-      final pendingInsights = Completer<insight.GetRepositoryType>();
-      final pendingExpenses = Completer<expense.GetRepositoryType>();
+      final pendingInsights = Completer<List<InsightEntity>>();
+      final pendingExpenses = Completer<ExpensePageEntity>();
       stubMetrics(() => pendingMetrics.future);
       stubInsights(() => pendingInsights.future);
       stubRecent(() => pendingExpenses.future);
       await send(DashboardOpened());
       pendingMetrics.complete(totals(DateTime(2026, 10)));
-      pendingExpenses.complete(Right(page([])));
+      pendingExpenses.complete(page([]));
       await flush();
       expect(states.length, 1);
       expect(bloc.state.phase, DashboardPhaseEnum.loading);
@@ -246,7 +244,7 @@ void main() {
       expect(bloc.state.metrics, isNull);
       expect(bloc.state.expenses, isNull);
       expect(bloc.state.insights, isNull);
-      pendingInsights.complete(const Right([]));
+      pendingInsights.complete(const []);
       await flush();
       expect(states.length, 2);
       expect(bloc.state.phase, DashboardPhaseEnum.ready);
@@ -270,22 +268,24 @@ void main() {
       test(
         '$section preserves the original typed failure after every section completes with ${errors.errors.length} errors',
         () async {
-          final pending = Completer<expense.GetRepositoryType>();
+          final pending = Completer<ExpensePageEntity>();
           stubRecent(() => pending.future);
           switch (section) {
             case 'metrics':
               stubMetrics(() async => throw MetricsException(errors: errors));
             case 'insights':
-              stubInsights(() async => Left(errors));
+              stubInsights(() async => throw InsightException(errors: errors));
             case 'expenses':
               stubMetrics(() async => totals(DateTime(2026, 10)));
           }
           final states = recordStates();
           await send(DashboardOpened());
           expect(bloc.state.phase, DashboardPhaseEnum.loading);
-          pending.complete(
-            section == 'expenses' ? Left(errors) : Right(page([])),
-          );
+          if (section == 'expenses') {
+            pending.completeError(ExpenseException(errors: errors));
+          } else {
+            pending.complete(page([]));
+          }
           await flush();
           expect(states.map((state) => state.phase), [
             DashboardPhaseEnum.loading,
@@ -317,7 +317,7 @@ void main() {
         });
         when(history).thenAnswer((_) async {
           if (unexpected) throw StateError('history');
-          return Left(ErrorsEntity.unknown());
+          throw ExpenseException(errors: ErrorsEntity.unknown());
         });
         await send(DashboardOpened());
         expect(bloc.state.phase, DashboardPhaseEnum.ready);
@@ -334,7 +334,7 @@ void main() {
       'loads the complete civil interval across ${date.year}-${date.month}',
       () async {
         await bloc.close();
-        when(history).thenAnswer((_) async => Right(page([DateTime(2020)])));
+        when(history).thenAnswer((_) async => page([DateTime(2020)]));
         bloc = create(date: date);
         await send(DashboardOpened());
         final states = recordStates();
@@ -367,7 +367,7 @@ void main() {
   }
 
   test('blocks future months and months before the first expense', () async {
-    when(history).thenAnswer((_) async => Right(page([DateTime(2026, 10)])));
+    when(history).thenAnswer((_) async => page([DateTime(2026, 10)]));
     await send(DashboardOpened());
     final ready = bloc.state;
     clearInteractions(metricsRepository);
@@ -413,11 +413,9 @@ void main() {
 
   test('reads the first historical civil month once and ignores opaque continuations', () async {
     when(history).thenAnswer(
-      (_) async => Right(
-        page([
-          DateTime.utc(2000, 2, 29, 23),
-        ], next: 'https://other.example/?page[cursor]=opaque'),
-      ),
+      (_) async => page([
+        DateTime.utc(2000, 2, 29, 23),
+      ], next: 'https://other.example/?page[cursor]=opaque'),
     );
     await send(DashboardOpened());
     expect(bloc.state.firstMonth, DateTime(2000, 2));
@@ -433,7 +431,7 @@ void main() {
   });
 
   test('successful empty history has no previous month and does not fabricate a limit', () async {
-    when(history).thenAnswer((_) async => Right(page([])));
+    when(history).thenAnswer((_) async => page([]));
     await send(DashboardOpened());
     expect(bloc.state.phase, DashboardPhaseEnum.ready);
     expect(bloc.state.firstMonth, isNull);
@@ -461,7 +459,7 @@ void main() {
       () async {
         await send(DashboardOpened());
         await send(DashboardPreviousMonthRequested());
-        when(history).thenAnswer((_) async => Right(page(dates)));
+        when(history).thenAnswer((_) async => page(dates));
         await send(DashboardRefreshRequested());
         expect(bloc.state.selectedMonth, DateTime(2026, 10));
         expect(bloc.state.metrics!.startDate, DateTime(2026, 10));
@@ -474,7 +472,8 @@ void main() {
   test('history failure preserves a past selection and disables the previous month', () async {
     await send(DashboardOpened());
     await send(DashboardPreviousMonthRequested());
-    when(history).thenAnswer((_) async => Left(ErrorsEntity.unknown()));
+    when(history)
+        .thenAnswer((_) async => throw ExpenseException(errors: .unknown()));
     await send(DashboardRefreshRequested());
     expect(bloc.state.selectedMonth, DateTime(2026, 9));
     expect(bloc.state.metrics!.startDate, DateTime(2026, 9));
@@ -561,15 +560,15 @@ void main() {
           );
         }
         await send(DashboardOpened());
-        final pending = Completer<expense.GetRepositoryType>();
+        final pending = Completer<ExpensePageEntity>();
         when(history).thenAnswer((_) => pending.future);
         await send(event);
-        when(history).thenAnswer((_) async => Right(page([])));
+        when(history).thenAnswer((_) async => page([]));
         stubMetrics(() async => totals(DateTime(2026, 10)));
         await send(DashboardExpensesChanged());
         final ready = bloc.state;
         expect(ready.phase, DashboardPhaseEnum.ready);
-        pending.complete(Right(page([DateTime(2000)])));
+        pending.complete(page([DateTime(2000)]));
         await flush();
         expect(bloc.state, same(ready));
       },
@@ -638,7 +637,7 @@ void main() {
     test(
       'closing during ${pendingHistory ? 'history' : 'sections'} ignores late completion',
       () async {
-        final oldHistory = Completer<expense.GetRepositoryType>();
+        final oldHistory = Completer<ExpensePageEntity>();
         final oldMetrics = Completer<ExpenseMetricsEntity>();
         if (pendingHistory) {
           when(history).thenAnswer((_) => oldHistory.future);
@@ -652,7 +651,7 @@ void main() {
         final closed = bloc.state;
         if (pendingHistory) {
           oldHistory.complete(
-            Right(page([DateTime(2000)], next: '?page[after]=late')),
+            page([DateTime(2000)], next: '?page[after]=late'),
           );
         } else {
           oldMetrics.completeError(StateError('late metrics'));

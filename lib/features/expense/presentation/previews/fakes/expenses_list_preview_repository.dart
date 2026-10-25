@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
-import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
 final class ExpensesListPreviewRepository({
   required final List<ExpenseEntity> items,
@@ -12,7 +12,7 @@ final class ExpensesListPreviewRepository({
   final ErrorsEntity? failure,
 }) implements IExpenseRepository {
   @override
-  Future<GetRepositoryType> get({
+  Future<ExpensePageEntity> get({
     String? sort,
     int pageSize = 30,
     DateTime? to,
@@ -20,8 +20,8 @@ final class ExpensesListPreviewRepository({
     String? category,
     String? pageLink,
   }) async {
-    if (loading) return Completer<GetRepositoryType>().future;
-    if (failure != null) return Left(failure!);
+    if (loading) return Completer<ExpensePageEntity>().future;
+    if (failure != null) throw ExpenseException(errors: failure!);
 
     final filtered = items.where((expense) {
       final day = _civilDay(expense.occurredOn);
@@ -44,12 +44,10 @@ final class ExpensesListPreviewRepository({
     final page = filtered.skip(offset).take(pageSize).toList();
     final end = offset + page.length;
 
-    return Right(
-      ExpensePageEntity(
-        prev: null,
-        items: page,
-        next: end < filtered.length ? '?offset=$end' : null,
-      ),
+    return ExpensePageEntity(
+      prev: null,
+      items: page,
+      next: end < filtered.length ? '?offset=$end' : null,
     );
   }
 
@@ -57,27 +55,28 @@ final class ExpensesListPreviewRepository({
       DateTime.utc(date.year, date.month, date.day);
 
   @override
-  Future<GetByIdRepositoryType> getById({required String id}) async {
+  Future<ExpenseEntity> getById({required String id}) async {
     final expense = items.where((expense) => expense.id == id).firstOrNull;
-    return expense == null ? Left(ErrorsEntity.unknown()) : Right(expense);
+    if (expense == null) throw ExpenseException(errors: .unknown());
+    return expense;
   }
 
   @override
-  Future<DeleteRepositoryType> delete({required String id}) async =>
-      const Right(false);
+  Future<void> delete({required String id}) async =>
+      throw ExpenseException(errors: .unknown());
 
   @override
-  Future<CreateRepositoryType> create({
+  Future<ExpenseEntity> create({
     required int cents,
     required String description,
     DateTime? occurredOn,
-  }) async => Left(ErrorsEntity.unknown());
+  }) async => throw ExpenseException(errors: .unknown());
 
   @override
-  Future<UpdateRepositoryType> update({
+  Future<ExpenseEntity> update({
     required String id,
     int? cents,
     String? description,
     DateTime? occurredOn,
-  }) async => Left(ErrorsEntity.unknown());
+  }) async => throw ExpenseException(errors: .unknown());
 }

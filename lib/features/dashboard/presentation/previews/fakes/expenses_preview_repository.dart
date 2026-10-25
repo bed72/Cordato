@@ -1,39 +1,40 @@
-import 'package:cordato/features/core/domain/either.dart';
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 
-final class ExpensesPreviewRepository({required final GetRepositoryType type})
+final class ExpensesPreviewRepository({required final ExpensePageEntity data})
     implements IExpenseRepository {
   @override
-  Future<DeleteRepositoryType> delete({required String id}) async =>
-      Left(ErrorsEntity.unknown());
+  Future<void> delete({required String id}) async =>
+      throw ExpenseException(errors: .unknown());
 
   @override
-  Future<GetByIdRepositoryType> getById({required String id}) async =>
-      Left(.unknown());
+  Future<ExpenseEntity> getById({required String id}) async =>
+      throw ExpenseException(errors: .unknown());
 
   @override
-  Future<GetRepositoryType> get({
+  Future<ExpensePageEntity> get({
     String? sort,
     int pageSize = 30,
     DateTime? to,
     DateTime? from,
     String? pageLink,
     String? category,
-  }) async => type;
+  }) async => data;
 
   @override
-  Future<UpdateRepositoryType> update({
+  Future<ExpenseEntity> update({
     required String id,
     int? cents,
     String? description,
     DateTime? occurredOn,
-  }) async => Left(.unknown());
+  }) async => throw ExpenseException(errors: .unknown());
 
   @override
-  Future<CreateRepositoryType> create({
+  Future<ExpenseEntity> create({
     required int cents,
     required String description,
     DateTime? occurredOn,
-  }) async => Left(.unknown());
+  }) async => throw ExpenseException(errors: .unknown());
 }

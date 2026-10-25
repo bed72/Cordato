@@ -3,16 +3,17 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
-import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 
-import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
+import 'package:cordato/features/insight/application/repositories/interface_insight_repository.dart';
+import 'package:cordato/features/insight/application/exceptions/insight_exception.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 
@@ -49,11 +50,6 @@ final class DashboardBloc({
   }
 
   bool _active(Emitter<DashboardState> emit) => !isClosed && !emit.isDone;
-
-  T _value<T>(Either<ErrorsEntity, T> data) => switch (data) {
-    Right(:final value) => value,
-    Left(:final value) => throw value,
-  };
 
   Future<void> _load(DashboardEvent event, Emitter<DashboardState> emit) async {
     final previous = state;
@@ -96,11 +92,9 @@ final class DashboardBloc({
       }
       final (user, history) = await (_getUser(), _getHistory()).wait;
       if (!_active(emit)) return;
-      final date = history is Right<ErrorsEntity, ExpensePageEntity>
-          ? history.value.items.firstOrNull?.occurredOn
-          : null;
+      final date = history?.items.firstOrNull?.occurredOn;
       final firstMonth = date == null ? null : DateTime(date.year, date.month);
-      if (history is Right<ErrorsEntity, ExpensePageEntity>) {
+      if (history != null) {
         final minimum =
             firstMonth == null || firstMonth.isAfter(previous.currentMonth)
             ? previous.currentMonth
@@ -132,8 +126,8 @@ final class DashboardBloc({
           firstMonth: firstMonth,
           user: user,
           metrics: metrics,
-          insights: .unmodifiable(_value(insights)),
-          expenses: _value(expenses),
+          insights: .unmodifiable(insights),
+          expenses: expenses,
         ),
       );
     } catch (error) {
@@ -146,11 +140,29 @@ final class DashboardBloc({
           financialError: switch (error) {
             ErrorsEntity() => error,
             MetricsException(:final errors) => errors,
+            InsightException(:final errors) => errors,
+            ExpenseException(:final errors) => errors,
             ParallelWaitError(
               errors: (
                 AsyncError(error: MetricsException(:final errors)),
                 null,
                 null,
+              ),
+            ) =>
+              errors,
+            ParallelWaitError(
+              errors: (
+                null,
+                AsyncError(error: InsightException(:final errors)),
+                null,
+              ),
+            ) =>
+              errors,
+            ParallelWaitError(
+              errors: (
+                null,
+                null,
+                AsyncError(error: ExpenseException(:final errors)),
               ),
             ) =>
               errors,
@@ -169,11 +181,11 @@ final class DashboardBloc({
     }
   }
 
-  Future<Either<ErrorsEntity, ExpensePageEntity>> _getHistory() async {
+  Future<ExpensePageEntity?> _getHistory() async {
     try {
       return await _expenseRepository.get(pageSize: 1, sort: 'occurred_on');
     } catch (_) {
-      return Left(.unknown());
+      return null;
     }
   }
 }

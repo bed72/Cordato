@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
@@ -104,7 +103,7 @@ Widget _screenPreview({
                     id: 'monthly-$index',
                     category: .food,
                     description: 'Gasto do mês ${index + 1}',
-                    cents: .create(cents: 1500 + index * 100).right,
+                    cents: .create(cents: 1500 + index * 100),
                     occurredOn: DateTime(
                       month.year,
                       month.month,
@@ -115,25 +114,23 @@ Widget _screenPreview({
       ),
       insightRepository: InsightsPreviewRepository(
         loading: loading,
-        type: failure
-            ? Left(ErrorsEntity.unknown())
-            : Right(
-                empty
-                    ? []
-                    : [
-                        InsightEntity(
-                          id: 'monthly-insight',
-                          group: 'comparison',
-                          type: 'category_lead_streak',
-                          title: 'Uma liderança recorrente',
-                          description: 'Alimentação segue líder nos registros deste mês.',
-                          period: InsightPeriodEntity(
-                            to: end,
-                            from: DateTime(month.year, month.month - 2),
-                          ),
-                        ),
-                      ],
-              ),
+        failure: failure ? ErrorsEntity.unknown() : null,
+        data: empty
+            ? []
+            : [
+                InsightEntity(
+                  id: 'monthly-insight',
+                  group: 'comparison',
+                  type: 'category_lead_streak',
+                  title: 'Uma liderança recorrente',
+                  description:
+                      'Alimentação segue líder nos registros deste mês.',
+                  period: InsightPeriodEntity(
+                    to: end,
+                    from: DateTime(month.year, month.month - 2),
+                  ),
+                ),
+              ],
       ),
       metricsRepository: MetricsPreviewRepository(
         loading: loading,
