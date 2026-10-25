@@ -1,0 +1,27 @@
+appId: com.bed.cordato
+name: Logout - Failure
+tags: [logout, failure]
+env:
+  TEST_SERVER: http://127.0.0.1:8769
+  SCENARIO: failure
+  EMAIL: Person@Example.com
+  PASSWORD: Teste1
+---
+- runFlow: subflows/prepare.yaml
+- runFlow: subflows/confirm.yaml
+- assertVisible: Não foi possível revogar o acesso.
+- assertVisible: Configurações
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.logoutRequests === 1}
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: Pessoa E2E
+    timeout: 15000
+- tapOn: Menu
+- runFlow: subflows/confirm.yaml
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.logoutRequests === 2 && output.stats.logoutAuthorized && output.stats.unexpected.length === 0}

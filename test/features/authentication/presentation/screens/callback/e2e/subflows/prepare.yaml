@@ -1,0 +1,14 @@
+appId: com.bed.cordato
+---
+- runScript: ../scripts/configure.js
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    permissions:
+      notifications: allow
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- openLink:
+    link: ${output.callbackLink}
+    browser: false

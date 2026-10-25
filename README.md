@@ -40,7 +40,13 @@ Sign-in, cadastro e reenvio usam Bloc, controle de submissões concorrentes, fal
 e testes de Bloc/tela. Cadastro mantém erros por campo, retry manual e navegação
 para confirmação sem criar sessão. Reenvio preserva cooldown inicial/de sucesso
 de 60 segundos e retry manual imediato após falha, sem criar sessão.
-Confirmação por link e logout ainda possuem apresentação legada baseada em commands.
+Confirmação por link também usa Bloc: preserva o link original, ignora resultados
+obsoletos e retorna ao sign-in com o feedback existente, sem criar sessão.
+Logout usa `LogoutBloc` na apresentação de Settings, consumindo o contrato de
+Authentication. Mantém confirmação, loading, erros e retry manual, com revogação
+remota antes da limpeza do storage. O redirecionamento continua global por sessão.
+Authentication não possui mais apresentação baseada em commands; isso não
+significa que Session, Root ou as demais features já foram migradas.
 
 Outras features ainda referenciam `Either`, `response<T>` e CommandIt removidos.
 Há módulos desativados em `app_module.dart` e referência a módulo de rotas de
@@ -159,6 +165,8 @@ flutter test test/features/authentication/presentation/screens/sign_in/bloc
 flutter test test/features/authentication/presentation/screens/sign_in/sign_in_screen_test.dart
 flutter test test/features/authentication/presentation/screens/sign_up
 flutter test test/features/authentication/presentation/screens/resend_email
+flutter test test/features/authentication/presentation/screens/callback test/features/authentication/authentication_callback_module_test.dart
+flutter test test/features/settings
 ```
 
 Os flows Maestro estão em
@@ -172,8 +180,19 @@ Os flows de
 [`resend_email/e2e/`](test/features/authentication/presentation/screens/resend_email/e2e/README.md)
 usam fixture na porta 8767, aguardam o cooldown real e também não foram executados
 em dispositivo. Bloc/tela de reenvio têm 23 testes novos aprovados; o lote focado
-de arquitetura e Authentication tem 143 testes aprovados. A análise focada está
+de arquitetura, Authentication e Settings tem 195 testes aprovados. A análise focada está
 limpa, mas análise/suíte globais continuam bloqueadas pelo legado.
+
+O [E2E de callback](test/features/authentication/presentation/screens/callback/e2e/README.md)
+usa fixture na porta 8768 e inclui sucesso, link inválido, falha e loading,
+ainda sem execução em dispositivo. Callback tem 29 testes novos de Bloc, tela,
+DI e rotas aprovados; eles não substituem a validação de deep links nativos.
+
+O [E2E de logout](test/features/settings/presentation/screens/settings/e2e/README.md)
+usa fixture local na porta 8769 e cobre confirmação, revogação, falha e loading.
+Não foi executado em dispositivo. Os 23 testes novos de Settings/Logout incluem
+Bloc, tela e módulo com repository real sobre clients mockados, verificando
+que a conclusão aguarda a revogação e a limpeza do storage.
 Dependem de build compilável e módulos de sessão/destinos ativos; sua existência
 não significa validação em dispositivo. Não há suíte Flutter `integration_test`.
 

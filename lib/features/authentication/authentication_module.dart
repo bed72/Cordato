@@ -1,4 +1,3 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
@@ -14,8 +13,8 @@ import 'package:cordato/features/authentication/presentation/screens/sign_up/sig
 import 'package:cordato/features/authentication/presentation/screens/callback/callback_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
+import 'package:cordato/features/authentication/presentation/screens/callback/bloc/callback_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
-import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_bloc.dart';
 
 final authenticationModule = createModule(
@@ -25,7 +24,7 @@ final authenticationModule = createModule(
     ..add(PasswordValidation.new)
     ..add<SignInBloc>(SignInBloc.new)
     ..add<SignUpBloc>(SignUpBloc.new)
-    ..addLazySingleton<CallbackCommand>(CallbackCommand.new)
+    ..add<CallbackBloc>(CallbackBloc.new)
     ..add<ResendEmailBloc>(ResendEmailBloc.new)
     ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
     ..route(
@@ -54,15 +53,12 @@ final authenticationModule = createModule(
     ..route(
       RouteEnum.authenticationConfirmEmail.path,
       child: (_, state) => CallbackScreen(
+        bloc: inject<CallbackBloc>,
         verificationUrl:
             switch (state.uri.queryParametersAll['verification_url']) {
               [final String url] => url,
               _ => null,
             },
-        command: inject<CallbackCommand>(),
-        onSignIn: (BuildContext context) => context
-          ..navigate(RouteEnum.welcome.path)
-          ..pushNamed(RouteEnum.authenticationSignIn.path),
       ),
     ),
 );

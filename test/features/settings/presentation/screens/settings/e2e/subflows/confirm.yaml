@@ -1,0 +1,8 @@
+appId: com.bed.cordato
+---
+- tapOn: Sair
+- assertVisible: Realmente deseja sair?
+- tapOn:
+    text: Sair
+    below: Voltar
+    retryTapIfNoChange: false

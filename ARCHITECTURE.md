@@ -174,8 +174,9 @@ uma feature para contornar imports proibidos.
   infrastructure. Contextos proprietários não dependem de Family ou Insight.
 - Dashboard pode compor contratos de aplicação de User, Expense, Metrics e
   Insight, sem conhecer suas implementações.
-- A dependência legada de Settings em `LogoutCommand` não deve ser copiada:
-  fluxos novos usam Bloc e contrato de aplicação.
+- Settings coordena sua interação de logout com `LogoutBloc` próprio, consumindo
+  somente contrato e exceção de aplicação de Authentication. Não importa a
+  apresentação ou a implementação do repository de Authentication.
 
 ## Referência Executável: Authentication/Sign-in
 
@@ -310,7 +311,68 @@ O [README E2E de Resend-email](test/features/authentication/presentation/screens
 documenta os flows Success/Failure/Loading e a fixture isolada, ainda sem execução
 em dispositivo por causa dos bloqueios globais do app.
 
-### HTTP
+### Callback Com Bloc
+
+`CallbackScreen` recebe uma factory estável de `CallbackBloc` e possui a criação,
+substituição e fechamento da instância. A entrada da tela envia
+`CallbackRequestedEvent(verificationUrl)` uma única vez; rebuild comum não
+repete a confirmação. Alterar a URL ou a factory inicia uma nova confirmação.
+Os estados sealed são `Initial`, `Confirming`, `Success`, `Invalid` e `Failure`;
+não armazenam a URL assinada nem dados de sessão.
+
+O Bloc trata URL nula/vazia como inválida sem acessar o repository. Nos demais
+casos, delega a URL original, sem trim ou reconstrução, e traduz o status do
+contrato. Falhas inesperadas usam `addError` e o feedback seguro já existente.
+`restartable` invalida o handler anterior quando outro link chega: somente o
+resultado mais recente pode produzir efeitos. Ao contrário do command legado,
+uma URL nova não precisa aguardar a request anterior terminar. Isso não cancela
+HTTP nem desfaz uma confirmação remota já iniciada.
+
+O listener mantém os três toasts existentes e usa as extensões de BuildContext
+para resetar a navegação em Welcome e empilhar Sign-in. Não há callback de
+navegação recebido pela rota, sessão criada ou redirecionamento autenticado.
+A tela mantém o indicador animado e seu rótulo semântico durante a confirmação.
+Fechamento, troca de factory e substituição do link impedem efeitos obsoletos.
+
+Testes próprios do módulo verificam factories independentes, repository real
+com clients mockados e decodificação de exatamente um `verification_url`,
+incluindo query ausente/duplicada. Os [flows de callback](test/features/authentication/presentation/screens/callback/e2e/README.md)
+cobrem Success/Invalid/Failure/Loading com fixture local, ainda não executados
+em dispositivo. A entrega nativa de deep links não é provada pelos testes Flutter.
+
+### Logout Em Settings
+
+Authentication continua dona da revogação e da limpeza de sessão pelo contrato
+`IAuthenticationRepository.logout`. Como a interação pertence a Configurações,
+`LogoutBloc` fica em `settings/presentation/screens/settings/bloc/`, junto dos
+eventos e estados, sem tela ou módulo artificial de logout em Authentication.
+`settingsRoutesModule` registra o Bloc por factory e injeta `bloc: inject<LogoutBloc>`;
+o contrato de Authentication precisa estar disponível na composição externa.
+
+`SettingsScreen` é dona do lifecycle da instância e usa `BlocConsumer` para
+renderização e falhas. A confirmação mantém os textos e o cancelamento existentes;
+confirmar somente envia `LogoutRequestedEvent` se a tela ainda estiver montada,
+o Bloc for o mesmo dono do diálogo e estiver disponível. Troca de factory fecha
+o Bloc anterior e invalida confirmações antigas.
+
+Os estados sealed são `Initial`, `Submitting`, `Success` e `Failure(errors)`.
+`droppable` descarta duplicatas pendentes; sucesso bloqueia novos envios e falha
+permite retry manual com nova confirmação. Falhas esperadas preservam a mesma
+`ErrorsEntity`; inesperadas usam `addError` e fallback seguro. Fechamento impede
+estado/feedback tardio, não cancela revogação HTTP nem limpeza já iniciada.
+
+Sucesso só ocorre quando o repository conclui a revogação remota e aguarda o
+`clear()` de todo o storage. Settings não navega nem mostra toast de sucesso:
+a observação global de Session continua responsável pelo redirecionamento.
+Os testes de módulo/rota usam o repository real com clients mockados para provar
+essa ordem e a espera da limpeza, além das factories independentes.
+
+O [E2E de logout](test/features/settings/presentation/screens/settings/e2e/README.md)
+prepara cenários Success/Failure/Loading com login e Bearer fictícios na fixture
+local. Não foi executado em dispositivo e não prova o redirecionamento global
+neste checkout, cuja composição ainda tem bloqueios.
+
+### HTTP E Storage Compartilhados
 
 `coreDependenciesModule` registra Dio, `IHttpClient` e `IStorageClient`.
 `BASE_URL` padrão: `https://app.cordato.cloud/api/`. Bases devem preservar `/api/`;
@@ -369,8 +431,8 @@ Módulos usam `createModule` do Modular 7, pertencem à feature e registram
 interfaces para implementações. Separe dependências compartilhadas de rotas
 quando necessário; não crie módulos vazios para padronizar a árvore.
 
-`authenticationModule` registra repository, validators, SignInBloc, SignUpBloc e
-ResendEmailBloc por factory e o command ainda legado de confirmação, além de rotas.
+`authenticationModule` registra repository, validators e SignInBloc, SignUpBloc,
+ResendEmailBloc e CallbackBloc por factory, além de rotas.
 Não o descreva como uma separação de módulos já concluída. O estado da composição
 global depende dos registros efetivamente ativos em `app_module.dart`.
 
@@ -562,7 +624,9 @@ para a regra geral de contratos de aplicação, não liberar infrastructure na U
 ## Estado Atual E Migração
 
 O repository e o contrato de Authentication já seguem o novo desenho.
-Sign-in e Sign-up têm Bloc, estados sealed, testes de Bloc, widget e flows E2E.
+Sign-in, Sign-up, reenvio e callback têm Bloc, estados sealed, testes de Bloc,
+widget e flows E2E. O módulo de Authentication possui testes próprios para DI
+e roteamento do callback, sem garantir a composição global do aplicativo.
 Isso não significa que toda Authentication ou o aplicativo estejam migrados.
 
 | Área | Situação encontrada |
@@ -570,7 +634,8 @@ Isso não significa que toda Authentication ou o aplicativo estejam migrados.
 | Sign-in | Novo padrão implementado. |
 | Cadastro | SignUpBloc por factory, lifecycle da tela e confirmação por navegação de contexto. |
 | Reenvio | ResendEmailBloc por factory, cooldown e feedback no mixin da tela. |
-| Callback e logout | Repository novo; apresentação ainda usa commands legados. |
+| Callback | CallbackBloc por factory, latest-link-wins e navegação/feedback no listener da tela. |
+| Logout | LogoutBloc em Settings, contrato de Authentication e navegação global por sessão preservada. |
 | User, Session, Expense, Insight e Metrics | Ainda possuem contratos/implementações/data sources no desenho anterior. |
 | Dashboard | Já usa Bloc, mas depende de contratos e resultados financeiros legados. |
 | Bootstrap e Root | Ainda referenciam CommandIt/SessionCommand. |
@@ -594,6 +659,25 @@ seus testes concluíram sem problemas. O lote focado acima, incluindo reenvio,
 passou com 143 testes (23 novos). `flutter analyze` global encontrou 568 problemas
 nos consumidores legados; `flutter test` completo também falhou por essas
 dependências removidas. A migração não altera callback, logout ou composição global.
+
+Na migração de Callback, `flutter pub get` concluiu e a análise focada do módulo,
+da tela/Bloc e dos testes passou sem problemas. O lote focado de arquitetura e
+Authentication passou com 172 testes, incluindo 29 novos de callback/DI/rotas.
+A fixture local passou em verificação HTTP de 204, 403, 500, URL completa,
+retenção/liberação e isolamento de endpoints. `flutter analyze` global continua
+com 564 problemas legados e `flutter test` completo falha por referências
+removidas, como `Either` e CommandIt. Nenhum flow Maestro foi executado em dispositivo.
+
+Na migração de Logout, `flutter pub get` concluiu e a análise focada de Settings,
+seus testes e o check arquitetural passou sem problemas. `flutter test
+test/architecture test/features/authentication test/features/settings` passou com
+195 testes, incluindo 23 novos de Logout/Settings. O teste de módulo verifica
+factories independentes e a espera da revogação remota seguida de `storage.clear`.
+A fixture passou em verificação HTTP de login, erro remoto, sucesso, retenção/
+liberação e Bearer. A análise global permanece bloqueada pelo legado, assim como
+`flutter test` completo. `LogoutCommand` e a dependência cruzada de apresentação
+foram removidos; Authentication não usa mais commands, mas Session/Root e demais
+features permanecem em migração. Os flows E2E de logout não foram executados.
 
 O código financeiro existente inclui formulário compartilhado de criação/edição,
 listagem com paginação/filtros/gestos, métricas e insights na Dashboard, além de
@@ -629,6 +713,8 @@ flutter test test/features/authentication/presentation/screens/sign_in/bloc
 flutter test test/features/authentication/presentation/screens/sign_in/sign_in_screen_test.dart
 flutter test test/features/authentication/presentation/screens/sign_up
 flutter test test/features/authentication/presentation/screens/resend_email
+flutter test test/features/authentication/presentation/screens/callback test/features/authentication/authentication_callback_module_test.dart
+flutter test test/features/settings
 ```
 
 Registre comandos, resultado e causa de bloqueios. Teste focado aprovado não

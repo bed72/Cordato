@@ -1,0 +1,27 @@
+appId: com.bed.cordato
+---
+- runScript: ../scripts/configure.js
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    permissions:
+      notifications: allow
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- tapOn: Continuar
+- tapOn: Digite seu e-mail
+- inputText: ${EMAIL}
+- tapOn: Digite sua senha
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    text: Entrar
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: Pessoa E2E
+    timeout: 15000
+- tapOn: Menu
+- assertVisible: Configurações
+- runScript: ../scripts/stats.js
+- assertTrue: ${output.stats.requests === 1 && output.stats.credentialsMatch && output.stats.logoutRequests === 0}

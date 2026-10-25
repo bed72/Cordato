@@ -198,7 +198,7 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
-  test('keeps Settings dependencies on Authentication contracts and logout command', () {
+  test('keeps Settings dependencies on Authentication contracts and exceptions', () {
     final violations = <String>[];
 
     for (final file in _dartFiles().where(
@@ -211,13 +211,14 @@ void main() {
             targetPath.startsWith('domain/') ||
             targetPath ==
                 'application/repositories/interface_authentication_repository.dart' ||
-            targetPath == 'presentation/commands/logout_command.dart') {
+            targetPath ==
+                'application/exceptions/authentication_exception.dart') {
           continue;
         }
 
         violations.add(
           '${file.path}: Settings can only import Authentication domain, '
-          'repository contract or LogoutCommand, '
+          'repository contract or application exception, '
           'not $targetPath',
         );
       }

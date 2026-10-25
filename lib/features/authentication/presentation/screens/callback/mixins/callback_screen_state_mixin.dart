@@ -1,96 +1,66 @@
 import 'dart:async';
 
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-
-import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
+import 'package:cordato/features/authentication/presentation/screens/callback/bloc/callback_bloc.dart';
+import 'package:cordato/features/authentication/presentation/screens/callback/bloc/callback_event.dart';
+import 'package:cordato/features/authentication/presentation/screens/callback/bloc/callback_state.dart';
 import 'package:cordato/features/authentication/presentation/screens/callback/callback_screen.dart';
 
 mixin CallbackScreenStateMixin on State<CallbackScreen> {
-  int _revision = 0;
-  bool _isRunning = false;
-  int _startedRevision = -1;
+  late CallbackBloc bloc;
 
   @override
   void initState() {
     super.initState();
-    _scheduleConfirmation();
+    bloc = widget.bloc();
+    _confirm();
   }
 
   @override
   void didUpdateWidget(covariant CallbackScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.verificationUrl != widget.verificationUrl ||
-        oldWidget.command != widget.command) {
-      _revision++;
-      _scheduleConfirmation();
+    if (oldWidget.bloc != widget.bloc) {
+      unawaited(bloc.close());
+      bloc = widget.bloc();
+      _confirm();
+    } else if (oldWidget.verificationUrl != widget.verificationUrl) {
+      _confirm();
     }
   }
 
-  void _scheduleConfirmation() {
-    final revision = _revision;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted &&
-          revision == _revision &&
-          !_isRunning &&
-          _startedRevision != _revision) {
-        unawaited(_confirm());
-      }
-    });
-    WidgetsBinding.instance.ensureVisualUpdate();
+  @override
+  void dispose() {
+    unawaited(bloc.close());
+    super.dispose();
   }
 
-  Future<void> _confirm() async {
-    final revision = _revision;
-    final url = widget.verificationUrl;
-    final command = widget.command.execute;
-    EmailVerificationStatusEnum? status;
+  void _confirm() {
+    bloc.add(CallbackRequestedEvent(verificationUrl: widget.verificationUrl));
+  }
 
-    _isRunning = true;
-    _startedRevision = revision;
+  void handleConfirmation(CallbackState state) {
+    if (!mounted || bloc.isClosed) return;
 
-    try {
-      if (url == null || url.isEmpty) {
-        status = .invalid;
-      } else {
-        bool joinedSameLink = false;
-        if (command.isRunning.value) {
-          joinedSameLink = command.results.value.paramData == url;
-          try {
-            final pendingResult = await command.runAsync();
-            if (joinedSameLink) status = pendingResult;
-          } catch (_) {
-            if (joinedSameLink) rethrow;
-          }
-        }
-
-        if (!mounted || revision != _revision) return;
-        if (!joinedSameLink) status = await command.runAsync(url);
-      }
-    } catch (_) {
-      status = .failure;
-    } finally {
-      _isRunning = false;
-      if (mounted && revision != _revision) _scheduleConfirmation();
-    }
-
-    if (!mounted || revision != _revision) return;
-
-    switch (status ?? .failure) {
-      case .success:
+    switch (state) {
+      case CallbackInitial() || CallbackConfirming():
+        return;
+      case CallbackSuccess():
         context.showToast(
           variant: .success,
           title: 'E-mail confirmado',
           description: 'Entre na sua conta para continuar.',
         );
-      case .invalid:
+      case CallbackInvalid():
         context.showToast(
           variant: .error,
           title: 'Link inválido ou expirado',
           description: 'Solicite um novo e-mail de confirmação.',
         );
-      case .failure:
+      case CallbackFailure():
         context.showToast(
           variant: .error,
           title: 'Não foi possível confirmar o e-mail',
@@ -99,12 +69,8 @@ mixin CallbackScreenStateMixin on State<CallbackScreen> {
         );
     }
 
-    widget.onSignIn(context);
-  }
-
-  @override
-  void dispose() {
-    _revision++;
-    super.dispose();
+    context
+      ..navigate(RouteEnum.welcome.path)
+      ..pushNamed(RouteEnum.authenticationSignIn.path);
   }
 }

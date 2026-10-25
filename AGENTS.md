@@ -111,6 +111,8 @@ data sources, BaseBloc ou stores globais sem necessidade concreta aprovada.
 
 Authentication e Session não importam uma à outra; comunicam-se pela chave de
 token do storage. Expense e Budget não dependem de outros contextos financeiros.
+Settings possui o Bloc da interação de logout e consome somente contrato e exceção
+de aplicação de Authentication, nunca sua apresentação ou repository concreto.
 Family e Insight devem consultar contextos proprietários por contratos próprios
 com adapters em infrastructure, sem dependência reversa. Dashboard pode compor
 contratos de aplicação dos contextos que consulta.

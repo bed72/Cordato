@@ -1,0 +1,23 @@
+appId: com.bed.cordato
+name: Logout - Loading
+tags: [logout, loading]
+env:
+  TEST_SERVER: http://127.0.0.1:8769
+  SCENARIO: loading
+  EMAIL: Person@Example.com
+  PASSWORD: Teste1
+onFlowComplete:
+  - runScript: scripts/release.js
+---
+- runFlow: subflows/prepare.yaml
+- runFlow: subflows/confirm.yaml
+- assertVisible: Configurações
+- assertNotVisible: Continuar
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.logoutRequests === 1 && output.stats.logoutCompleted === 0}
+- runScript: scripts/release.js
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.logoutRequests === 1 && output.stats.logoutAuthorized && output.stats.unexpected.length === 0}
