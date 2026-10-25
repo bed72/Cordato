@@ -1,8 +1,9 @@
 # Edição de nome E2E
 
-Flows preparados, **não executados em dispositivo**. A migração de User não
-reativa os destinos comentados de Dashboard/Settings/User nem resolve o legado
-das outras features. É necessário um build compilável com essas rotas ativas.
+Flows preparados, **não executados em dispositivo**. Dashboard/Settings/User estão
+registrados na composição global; isso não comprova navegação no dispositivo.
+User/Edit mantêm factories com ownership pelas screens; somente Sign-in migrou
+para provide/addBloc do Modular. Use um build compilável com fixture local.
 
 - `Success.yaml`: nome inicial inalterado não permite envio; trim no formulário,
   uma atualização e retorno ao perfil com recarga do nome.
@@ -15,7 +16,7 @@ Reutiliza a [fixture de User](../../user/e2e/README.md), porta 8770, com login
 fictício e endpoints de controle locais. Não chama serviços externos. Os seletores
 ainda precisam ser confirmados no app; arquivos YAML não provam validação E2E.
 
-Após resolver os bloqueios globais e ativar as rotas, na raiz:
+Com a composição validada e o build de teste instalado, na raiz:
 
 ```bash
 python3 test/support/user/fakes/user_http_server.py

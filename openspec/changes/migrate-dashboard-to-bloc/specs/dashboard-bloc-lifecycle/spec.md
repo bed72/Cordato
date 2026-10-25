@@ -1,3 +1,7 @@
+> Delta histórico desta change. A política atual está em
+> [openspec/README.md](../../../../README.md): somente Sign-in usa ownership
+> Modular; listagem recarrega em todo retorno, sem callbacks de rota.
+
 ## ADDED Requirements
 
 ### Requirement: Bloc é proprietário único do fluxo da Dashboard

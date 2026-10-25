@@ -1,3 +1,7 @@
+> Registro de design de uma etapa anterior. Contratos atuais usam Future e
+> exceções; listagem recarrega ao retornar mesmo sem alteração. Somente Sign-in
+> usa ownership Modular. Consulte [a referência vigente](../../README.md).
+
 ## Context
 
 DashboardScreenStateMixin coordenava cinco commands em 571 linhas, com snapshots,

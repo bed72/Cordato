@@ -1,5 +1,9 @@
 # expenses-period-query Specification
 
+> Implementação atual: contratos Future/exceções, HTTP e Bloc. Navegação ocorre
+> no widget/mixin via BuildContext; argumentos contêm somente dados. Consulte
+> [a referência vigente](../../README.md), não os mecanismos legados desta spec.
+
 ## Purpose
 Definir consultas de despesas por intervalo civil e preservar esse recorte na
 listagem, paginação, edição e exclusão.

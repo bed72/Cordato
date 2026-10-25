@@ -1,5 +1,9 @@
 # dashboard-reactive-command-coordination Specification
 
+> Coordenação por commands/Either é histórica; Dashboard usa Bloc sobre contratos
+> de aplicação. O mês é preservado e todo retorno da listagem provoca recarga,
+> mesmo sem mutação. Consulte [a referência vigente](../../README.md).
+
 ## Purpose
 TBD - created by archiving change align-command-it-presentation-errors. Update Purpose after archive.
 ## Requirements
@@ -155,4 +159,3 @@ A Dashboard SHALL preservar os textos, rotas, FAB, estrutura de erro e callbacks
 - **WHEN** o mesmo cenário de conteúdo ou erro é apresentado antes e depois da refatoração
 - **THEN** a estrutura e feedbacks existentes permanecem equivalentes
 - **AND** eventual correção de cabeçalho exige escopo separado explicitamente aprovado
-

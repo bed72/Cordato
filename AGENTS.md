@@ -23,8 +23,9 @@ para código novo ou para um fluxo migrado.
 Há código legado incompatível com esse desenho. Sua existência não constitui
 uma exceção arquitetural aprovada. Não descreva a migração como concluída e não
 amplie uma tarefa localizada para migrar o restante do aplicativo sem solicitação.
-Specs OpenSpec, skills e referências a Supabase/RPC podem estar desatualizadas;
-não restaure o fluxo antigo para satisfazer uma descrição histórica.
+Specs OpenSpec arquivadas e registros de execução são históricos. Em conflitos,
+prevalecem estas regras e `ARCHITECTURE.md`; consulte `openspec/README.md`.
+Não restaure Supabase/RPC, commands ou ownership antigo por uma descrição histórica.
 
 ## Antes De Alterar
 
@@ -163,9 +164,18 @@ contratos de aplicação dos contextos que consulta.
 
 ## Screens, Formulários E Lifecycle
 
-- A screen recebe uma factory estável `Bloc Function()` por construtor, cria
-  sua instância e é a única proprietária do fechamento.
-- Crie em `initState`, feche em `dispose` e feche/substitua em `didUpdateWidget`
+- Sign-in usa o escopo de página do Modular V7: registre o Bloc somente no
+  `provide` da rota com `scope.addBloc<SignInBloc>(SignInBloc.new)`, usando a
+  extension do core. A screen recebe a instância e não cria nem fecha o Bloc;
+  Modular é o único dono do fechamento. Mantenha `BlocBuilder`/`BlocConsumer`
+  e listeners com a instância explícita. Testes/previews fornecem um proprietário
+  externo explícito. Não duplique o bind do Bloc no módulo.
+- Os demais fluxos ainda não migrados recebem uma factory estável
+  `Bloc Function()` por construtor, criam a instância e possuem seu fechamento.
+  Não converta essas telas incidentalmente: migre rota, consumidores, previews
+  e testes juntos quando a tarefa incluir a adoção do escopo Modular.
+- Para os fluxos com ownership pela screen, crie em `initState`, feche em
+  `dispose` e feche/substitua em `didUpdateWidget`
   somente quando a factory mudar. Rebuild comum não cria outro Bloc.
 - Use `BlocBuilder` para renderização e `BlocListener`/`BlocConsumer` para efeitos
   únicos. Não mostre toast, navegue ou envie operações durante o build.
@@ -219,13 +229,33 @@ Lógica visual pura de StatelessWidget pode usar mixin próprio com
 ## Módulos E Rotas
 
 Use a API funcional `createModule` do `flutter_modular` 7. Registre contratos
-apontando para implementações e Bloc por factory, nunca singleton compartilhado
-entre telas. Injete a factory estável como `bloc: inject<SignInBloc>`, sem criar
-closures novas a cada rebuild ou instâncias durante o build.
+apontando para implementações. Para estado de página novo ou explicitamente
+migrado, prefira `provide: (scope) => scope.addBloc<MyBloc>(MyBloc.new)` com
+`BlocScopedExtension` em `core/presentation/extensions/`. A rota lê a instância
+por `context.read<MyBloc>()` e a entrega à screen. Não registre o mesmo Bloc
+também no módulo nem feche na tela uma instância pertencente ao escopo.
+
+Nos fluxos ainda com ownership pela screen, registre Bloc por factory e injete
+o tear-off estável, como `bloc: inject<ExpensesBloc>`, sem closures novas a cada
+rebuild. Nunca use singleton de Bloc compartilhado entre telas. Session continua
+global sob ownership de `AppWidget`; não o transforme em estado de página.
+
+Módulos com `path` possuem binds de feature, disponíveis somente enquanto uma
+rota da feature estiver ativa. Dependências consumidas entre features precisam
+de módulo compartilhado sem `path`; não dependa de ter visitado uma rota irmã.
+Registro no catálogo não comprova resolução de DI: teste o consumidor isoladamente.
 
 Módulos pertencem à feature. Separe dependências compartilhadas de rotas quando
 necessário, sem criar módulo vazio. A organização atual de `authenticationModule`
 não obriga módulos artificiais adicionais. `app_module.dart` faz a composição global.
+
+Navegação pertence ao widget/mixin responsável, por extensões de `BuildContext`.
+Argumentos de rota transportam dados, não callbacks. Use resultados tipados de
+`pushNamed<T>` e `pop(result)` quando a operação devolve dados confirmados.
+`ExpensesScreen` abre edição diretamente e recebe `ExpenseEntity?` no retorno;
+Dashboard e Metrics recarregam ao voltar da listagem, mesmo sem alteração, sem
+interceptar botão do sistema ou gesto para transportar flags. Callbacks locais
+de composição visual, como Metrics notificar Dashboard, continuam permitidos.
 
 ## Testes Obrigatórios
 
@@ -238,14 +268,16 @@ commands. Espelhe o caminho de produção em `test/features/<feature>/`.
 | Application | Contratos puros e preservação de erros nas exceções. |
 | Repository em infrastructure | Payload, DTO, clients mockados, erros HTTP, parsing inválido, ordem/espera de persistência e propagação de falhas inesperadas. |
 | Bloc | Estado inicial, sequência de estados, delegação, falha esperada/inesperada, concorrência, retry e fechamento pendente. |
-| Screen/widget | Bloc real com repository mockado; validação, teclado, loading, feedback único, rebuild, troca de factory e descarte. |
+| Screen/widget | Bloc real com repository mockado; validação, teclado, loading, feedback único, rebuild, troca de proprietário e descarte. |
+| Modular/rotas | Dependências de construtor, uma instância por página, preservação em rebuild, fechamento/retorno pendente e navegação tipada sem callbacks nos argumentos. |
 | E2E Maestro | Success, Failure e Loading no app, com API de fixtures isolada. |
 | Architecture | Imports, camadas, contextos e isolamento de contratos; DI/rotas exigem testes próprios. |
 
 - Use `mocktail`, `bloc_test` e `flutter_test`. Em teste de Bloc, mocke o contrato
   de repository, não o client HTTP. Em teste do repository, mocke os clients.
-- Nos testes de screen, use o tema real, `pt_BR` e provider de toast. A screen
-  continua dona do Bloc; não mascare erros de lifecycle fechando-o por outro dono.
+- Nos testes de screen, use o tema real, `pt_BR` e provider de toast. Respeite
+  o ownership do fluxo: Sign-in usa escopo externo; os demais mantêm a screen
+  como dona do Bloc. Não mascare erros de lifecycle fechando-o por outro dono.
 - Controle operações pendentes com `Completer` ou sinais observáveis; não dependa
   de sleeps arbitrários para provar concorrência.
 - Mocks/fakes/adapters públicos ficam em arquivos próprios sob
@@ -263,7 +295,8 @@ commands. Espelhe o caminho de produção em `test/features/<feature>/`.
 
 Previews usam `@CordatoPreview`, tema real, localização e toast compartilhados.
 Ficam em `presentation/previews/`; fakes de catálogo não usam rede, storage ou
-mocktail. Mantenha um único dono de cada recurso, inclusive Bloc. Use
+mocktail. Mantenha um único dono de cada recurso, inclusive Bloc. Sign-in recebe
+uma instância com ownership externo; a screen não fecha o Bloc. Use
 `PreviewResourceWidget` quando o recurso não pertencer ao lifecycle da tela.
 Execute `dart run tool/widget_preview.dart`; `.widget_preview/` não é versionado.
 

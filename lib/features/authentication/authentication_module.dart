@@ -1,6 +1,7 @@
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/core/presentation/extensions/bloc_scoped_extension.dart';
 
 import 'package:cordato/features/authentication/infrastructure/repositories/authentication_repository.dart';
 import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
@@ -20,13 +21,12 @@ import 'package:cordato/features/authentication/presentation/screens/resend_emai
 final authenticationModule = createModule(
   path: RouteEnum.app.path,
   register: (context) => context
+    ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
     ..add(EmailValidation.new)
     ..add(PasswordValidation.new)
-    ..add<SignInBloc>(SignInBloc.new)
     ..add<SignUpBloc>(SignUpBloc.new)
     ..add<CallbackBloc>(CallbackBloc.new)
     ..add<ResendEmailBloc>(ResendEmailBloc.new)
-    ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
     ..route(
       RouteEnum.authenticationConfirm.path,
       child: (_, state) => ResendEmailScreen(
@@ -36,8 +36,9 @@ final authenticationModule = createModule(
     )
     ..route(
       RouteEnum.authenticationSignIn.path,
-      child: (_, _) => SignInScreen(
-        bloc: inject<SignInBloc>,
+      provide: (scope) => scope.addBloc<SignInBloc>(SignInBloc.new),
+      child: (context, _) => SignInScreen(
+        bloc: context.read<SignInBloc>(),
         emailValidation: inject<EmailValidation>(),
         passwordValidation: inject<PasswordValidation>(),
       ),

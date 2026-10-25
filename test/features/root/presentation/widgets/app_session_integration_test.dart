@@ -78,7 +78,7 @@ void main() {
             ..addInstance<IStorageClient>(storage)
             ..addInstance<IHttpClient>(client)
             ..module(sessionModule)
-            ..module(welcomeRoutesModule)
+            ..module(welcomeModule)
             ..module(settingsModule);
           authenticationModule.register(context);
           context

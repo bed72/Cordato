@@ -1,5 +1,9 @@
 # dart-primary-constructor-conventions Specification
 
+> Convenções vigentes e suas exceções estão em AGENTS.md na raiz; esta spec não
+> autoriza mudanças de ownership ou construtores vazios em interfaces/mixins.
+> Consulte [a referência atual](../../README.md).
+
 ## Purpose
 Define the Dart compatibility, eligibility, contract-preservation, architectural, documentation, and validation conventions for adopting primary constructors in Cordato.
 

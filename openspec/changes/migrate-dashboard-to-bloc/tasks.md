@@ -1,3 +1,7 @@
+> Checklist histórico: não marca a adoção atual de Modular como concluída nem
+> comprova E2E. Consulte [a referência vigente](../../README.md). Não reabra ou
+> marque tarefas incidentalmente por uma atualização documental.
+
 ## Escopo
 
 Cancelamento HTTP foi adiado por solicitação explícita do usuário. As tarefas de

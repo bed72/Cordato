@@ -1,12 +1,21 @@
 # Expense Category Metrics Cards
 
+> Consulte [a precedência atual](../../README.md). Cards com período civil
+> navegam diretamente pelo BuildContext; callbacks de composição visual não são
+> transportados nos argumentos da rota.
+
 ## Purpose
 
 Definir a apresentação da distribuição mensal de despesas da Dashboard em cards informativos de categorias, com destaque ilustrado, grade de duas linhas e carrossel horizontal, preservando os dados financeiros da API e a acessibilidade.
 ## Requirements
 ### Requirement: Distribuição mensal em cards de categorias
 
-A seção de Metrics SHALL substituir o gráfico segmentado por cards das categorias com `totalAmount > 0` no mês selecionado na Dashboard. A apresentação SHALL manter o total mensal acima dos cards, formatar valores em centavos pelo `IMoneyFormatter` e preservar o percentual fornecido pela API, sem recalcular agregações ou alterar as entidades recebidas. Os cards SHALL ser informativos, sem navegação para despesas ou seleção de categoria.
+A seção de Metrics SHALL substituir o gráfico segmentado por cards das categorias com `totalAmount > 0` no mês selecionado na Dashboard. A apresentação SHALL manter o total mensal acima dos cards, formatar valores em centavos pelo `IMoneyFormatter` e preservar o percentual fornecido pela API, sem recalcular agregações ou alterar as entidades recebidas. Cards com período civil SHALL abrir a listagem filtrada por período e categoria; sem período SHALL permanecer informativos e sem navegação.
+
+#### Scenario: Retorno da listagem por categoria
+- **WHEN** a pessoa abre despesas por um card com período e retorna à mesma composição montada
+- **THEN** os argumentos da rota contêm somente período e categoria, sem callbacks
+- **AND** Metrics notifica seu consumidor local para recarregar, mesmo sem alterações na listagem
 
 #### Scenario: Categorias em uso no mês
 - **WHEN** a consulta do mês retorna categorias com totais positivos e zero
@@ -153,10 +162,9 @@ Cada card SHALL anunciar uma única descrição com nome, valor e percentual men
 
 ### Requirement: Substituição da dependência de gráfico
 
-A implementação SHALL compor as duas linhas com `Column`, `Row` e `Expanded` e SHALL remover o gráfico segmentado e seu estado de seleção, sem dependência de `fl_chart` na apresentação. A mudança SHALL permanecer na apresentação e composição, preservando a integração HTTP, os contratos de domínio e os commands existentes.
+A implementação SHALL compor as duas linhas com `Column`, `Row` e `Expanded` e SHALL remover o gráfico segmentado e seu estado de seleção, sem dependência de `fl_chart` na apresentação. A mudança SHALL permanecer na apresentação e composição, preservando a integração HTTP, os tipos de domínio, os contratos de aplicação e a coordenação por Bloc, sem reintroduzir commands.
 
 #### Scenario: Dependências e fluxo financeiro preservados
 - **WHEN** a substituição está implementada
 - **THEN** a distribuição mensal usa a grade de cards e não depende de `fl_chart`
 - **AND** a consulta permanece pelo command de Metrics e pelo contexto mensal existente da Dashboard
-

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:mocktail/mocktail.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_modular/flutter_modular.dart';
+import 'package:cordato/features/core/presentation/extensions/bloc_scoped_extension.dart';
 
 import 'package:cordato/features/core/presentation/themes/themes.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
@@ -51,6 +53,7 @@ void main() {
   late SignInBloc Function() factory;
   late List<Completer<void>> pendingRequests;
   late AuthenticationRepositoryMock repository;
+  late Module module;
 
   SignInBloc createBloc() {
     final bloc = SignInBloc(repository: repository);
@@ -65,6 +68,7 @@ void main() {
     blocs = [];
     pendingRequests = [];
     factory = createBloc;
+    module = createModule(register: (_) {});
 
     repository = AuthenticationRepositoryMock();
   });
@@ -92,16 +96,23 @@ void main() {
     }
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: Themes.light,
-        locale: const Locale('pt', 'BR'),
-        supportedLocales: const [Locale('pt', 'BR')],
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: ToastProviderWidget(
-          child: SignInScreen(
-            bloc: blocFactory ?? factory,
-            emailValidation: const EmailValidation(),
-            passwordValidation: const PasswordValidation(),
+      ModularApp(
+        key: ObjectKey(blocFactory ?? factory),
+        module: module,
+        provide: (scope) => scope.addBloc<SignInBloc>(blocFactory ?? factory),
+        child: Builder(
+          builder: (context) => MaterialApp(
+            theme: Themes.light,
+            locale: const Locale('pt', 'BR'),
+            supportedLocales: const [Locale('pt', 'BR')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            home: ToastProviderWidget(
+              child: SignInScreen(
+                bloc: context.read<SignInBloc>(),
+                emailValidation: const EmailValidation(),
+                passwordValidation: const PasswordValidation(),
+              ),
+            ),
           ),
         ),
       ),
@@ -410,7 +421,7 @@ void main() {
   );
 
   testWidgets(
-    'replacing the factory closes the old bloc and ignores its late error',
+    'replacing the scope closes the old bloc and ignores its late error',
     (tester) async {
       final pending = holdRequest();
       await pumpScreen(tester);
@@ -424,8 +435,6 @@ void main() {
       expect(blocs, hasLength(2));
       expect(previousBloc.isClosed, isTrue);
       expect(blocs.last.isClosed, isFalse);
-      expect(fields(tester).first.controller!.text, email);
-      expect(fields(tester).last.controller!.text, password);
       expect(fields(tester).every((field) => field.enabled == true), isTrue);
 
       pending.completeError(AuthenticationException(errors: rejected));
@@ -437,6 +446,7 @@ void main() {
       when(() => repository.signIn(email: email, password: password))
           .thenAnswer((_) async {});
 
+      await fillForm(tester);
       await submit(tester);
       await tester.pumpAndSettle();
 

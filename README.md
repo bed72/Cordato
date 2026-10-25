@@ -20,20 +20,22 @@ Screen/Form -> Bloc -> contrato de repository (application)
 - Repositories concretos em `infrastructure/repositories/`, usando `IHttpClient`
   e `IStorageClient` diretamente, sem data sources intermediários desnecessários.
 - Retorno por `Future<T>`; falhas esperadas por exceção de aplicação, sem Either.
-- Bloc com eventos concretos e estados sealed imutáveis. Tela é dona do lifecycle;
-  formulário mantém entrada e validação, sem copiar loading ou resultado do Bloc.
-- Testes de repository, Bloc, widget e E2E organizados junto à feature/tela.
+- Bloc com eventos concretos e estados sealed imutáveis. Sign-in usa ownership
+  pelo escopo Modular; telas ainda não migradas mantêm ownership local. Formulário
+  mantém entrada e validação, sem copiar loading ou resultado do Bloc.
+- Testes de repository, Bloc, widget, composição Modular e E2E junto à feature/tela.
 
-CommandIt, data sources e repositories concretos em application ainda existentes
-são legado pendente de migração, não alternativas aprovadas para código novo.
+CommandIt, Either, data sources de delegação e repositories concretos em
+application descritos em documentos históricos não são alternativas aprovadas
+para código novo nem dependências a restaurar.
 
 Leia [ARCHITECTURE.md](ARCHITECTURE.md) para decisões e fronteiras e
 [AGENTS.md](AGENTS.md) para convenções de contribuição.
 
 ## Estado Do Projeto
 
-**O checkout está em transição arquitetural e ainda possui pendências de
-composição global. A suíte Flutter passa, mas isso não valida a navegação do app.**
+**O checkout está em transição arquitetural. Testes de composição não substituem
+a validação da navegação em dispositivo.**
 
 Authentication já possui contrato em application e repository em infrastructure.
 Sign-in, cadastro e reenvio usam Bloc, controle de submissões concorrentes, falhas tipadas
@@ -47,6 +49,11 @@ Authentication. Mantém confirmação, loading, erros e retry manual, com revoga
 remota antes da limpeza do storage. O redirecionamento continua global por sessão.
 Authentication não possui mais apresentação baseada em commands; isso não
 significa que todas as demais features já foram migradas.
+
+Sign-in é o piloto de escopo de página do Modular V7: a extension `addBloc` do
+core registra o Bloc no `provide` da rota, que cria e fecha a instância. A tela
+recebe o Bloc pronto e mantém `BlocConsumer`; os demais fluxos continuam com
+ownership pelas telas e Session permanece sob ownership global de `AppWidget`.
 
 Session também usa contrato em application, repository direto em infrastructure
 e Bloc. `AppWidget` é o único dono da observação contínua e do fechamento;
@@ -94,18 +101,24 @@ listagem/exclusão, com estados sealed, factories estáveis e lifecycle das tela
 Mantém validação, erros 422 por campo, retry manual, cadastro contínuo por hold,
 filtros, paginação opaca e confirmação de exclusão sem remoção otimista. Consultas
 obsoletas não sobrescrevem filtros recentes; mutações pendentes bloqueiam duplicatas.
+Listagem navega diretamente pelo `BuildContext`, sem callbacks nos argumentos de
+rota; Dashboard e métricas recarregam ao retornar da listagem, mesmo sem alteração.
 Expense não depende mais de CommandIt. Dashboard consome resultados diretos de
 todos os contextos consultados.
 
-Os testes do handler CommandIt removido foram excluídos; os testes de responses
-cobrem os DTOs e as exceções HTTP atuais, sem `Either` ou `response<T>`.
-Após a migração do Firebase Messaging para `register()` e `onRegistered`,
-`flutter test` passou com 907 testes, incluindo 10 de arquitetura, e
-`flutter analyze` concluiu sem problemas. O client expõe o registro e o stream
-de FIDs, sem usar as APIs depreciadas de token.
-Session e Welcome estão ativos em `app_module.dart`; Dashboard, Settings e outros
-destinos continuam desativados. A composição global e os flows E2E não foram
-validados por essa revisão.
+Os testes de responses cobrem DTOs e exceções HTTP atuais, sem `Either` ou
+`response<T>`. Messaging expõe `register()` e `onRegistered` com stream de FIDs,
+sem usar as APIs depreciadas de token.
+Todos os destinos de `RouteEnum` estão registrados em `app_module.dart`, incluindo
+Dashboard, Settings, User e Expense. Testes de composição verificam as rotas e a
+resolução das dependências sem visitar módulos irmãos. O caso de logout ainda
+falha porque `IAuthenticationRepository` está no escopo de Authentication.
+
+Última verificação de código: **`flutter analyze` sem problemas; `flutter test`
+com 913 aprovados e uma falha**, no caso de DI do logout em
+`test/app_module_test.dart`. Previews compilaram/serviram, mas o servidor atingiu
+timeout sem cliente conectado; não houve validação visual nem execução E2E.
+Esta atualização documental não repetiu os comandos Flutter.
 Os detalhes estão em [Estado atual e migração](ARCHITECTURE.md#estado-atual-e-migração).
 
 O código existente inclui os seguintes fluxos, cuja disponibilidade depende da
@@ -197,6 +210,26 @@ Abra a URL impressa. O launcher contorna a descoberta inicial vazia do previewer
 no Flutter 3.47.6/3.47.7; se necessário, atualize o painel após a análise inicial.
 Previews usam o tema real, pt-BR e fakes locais, sem rede/storage. Não substituem
 testes de contrato ou E2E. `.widget_preview/` não deve ser versionado.
+Preserve um único proprietário de recursos: Sign-in recebe um Bloc externo;
+as telas ainda não migradas continuam criando/fechando sua factory. Use
+`PreviewResourceWidget` para um recurso externo ao lifecycle da tela.
+
+### Modular V7 E Navegação
+
+- Estado de página novo ou explicitamente migrado usa `provide` e a extension
+  `BlocScopedExtension`, em `core/presentation/extensions/bloc_scoped_extension.dart`.
+  O Modular cria e fecha o Bloc; a screen recebe a instância e mantém `flutter_bloc`.
+- Apenas Sign-in foi migrado para esse ownership. Session permanece global sob
+  `AppWidget`; os demais fluxos de tela ainda possuem factories locais.
+- Contratos compartilhados entre features precisam de módulos sem `path`.
+  Módulos com `path` ativam seus binds apenas enquanto a feature está em uso.
+- Widgets/mixins navegam pelo próprio `BuildContext`; argumentos de rota levam
+  dados, não callbacks. Edição devolve a entidade confirmada pelo resultado tipado.
+- Ao retornar da listagem, Dashboard e Metrics recarregam mesmo sem alteração;
+  o retorno do cadastro continua condicionado à entidade confirmada.
+
+Consulte [composição e rotas](ARCHITECTURE.md#composição-rotas-e-bootstrap) para
+o exemplo de `provide`, ownership, estado de migração e limites de DI.
 
 ## Testes
 
@@ -217,6 +250,8 @@ flutter test test/architecture
 flutter test test/features/authentication/infrastructure/repositories
 flutter test test/features/authentication/presentation/screens/sign_in/bloc
 flutter test test/features/authentication/presentation/screens/sign_in/sign_in_screen_test.dart
+flutter test test/features/authentication/authentication_sign_in_module_test.dart
+flutter test test/app_module_test.dart
 flutter test test/features/authentication/presentation/screens/sign_up
 flutter test test/features/authentication/presentation/screens/resend_email
 flutter test test/features/authentication/presentation/screens/callback test/features/authentication/authentication_callback_module_test.dart
@@ -238,7 +273,15 @@ com fixture própria na porta 8766; ainda não foram executados em dispositivo.
 Os flows de
 [`resend_email/e2e/`](test/features/authentication/presentation/screens/resend_email/e2e/README.md)
 usam fixture na porta 8767, aguardam o cooldown real e também não foram executados
-em dispositivo. Bloc/tela de reenvio têm 23 testes novos aprovados; o lote focado
+em dispositivo.
+
+### Histórico De Migrações E Verificações
+
+Os números e bloqueios abaixo registram etapas anteriores; não descrevem o
+checkout atual. O resultado vigente está em **Estado do projeto** e a referência
+de implementação é `ARCHITECTURE.md`, não os comandos/rotas históricos.
+
+Na migração de reenvio, Bloc/tela tiveram 23 testes novos aprovados; o lote focado
 de arquitetura, Authentication, Settings, Session, Root e storage tem 250 testes aprovados. A análise focada está
 limpa, mas análise/suíte globais continuam bloqueadas pelo legado.
 

@@ -1,8 +1,9 @@
 # Resend-email E2E
 
-Flows preparados, **não executados em dispositivo** devido aos bloqueios globais
-de compilação/composição (`command_it`, `Either`, `response<T>` e módulo de rotas
-de Authentication). Seletores precisam ser confirmados no build atualizado.
+Flows preparados, **não executados em dispositivo**. As rotas estão registradas;
+isso não comprova execução no app. Reenvio mantém factory e ownership pela screen,
+inclusive timer/cooldown; somente Sign-in migrou para provide/addBloc do Modular.
+Seletores precisam ser confirmados no build atualizado.
 
 - `Success.yaml`: cooldown inicial, envio, feedback, novo cooldown e segundo envio manual.
 - `Failure.yaml`: erro 429, e-mail preservado e retry imediato, sem novo cooldown na falha.

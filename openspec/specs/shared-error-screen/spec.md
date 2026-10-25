@@ -1,5 +1,8 @@
 # shared-error-screen Specification
 
+> Requisitos visuais permanecem subordinados à [arquitetura atual](../../README.md):
+> execução por Bloc e feedback fora do build, sem restaurar commands históricos.
+
 ## Purpose
 TBD - created by archiving change unify-dashboard-error-screen. Update Purpose after archive.
 ## Requirements
@@ -51,4 +54,3 @@ O core SHALL oferecer uma `ErrorScreen` de apresentação, dona de seu `Scaffold
 - **WHEN** a pessoa usa leitor de tela
 - **THEN** título, descrição e labels das ações são acessíveis em ordem de leitura
 - **AND** o ícone decorativo não duplica o anúncio do erro
-

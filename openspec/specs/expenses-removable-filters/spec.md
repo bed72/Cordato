@@ -1,5 +1,9 @@
 # expenses-removable-filters Specification
 
+> Os requisitos de filtros permanecem; a implementação usa ExpensesBloc e
+> navegação direta pelo contexto, sem callbacks nos argumentos da rota.
+> Consulte [a referência vigente](../../README.md).
+
 ## Purpose
 Definir filtros locais de categoria e período na listagem de despesas, com
 pílulas removíveis, recarga consistente e ações acessíveis.

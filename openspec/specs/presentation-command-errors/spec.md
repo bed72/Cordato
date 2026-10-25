@@ -1,5 +1,9 @@
 # presentation-command-errors Specification
 
+> CommandIt é histórico, não arquitetura atual. Preserve intenções de UX por
+> estados Bloc, exceções de aplicação e efeitos em listeners, sem reintroduzir
+> commands/Either. Consulte [a referência vigente](../../README.md).
+
 ## Purpose
 TBD - created by archiving change align-command-it-presentation-errors. Update Purpose after archive.
 ## Requirements
@@ -162,4 +166,3 @@ CallbackCommand SHALL continuar publicando EmailVerificationStatusEnum e Session
 - **WHEN** chega um evento novo enquanto loadSession aguarda leitura antiga
 - **THEN** a revisão existente impede sobrescrita pelo valor antigo
 - **AND** nenhum mecanismo novo de loading síncrono é introduzido
-

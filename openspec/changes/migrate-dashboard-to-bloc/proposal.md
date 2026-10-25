@@ -1,3 +1,9 @@
+# Estado Documental
+
+Esta proposta registra uma etapa anterior. Consulte
+[a referência vigente](../../README.md) para arquitetura, ownership e navegação.
+Não restaure Either, commands ou callbacks de rota a partir deste histórico.
+
 ## Why
 
 A Dashboard concentra coordenação assíncrona, recuperação e verificações defensivas de CommandIt em um mixin de 571 linhas. O objetivo é ter um único proprietário testável do fluxo usando Bloc, em vez de transferir a mesma complexidade para outro arquivo. Por solicitação explícita durante a implementação, cancelamento HTTP fica para depois; este piloto usa somente invalidação lógica.

@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:cordato/features/core/presentation/themes/themes.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
@@ -22,7 +23,9 @@ void main() {
   late ExpenseRepositoryMock repository;
   late ExpensesBloc Function() factory;
   late List<ExpensesBloc> blocs;
-  late int changed;
+  late ValueNotifier<Widget> screen;
+  late Module module;
+  ExpenseEntity? editResult;
   final expense = ExpenseEntity(
     id: '1',
     description: 'Mercado',
@@ -35,7 +38,28 @@ void main() {
   setUp(() {
     repository = ExpenseRepositoryMock();
     blocs = [];
-    changed = 0;
+    editResult = null;
+    screen = ValueNotifier<Widget>(const SizedBox.shrink());
+    addTearDown(screen.dispose);
+    module = createModule(
+      register: (context) => context
+        ..route(
+          '/expenses',
+          child: (_, _) => ValueListenableBuilder<Widget>(
+            valueListenable: screen,
+            builder: (_, child, _) => child,
+          ),
+        )
+        ..route(
+          '/expense',
+          child: (context, state) => Scaffold(
+            body: TextButton(
+              onPressed: () => context.pop(editResult),
+              child: Text('Salvar edição ${state.arguments}'),
+            ),
+          ),
+        ),
+    );
     factory = () {
       final bloc = ExpensesBloc(repository: repository);
       blocs.add(bloc);
@@ -51,25 +75,28 @@ void main() {
     WidgetTester tester, {
     String? category,
     ExpensesBloc Function()? blocFactory,
-    Future<ExpenseEntity?> Function(String)? onEdit,
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
+    screen.value = ExpensesScreen(
+      bloc: blocFactory ?? factory,
+      category: category,
+      dateFormatter: DateFormatter(),
+      moneyFormatter: MoneyFormatter(),
+    );
     await tester.pumpWidget(
-      MaterialApp(
-        theme: Themes.light,
-        locale: const Locale('pt', 'BR'),
-        supportedLocales: const [Locale('pt', 'BR')],
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: ToastProviderWidget(
-          child: ExpensesScreen(
-            bloc: blocFactory ?? factory,
-            category: category,
-            dateFormatter: DateFormatter(),
-            moneyFormatter: MoneyFormatter(),
-            onBackPressed: () {},
-            onExpensesChanged: () => changed++,
-            onExpensePressed: onEdit,
+      ModularApp(
+        module: module,
+        initialRoute: '/expenses',
+        defaultTransition: TransitionType.none,
+        child: Builder(
+          builder: (context) => MaterialApp.router(
+            routerConfig: ModularApp.routerConfigOf(context),
+            theme: Themes.light,
+            locale: const Locale('pt', 'BR'),
+            supportedLocales: const [Locale('pt', 'BR')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            builder: (_, child) => ToastProviderWidget(child: child!),
           ),
         ),
       ),
@@ -135,7 +162,6 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.text('Mercado'), findsOneWidget);
-      expect(changed, 0);
       expect(
         tester
             .widget<ExpenseDismissibleWidget>(
@@ -148,9 +174,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Mercado'), findsNothing);
       expect(find.text('Despesa excluída'), findsOneWidget);
-      expect(changed, 1);
       await pump(tester);
-      expect(changed, 1);
       await finish(tester);
     },
   );
@@ -166,12 +190,10 @@ void main() {
     await tester.tap(find.text('Excluir'));
     await tester.pumpAndSettle();
     expect(find.text('Mercado'), findsOneWidget);
-    expect(changed, 0);
     when(() => repository.delete(id: '1')).thenAnswer((_) async {});
     await requestDelete(tester);
     await tester.tap(find.text('Excluir'));
     await tester.pumpAndSettle();
-    expect(changed, 1);
     verify(() => repository.delete(id: '1')).called(2);
     await finish(tester);
   });
@@ -214,7 +236,8 @@ void main() {
         occurredOn: expense.occurredOn,
         category: .transport,
       );
-      await pump(tester, category: 'food', onEdit: (_) async => edited);
+      editResult = edited;
+      await pump(tester, category: 'food');
       await tester.pumpAndSettle();
       tester
           .widget<ExpenseDismissibleWidget>(
@@ -222,28 +245,52 @@ void main() {
           )
           .onEdit!();
       await tester.pumpAndSettle();
+      expect(find.text('Salvar edição 1'), findsOneWidget);
+      await tester.tap(find.text('Salvar edição 1'));
+      await tester.pumpAndSettle();
       expect(find.text('Mercado'), findsNothing);
-      expect(changed, 1);
       await finish(tester);
     },
   );
 
-  testWidgets(
-    'dispose during pending delete prevents late toast and callback',
-    (tester) async {
-      final pending = Completer<void>();
-      when(() => repository.delete(id: '1')).thenAnswer((_) => pending.future);
-      await pump(tester);
-      await tester.pumpAndSettle();
-      await requestDelete(tester);
-      await tester.tap(find.text('Excluir'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.pumpWidget(const SizedBox.shrink());
-      pending.complete();
-      await tester.pumpAndSettle();
-      expect(changed, 0);
-      await finish(tester);
-    },
-  );
+  testWidgets('cancelled edit preserves the list and re-enables editing', (
+    tester,
+  ) async {
+    await pump(tester);
+    await tester.pumpAndSettle();
+    tester
+        .widget<ExpenseDismissibleWidget>(find.byType(ExpenseDismissibleWidget))
+        .onEdit!();
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Mercado'), findsOneWidget);
+    expect(
+      tester
+          .widget<ExpenseDismissibleWidget>(
+            find.byType(ExpenseDismissibleWidget),
+          )
+          .onEdit,
+      isNotNull,
+    );
+    verify(() => repository.get(pageSize: 20)).called(1);
+    await finish(tester);
+  });
+
+  testWidgets('dispose during pending delete prevents late toast', (
+    tester,
+  ) async {
+    final pending = Completer<void>();
+    when(() => repository.delete(id: '1')).thenAnswer((_) => pending.future);
+    await pump(tester);
+    await tester.pumpAndSettle();
+    await requestDelete(tester);
+    await tester.tap(find.text('Excluir'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpWidget(const SizedBox.shrink());
+    pending.complete();
+    await tester.pumpAndSettle();
+    await finish(tester);
+  });
 }

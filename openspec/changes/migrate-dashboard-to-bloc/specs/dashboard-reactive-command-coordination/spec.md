@@ -1,3 +1,6 @@
+> Delta histórico; a política de retorno sem alteração foi substituída para a
+> listagem. Consulte [a referência vigente](../../../../README.md).
+
 ## REMOVED Requirements
 
 ### Requirement: Dashboard usa uma fonte de erro financeiro por operação

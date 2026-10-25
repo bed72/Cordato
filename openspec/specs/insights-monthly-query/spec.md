@@ -1,5 +1,9 @@
 # insights-monthly-query Specification
 
+> Requisitos de consulta são referência de produto. A implementação atual usa
+> contrato de aplicação, repository HTTP e Bloc, não CommandIt ou Either.
+> Consulte [a referência vigente](../../README.md).
+
 ## Purpose
 Definir a consulta de insights por ano e mês, preservando as análises retornadas
 pela API e os metadados de falhas.
@@ -51,4 +55,3 @@ Os contratos de repository e data source de consultas filtradas SHALL preservar 
 - **WHEN** o repository lança uma exceção em vez de retornar Either
 - **THEN** o CommandIt expõe a exceção original conforme sua política nativa
 - **AND** a apresentação utiliza o fallback existente sem perder a distinção de CommandFailureException
-

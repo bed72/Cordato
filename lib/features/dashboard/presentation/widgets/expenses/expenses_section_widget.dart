@@ -85,17 +85,14 @@ final class const ExpensesSectionWidget({
     if (ModalRoute.of(context)?.isCurrent == false) return;
     final bloc = context.read<DashboardBloc>();
     final month = bloc.state.selectedMonth;
-    bool changed = false;
     await context.pushNamed(
       RouteEnum.expenses.path,
       arguments: (
         from: DateTime(month.year, month.month),
         to: DateTime(month.year, month.month + 1, 0),
-        onExpensesChanged: () => changed = true,
       ),
     );
-    if (changed &&
-        context.mounted &&
+    if (context.mounted &&
         !bloc.isClosed &&
         identical(context.read<DashboardBloc>(), bloc)) {
       bloc.add(DashboardExpensesChanged());

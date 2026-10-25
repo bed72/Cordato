@@ -1,5 +1,10 @@
 # presentation-command-lifecycle Specification
 
+> Lifecycle de commands é histórico. Estado de página novo/migrado usa Modular
+> provide/addBloc; somente Sign-in foi migrado. Outras telas mantêm factories
+> próprias e Session pertence a AppWidget. Nunca duplique donos do fechamento.
+> Consulte [a referência vigente](../../README.md).
+
 ## Purpose
 TBD - created by archiving change align-command-it-presentation-errors. Update Purpose after archive.
 ## Requirements
@@ -155,4 +160,3 @@ Commands e o transporte da exceção SHALL ter testes unitários observando exec
 - **WHEN** a substituição artificial não é exposta pelo fluxo disponível
 - **THEN** a entrega registra o limite de validação e as evidências estáticas
 - **AND** não afirma que a suíte de commands comprovou todo lifecycle da screen
-

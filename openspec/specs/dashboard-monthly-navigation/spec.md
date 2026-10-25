@@ -1,5 +1,9 @@
 # dashboard-monthly-navigation Specification
 
+> Arquitetura de execução: Bloc e contratos em application, não commands/Left.
+> Consulte [a precedência atual](../../README.md). Retorno da listagem recarrega
+> mesmo sem alteração; retorno do cadastro exige resultado confirmado.
+
 ## Purpose
 Definir o contexto mensal compartilhado da Dashboard, a coordenação das consultas
 e a preservação do mês durante atualização e navegação.
@@ -58,7 +62,7 @@ A Dashboard SHALL desabilitar ambas as setas enquanto qualquer consulta de seç�
 - **AND** sucessos posteriores das consultas restantes não removem a tela de erro
 
 #### Scenario: Erros de despesas e exceções
-- **WHEN** despesas retornam Left ou qualquer command financeiro conclui com exceção observável
+- **WHEN** o contrato de despesas ou outro contrato financeiro lança uma exceção de aplicação
 - **THEN** a mesma tela de erro global é apresentada
 - **AND** não são exibidas mensagens técnicas ou erros duplicados por seção
 
@@ -79,7 +83,7 @@ A Dashboard SHALL desabilitar ambas as setas enquanto qualquer consulta de seç�
 
 ### Requirement: Atualização e navegação preservam o mês
 
-A Dashboard SHALL preservar o mês selecionado em refresh e retorno do cadastro ou da listagem. O retorno SHALL recarregar as três seções nesse mês. O cadastro SHALL continuar iniciando com a data civil de hoje.
+A Dashboard SHALL preservar o mês selecionado em refresh e retorno do cadastro ou da listagem. Retorno da listagem SHALL recarregar as três seções nesse mês, mesmo sem alteração, sem callback nos argumentos da rota. Retorno do cadastro SHALL recarregar somente com resultado confirmado. O cadastro SHALL continuar iniciando com a data civil de hoje.
 
 #### Scenario: Refresh histórico
 - **WHEN** a pessoa atualiza por gesto a Dashboard em setembro de 2026
@@ -93,9 +97,13 @@ A Dashboard SHALL preservar o mês selecionado em refresh e retorno do cadastro 
 - **WHEN** a pessoa cadastra com hold a partir da Dashboard
 - **THEN** o formulário mantém o comportamento de limpar após sucesso e permanecer aberto, sem alterar o contexto mensal da Dashboard
 
-#### Scenario: Retorno sem cadastro
-- **WHEN** a pessoa cancela o formulário ou retorna de “Ver tudo”
+#### Scenario: Retorno da listagem sem alteração
+- **WHEN** a pessoa retorna de “Ver tudo” sem alterar despesas
 - **THEN** a Dashboard preserva o mês selecionado e recarrega suas três seções
+
+#### Scenario: Cancelamento do cadastro
+- **WHEN** a pessoa cancela o formulário sem resultado salvo
+- **THEN** a Dashboard preserva o mês selecionado sem iniciar recarga por mutação
 
 ### Requirement: Estados vazios mensais
 
@@ -167,4 +175,3 @@ O cabeçalho SHALL mostrar “Trocado” e o avatar placeholder quando a consult
 #### Scenario: Falha somente no limite
 - **WHEN** a consulta do limite do histórico falha e as três seções financeiras têm sucesso
 - **THEN** a Dashboard permanece com seu conteúdo normal e a seta anterior bloqueada
-

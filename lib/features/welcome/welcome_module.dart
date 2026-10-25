@@ -5,7 +5,7 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/welcome/presentation/screens/welcome_screen.dart';
 
-final welcomeRoutesModule = createModule(
+final welcomeModule = createModule(
   path: RouteEnum.welcome.path,
   register: (context) => context.route(
     RouteEnum.app.path,

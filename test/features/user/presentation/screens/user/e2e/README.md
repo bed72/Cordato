@@ -1,9 +1,9 @@
 # User / Perfil E2E
 
-Flows preparados, **não executados em dispositivo**. O app ainda tem bloqueios
-de compilação no legado e os destinos Dashboard/Settings/User não estão ativos
-na composição global. Perfil e edição de nome já usam Bloc. Não adicione
-bypasses de sessão ou rotas de teste ao app para contornar esses bloqueios.
+Flows preparados, **não executados em dispositivo**. Dashboard/Settings/User estão
+registrados na composição global; isso não comprova DI nem navegação no app.
+Perfil e edição usam Bloc com ownership pelas screens, não pelo escopo Modular.
+Não adicione bypasses de sessão ou rotas de teste para contornar falhas reais.
 
 - `Success.yaml`: perfil, avatar após debounce, cancelamento da exclusão e
   exclusão confirmada com redirecionamento global por Session.
@@ -20,7 +20,7 @@ Somente dispositivo de teste: os flows limpam dados/keychain. Nunca execute
 contra produção. A fixture escuta apenas loopback, não usa serviços externos e
 reutiliza a fixture local de login para os demais endpoints da Dashboard.
 
-Após resolver os bloqueios e ativar os destinos, na raiz:
+Com a composição validada e o build de teste instalado, na raiz:
 
 ```bash
 python3 test/support/user/fakes/user_http_server.py

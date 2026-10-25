@@ -1,8 +1,9 @@
 # Callback E2E
 
-Flows preparados, **não executados em dispositivo**. O app ainda possui bloqueios
-globais de compilação/composição (`command_it`, `Either`, `response<T>` e módulo
-de rotas). Seletores e entrega nativa do deep link precisam ser validados no build.
+Flows preparados, **não executados em dispositivo**. As rotas estão registradas;
+isso não comprova DI nem execução no app. Callback ainda usa factory e ownership
+pela screen; somente Sign-in migrou para provide/addBloc do Modular.
+Seletores e entrega nativa do deep link precisam ser validados no build.
 
 - `Success.yaml`: 204, toast, entrada e ausência de sessão após reiniciar.
 - `Failure.yaml`: 500, feedback seguro e retorno ao sign-in.

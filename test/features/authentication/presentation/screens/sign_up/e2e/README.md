@@ -1,8 +1,9 @@
 # Sign-up E2E
 
-Flows preparados, **não executados em dispositivo** devido aos bloqueios de
-compilação/composição existentes no app (`command_it`, `Either`, `response<T>` e
-módulo de rotas de Authentication). Seletores precisam ser confirmados no build.
+Flows preparados, **não executados em dispositivo**. As rotas estão registradas;
+isso não comprova execução no app. Cadastro mantém factory e ownership pela screen;
+somente Sign-in migrou para provide/addBloc do Modular. Seletores precisam ser
+confirmados no build.
 
 - `Success.yaml`: payload único, confirmação com e-mail e ausência de sessão ao reiniciar.
 - `Failure.yaml`: validação local, conflito 409, entrada preservada e retry manual.
@@ -28,7 +29,7 @@ flutter run --dart-define=BASE_URL=http://127.0.0.1:8766/api/
 ```
 
 No simulador iOS o loopback também aponta ao host; iOS físico não é suportado.
-O build deve permitir HTTP local. Após resolver os bloqueios, execute um por vez:
+O build deve permitir HTTP local. Com app compilado/instalado, execute um por vez:
 
 ```bash
 maestro test test/features/authentication/presentation/screens/sign_up/e2e/Success.yaml

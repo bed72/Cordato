@@ -5,7 +5,6 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
-import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
@@ -19,11 +18,16 @@ import 'package:cordato/features/expense/presentation/screens/expense/validators
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_cents_validation.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_description_validation.dart';
 
+final expenseDependenciesModule = createModule(
+  register: (context) =>
+      context.addLazySingleton<IExpenseRepository>(ExpenseRepository.new),
+);
+
 final expenseModule = createModule(
   path: RouteEnum.app.path,
   register: (context) {
     context
-      ..addLazySingleton<IExpenseRepository>(ExpenseRepository.new)
+      ..module(expenseDependenciesModule)
       ..add(ExpenseBloc.new)
       ..add(ExpensesBloc.new)
       ..add(ExpenseFormValidator.new)
@@ -38,51 +42,15 @@ final expenseModule = createModule(
               to: final DateTime to,
               from: final DateTime from,
               category: final String? _,
-              onExpensesChanged: final VoidCallback _,
-            ) =>
-              (from: from, to: to),
-            (
-              to: final DateTime to,
-              from: final DateTime from,
-              category: final String? _,
             ) =>
               (from: from, to: to),
             (from: final DateTime from, to: final DateTime to) => (
               to: to,
               from: from,
             ),
-            (
-              to: final DateTime to,
-              from: final DateTime from,
-              onExpensesChanged: final VoidCallback _,
-            ) =>
-              (from: from, to: to),
-            _ => null,
-          };
-          final onExpensesChanged = switch (state.arguments) {
-            (
-              to: final DateTime _,
-              from: final DateTime _,
-              category: final String? _,
-              onExpensesChanged: final VoidCallback callback,
-            ) =>
-              callback,
-            (
-              to: final DateTime _,
-              from: final DateTime _,
-              onExpensesChanged: final VoidCallback callback,
-            ) =>
-              callback,
             _ => null,
           };
           final category = switch (state.arguments) {
-            (
-              to: final DateTime _,
-              from: final DateTime _,
-              category: final String? category,
-              onExpensesChanged: final VoidCallback _,
-            ) =>
-              category,
             (
               to: final DateTime _,
               from: final DateTime _,
@@ -96,15 +64,9 @@ final expenseModule = createModule(
             key: ValueKey((period, category)),
             period: period,
             category: category,
-            onBackPressed: context.pop,
-            onExpensesChanged: onExpensesChanged,
-            dateFormatter: inject<IDateFormatter>(),
             bloc: inject<ExpensesBloc>,
+            dateFormatter: inject<IDateFormatter>(),
             moneyFormatter: inject<IMoneyFormatter>(),
-            onExpensePressed: (id) => context.pushNamed<ExpenseEntity>(
-              RouteEnum.expense.path,
-              arguments: id,
-            ),
           );
         },
       )

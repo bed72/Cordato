@@ -246,14 +246,22 @@ localizado. Editar limpa somente o erro daquele campo. Falha preserva a entrada.
 
 ### Propriedade E Lifecycle
 
-`SignInScreen` recebe `SignInBloc Function() bloc` e validators. Sua factory é
-estável, injetada como `bloc: inject<SignInBloc>`; o módulo registra Bloc por
-factory e repository como lazy singleton pelo contrato.
+Sign-in é o piloto de ownership pelo escopo de página do Modular V7.
+`authenticationModule` registra `SignInBloc.new` no `provide` da rota por
+`scope.addBloc<SignInBloc>`, sem bind adicional do Bloc no módulo. A extension
+`BlocScopedExtension`, em `core/presentation/extensions/`, adapta `addStreamable`
+para `BlocBase`, preservando constructor tear-offs com dependências injetadas.
+O repository continua registrado como lazy singleton pelo contrato no módulo
+Authentication. A composição atual ainda precisa disponibilizar esse contrato
+fora da feature para logout; o teste global de resolução evidencia a pendência.
 
-O mixin da screen cria o Bloc em `initState`, fecha em `dispose` e fecha/substitui
-quando a factory muda em `didUpdateWidget`. Rebuild com a mesma factory não cria
-outra instância. A screen é a única dona do fechamento. `BlocProvider.value`,
-quando necessário, não transfere essa propriedade.
+`SignInScreen` recebe a instância `SignInBloc bloc` e validators. O Modular cria
+uma instância por página montada e chama `close()` no descarte do escopo; rebuild
+não cria outra instância. A screen e seu mixin não criam nem fecham o Bloc.
+`BlocConsumer` recebe a instância explicitamente. Testes e previews também precisam
+de um proprietário externo explícito; nunca há dois donos do fechamento.
+Os demais fluxos mantêm factories com ownership pelas respectivas telas;
+Session continua global e pertence exclusivamente a `AppWidget`.
 
 `BlocConsumer` separa composição de efeitos únicos. Loading e disponibilidade
 dos campos vêm do estado; toast não é emitido no build. Mixins de UI concentram
@@ -410,10 +418,15 @@ novo em Welcome/Sign-in abre Dashboard; perda/falha de observação em rota prot
 volta a Welcome. Cadastro, reenvio e callback públicos são preservados. Essa decisão
 visual não prova autorização remota e não limpa storage em falha de observação.
 
-`app_module.dart` ativa Session e Welcome e usa as rotas já presentes em
-`authenticationModule`, sem a referência duplicada/inexistente
-`authenticationRoutesModule`. Dashboard, Settings e demais destinos comentados
-não foram reativados nem migrados incidentalmente. O teste composto de Root usa
+`app_module.dart` ativa Session, Welcome, Authentication, Dashboard, Settings,
+User e Expense, além das dependências de Insight e Metrics. User e Expense
+possuem módulos de dependências compartilhadas sem path. Authentication ainda
+registra seu repository no escopo da feature, impedindo resolução isolada do
+logout; isso é pendência, não exceção aprovada de DI. Blocs de
+tela continuam registrados por factory nos módulos de suas features, exceto
+Sign-in, cujo Bloc pertence ao `provide` da página.
+`test/app_module_test.dart` verifica todos os destinos de `RouteEnum` e a resolução
+de Dashboard e logout sem ativar rotas irmãs. O teste composto de Root usa
 repositories/Blocs reais de Session, Authentication e Settings com clients
 mockados e Dashboard visual de teste para validar login → token → Dashboard →
 logout → limpeza → Welcome com o mesmo proprietário de Session.
@@ -645,6 +658,12 @@ pode substituir uma página obsoleta ainda pendente. Os links permanecem opacos;
 IDs repetidos são deduplicados, com ordenação estável por data civil decrescente.
 Falha de página preserva itens e continuação para retry manual. Retorno da edição
 atualiza a lista ou remove o item quando deixa de corresponder aos filtros.
+`ExpensesScreen` não recebe callbacks de navegação ou de alteração. Seu mixin
+abre a edição por `context.pushNamed<ExpenseEntity>` e volta por `context.pop`.
+Os argumentos da rota de listagem contêm somente período e categoria. Dashboard
+e o card de categoria de Metrics aguardam o retorno da listagem e recarregam suas
+consultas, inclusive ao voltar sem alterações, evitando interceptar o botão do
+sistema ou o gesto de retorno para transportar um sinal de mudança.
 
 Exclusão usa `droppable`, bloqueia consultas/mutações concorrentes e remove o item
 somente quando o contrato conclui. Falha mantém o item e permite nova confirmação.
@@ -731,10 +750,42 @@ Módulos usam `createModule` do Modular 7, pertencem à feature e registram
 interfaces para implementações. Separe dependências compartilhadas de rotas
 quando necessário; não crie módulos vazios para padronizar a árvore.
 
-`authenticationModule` registra repository, validators e SignInBloc, SignUpBloc,
-ResendEmailBloc e CallbackBloc por factory, além de rotas.
-Não o descreva como uma separação de módulos já concluída. O estado da composição
-global depende dos registros efetivamente ativos em `app_module.dart`.
+O padrão para estado de página novo ou explicitamente migrado é `provide` com
+`BlocScopedExtension.addBloc`, em `core/presentation/extensions/`. A extension
+aceita `Function constructor`, preservando tear-offs com dependências obrigatórias
+resolvidas pelo injector, e delega stream/fechamento a `addStreamable`.
+Não cria BaseBloc, repository intermediário ou store global.
+
+```dart
+context.route(
+  RouteEnum.authenticationSignIn.path,
+  provide: (scope) => scope.addBloc<SignInBloc>(SignInBloc.new),
+  child: (context, _) => SignInScreen(
+    bloc: context.read<SignInBloc>(),
+    emailValidation: inject<EmailValidation>(),
+    passwordValidation: inject<PasswordValidation>(),
+  ),
+);
+```
+
+O escopo da página é o único dono: cria uma instância por montagem, preserva-a
+em rebuild e chama `close()` ao desmontar. A screen recebe a instância e mantém
+`BlocBuilder`/`BlocConsumer` e listeners explícitos, sem fechamento manual ou
+`BlocProvider(create:)` que assuma um segundo ownership. `context.read` neste
+exemplo é a extensão do Modular; evite ambiguidade com extensões do flutter_bloc.
+Testes e previews podem usar um escopo externo ou `PreviewResourceWidget` como
+dono, sem tornar a screen dependente do roteador para renderizar.
+
+Hoje somente Sign-in usa esse padrão. SignUpBloc, ResendEmailBloc, CallbackBloc
+e os demais Blocs de tela ainda são factories com ownership pelas screens;
+SessionBloc permanece global e pertence a `AppWidget`. Não declare migração
+completa nem altere outros lifecycles incidentalmente.
+
+Módulos com `path` ativam binds por feature; módulos sem `path` registram
+dependências root-owned compartilhadas. Um consumidor entre features não pode
+depender de uma rota irmã ativa. Authentication ainda registra seu repository
+no escopo da feature: o teste de resolução de logout em `test/app_module_test.dart`
+expõe essa pendência. Não confunda rotas registradas com DI funcional.
 
 Rotas definidas nas features e no catálogo:
 
@@ -752,11 +803,18 @@ Rotas definidas nas features e no catálogo:
 | `/expense` | Criação sem ID ou edição com ID. |
 | `/expenses` | Listagem paginada. |
 
-Estar no catálogo ou em um módulo não garante registro ativo na composição.
+Todos os destinos do catálogo estão registrados na composição atual.
+Isso não comprova DI nem execução bem-sucedida no dispositivo.
 Navegação nova usa extensões de BuildContext (`pushNamed`, `replace`, `pop`,
 `navigate`) no widget responsável, não `Modular.to`. Sign-in não recebe callbacks
 de navegação; `SignUpFooterWidget` substitui a rota diretamente pelo contexto.
-Callbacks legados não devem ser removidos sem migrar todos os consumidores.
+Argumentos de rota contêm dados, não funções. A edição devolve `ExpenseEntity`
+confirmada por `pop(expense)`. Listagem não recebe `onExpensePressed`,
+`onBackPressed` ou `onExpensesChanged`; seu mixin usa o próprio `context`.
+Dashboard e Metrics recarregam ao retornar da listagem, inclusive sem mutação,
+sem flags de alteração transportadas pela rota e sem interceptar o voltar nativo.
+Callbacks locais entre widgets de composição não são callbacks de rota.
+Outros callbacks legados exigem migração conjunta de todos os consumidores.
 
 Root contém `AppScreen`, o splash visual, e `AppWidget`, proprietário do
 SessionBloc e das decisões globais de navegação. A abertura lê presença no
@@ -807,8 +865,9 @@ Símbolos iOS Release são enviados por `ios/upload_crashlytics_symbols.sh`.
   Skeletons e imagens decorativas não duplicam mensagens semânticas.
 - Previews usam `@CordatoPreview`, wrappers reais de tema/localização/toast e
   fakes de catálogo sem rede ou storage. Não importe mocktail em `lib/`.
-- A screen continua dona do seu Bloc nos previews; recursos externos usam um
-  único dono, como PreviewResourceWidget. `.widget_preview/` é local.
+- Previews respeitam o ownership do fluxo: Sign-in recebe uma instância de um
+  dono externo; telas ainda não migradas continuam donas de sua factory. Recursos
+  externos usam um único dono, como PreviewResourceWidget. `.widget_preview/` é local.
 - Código novo não recebe comentários; decisões são registradas em Markdown.
 
 ## Arquitetura Dos Testes
@@ -881,9 +940,14 @@ e senha preservada, envio por botão/teclado, loading e bloqueio de reenvio,
 erro por campo e toast remanescente, fallback seguro, entrada preservada e
 retry manual. Rebuild não pode reenviar ou duplicar feedback.
 
-Verifique factory estável, troca de factory fechando o Bloc anterior e saída
-durante operação pendente sem efeitos tardios. A screen permanece proprietária
-do fechamento também no teste; conclua as pendências de maneira controlada.
+No Sign-in, verifique uma instância por escopo, estabilidade em rebuild,
+fechamento ao sair/substituir o escopo, nova instância ao retornar e operação
+pendente sem efeitos tardios. O teste da screen usa `ModularApp.provide` como
+dono; o teste de módulo verifica o `provide` da rota real e DI dos construtores.
+Nas telas não migradas, mantenha testes de factory estável, troca de factory e
+fechamento pela screen. Nunca feche manualmente para mascarar um dono ausente.
+Conclua pendências de maneira controlada. Testes de navegação cobrem edição
+confirmada/cancelada e recarga do consumidor ao voltar pelo app bar ou sistema.
 Navegação global por sessão e persistência nativa não são provadas por uma
 montagem isolada sem router/storage.
 
@@ -939,7 +1003,7 @@ isso não significa que todo o aplicativo esteja migrado ou componha seus destin
 
 | Área | Situação encontrada |
 | --- | --- |
-| Sign-in | Novo padrão implementado. |
+| Sign-in | Bloc no `provide` da rota via extension do core; screen recebe instância sem fechar. |
 | Cadastro | SignUpBloc por factory, lifecycle da tela e confirmação por navegação de contexto. |
 | Reenvio | ResendEmailBloc por factory, cooldown e feedback no mixin da tela. |
 | Callback | CallbackBloc por factory, latest-link-wins e navegação/feedback no listener da tela. |
@@ -952,8 +1016,22 @@ isso não significa que todo o aplicativo esteja migrado ou componha seus destin
 | Dashboard | Bloc agregado sobre contratos de aplicação e resultados diretos dos contextos consultados, sem Either. |
 | Bootstrap e Root | AppWidget é dono do SessionBloc; AppScreen apenas visual; handler CommandIt removido do bootstrap. |
 | Dependências/core | CommandIt, Either e `response<T>` removidos; testes de core alinhados aos DTOs e exceções HTTP atuais. |
-| Composição global | Session/Welcome ativos e referência duplicada de Authentication removida; Dashboard/Settings e outros destinos seguem comentados. |
-| E2E | Flows presentes, dependentes de build compilável e composição de sessão/destinos restaurada corretamente. |
+| Composição global | Todos os destinos registrados; resolução de `IAuthenticationRepository` fora de Authentication ainda falha no teste de logout. |
+| Navegação de despesas | Contexto local e resultados tipados na edição; listagem sem callbacks de rota; consumidores recarregam em qualquer retorno da listagem. |
+| E2E | Flows preparados, não executados em dispositivo nesta revisão; registro de rotas e testes Flutter não comprovam E2E. |
+
+Última verificação de código, anterior a esta atualização documental:
+`flutter analyze` sem problemas; `flutter test` com **913 aprovados e uma falha**
+em `test/app_module_test.dart`, caso de logout sem `IAuthenticationRepository`
+registrado fora da feature. Testes de navegação de Expense/Metrics passaram.
+O launcher de previews compilou/serviu sem cliente conectado e atingiu timeout;
+isso não valida visualmente o catálogo. Nenhum E2E foi executado.
+
+### Histórico De Verificações
+
+Os resultados abaixo registram etapas anteriores, não o estado atual da suíte
+ou da composição. Referências a commands, rotas desativadas e bloqueios já
+resolvidos não constituem instruções para restaurar o desenho antigo.
 
 Após a revisão de testes e a migração do Firebase Messaging para registro por
 FID, a suíte completa passou com 907 testes, incluindo 10 de arquitetura e 15 do
@@ -1130,7 +1208,8 @@ perfil e avatar. São comportamentos a preservar durante migrações, não model
 de camadas a replicar. Em particular:
 
 - Preserve centavos, datas civis, filtros explícitos e continuações opacas.
-- Preserve seleção mensal da Dashboard e recarga somente após mutação confirmada.
+- Preserve seleção mensal da Dashboard. Cadastro recarrega após resultado
+  confirmado; listagem recarrega ao retornar, inclusive sem alteração.
 - Preserve dados de entrada em falha e efeitos de sucesso únicos.
 - Preserve ownership, rolagem, acessibilidade e proteção contra respostas obsoletas.
 
@@ -1156,6 +1235,10 @@ flutter test test/architecture
 flutter test test/features/authentication/infrastructure/repositories
 flutter test test/features/authentication/presentation/screens/sign_in/bloc
 flutter test test/features/authentication/presentation/screens/sign_in/sign_in_screen_test.dart
+flutter test test/features/authentication/authentication_sign_in_module_test.dart
+flutter test test/app_module_test.dart
+flutter test test/features/expense/expense_module_test.dart
+flutter test test/features/metrics/presentation/widgets/expense_category_metrics_card_widget_test.dart
 flutter test test/features/authentication/presentation/screens/sign_up
 flutter test test/features/authentication/presentation/screens/resend_email
 flutter test test/features/authentication/presentation/screens/callback test/features/authentication/authentication_callback_module_test.dart
@@ -1173,6 +1256,9 @@ Flutter; não invente resultado de análise, testes ou execução no dispositivo
 - `AGENTS.md`: regras operacionais para implementar e revisar essas decisões.
 - `README.md`: produto, pré-requisitos, início rápido e limitações atuais.
 - `android/README.md`: build, assinatura e verificação de release Android.
+- `.opencode/skills/cordato-*/SKILL.md`: orientações locais alinhadas às regras.
+- `openspec/README.md`: precedência, histórico e mapa de specs vigentes/legadas.
+- `test/**/e2e/README.md`: execução de fixtures/flows e limites de validação.
 
 Mudanças estruturais atualizam os documentos afetados na mesma alteração.
 Histórico de OpenSpec não substitui o código atual nem redefine estas decisões.

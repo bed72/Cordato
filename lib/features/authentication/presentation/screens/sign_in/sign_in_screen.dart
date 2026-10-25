@@ -16,7 +16,7 @@ import 'package:cordato/features/authentication/presentation/screens/sign_in/mix
 
 final class const SignInScreen({
   super.key,
-  required final SignInBloc Function() bloc,
+  required final SignInBloc bloc,
   required final EmailValidation emailValidation,
   required final PasswordValidation passwordValidation,
 }) extends StatefulWidget {

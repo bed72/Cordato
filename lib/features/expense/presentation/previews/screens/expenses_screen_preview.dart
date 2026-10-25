@@ -201,7 +201,6 @@ Widget _screenPreview({
     dispose: (_) {},
     builder: (factory) => ExpensesScreen(
       category: category,
-      onBackPressed: () {},
       moneyFormatter: MoneyFormatter(),
       period: general
           ? null

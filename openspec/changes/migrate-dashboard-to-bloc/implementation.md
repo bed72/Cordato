@@ -1,5 +1,11 @@
 # Registro de implementação
 
+> Registro histórico, não o estado atual do checkout. Consulte
+> [openspec/README.md](../../README.md). Os contratos atuais retornam Future e
+> exceções; somente Sign-in usa ownership Modular. Dashboard e Metrics agora
+> recarregam em todo retorno da listagem, mesmo sem mutação. Os resultados abaixo
+> não comprovam suíte global ou E2E atuais.
+
 ## Escopo e baseline
 
 - Cancelamento HTTP retirado por solicitação explícita do usuário durante a

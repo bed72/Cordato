@@ -1,9 +1,10 @@
 # Session / Root E2E
 
-Flows preparados, **não executados em dispositivo**. O checkout continua com
-bloqueios globais de compilação em features e testes legados; Dashboard/Settings
-e outros destinos ainda não estão ativos na
-composição global. A migração de Session não restaura esses consumidores legados.
+Flows preparados, **não executados em dispositivo**. Os destinos estão registrados
+na composição global; o teste de DI do logout ainda falha por visibilidade do
+contrato de Authentication. Session continua global sob ownership de AppWidget;
+somente Sign-in usa provide/addBloc no escopo da página. Não crie outra instância
+de Session nem transfira seu fechamento ao escopo de uma rota.
 
 - `Success.yaml`: login fictício, reinício sem limpar dados, entrada por token
   já persistido, logout e novo reinício sem sessão. A fixture comprova que não
@@ -25,7 +26,7 @@ para produção; credenciais e token são fictícios. Os flows compartilham a
 [fixture de logout](../../../../../settings/presentation/screens/settings/e2e/README.md)
 na porta 8769, que escuta somente loopback e não chama serviços externos.
 
-Após resolver os bloqueios globais e ativar os destinos, na raiz:
+Após validar a composição, em build de teste instalado, execute na raiz:
 
 ```bash
 python3 test/support/authentication/fakes/logout_http_server.py

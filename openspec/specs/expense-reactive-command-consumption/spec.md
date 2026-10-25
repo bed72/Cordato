@@ -1,5 +1,10 @@
 # expense-reactive-command-consumption Specification
 
+> Commands foram substituídos por ExpenseBloc/ExpensesBloc e contratos Future
+> com exceções. ExpensesScreen navega pelo próprio contexto; edição retorna a
+> entidade confirmada e consumidores recarregam em todo retorno da listagem.
+> Não restaure callbacks de rota. Consulte [a referência vigente](../../README.md).
+
 ## Purpose
 TBD - created by archiving change align-command-it-presentation-errors. Update Purpose after archive.
 ## Requirements
@@ -169,4 +174,3 @@ ExpenseScreen e ExpensesScreen SHALL descartar seus commands factory exatamente 
 #### Scenario: Screen descartada durante save
 - **WHEN** a operação termina depois do descarte da screen
 - **THEN** nenhum toast, navegação, setState ou callback financeiro é produzido pelo State descartado
-

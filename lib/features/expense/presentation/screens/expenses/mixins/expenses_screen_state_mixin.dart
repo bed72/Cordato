@@ -1,4 +1,6 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_modular/flutter_modular.dart';
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
@@ -110,7 +112,6 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
 
   void handleState(ExpensesState state) {
     if (state case ExpensesDeleted()) {
-      widget.onExpensesChanged?.call();
       context.showToast(
         variant: .success,
         title: 'Despesa excluída',
@@ -194,25 +195,28 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   }
 
   Future<void> editExpense(String id) async {
-    final navigate = widget.onExpensePressed;
-    if (navigate == null || !canRemoveFilters) return;
+    if (!canRemoveFilters) return;
     final owner = bloc;
     final data = owner.state.data;
     setState(() => isEditingExpense = true);
     try {
-      final updated = await navigate(id);
+      final updated = await context.pushNamed<ExpenseEntity>(
+        RouteEnum.expense.path,
+        arguments: id,
+      );
       if (!mounted ||
           bloc != owner ||
           owner.state.data != data ||
           updated == null) {
         return;
       }
-      widget.onExpensesChanged?.call();
       owner.add(ExpensesUpdatedEvent(expense: updated));
     } finally {
       if (mounted && bloc == owner) setState(() => isEditingExpense = false);
     }
   }
+
+  void goBack() => context.pop();
 
   Future<void> confirmDeleteExpense(String id) async {
     if (!canRemoveFilters) return;

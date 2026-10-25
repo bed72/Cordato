@@ -20,9 +20,12 @@ Três flows Maestro, complementares aos testes Flutter de widget em
 - Python 3 e Maestro disponíveis. Execute os flows sequencialmente, sem sharding:
   o servidor mantém um cenário por vez.
 
-Os bloqueios já presentes de compilação (`command_it`, `Either` e `response<T>`)
-e os módulos comentados precisam ser resolvidos antes da execução E2E. Esta suíte
-não altera esses pontos. Os seletores foram derivados do código e ainda precisam
+Os destinos estão registrados na composição atual; o teste global de DI do logout
+ainda falha pela visibilidade de `IAuthenticationRepository` fora de Authentication.
+Sign-in usa `provide` da rota com `BlocScopedExtension.addBloc`: Modular cria e
+fecha o Bloc; a tela recebe a instância e mantém BlocConsumer. Os testes Flutter
+de módulo/tela cobrem esse ownership, não os flows Maestro.
+Os seletores foram derivados do código e ainda precisam
 ser confirmados na árvore semântica do build atualizado; a checagem de sintaxe
 não substitui a execução no dispositivo.
 
@@ -64,4 +67,5 @@ serviços externos e oferece respostas mínimas para a Dashboard.
 Os três flows cobrem os estados principais, não todas as combinações possíveis.
 Falhas de storage, descarte, erros inesperados, limites de senha e classificação
 HTTP continuam sendo responsabilidade dos testes unitários correspondentes.
-Não há injeção de falha no storage nativo nem de factory de Bloc via Maestro.
+Não há injeção de falha no storage nativo nem substituição do escopo de Bloc via
+Maestro. Os flows continuam preparados, não executados nesta revisão.

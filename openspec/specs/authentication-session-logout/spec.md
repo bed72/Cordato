@@ -1,5 +1,11 @@
 # authentication-session-logout Specification
 
+> Mecanismo histórico superado: Authentication usa HTTP e Session observa token
+> no storage, sem importar Authentication. Logout pertence a Settings e consome
+> o contrato de aplicação. Sign-in usa provide/addBloc do Modular; Session
+> continua global sob AppWidget. Supabase e commands abaixo não são instruções
+> vigentes. Consulte [a referência atual](../../README.md).
+
 ## Purpose
 Define the layered, reactive Supabase logout flow shared by authenticated features.
 

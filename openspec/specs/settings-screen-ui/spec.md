@@ -1,5 +1,10 @@
 # settings-screen-ui Specification
 
+> UX é referência; logout atual usa LogoutBloc de Settings e contrato HTTP de
+> Authentication. Session global observa o storage para redirecionar. Supabase,
+> commands e callbacks de rota históricos não redefinem o desenho vigente.
+> Consulte [a referência atual](../../README.md).
+
 ## Purpose
 TBD - created by syncing change create-settings-screen-ui.
 

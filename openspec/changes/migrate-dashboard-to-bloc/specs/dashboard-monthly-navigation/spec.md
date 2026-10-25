@@ -1,3 +1,6 @@
+> Delta histórico; listagem agora recarrega em todo retorno e cadastro exige
+> resultado confirmado. Consulte [a referência vigente](../../../../README.md).
+
 ## MODIFIED Requirements
 
 ### Requirement: Mês compartilhado da Dashboard

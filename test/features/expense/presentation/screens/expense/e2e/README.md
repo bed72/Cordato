@@ -1,7 +1,9 @@
 # Expense E2E
 
-Flows preparados, **não executados em dispositivo**. A composição global ainda
-mantém Dashboard e Expense desativados; não foi alterada nesta migração.
+Flows preparados, **não executados em dispositivo**. Dashboard e Expense estão
+registrados na composição global; isso não comprova DI nem navegação em execução.
+O teste global de logout continua falhando por visibilidade do contrato de
+Authentication; não é um bloqueio antigo de CommandIt ou Either.
 Os seletores devem ser confirmados na primeira execução em app compilável.
 
 `Success`, `Failure` e `Loading` cobrem criação, erro 422 com entrada preservada e
@@ -26,3 +28,7 @@ em teardown; a retenção tem limite de 60 segundos. Os endpoints de controle s�
 O servidor também implementa consulta/edição/exclusão e as leituras da Dashboard.
 Testes Flutter cobrem edição, hold contínuo, datas, paginação, parsing, concorrência
 e lifecycle; estes flows não substituem essa cobertura nem provam autorização remota.
+
+Criação/edição navegam pelo próprio BuildContext, sem callbacks de rota. Edição
+retorna a entidade confirmada. Cadastro contínuo permanece aberto; o retorno
+transporta o resultado salvo conforme o estado do formulário.

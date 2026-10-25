@@ -1,8 +1,11 @@
 # Logout E2E
 
-Flows preparados, **não executados em dispositivo** devido aos bloqueios globais
-de compilação/composição (`command_it`, `Either`, `response<T>` e módulo de rotas
-de Authentication). Os seletores precisam ser confirmados no build atualizado.
+Flows preparados, **não executados em dispositivo**. As rotas estão registradas,
+mas o teste global de DI do logout falha por `IAuthenticationRepository` não estar
+disponível fora da feature de Authentication. Corrija/valide a composição antes
+de declarar o fluxo funcional no app. Logout mantém factory e ownership pela
+screen; Session global redireciona após limpeza do storage. Os seletores precisam
+ser confirmados no build atualizado.
 
 - `Success.yaml`: confirmação cancelada sem request, revogação, navegação por
   observação da sessão e ausência de sessão após reiniciar.

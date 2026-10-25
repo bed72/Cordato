@@ -12,10 +12,15 @@ import 'package:cordato/features/user/presentation/screens/user/bloc/user_bloc.d
 import 'package:cordato/features/user/presentation/screens/edit/edit_user_screen.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_bloc.dart';
 
+final userDependenciesModule = createModule(
+  register: (context) =>
+      context.addLazySingleton<IUserRepository>(UserRepository.new),
+);
+
 final userModule = createModule(
   path: RouteEnum.user.path,
   register: (context) => context
-    ..addLazySingleton<IUserRepository>(UserRepository.new)
+    ..module(userDependenciesModule)
     ..add<UserBloc>(UserBloc.new)
     ..add<EditBloc>(EditBloc.new)
     ..route(

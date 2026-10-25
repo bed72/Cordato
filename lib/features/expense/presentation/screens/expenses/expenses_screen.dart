@@ -5,8 +5,6 @@ import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
-import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_state.dart';
 
@@ -22,14 +20,11 @@ import 'package:cordato/features/expense/presentation/screens/expenses/widgets/e
 
 final class const ExpensesScreen({
   super.key,
-  required final VoidCallback onBackPressed,
   required final IDateFormatter dateFormatter,
   required final ExpensesBloc Function() bloc,
   required final IMoneyFormatter moneyFormatter,
   final String? category,
-  final VoidCallback? onExpensesChanged,
   final ({DateTime from, DateTime to})? period,
-  final Future<ExpenseEntity?> Function(String id)? onExpensePressed,
 }) extends StatefulWidget {
   @override
   State<ExpensesScreen> createState() => _ExpensesScreenState();
@@ -40,7 +35,7 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ExpensesAppBarWidget(onBackPressed: widget.onBackPressed),
+      appBar: ExpensesAppBarWidget(onBackPressed: goBack),
       body: SafeArea(
         child: BlocConsumer<ExpensesBloc, ExpensesState>(
           bloc: bloc,
@@ -117,10 +112,7 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
                   isDeleting: deletingExpenseId == expense.id,
                   onConfirmDelete: () => confirmDeleteExpense(expense.id),
                   onEdit:
-                      widget.onExpensePressed == null ||
-                          isLoading ||
-                          pendingDeleteId != null ||
-                          isEditingExpense
+                      isLoading || pendingDeleteId != null || isEditingExpense
                       ? null
                       : () => editExpense(expense.id),
                   onAccessibleDelete: isLoading || pendingDeleteId != null

@@ -27,7 +27,7 @@ void main() {
         createModule(
           register: (context) {
             context.addInstance<IHttpClient>(http);
-            context.module(insightDependenciesModule);
+            context.module(insightModule);
           },
         ),
       );

@@ -22,7 +22,7 @@ const _baseUrl = String.fromEnvironment(
   defaultValue: 'https://app.cordato.cloud/api/',
 );
 
-final coreDependenciesModule = createModule(
+final coreModule = createModule(
   register: (context) => context
     ..addInstance<String>(_baseUrl)
     ..addInstance<FlutterSecureStorage>(const FlutterSecureStorage())

@@ -32,17 +32,11 @@ final class const ExpenseCategoryMetricsCardWidget({
   Future<void> _openExpenses(BuildContext context) async {
     final range = period;
     if (range == null || ModalRoute.of(context)?.isCurrent == false) return;
-    bool changed = false;
     await context.pushNamed(
       RouteEnum.expenses.path,
-      arguments: (
-        from: range.from,
-        to: range.to,
-        category: category.category,
-        onExpensesChanged: () => changed = true,
-      ),
+      arguments: (from: range.from, to: range.to, category: category.category),
     );
-    if (changed && context.mounted) onExpensesChanged?.call();
+    if (context.mounted) onExpensesChanged?.call();
   }
 
   @override
