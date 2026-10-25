@@ -1,0 +1,7 @@
+appId: com.bed.cordato
+---
+- tapOn: Digite seu e-mail
+- inputText: ${EMAIL}
+- tapOn: Crie uma senha
+- inputText: ${PASSWORD}
+- hideKeyboard

@@ -1,0 +1,27 @@
+appId: com.bed.cordato
+name: Sign-up - Success
+tags: [sign-up, success]
+env:
+  TEST_SERVER: http://127.0.0.1:8766
+  SCENARIO: success
+  EMAIL: Person@Example.com
+  PASSWORD: Teste1
+---
+- runFlow: subflows/prepare.yaml
+- runFlow: subflows/fill.yaml
+- tapOn:
+    text: Criar conta
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: Verifique seu e-mail
+    timeout: 15000
+- assertVisible: ${EMAIL}
+- assertNotVisible: Vamos lá
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.requests === 1 && output.stats.credentialsMatch && output.stats.unexpected.length === 0}
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- assertNotVisible: Verifique seu e-mail

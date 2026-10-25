@@ -36,9 +36,10 @@ Leia [ARCHITECTURE.md](ARCHITECTURE.md) para decisões e fronteiras e
 compilação/composição. A documentação não significa que a migração foi concluída.**
 
 Authentication já possui contrato em application e repository em infrastructure.
-Sign-in usa Bloc, controle de submissões concorrentes, falhas tipadas e testes
-de referência. Cadastro, reenvio, confirmação e logout ainda possuem apresentação
-legada baseada em commands.
+Sign-in e cadastro usam Bloc, controle de submissões concorrentes, falhas tipadas
+e testes de Bloc/tela. Cadastro mantém erros por campo, retry manual e navegação
+para confirmação sem criar sessão. Reenvio, confirmação e logout ainda possuem
+apresentação legada baseada em commands.
 
 Outras features ainda referenciam `Either`, `response<T>` e CommandIt removidos.
 Há módulos desativados em `app_module.dart` e referência a módulo de rotas de
@@ -155,6 +156,7 @@ flutter test test/architecture
 flutter test test/features/authentication/infrastructure/repositories
 flutter test test/features/authentication/presentation/screens/sign_in/bloc
 flutter test test/features/authentication/presentation/screens/sign_in/sign_in_screen_test.dart
+flutter test test/features/authentication/presentation/screens/sign_up
 ```
 
 Os flows Maestro estão em

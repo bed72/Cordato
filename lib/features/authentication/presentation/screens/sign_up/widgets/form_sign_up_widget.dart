@@ -9,6 +9,7 @@ import 'package:cordato/features/authentication/presentation/screens/sign_up/mix
 
 final class const FormSignUpWidget({
   super.key,
+  final bool enabled = true,
   required final EmailValidation emailValidation,
   required final PasswordValidation passwordValidation,
   required final ValueChanged<({String email, String password})> onSubmit,
@@ -26,6 +27,7 @@ class FormSignUpWidgetState extends State<FormSignUpWidget>
       crossAxisAlignment: .stretch,
       children: [
         EmailFieldWidget(
+          enabled: widget.enabled,
           label: 'E-mail',
           controller: emailController,
           failure: emailFailure,
@@ -33,6 +35,7 @@ class FormSignUpWidgetState extends State<FormSignUpWidget>
           onChanged: onEmailChanged,
         ),
         PasswordFieldWidget(
+          enabled: widget.enabled,
           label: 'Senha',
           controller: passwordController,
           inputAction: .done,

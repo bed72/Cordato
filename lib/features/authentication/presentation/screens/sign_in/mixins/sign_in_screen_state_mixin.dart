@@ -11,8 +11,9 @@ import 'package:cordato/features/authentication/presentation/screens/sign_in/sig
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/form_sign_in_widget.dart';
 
 mixin SignInScreenStateMixin on State<SignInScreen> {
-  final formKey = GlobalKey<FormSignInWidgetState>();
   late SignInBloc bloc;
+
+  final formKey = GlobalKey<FormSignInWidgetState>();
 
   @override
   void initState() {

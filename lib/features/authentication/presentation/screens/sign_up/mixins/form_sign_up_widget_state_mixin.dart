@@ -21,6 +21,7 @@ mixin FormSignUpWidgetStateMixin on State<FormSignUpWidget> {
 
     for (final error in errors) {
       if (error.detail != null) {
+        // TODO UI know StatusCode??????
         if ((error.status == '422' || error.status == '409') &&
             error.pointer == '/data/attributes/email') {
           emailMessages.add(error.detail!);
@@ -41,6 +42,7 @@ mixin FormSignUpWidgetStateMixin on State<FormSignUpWidget> {
           ? null
           : passwordMessages.join('\n');
     });
+
     return remaining;
   }
 
@@ -54,6 +56,7 @@ mixin FormSignUpWidgetStateMixin on State<FormSignUpWidget> {
   void clear() {
     emailController.clear();
     passwordController.clear();
+
     setState(() {
       email = '';
       password = '';
@@ -63,8 +66,11 @@ mixin FormSignUpWidgetStateMixin on State<FormSignUpWidget> {
   }
 
   void submit() {
+    if (!widget.enabled) return;
+
     final validatedEmail = widget.emailValidation(email);
     final validatedPassword = widget.passwordValidation(password);
+
     setState(() {
       emailFailure = switch (validatedEmail) {
         Invalid(:final message) => message,

@@ -9,10 +9,10 @@ import 'package:cordato/features/authentication/application/repositories/interfa
 final class SignInBloc({required final IAuthenticationRepository repository})
     extends Bloc<SignInEvent, SignInState> {
   this : super(const SignInInitial()) {
-    on<SignInSubmittedEvent>(_submit, transformer: droppable());
+    on<SignInSubmittedEvent>(_execute, transformer: droppable());
   }
 
-  Future<void> _submit(
+  Future<void> _execute(
     SignInSubmittedEvent event,
     Emitter<SignInState> emit,
   ) async {

@@ -1,40 +1,50 @@
+import 'dart:async';
+
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_event.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_state.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/form_sign_up_widget.dart';
 
 mixin SignUpScreenStateMixin on State<SignUpScreen> {
+  late SignUpBloc bloc;
   final formKey = GlobalKey<FormSignUpWidgetState>();
 
   @override
   void initState() {
     super.initState();
-    widget.command.execute.results.addListener(_handleSignUp);
+    bloc = widget.bloc();
   }
 
   @override
   void didUpdateWidget(covariant SignUpScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.command == widget.command) return;
-    oldWidget.command.execute.results.removeListener(_handleSignUp);
-    widget.command.execute.results.addListener(_handleSignUp);
+    if (oldWidget.bloc == widget.bloc) return;
+    unawaited(bloc.close());
+    bloc = widget.bloc();
   }
 
   @override
   void dispose() {
-    widget.command.execute.results.removeListener(_handleSignUp);
+    unawaited(bloc.close());
     super.dispose();
   }
 
-  void _handleSignUp() {
-    final data = widget.command.execute.results.value;
-    if (!mounted || data.isRunning || data.paramData == null) return;
+  void handleSignUp(SignUpState state) {
+    if (!mounted || bloc.isClosed) return;
+    if (state case SignUpSuccess(:final email)) {
+      context.replace(RouteEnum.authenticationConfirm.path, arguments: email);
+      return;
+    }
 
-    if (data.hasError) {
-      if (data.error case CommandFailureException(:final errors)
+    if (state is SignUpFailure) {
+      if (state case SignUpFailure(:final errors)
           when errors.errors.isNotEmpty) {
         final remaining =
             formKey.currentState?.showErrors(errors.errors) ?? errors.errors;
@@ -58,20 +68,23 @@ mixin SignUpScreenStateMixin on State<SignUpScreen> {
         title: 'Erro ao criar conta',
         description: 'Não foi possível criar sua conta. Tente novamente.',
       );
-    } else if (data.data == true) {
-      widget.onConfirm(context, data.paramData!.email);
     }
   }
 
   void signUp() {
-    if (widget.command.execute.isRunning.value) return;
+    if (!bloc.state.canSubmit) return;
     context.dismissKeyboard();
     formKey.currentState?.submit();
   }
 
   void submit(({String email, String password}) credentials) {
-    if (widget.command.execute.isRunning.value) return;
+    if (!bloc.state.canSubmit) return;
     context.dismissKeyboard();
-    widget.command.execute.run(credentials);
+    bloc.add(
+      SignUpSubmittedEvent(
+        email: credentials.email,
+        password: credentials.password,
+      ),
+    );
   }
 }

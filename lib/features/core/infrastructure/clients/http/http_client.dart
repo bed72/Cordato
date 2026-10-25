@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_method_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_exception_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 
 abstract interface class IHttpClient {
@@ -70,16 +69,13 @@ final class HttpClient({required final Dio _dio}) implements IHttpClient {
     } on DioException catch (error) {
       throw switch (error.type) {
         .badResponse || .unknown => HttpUnexpectedException(),
-        .cancel => HttpTransportException(failure: HttpExceptionEnum.cancelled),
-        .connectionError || .badCertificate => HttpTransportException(
-          failure: HttpExceptionEnum.connection,
-        ),
+        .cancel => HttpTransportException(failure: .cancelled),
+        .connectionError ||
+        .badCertificate => HttpTransportException(failure: .connection),
         .sendTimeout ||
         .receiveTimeout ||
         .connectionTimeout ||
-        .transformTimeout => HttpTransportException(
-          failure: HttpExceptionEnum.timeout,
-        ),
+        .transformTimeout => HttpTransportException(failure: .timeout),
       };
     }
   }

@@ -264,6 +264,28 @@ após saída da tela; ausência de estado tardio não significa rollback da sess
 
 ## HTTP E Persistência
 
+### Cadastro Com Bloc
+
+`SignUpScreen` recebe uma factory estável de `SignUpBloc` e possui seu fechamento,
+inclusive na troca de factory. O Bloc usa `SignUpSubmittedEvent`, `droppable` e
+estados `Initial`, `Submitting`, `Success(email)` e `Failure(errors)`. Senha não
+fica no estado; o e-mail de sucesso identifica o destino de confirmação.
+Submissões pendentes e posteriores ao sucesso são bloqueadas; falha permite
+retry manual. Falhas esperadas preservam `ErrorsEntity`; inesperadas usam
+`addError` e fallback seguro, respeitando fechamento/handler invalidado.
+
+O formulário preserva validação, trim de e-mail, senha sem normalização e entrada
+após falha. Erros 422 de e-mail/senha e 409 de e-mail aparecem nos campos; somente
+erros restantes aparecem em toast. Campos e envio ficam desabilitados durante
+submissão. O listener substitui a rota por confirmação com o e-mail, uma única
+vez, sem criar sessão. O footer substitui a rota por sign-in via BuildContext.
+
+Testes Flutter cobrem Bloc, formulário, navegação e lifecycle. Os flows e a
+fixture isolada estão no [README E2E de Sign-up](test/features/authentication/presentation/screens/sign_up/e2e/README.md);
+não foram executados em dispositivo devido aos bloqueios globais existentes.
+
+### Client Compartilhado
+
 `coreDependenciesModule` registra Dio, `IHttpClient` e `IStorageClient`.
 `BASE_URL` padrão: `https://app.cordato.cloud/api/`. Bases devem preservar `/api/`;
 a factory acrescenta a barra final quando necessário.
@@ -321,8 +343,8 @@ Módulos usam `createModule` do Modular 7, pertencem à feature e registram
 interfaces para implementações. Separe dependências compartilhadas de rotas
 quando necessário; não crie módulos vazios para padronizar a árvore.
 
-`authenticationModule` registra repository, validators, SignInBloc por factory
-e os commands ainda legados de cadastro, reenvio e confirmação, além de rotas.
+`authenticationModule` registra repository, validators, SignInBloc e SignUpBloc
+por factory e os commands ainda legados de reenvio e confirmação, além de rotas.
 Não o descreva como uma separação de módulos já concluída. O estado da composição
 global depende dos registros efetivamente ativos em `app_module.dart`.
 
@@ -514,13 +536,14 @@ para a regra geral de contratos de aplicação, não liberar infrastructure na U
 ## Estado Atual E Migração
 
 O repository e o contrato de Authentication já seguem o novo desenho.
-Sign-in tem Bloc, estados sealed, testes de Bloc, widget e flows E2E de referência.
+Sign-in e Sign-up têm Bloc, estados sealed, testes de Bloc, widget e flows E2E.
 Isso não significa que toda Authentication ou o aplicativo estejam migrados.
 
 | Área | Situação encontrada |
 | --- | --- |
 | Sign-in | Novo padrão implementado. |
-| Cadastro, reenvio, callback e logout | Repository novo; apresentação ainda usa commands legados. |
+| Cadastro | SignUpBloc por factory, lifecycle da tela e confirmação por navegação de contexto. |
+| Reenvio, callback e logout | Repository novo; apresentação ainda usa commands legados. |
 | User, Session, Expense, Insight e Metrics | Ainda possuem contratos/implementações/data sources no desenho anterior. |
 | Dashboard | Já usa Bloc, mas depende de contratos e resultados financeiros legados. |
 | Bootstrap e Root | Ainda referenciam CommandIt/SessionCommand. |
@@ -565,6 +588,7 @@ flutter test test/architecture
 flutter test test/features/authentication/infrastructure/repositories
 flutter test test/features/authentication/presentation/screens/sign_in/bloc
 flutter test test/features/authentication/presentation/screens/sign_in/sign_in_screen_test.dart
+flutter test test/features/authentication/presentation/screens/sign_up
 ```
 
 Registre comandos, resultado e causa de bloqueios. Teste focado aprovado não

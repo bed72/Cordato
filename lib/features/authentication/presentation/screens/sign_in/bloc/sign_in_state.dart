@@ -8,9 +8,9 @@ sealed class SignInState {
   bool get canSubmit => this is SignInInitial || this is SignInFailure;
 }
 
-final class const SignInSuccess() extends SignInState {}
-
 final class const SignInInitial() extends SignInState {}
+
+final class const SignInSuccess() extends SignInState {}
 
 final class const SignInSubmitting() extends SignInState {}
 

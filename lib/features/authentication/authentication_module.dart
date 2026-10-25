@@ -13,7 +13,7 @@ import 'package:cordato/features/authentication/presentation/screens/sign_in/sig
 import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/callback/callback_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_bloc.dart';
-import 'package:cordato/features/authentication/presentation/screens/sign_up/commands/sign_up_command.dart';
+import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/commands/resend_email_command.dart';
@@ -24,7 +24,7 @@ final authenticationModule = createModule(
     ..add(EmailValidation.new)
     ..add(PasswordValidation.new)
     ..add<SignInBloc>(SignInBloc.new)
-    ..addLazySingleton<SignUpCommand>(SignUpCommand.new)
+    ..add<SignUpBloc>(SignUpBloc.new)
     ..addLazySingleton<CallbackCommand>(CallbackCommand.new)
     ..addLazySingleton<ResendEmailCommand>(ResendEmailCommand.new)
     ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
@@ -46,15 +46,9 @@ final authenticationModule = createModule(
     ..route(
       RouteEnum.authenticationSignUp.path,
       child: (_, _) => SignUpScreen(
-        command: inject<SignUpCommand>(),
+        bloc: inject<SignUpBloc>,
         emailValidation: inject<EmailValidation>(),
         passwordValidation: inject<PasswordValidation>(),
-        onSignIn: (BuildContext context) =>
-            context.replace(RouteEnum.authenticationSignIn.path),
-        onConfirm: (BuildContext context, String email) => context.replace(
-          RouteEnum.authenticationConfirm.path,
-          arguments: email,
-        ),
       ),
     )
     ..route(
