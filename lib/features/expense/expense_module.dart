@@ -18,16 +18,10 @@ import 'package:cordato/features/expense/presentation/screens/expense/validators
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_cents_validation.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_description_validation.dart';
 
-final expenseDependenciesModule = createModule(
-  register: (context) =>
-      context.addLazySingleton<IExpenseRepository>(ExpenseRepository.new),
-);
-
 final expenseModule = createModule(
-  path: RouteEnum.app.path,
   register: (context) {
     context
-      ..module(expenseDependenciesModule)
+      ..addLazySingleton<IExpenseRepository>(ExpenseRepository.new)
       ..add(ExpenseBloc.new)
       ..add(ExpensesBloc.new)
       ..add(ExpenseFormValidator.new)

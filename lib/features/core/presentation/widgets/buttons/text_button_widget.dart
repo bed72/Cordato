@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/animations/animation.dart';
+import 'package:cordato/features/core/presentation/extensions/button_style_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/circular_progress_indicator_widget.dart';
 
@@ -13,24 +14,32 @@ final class const TextButtonWidget({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BounceWidget.withOnPress(
-    onPress: onTap,
+    onPress: (isLoading ?? false) ? null : onTap,
     child: TextButton(
-      onPressed: onTap,
-      style: TextButton.styleFrom(
-        padding: .zero,
-        minimumSize: .zero,
-        alignment: .centerLeft,
-        tapTargetSize: .shrinkWrap,
-        overlayColor: Colors.transparent,
-        backgroundColor: Colors.transparent,
-      ),
+      onPressed: (isLoading ?? false) ? null : onTap,
+      style:
+          ((isLoading ?? false)
+                  ? Theme.of(context).textButtonTheme.style?.loadingStyle
+                  : Theme.of(context).textButtonTheme.style)
+              ?.merge(
+                TextButton.styleFrom(
+                  padding: .zero,
+                  minimumSize: .zero,
+                  alignment: .centerLeft,
+                  tapTargetSize: .shrinkWrap,
+                  overlayColor: Colors.transparent,
+                  backgroundColor: Colors.transparent,
+                ),
+              ),
       child: SwitcherAnimation(
         child: (isLoading ?? false)
-            ? const CircularProgressIndicatorWidget(
+            ? Builder(
                 key: ValueKey('loading'),
-                width: 20.0,
-                height: 20.0,
-                color: Colors.transparent,
+                builder: (context) => CircularProgressIndicatorWidget(
+                  width: 20.0,
+                  height: 20.0,
+                  color: DefaultTextStyle.of(context).style.color,
+                ),
               )
             : Row(
                 key: const ValueKey('content'),

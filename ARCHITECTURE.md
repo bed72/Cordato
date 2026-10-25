@@ -251,9 +251,8 @@ Sign-in é o piloto de ownership pelo escopo de página do Modular V7.
 `scope.addBloc<SignInBloc>`, sem bind adicional do Bloc no módulo. A extension
 `BlocScopedExtension`, em `core/presentation/extensions/`, adapta `addStreamable`
 para `BlocBase`, preservando constructor tear-offs com dependências injetadas.
-O repository continua registrado como lazy singleton pelo contrato no módulo
-Authentication. A composição atual ainda precisa disponibilizar esse contrato
-fora da feature para logout; o teste global de resolução evidencia a pendência.
+O repository é lazy singleton pelo contrato no único módulo Authentication,
+sem path, disponível no injector raiz inclusive para logout de Settings.
 
 `SignInScreen` recebe a instância `SignInBloc bloc` e validators. O Modular cria
 uma instância por página montada e chama `close()` no descarte do escopo; rebuild
@@ -419,10 +418,11 @@ volta a Welcome. Cadastro, reenvio e callback públicos são preservados. Essa d
 visual não prova autorização remota e não limpa storage em falha de observação.
 
 `app_module.dart` ativa Session, Welcome, Authentication, Dashboard, Settings,
-User e Expense, além das dependências de Insight e Metrics. User e Expense
-possuem módulos de dependências compartilhadas sem path. Authentication ainda
-registra seu repository no escopo da feature, impedindo resolução isolada do
-logout; isso é pendência, não exceção aprovada de DI. Blocs de
+User e Expense, além das dependências de Insight e Metrics. Authentication e
+Expense têm um único módulo sem path por feature; seus binds são root-owned e
+as URLs completas permanecem inalteradas. User mantém seu módulo de dependências
+compartilhadas existente. Logout resolve o contrato de Authentication sem ativar
+uma rota irmã. Blocs de
 tela continuam registrados por factory nos módulos de suas features, exceto
 Sign-in, cujo Bloc pertence ao `provide` da página.
 `test/app_module_test.dart` verifica todos os destinos de `RouteEnum` e a resolução
@@ -747,8 +747,11 @@ política específica configurada de redirecionamento para URLs absolutas.
 ## Composição, Rotas E Bootstrap
 
 Módulos usam `createModule` do Modular 7, pertencem à feature e registram
-interfaces para implementações. Separe dependências compartilhadas de rotas
-quando necessário; não crie módulos vazios para padronizar a árvore.
+interfaces para implementações. Authentication e Expense têm um módulo por
+feature sem path: repository, validators, factories e rotas no mesmo registro.
+Não fragmente em módulos dependencies/form/list/routes para resolver a DI.
+Os endpoints são URLs completas de `RouteEnum`; o root continua compondo os
+módulos sem alterar os caminhos públicos.
 
 O padrão para estado de página novo ou explicitamente migrado é `provide` com
 `BlocScopedExtension.addBloc`, em `core/presentation/extensions/`. A extension
@@ -783,9 +786,17 @@ completa nem altere outros lifecycles incidentalmente.
 
 Módulos com `path` ativam binds por feature; módulos sem `path` registram
 dependências root-owned compartilhadas. Um consumidor entre features não pode
-depender de uma rota irmã ativa. Authentication ainda registra seu repository
-no escopo da feature: o teste de resolução de logout em `test/app_module_test.dart`
-expõe essa pendência. Não confunda rotas registradas com DI funcional.
+depender de uma rota irmã ativa. Authentication e Expense não usam `path: '/'`:
+no Modular 7.1.1, binds são indexados pelo path e features irmãs com o mesmo path
+sobrescrevem registros. O módulo sem path evita colisão, disponibiliza o repository
+para logout e preserva factories, sem tornar Blocs singletons. Perde-se o descarte
+automático dos binds por saída da feature; telas ainda não migradas fecham seus
+Blocs e o provide de Sign-in continua fechando sua instância por página.
+Outros módulos com paths exclusivos não foram reorganizados.
+
+`test/app_module_test.dart` monta a composição real, verifica resolução sem
+ativar rotas de Authentication/Expense e abre criação, edição, listagem e Settings.
+Não confunda rotas registradas com DI funcional nem widget tests com E2E nativo.
 
 Rotas definidas nas features e no catálogo:
 
@@ -1016,14 +1027,14 @@ isso não significa que todo o aplicativo esteja migrado ou componha seus destin
 | Dashboard | Bloc agregado sobre contratos de aplicação e resultados diretos dos contextos consultados, sem Either. |
 | Bootstrap e Root | AppWidget é dono do SessionBloc; AppScreen apenas visual; handler CommandIt removido do bootstrap. |
 | Dependências/core | CommandIt, Either e `response<T>` removidos; testes de core alinhados aos DTOs e exceções HTTP atuais. |
-| Composição global | Todos os destinos registrados; resolução de `IAuthenticationRepository` fora de Authentication ainda falha no teste de logout. |
+| Composição global | Todos os destinos registrados; Authentication e Expense sem path, sem colisão de binds; logout resolve o contrato no injector raiz. |
 | Navegação de despesas | Contexto local e resultados tipados na edição; listagem sem callbacks de rota; consumidores recarregam em qualquer retorno da listagem. |
 | E2E | Flows preparados, não executados em dispositivo nesta revisão; registro de rotas e testes Flutter não comprovam E2E. |
 
-Última verificação de código, anterior a esta atualização documental:
-`flutter analyze` sem problemas; `flutter test` com **913 aprovados e uma falha**
-em `test/app_module_test.dart`, caso de logout sem `IAuthenticationRepository`
-registrado fora da feature. Testes de navegação de Expense/Metrics passaram.
+Última verificação após consolidar Authentication e Expense sem path:
+`flutter analyze` sem problemas; `flutter test` com **917 aprovados, sem falhas**.
+O teste global de logout antes pendente passou; novos testes cobrem os binds
+root-owned e a abertura real de cadastro, edição, listagem e Settings em widget.
 O launcher de previews compilou/serviu sem cliente conectado e atingiu timeout;
 isso não valida visualmente o catálogo. Nenhum E2E foi executado.
 

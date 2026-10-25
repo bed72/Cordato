@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/animations/animation.dart';
+import 'package:cordato/features/core/presentation/extensions/button_style_extension.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
@@ -88,15 +89,16 @@ class HoldButtonWidgetState extends State<HoldButtonWidget>
     width: double.infinity,
     child: ElevatedButton(
       onPressed: _enabled ? _onTap : null,
+      style: widget.isLoading
+          ? Theme.of(context).elevatedButtonTheme.style?.loadingStyle
+          : null,
       child: SwitcherAnimation(
         child: widget.isLoading
             ? CircularProgressIndicatorWidget(
                 key: const ValueKey('loading'),
                 width: 20.0,
                 height: 20.0,
-                color: context.isDark
-                    ? context.colors.onPrimaryContainer
-                    : context.colors.onPrimary,
+                color: context.colors.onPrimary,
               )
             : Text(key: const ValueKey('content'), widget.label),
       ),

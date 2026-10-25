@@ -29,8 +29,12 @@ core: Modular cria e fecha a instância e a screen apenas a recebe. Somente
 Sign-in foi migrado. As demais screens mantêm factories estáveis e ownership
 local; Session continua global sob AppWidget. Não duplique owners ou binds.
 Dependências entre features precisam estar disponíveis fora de seus escopos de
-rota. O teste global de logout ainda evidencia a ausência de
-`IAuthenticationRepository` fora de Authentication.
+rota. Authentication e Expense usam um módulo sem path por feature, com URLs
+completas e binds root-owned. Não fragmente em dependencies/form/list nem monte
+features irmãs em `/`, pois o Modular indexa seus binds pelo path. Factories
+continuam factories; ownership de página continua independente do módulo.
+O teste global de logout e a abertura de cadastro/edição/listagem/Settings na
+composição real passaram após essa correção.
 
 Navegação ocorre pelo BuildContext do widget/mixin responsável. Argumentos levam
 dados, não funções. Edição devolve a entidade confirmada; ExpensesScreen não

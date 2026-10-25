@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/animations/animation.dart';
+import 'package:cordato/features/core/presentation/extensions/button_style_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/circular_progress_indicator_widget.dart';
 
@@ -13,9 +14,12 @@ final class const ElevatedButtonWidget({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BounceWidget.withOnPress(
-    onPress: onTap,
+    onPress: (isLoading ?? false) ? null : onTap,
     child: ElevatedButton(
-      onPressed: onTap,
+      onPressed: (isLoading ?? false) ? null : onTap,
+      style: (isLoading ?? false)
+          ? Theme.of(context).elevatedButtonTheme.style?.loadingStyle
+          : null,
       child: SwitcherAnimation(
         child: (isLoading ?? false)
             ? Builder(

@@ -80,7 +80,7 @@ void main() {
             ..module(sessionModule)
             ..module(welcomeModule)
             ..module(settingsModule);
-          authenticationModule.register(context);
+          context.module(authenticationModule);
           context
             ..route('/', child: (_, _) => const AppScreen())
             ..route(

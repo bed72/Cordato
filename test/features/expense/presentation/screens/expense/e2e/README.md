@@ -2,8 +2,9 @@
 
 Flows preparados, **não executados em dispositivo**. Dashboard e Expense estão
 registrados na composição global; isso não comprova DI nem navegação em execução.
-O teste global de logout continua falhando por visibilidade do contrato de
-Authentication; não é um bloqueio antigo de CommandIt ou Either.
+Expense usa um único módulo sem path, mantendo validators e factories no injector
+raiz. Testes da composição real cobrem criação/edição/listagem/Settings, incluindo
+a antiga colisão de binds com Authentication; o teste de DI de logout também passa.
 Os seletores devem ser confirmados na primeira execução em app compilável.
 
 `Success`, `Failure` e `Loading` cobrem criação, erro 422 com entrada preservada e

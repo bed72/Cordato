@@ -19,7 +19,6 @@ import 'package:cordato/features/authentication/presentation/screens/resend_emai
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_bloc.dart';
 
 final authenticationModule = createModule(
-  path: RouteEnum.app.path,
   register: (context) => context
     ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
     ..add(EmailValidation.new)

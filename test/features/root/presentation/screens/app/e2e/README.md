@@ -1,8 +1,8 @@
 # Session / Root E2E
 
 Flows preparados, **não executados em dispositivo**. Os destinos estão registrados
-na composição global; o teste de DI do logout ainda falha por visibilidade do
-contrato de Authentication. Session continua global sob ownership de AppWidget;
+na composição global; o teste de DI do logout passou com o contrato de
+Authentication root-owned no módulo sem path. Session continua global sob ownership de AppWidget;
 somente Sign-in usa provide/addBloc no escopo da página. Não crie outra instância
 de Session nem transfira seu fechamento ao escopo de uma rota.
 

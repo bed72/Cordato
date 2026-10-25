@@ -20,8 +20,8 @@ Três flows Maestro, complementares aos testes Flutter de widget em
 - Python 3 e Maestro disponíveis. Execute os flows sequencialmente, sem sharding:
   o servidor mantém um cenário por vez.
 
-Os destinos estão registrados na composição atual; o teste global de DI do logout
-ainda falha pela visibilidade de `IAuthenticationRepository` fora de Authentication.
+Os destinos estão registrados na composição atual. Authentication e Expense
+usam módulos sem path, com binds root-owned; o teste global de DI do logout passou.
 Sign-in usa `provide` da rota com `BlocScopedExtension.addBloc`: Modular cria e
 fecha o Bloc; a tela recebe a instância e mantém BlocConsumer. Os testes Flutter
 de módulo/tela cobrem esse ownership, não os flows Maestro.

@@ -245,9 +245,15 @@ rota da feature estiver ativa. Dependências consumidas entre features precisam
 de módulo compartilhado sem `path`; não dependa de ter visitado uma rota irmã.
 Registro no catálogo não comprova resolução de DI: teste o consumidor isoladamente.
 
-Módulos pertencem à feature. Separe dependências compartilhadas de rotas quando
-necessário, sem criar módulo vazio. A organização atual de `authenticationModule`
-não obriga módulos artificiais adicionais. `app_module.dart` faz a composição global.
+Módulos pertencem à feature. Authentication e Expense usam um único módulo por
+feature, sem `path`, com binds root-owned e URLs completas de `RouteEnum`.
+Não fragmente esses módulos em dependencies/form/list/routes nem use `path: '/'`
+em features irmãs: no Modular 7.1.1 o mesmo path identifica o mesmo escopo e seus
+binds podem ser sobrescritos. Sem path não significa singleton de Bloc: `add`
+continua factory e o dono da instância continua responsável pelo fechamento.
+`provide` mantém ownership de página independente do escopo do módulo.
+Outras features com paths exclusivos permanecem como estão até migração explícita.
+`app_module.dart` faz a composição global.
 
 Navegação pertence ao widget/mixin responsável, por extensões de `BuildContext`.
 Argumentos de rota transportam dados, não callbacks. Use resultados tipados de

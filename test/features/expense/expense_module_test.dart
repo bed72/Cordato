@@ -46,7 +46,7 @@ void main() {
         createModule(
           register: (context) {
             context.addInstance<IHttpClient>(http);
-            expenseModule.register(context);
+            context.module(expenseModule);
           },
         ),
       );

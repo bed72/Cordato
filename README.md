@@ -111,14 +111,16 @@ Os testes de responses cobrem DTOs e exceções HTTP atuais, sem `Either` ou
 sem usar as APIs depreciadas de token.
 Todos os destinos de `RouteEnum` estão registrados em `app_module.dart`, incluindo
 Dashboard, Settings, User e Expense. Testes de composição verificam as rotas e a
-resolução das dependências sem visitar módulos irmãos. O caso de logout ainda
-falha porque `IAuthenticationRepository` está no escopo de Authentication.
+resolução das dependências sem visitar módulos irmãos. Authentication e Expense
+usam um único módulo sem path por feature, com URLs completas e binds root-owned;
+isso elimina a colisão no escopo `/` e disponibiliza o contrato para logout.
 
 Última verificação de código: **`flutter analyze` sem problemas; `flutter test`
-com 913 aprovados e uma falha**, no caso de DI do logout em
-`test/app_module_test.dart`. Previews compilaram/serviram, mas o servidor atingiu
+com 917 aprovados, sem falhas**, incluindo abertura de cadastro, edição, listagem
+e Settings na composição real em `test/app_module_test.dart`.
+Na verificação anterior de previews, o catálogo compilou/serviu, mas atingiu
 timeout sem cliente conectado; não houve validação visual nem execução E2E.
-Esta atualização documental não repetiu os comandos Flutter.
+Não houve nova validação visual ou E2E nesta correção de composição.
 Os detalhes estão em [Estado atual e migração](ARCHITECTURE.md#estado-atual-e-migração).
 
 O código existente inclui os seguintes fluxos, cuja disponibilidade depende da
@@ -223,6 +225,9 @@ as telas ainda não migradas continuam criando/fechando sua factory. Use
   `AppWidget`; os demais fluxos de tela ainda possuem factories locais.
 - Contratos compartilhados entre features precisam de módulos sem `path`.
   Módulos com `path` ativam seus binds apenas enquanto a feature está em uso.
+- Authentication e Expense mantêm um módulo por feature, sem `path` e sem
+  fragmentação dependencies/form/list. Não use `path: '/'` em módulos irmãos;
+  os binds colidem. Blocs registrados com `add` continuam factories, não singletons.
 - Widgets/mixins navegam pelo próprio `BuildContext`; argumentos de rota levam
   dados, não callbacks. Edição devolve a entidade confirmada pelo resultado tipado.
 - Ao retornar da listagem, Dashboard e Metrics recarregam mesmo sem alteração;

@@ -25,6 +25,11 @@ final class const IconButtonWidget({
       child: IconButton(
         padding: .zero,
         color: iconColor,
+        disabledColor: Color.lerp(
+          iconColor ?? context.colors.primary,
+          context.colors.surface,
+          .25,
+        ),
         iconSize: iconSize,
         onPressed: onPress,
         constraints: BoxConstraints.tightFor(
@@ -36,7 +41,13 @@ final class const IconButtonWidget({
           width: width,
           height: height,
           iconSize: iconSize,
-          iconColor: iconColor,
+          iconColor: onPress == null
+              ? Color.lerp(
+                  iconColor ?? context.colors.primary,
+                  context.colors.surface,
+                  .25,
+                )
+              : iconColor,
           borderRadius: borderRadius,
           gradient: backgroundGradient,
           backgroundColor: backgroundColor,

@@ -1,9 +1,9 @@
 # Logout E2E
 
-Flows preparados, **não executados em dispositivo**. As rotas estão registradas,
-mas o teste global de DI do logout falha por `IAuthenticationRepository` não estar
-disponível fora da feature de Authentication. Corrija/valide a composição antes
-de declarar o fluxo funcional no app. Logout mantém factory e ownership pela
+Flows preparados, **não executados em dispositivo**. As rotas estão registradas
+e o teste global de DI do logout passou após Authentication adotar um único
+módulo sem path e disponibilizar seu contrato no injector raiz. Isso não valida
+execução no dispositivo. Logout mantém factory e ownership pela
 screen; Session global redireciona após limpeza do storage. Os seletores precisam
 ser confirmados no build atualizado.
 

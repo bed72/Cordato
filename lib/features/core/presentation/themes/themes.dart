@@ -52,7 +52,13 @@ abstract final class Themes {
       style: ElevatedButton.styleFrom(
         elevation: 0.0,
         backgroundColor: colors.primary,
-        foregroundColor: colors.surface,
+        foregroundColor: colors.textOnPrimary,
+        disabledBackgroundColor: Color.lerp(
+          colors.primary,
+          colors.surface,
+          .25,
+        ),
+        disabledForegroundColor: colors.textOnPrimary,
         overlayColor: Colors.transparent,
         minimumSize: const Size(56.0, 56.0),
         shape: const RoundedRectangleBorder(
@@ -82,13 +88,13 @@ abstract final class Themes {
           ).copyWith(
             foregroundColor: WidgetStateProperty.resolveWith(
               (states) => states.contains(WidgetState.disabled)
-                  ? colorScheme.onSurface.withValues(alpha: .38)
+                  ? Color.lerp(colors.primary, colors.surface, .25)
                   : colors.primary,
             ),
             side: WidgetStateProperty.resolveWith(
               (states) => BorderSide(
                 color: states.contains(WidgetState.disabled)
-                    ? colorScheme.onSurface.withValues(alpha: .38)
+                    ? Color.lerp(colors.primary, colors.surface, .25)!
                     : colorScheme.primary,
               ),
             ),
@@ -98,6 +104,11 @@ abstract final class Themes {
       style: TextButton.styleFrom(
         minimumSize: const Size(56.0, 56.0),
         foregroundColor: colorScheme.primary,
+        disabledForegroundColor: Color.lerp(
+          colors.primary,
+          colors.surface,
+          .25,
+        ),
         shape: const RoundedRectangleBorder(
           borderRadius: .all(.circular(14.0)),
         ),
@@ -105,6 +116,16 @@ abstract final class Themes {
           fontSize: 15.0,
           height: 20 / 15,
           fontWeight: .w600,
+        ),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        foregroundColor: colors.primary,
+        disabledForegroundColor: Color.lerp(
+          colors.primary,
+          colors.surface,
+          .25,
         ),
       ),
     ),

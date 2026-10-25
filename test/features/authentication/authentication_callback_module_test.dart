@@ -34,7 +34,7 @@ void main() {
           context
             ..addInstance<IHttpClient>(client)
             ..addInstance<IStorageClient>(storage);
-          authenticationModule.register(context);
+          context.module(authenticationModule);
           context.route(
             RouteEnum.welcome.path,
             child: (_, _) => const Scaffold(body: Text('Boas-vindas')),

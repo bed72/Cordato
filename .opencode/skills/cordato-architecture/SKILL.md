@@ -82,8 +82,12 @@ product or architecture decision instead of weakening the rule silently.
   globally owned by AppWidget. Previews/tests must honor the same ownership.
 - Path-less modules provide root-owned shared dependencies; feature binds with
   a path only exist while the feature is active. Test cross-feature DI without
-  visiting sibling routes. Authentication repository visibility to logout is a
-  known unresolved composition issue, not an approved exception.
+  visiting sibling routes. Authentication and Expense each use one path-less
+  module with full RouteEnum URLs and root-owned binds; do not split them into
+  dependencies/form/list modules. Never mount sibling features at `/`: their
+  bind scopes collide in Modular 7.1.1. Root-owned factory binds do not make Blocs
+  singletons; screens/provide still own their instances. Logout visibility and
+  the real app's expense route composition have regression tests.
 - Navigate in the responsible widget/mixin with its BuildContext. Route arguments
   contain data, not functions. Expense editing returns a confirmed entity.
   ExpensesScreen owns direct edit/back navigation; Dashboard and Metrics refresh

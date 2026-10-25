@@ -16,14 +16,19 @@ final class const DangerButtonWidget({
   @override
   Widget build(BuildContext context) {
     return BounceWidget.withOnPress(
-      onPress: onTap,
+      onPress: (isLoading ?? false) ? null : onTap,
       child: ElevatedButton(
-        onPressed: onTap,
+        onPressed: (isLoading ?? false) ? null : onTap,
         style: ElevatedButton.styleFrom(
           iconColor: context.colors.onError,
           overlayColor: Colors.transparent,
           foregroundColor: context.colors.onError,
           backgroundColor: context.colors.error.withValues(alpha: 0.9),
+          disabledBackgroundColor: (isLoading ?? false)
+              ? context.colors.error.withValues(alpha: 0.9)
+              : Color.lerp(context.colors.error, context.colors.surface, .25),
+          disabledForegroundColor: context.colors.onError,
+          disabledIconColor: context.colors.onError,
         ),
         child: SwitcherAnimation(
           child: (isLoading ?? false)
@@ -31,9 +36,7 @@ final class const DangerButtonWidget({
                   key: const ValueKey('loading'),
                   width: 20.0,
                   height: 20.0,
-                  color: onTap == null
-                      ? context.colors.primary
-                      : context.colors.onError,
+                  color: context.colors.onError,
                 )
               : Row(
                   key: const ValueKey('content'),

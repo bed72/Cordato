@@ -43,8 +43,11 @@ tree. Keep the tests independent of Supabase and avoid runtime setup.
 - Other screens still use their stable factories and screen-owned lifecycle;
   Session remains globally owned by AppWidget. Do not declare all migrated.
 - Test cross-feature dependency resolution without visiting sibling routes;
-  registered RouteEnum paths alone do not prove DI works. Keep the unresolved
-  logout repository visibility failure visible until its implementation is fixed.
+  registered RouteEnum paths alone do not prove DI works. Authentication and
+  Expense each have one path-less module, not sibling features mounted at `/`
+  and not dependencies/form/list modules. Test root-owned validators and Bloc
+  factories without route activation, logout visibility and opening creation,
+  editing, list and Settings through the real app composition.
 - Test direct BuildContext navigation, typed confirmed/cancelled edit returns,
   and list-return refresh via app bar and system back without route callbacks.
   E2E gesture validation cannot be claimed from widget tests alone.
