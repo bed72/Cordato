@@ -1,0 +1,26 @@
+appId: com.bed.cordato
+name: Edit User - Success
+tags: [user, edit, success]
+env:
+  TEST_SERVER: http://127.0.0.1:8770
+  SCENARIO: success
+---
+- runFlow: ../../user/e2e/subflows/prepare.yaml
+- tapOn: '(?s)Nome.*'
+- assertVisible: Atualize o seu nome de exibição.
+- assertVisible:
+    text: Atualizar
+    enabled: false
+- tapOn: Pessoa E2E
+- eraseText
+- inputText: '  Novo nome  '
+- hideKeyboard
+- tapOn:
+    text: Atualizar
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: Gerencie os dados da sua conta.
+    timeout: 10000
+- assertVisible: '(?s)Nome.*Novo nome.*'
+- runScript: ../../user/e2e/scripts/stats.js
+- assertTrue: ${output.stats.nameRequests === 1 && output.stats.name === 'Novo nome' && output.stats.authorized && output.stats.unexpected.length === 0}

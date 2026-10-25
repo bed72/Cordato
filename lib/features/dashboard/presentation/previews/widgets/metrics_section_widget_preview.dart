@@ -1,7 +1,6 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:command_it/command_it.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
@@ -12,8 +11,9 @@ import 'package:cordato/features/dashboard/presentation/widgets/dashboard_month_
 
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
-import 'package:cordato/features/metrics/domain/repositories/interface_metrics_repository.dart';
-import 'package:cordato/features/metrics/presentation/commands/get_expense_metrics_command.dart';
+import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_bloc.dart';
+import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_event.dart';
+import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_state.dart';
 import 'package:cordato/features/metrics/presentation/previews/fakes/metrics_preview_repository.dart';
 
 @CordatoPreview(
@@ -66,30 +66,28 @@ Widget previewYearBoundaryDashboardMonth() => _sectionPreview(month: 1);
   size: Size(320, 440),
 )
 Widget previewManyExpenseMetricsCategories() => _sectionPreview(
-  data: Right(
-    ExpenseMetricsEntity(
-      id: 'many-categories',
-      totalAmount: 100000,
-      endDate: DateTime(2026, 10, 31),
-      startDate: DateTime(2026, 10, 1),
-      categories: [
-        for (final category in [
-          'food',
-          'health',
-          'housing',
-          'services',
-          'transport',
-          'education',
-          'subscriptions',
-          'future_category',
-        ])
-          ExpenseCategoryMetricsEntity(
-            category: category,
-            percentage: 12.50,
-            totalAmount: 12500,
-          ),
-      ],
-    ),
+  data: ExpenseMetricsEntity(
+    id: 'many-categories',
+    totalAmount: 100000,
+    endDate: DateTime(2026, 10, 31),
+    startDate: DateTime(2026, 10, 1),
+    categories: [
+      for (final category in [
+        'food',
+        'health',
+        'housing',
+        'services',
+        'transport',
+        'education',
+        'subscriptions',
+        'future_category',
+      ])
+        ExpenseCategoryMetricsEntity(
+          category: category,
+          percentage: 12.50,
+          totalAmount: 12500,
+        ),
+    ],
   ),
 );
 
@@ -197,20 +195,18 @@ Widget previewEightMetricsCategories() =>
   size: cordatoPhonePreviewSize,
 )
 Widget previewFilteredMetricsCategories() => _sectionPreview(
-  data: Right(
-    ExpenseMetricsEntity(
-      id: 'filtered',
-      totalAmount: 10000,
-      startDate: DateTime(2026, 10),
-      endDate: DateTime(2026, 10, 31),
-      categories: const [
-        ExpenseCategoryMetricsEntity(
-          category: 'food',
-          totalAmount: 0,
-          percentage: 0,
-        ),
-      ],
-    ),
+  data: ExpenseMetricsEntity(
+    id: 'filtered',
+    totalAmount: 10000,
+    startDate: DateTime(2026, 10),
+    endDate: DateTime(2026, 10, 31),
+    categories: const [
+      ExpenseCategoryMetricsEntity(
+        category: 'food',
+        totalAmount: 0,
+        percentage: 0,
+      ),
+    ],
   ),
 );
 
@@ -230,84 +226,86 @@ Widget previewDarkLargeTextMetricsCards() => Builder(
   ),
 );
 
-GetExpensesRepositoryType _categoriesResult(int count, {bool large = false}) =>
-    Right(
-      ExpenseMetricsEntity(
-        id: 'categories-$count',
-        startDate: DateTime(2026, 10),
-        endDate: DateTime(2026, 10, 31),
-        totalAmount: large ? 99999999999 : 360000,
-        categories: [
-          for (final (index, category) in [
-            'food',
-            'pets',
-            'other',
-            'housing',
-            'personal_care',
-            'gifts_and_donations',
-            'Categoria futura com nome extenso',
-            'subscriptions',
-            'health',
-            'transport',
-          ].take(count).indexed)
-            ExpenseCategoryMetricsEntity(
-              category: category,
-              totalAmount: large
-                  ? 9999999999 - index
-                  : index < 8
-                  ? 80000 - index * 10000
-                  : 5000 - (index - 8) * 1000,
-              percentage: 23.45 - index * 2,
-            ),
-        ],
-      ),
+ExpenseMetricsEntity _categoriesResult(int count, {bool large = false}) =>
+    ExpenseMetricsEntity(
+      id: 'categories-$count',
+      startDate: DateTime(2026, 10),
+      endDate: DateTime(2026, 10, 31),
+      totalAmount: large ? 99999999999 : 360000,
+      categories: [
+        for (final (index, category) in [
+          'food',
+          'pets',
+          'other',
+          'housing',
+          'personal_care',
+          'gifts_and_donations',
+          'Categoria futura com nome extenso',
+          'subscriptions',
+          'health',
+          'transport',
+        ].take(count).indexed)
+          ExpenseCategoryMetricsEntity(
+            category: category,
+            totalAmount: large
+                ? 9999999999 - index
+                : index < 8
+                ? 80000 - index * 10000
+                : 5000 - (index - 8) * 1000,
+            percentage: 23.45 - index * 2,
+          ),
+      ],
     );
 
 Widget _sectionPreview({
   int month = 10,
   int year = 2026,
   bool loading = false,
-  GetExpensesRepositoryType? data,
+  ExpenseMetricsEntity? data,
 }) {
   return PreviewResourceWidget<
-    ({GetExpenseMetricsCommand command, ValueNotifier<DateTime> month})
+    ({ExpenseMetricsBloc bloc, ValueNotifier<DateTime> month})
   >(
     create: () {
       final selectedMonth = DateTime(year, month, 1);
-      final command = GetExpenseMetricsCommand(
+      final bloc = ExpenseMetricsBloc(
         repository: MetricsPreviewRepository(
-          type: data,
+          data: data,
           delay: const Duration(milliseconds: 250),
         ),
       );
       if (!loading) {
-        command.execute.run((
-          startDate: selectedMonth,
-          endDate: DateTime(year, month + 1, 0),
-          groupBy: .category,
-        ));
+        bloc.add(
+          ExpenseMetricsRequestedEvent(
+            startDate: selectedMonth,
+            endDate: DateTime(year, month + 1, 0),
+            groupBy: .category,
+          ),
+        );
       }
-      return (command: command, month: ValueNotifier(selectedMonth));
+      return (bloc: bloc, month: ValueNotifier(selectedMonth));
     },
     dispose: (resource) {
-      resource.command.dispose();
+      resource.bloc.close();
       resource.month.dispose();
     },
     builder: (resource) => StatefulBuilder(
       builder: (context, setState) {
-        final command = resource.command;
+        final bloc = resource.bloc;
         final selectedMonth = resource.month.value;
-        void load() => command.execute.run((
-          startDate: resource.month.value,
-          endDate: DateTime(
-            resource.month.value.year,
-            resource.month.value.month + 1,
-            0,
+        void load() => bloc.add(
+          ExpenseMetricsRequestedEvent(
+            startDate: resource.month.value,
+            endDate: DateTime(
+              resource.month.value.year,
+              resource.month.value.month + 1,
+              0,
+            ),
+            groupBy: .category,
           ),
-          groupBy: .category,
-        ));
+        );
         void changeMonth(int offset) {
-          if (command.execute.isRunning.value) return;
+          if (bloc.state.isLoading) return;
           setState(
             () => resource.month.value = DateTime(
               selectedMonth.year,
@@ -323,17 +321,17 @@ Widget _sectionPreview({
               padding: const EdgeInsets.symmetric(vertical: 24.0),
               child: Column(
                 children: [
-                  ValueListenableBuilder<bool>(
-                    valueListenable: command.execute.isRunning,
-                    builder: (_, running, _) => DashboardMonthSelectorWidget(
+                  BlocBuilder<ExpenseMetricsBloc, ExpenseMetricsState>(
+                    bloc: bloc,
+                    builder: (_, state) => DashboardMonthSelectorWidget(
                       formatter: DateFormatter(),
                       selectedMonth: selectedMonth,
-                      onPreviousMonth: loading || running
+                      onPreviousMonth: loading || state.isLoading
                           ? null
                           : () => changeMonth(-1),
                       onNextMonth:
                           loading ||
-                              running ||
+                              state.isLoading ||
                               !selectedMonth.isBefore(
                                 DateTime(
                                   DateTime.now().year,
@@ -345,18 +343,10 @@ Widget _sectionPreview({
                     ),
                   ),
                   const SizedBox(height: 8.0),
-                  CommandBuilder(
-                    command: command.execute,
-                    whileRunning: (_, _, _) => MetricsSectionWidget(
-                      metrics: null,
-                      moneyFormatter: MoneyFormatter(),
-                    ),
-                    onNullData: (_, _) => MetricsSectionWidget(
-                      metrics: null,
-                      moneyFormatter: MoneyFormatter(),
-                    ),
-                    onData: (_, metrics, _) => MetricsSectionWidget(
-                      metrics: metrics,
+                  BlocBuilder<ExpenseMetricsBloc, ExpenseMetricsState>(
+                    bloc: bloc,
+                    builder: (_, state) => MetricsSectionWidget(
+                      metrics: state.metrics,
                       moneyFormatter: MoneyFormatter(),
                     ),
                   ),

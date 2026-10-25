@@ -170,6 +170,11 @@ contratos de aplicação dos contextos que consulta.
 - Use `BlocBuilder` para renderização e `BlocListener`/`BlocConsumer` para efeitos
   únicos. Não mostre toast, navegue ou envie operações durante o build.
 - Se usar `BlocProvider.value`, a propriedade do fechamento continua com a screen.
+- Session é uma observação contínua com proprietário no nível da composição:
+  `AppWidget` recebe a factory estável, inicia e fecha seu único SessionBloc.
+  `AppScreen` é apenas visual; não cria, compartilha por singleton ou fecha outro
+  Bloc. A leitura inicial não sobrescreve eventos de token/watch mais recentes;
+  falha de storage não é ausência confirmada nem deve apagar o token.
 - Formulário mantém entrada, validação e erros por campo localmente. No sign-in,
   o validator remove espaços do e-mail, mas preserva a senha; Bloc e repository
   delegam os valores recebidos sem outra normalização.

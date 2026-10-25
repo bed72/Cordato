@@ -126,15 +126,18 @@ void main() {
         for (final match in _importPattern.allMatches(source)) {
           final targetContext = match.group(1)!;
           final targetPath = match.group(2)!;
-          final isAuthenticationContract =
-              targetContext == 'authentication' &&
+          final isApplicationContract =
+              (targetContext == 'authentication' ||
+                  targetContext == 'session' ||
+                  targetContext == 'user' ||
+                  targetContext == 'metrics') &&
               targetPath ==
-                  'application/repositories/interface_authentication_repository.dart';
+                  'application/repositories/interface_${targetContext}_repository.dart';
           final isOuterAdapter =
               targetPath.startsWith('application/repositories/') ||
               targetPath.startsWith('data/') ||
               targetPath.startsWith('infrastructure/');
-          if (isOuterAdapter && !isAuthenticationContract) {
+          if (isOuterAdapter && !isApplicationContract) {
             violations.add(
               '${file.path}: presentation imports an outer adapter (${match.group(0)})',
             );
@@ -171,11 +174,14 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
-  test('keeps Authentication application contracts independent from adapters', () {
+  test('keeps migrated application contracts independent from adapters', () {
     final violations = <String>[];
     for (final file in _dartFiles().where(
       (file) =>
-          file.uri.pathSegments.contains('authentication') &&
+          (file.uri.pathSegments.contains('authentication') ||
+              file.uri.pathSegments.contains('session') ||
+              file.uri.pathSegments.contains('user') ||
+              file.uri.pathSegments.contains('metrics')) &&
           file.uri.pathSegments.contains('application'),
     )) {
       final source = file.readAsStringSync();
@@ -224,6 +230,53 @@ void main() {
       }
     }
 
+    expect(violations, isEmpty, reason: violations.join('\n'));
+  });
+
+  test('keeps User and Metrics on direct repository results without data sources', () {
+    final violations = <String>[];
+    for (final file in _dartFiles().where(
+      (file) => file.uri.pathSegments.contains('user') || file.uri.pathSegments.contains('metrics'),
+    )) {
+      final source = file.readAsStringSync();
+      if (source.contains('features/core/domain/either.dart') ||
+          RegExp(r'\b(?:Either|Left|Right)\s*[<(]').hasMatch(source)) {
+        violations.add(
+          '${file.path}: migrated contexts must use direct results and exceptions',
+        );
+      }
+      if (file.path.contains('/domain/repositories/') ||
+          file.path.endsWith('_data_source.dart')) {
+        violations.add(
+          '${file.path}: migrated context has a legacy repository/data source layer',
+        );
+      }
+      for (final match in _importPattern.allMatches(source)) {
+        final targetPath = match.group(2)!;
+        if (match.group(1) == 'core' &&
+            targetPath.startsWith('infrastructure/') &&
+            !file.uri.pathSegments.contains('infrastructure')) {
+          violations.add(
+            '${file.path}: only infrastructure may use core clients (${match.group(0)})',
+          );
+        }
+      }
+    }
+    expect(violations, isEmpty, reason: violations.join('\n'));
+  });
+
+  test('keeps User and Metrics presentation on Bloc without legacy commands', () {
+    final violations = <String>[];
+    for (final file in _dartFiles().where(
+      (file) => file.path.startsWith('lib/features/user/') || file.path.startsWith('lib/features/metrics/'),
+    )) {
+      final source = file.readAsStringSync();
+      if (file.uri.pathSegments.contains('commands') ||
+          source.contains('package:command_it/') ||
+          source.contains('presentation/commands/')) {
+        violations.add('${file.path}: migrated contexts must use Bloc, not commands');
+      }
+    }
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 

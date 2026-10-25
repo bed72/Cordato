@@ -46,11 +46,39 @@ Logout usa `LogoutBloc` na apresentação de Settings, consumindo o contrato de
 Authentication. Mantém confirmação, loading, erros e retry manual, com revogação
 remota antes da limpeza do storage. O redirecionamento continua global por sessão.
 Authentication não possui mais apresentação baseada em commands; isso não
-significa que Session, Root ou as demais features já foram migradas.
+significa que todas as demais features já foram migradas.
+
+Session também usa contrato em application, repository direto em infrastructure
+e Bloc. `AppWidget` é o único dono da observação contínua e do fechamento;
+`AppScreen` apenas mostra o splash. Uma mudança recente do token tem precedência
+sobre uma leitura inicial antiga. Falhas de storage não apagam o token nem
+confirmam ausência: Root usa Welcome como fallback seguro e mantém a observação.
+
+User já possui contrato em application, `UserException` e repository em
+infrastructure usando HTTP/storage diretamente, sem `Either` ou data sources.
+Consulta, nome, avatar e exclusão mantêm seus contratos de API; exclusão confirmada
+aguarda a limpeza do storage. A tela de perfil agora usa `UserBloc` para consulta,
+avatar e exclusão, com lifecycle próprio, debounce de dois segundos, confirmação
+de exclusão, feedback único e bloqueio de operações concorrentes. A edição do
+nome usa `EditBloc`, preservando validação, trim no formulário, erros 422 por
+campo, entrada após falha e retorno do perfil atualizado após sucesso. User não
+usa mais commands. Os testes de repository usam clients mockados, e os de
+Bloc/tela usam o contrato do repository mockado. O teste composto do módulo
+verifica os dois Blocs, edição e retorno com recarga do perfil.
+
+Metrics também usa contrato em application, `MetricsException` e repository em
+infrastructure chamando HTTP diretamente, sem Either ou data source. Preserva
+filtros opcionais, datas civis, centavos e categorias da API. `ExpenseMetricsBloc`
+substitui o command, com estados sealed, falhas tipadas, retry manual e precedência
+da consulta mais recente. O módulo fornece instâncias por factory e os previews
+consumidores usam BlocBuilder. Dashboard mantém seu próprio Bloc sobre o contrato,
+sem migrar os demais contextos financeiros.
 
 Outras features ainda referenciam `Either`, `response<T>` e CommandIt removidos.
-Há módulos desativados em `app_module.dart` e referência a módulo de rotas de
-Authentication que não está definido no arquivo atual da feature. Esses pontos
+Session e Welcome estão ativos em `app_module.dart`; a referência duplicada ao
+módulo inexistente de rotas de Authentication foi removida. Dashboard, Settings
+e outros destinos continuam desativados, e testes do antigo handler CommandIt
+do bootstrap ainda precisam de migração. Esses pontos
 impedem tratar o app, a suíte completa e os flows E2E como prontos para execução.
 Os detalhes estão em [Estado atual e migração](ARCHITECTURE.md#estado-atual-e-migração).
 
@@ -167,6 +195,9 @@ flutter test test/features/authentication/presentation/screens/sign_up
 flutter test test/features/authentication/presentation/screens/resend_email
 flutter test test/features/authentication/presentation/screens/callback test/features/authentication/authentication_callback_module_test.dart
 flutter test test/features/settings
+flutter test test/features/session test/features/root
+flutter test test/features/user
+flutter test test/architecture test/features/metrics
 ```
 
 Os flows Maestro estão em
@@ -180,7 +211,7 @@ Os flows de
 [`resend_email/e2e/`](test/features/authentication/presentation/screens/resend_email/e2e/README.md)
 usam fixture na porta 8767, aguardam o cooldown real e também não foram executados
 em dispositivo. Bloc/tela de reenvio têm 23 testes novos aprovados; o lote focado
-de arquitetura, Authentication e Settings tem 195 testes aprovados. A análise focada está
+de arquitetura, Authentication, Settings, Session, Root e storage tem 250 testes aprovados. A análise focada está
 limpa, mas análise/suíte globais continuam bloqueadas pelo legado.
 
 O [E2E de callback](test/features/authentication/presentation/screens/callback/e2e/README.md)
@@ -193,8 +224,26 @@ usa fixture local na porta 8769 e cobre confirmação, revogação, falha e load
 Não foi executado em dispositivo. Os 23 testes novos de Settings/Logout incluem
 Bloc, tela e módulo com repository real sobre clients mockados, verificando
 que a conclusão aguarda a revogação e a limpeza do storage.
+
+Session/Root têm 49 testes novos aprovados, incluindo o ciclo de sign-in/token/
+logout com repositories e Blocs reais sobre clients mockados. Os
+[flows de Session/Root](test/features/root/presentation/screens/app/e2e/README.md)
+reutilizam a fixture de logout na porta 8769 e ainda não foram executados em
+dispositivo. A suíte do SessionInterceptor continua bloqueada por dependência
+legada de Expense; a suíte global também não está aprovada.
 Dependem de build compilável e módulos de sessão/destinos ativos; sua existência
 não significa validação em dispositivo. Não há suíte Flutter `integration_test`.
+
+O lote focado de arquitetura, Authentication, Settings, Session, Root, User e das
+camadas migradas de Metrics passou com 456 testes. A análise focada está limpa.
+Após substituir o command, `flutter test test/architecture test/features/metrics`
+passou com 106 testes, incluindo Bloc e módulo. A análise focada de Metrics e dos
+dois previews consumidores está limpa. Dashboard continua bloqueada pelos demais
+contratos financeiros legados; não houve execução visual de previews ou E2E.
+Os flows de [perfil](test/features/user/presentation/screens/user/e2e/README.md)
+e [edição de nome](test/features/user/presentation/screens/edit/e2e/README.md) usam
+a fixture local na porta 8770 e estão preparados, não executados em dispositivo.
+Análise e suíte globais permanecem bloqueadas pelo legado.
 
 ## API, Sessão E Segurança
 

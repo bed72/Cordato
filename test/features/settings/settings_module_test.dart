@@ -43,7 +43,7 @@ void main() {
               ..addInstance<IHttpClient>(client)
               ..addInstance<IStorageClient>(storage);
             authenticationModule.register(context);
-            context.module(settingsRoutesModule);
+            context.module(settingsModule);
           },
         ),
       );

@@ -1,0 +1,28 @@
+appId: com.bed.cordato
+name: User - Failure
+tags: [user, failure]
+env:
+  TEST_SERVER: http://127.0.0.1:8770
+  SCENARIO: failure
+---
+- runFlow: subflows/prepare.yaml
+- tapOn: Gerar outro avatar
+- extendedWaitUntil:
+    visible: Avatar recusado
+    timeout: 10000
+- assertVisible: Avatar de Pessoa E2E
+- tapOn: Gerar outro avatar
+- extendedWaitUntil:
+    visible: Avatar atualizado
+    timeout: 10000
+- tapOn: Excluir conta
+- tapOn: Confirmar
+- assertVisible: Conta mantida
+- assertVisible: Avatar de Pessoa E2E
+- tapOn: Excluir conta
+- tapOn: Confirmar
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.avatarRequests === 2 && output.stats.deleteRequests === 2 && output.stats.authorized && output.stats.unexpected.length === 0}

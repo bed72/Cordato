@@ -1,91 +1,100 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/root/presentation/widgets/app_widget.dart';
+import 'package:cordato/features/session/presentation/bloc/session_bloc.dart';
+import 'package:cordato/features/session/presentation/bloc/session_event.dart';
+import 'package:cordato/features/session/presentation/bloc/session_state.dart';
 
 mixin AppWidgetStateMixin on State<AppWidget> {
-  int _sessionRevision = 0;
+  late SessionBloc bloc;
 
   @override
   void initState() {
     super.initState();
-
-    widget.command.execute.addListener(_handleSession);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (_context == null) return;
-
-      if (_contains(_context!)) _context?.navigate(RouteEnum.app.path);
-    });
+    bloc = widget.bloc();
+    bloc.add(const SessionStartedEvent());
+    _scheduleInitialRoute();
   }
 
   @override
   void didUpdateWidget(covariant AppWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.command != widget.command) {
-      oldWidget.command.execute.removeListener(_handleSession);
-      widget.command.execute.addListener(_handleSession);
+    if (oldWidget.bloc != widget.bloc) {
+      unawaited(bloc.close());
+      bloc = widget.bloc();
+      bloc.add(const SessionStartedEvent());
+      handleSession(bloc.state);
+    } else if (oldWidget.navigatorKey != widget.navigatorKey) {
+      handleSession(bloc.state);
     }
-
-    if (oldWidget.command != widget.command ||
-        oldWidget.navigatorKey != widget.navigatorKey) {
-      _handleSession();
-    }
-  }
-
-  void _handleSession() {
-    final revision = ++_sessionRevision;
-    final command = widget.command;
-    final navigatorKey = widget.navigatorKey;
-    final hasSession = widget.command.execute.value;
-
-    if (hasSession == null) return;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted ||
-          revision != _sessionRevision ||
-          widget.command != command ||
-          widget.navigatorKey != navigatorKey) {
-        return;
-      }
-      if (_context == null) return;
-
-      final path = _context?.routeState(listen: false).uri.path;
-
-      if (hasSession) {
-        final isEntryRoute =
-            path == RouteEnum.welcome.path ||
-            path == RouteEnum.authenticationSignIn.path;
-
-        if (isEntryRoute) navigateToDashboard();
-
-        return;
-      }
-
-      final authentication = RouteEnum.authenticatedPaths().contains(path);
-
-      if (authentication) navigateToWelcome();
-    });
-    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   @override
   void dispose() {
-    _sessionRevision++;
-    widget.command.execute.removeListener(_handleSession);
+    unawaited(bloc.close());
     super.dispose();
   }
 
-  void navigateToWelcome() => _navigate(RouteEnum.welcome.path);
-  void navigateToDashboard() => _navigate(RouteEnum.dashboard.path);
+  void _scheduleInitialRoute() {
+    final owner = bloc;
+    final key = widget.navigatorKey;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          !identical(bloc, owner) ||
+          owner.isClosed ||
+          widget.navigatorKey != key) {
+        return;
+      }
+      final target = key.currentContext;
+      if (target == null) {
+        _scheduleInitialRoute();
+        return;
+      }
+      if (RouteEnum.authenticatedPaths().contains(
+        target.routeState(listen: false).uri.path,
+      )) {
+        target.navigate(RouteEnum.app.path);
+      }
+      handleSession(owner.state);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
 
-  BuildContext? get _context => widget.navigatorKey.currentContext;
+  void handleSession(SessionState state) {
+    final owner = bloc;
+    final key = widget.navigatorKey;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          !identical(bloc, owner) ||
+          owner.isClosed ||
+          owner.state != state ||
+          widget.navigatorKey != key) {
+        return;
+      }
 
-  void _navigate(String path) =>
-      widget.navigatorKey.currentContext?.navigate(path);
+      final target = key.currentContext;
+      if (target == null) return;
+      final path = target.routeState(listen: false).uri.path;
+      final protected = RouteEnum.authenticatedPaths().contains(path);
+      final splash = path == RouteEnum.app.path;
 
-  bool _contains(BuildContext context) => RouteEnum.authenticatedPaths()
-      .contains(context.routeState(listen: false).uri.path);
+      switch (state) {
+        case SessionInitial() || SessionLoading():
+          if (protected) target.navigate(RouteEnum.app.path);
+        case SessionAuthenticated():
+          if (splash ||
+              path == RouteEnum.welcome.path ||
+              path == RouteEnum.authenticationSignIn.path) {
+            target.navigate(RouteEnum.dashboard.path);
+          }
+        case SessionUnauthenticated() || SessionFailure():
+          if (splash || protected) target.navigate(RouteEnum.welcome.path);
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
 }

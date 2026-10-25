@@ -372,7 +372,171 @@ prepara cenários Success/Failure/Loading com login e Bearer fictícios na fixtu
 local. Não foi executado em dispositivo e não prova o redirecionamento global
 neste checkout, cuja composição ainda tem bloqueios.
 
-### HTTP E Storage Compartilhados
+### Session E Composição Root
+
+`ISessionRepository` fica em `session/application/repositories/` e retorna
+`Future<bool> loadSession()` e `Stream<bool> sessionChanges`. A implementação em
+`session/infrastructure/repositories/` usa `IStorageClient` diretamente, sem data
+source intermediário. Lê/observa somente `opaqueToken`: nulo/vazio significa
+ausência, qualquer outro valor significa presença, sem normalização, validação
+remota, expiração ou exposição do token à apresentação. Falhas de storage
+propagam; o repository não as transforma em ausência ou limpa dados.
+
+`SessionBloc`, em `session/presentation/bloc/`, começa em `Initial` e recebe
+`SessionStartedEvent` do proprietário. `Loading`, `Authenticated`,
+`Unauthenticated` e `Failure` são estados sealed sem token. O handler `droppable`
+inicia uma única observação por instância e registra o watch antes da leitura
+inicial. A leitura só publica enquanto o estado continuar `Loading`: um evento
+mais recente, inclusive falha do watch, tem precedência sobre o resultado antigo.
+
+O handler aguarda `emit.onEach`, usando o lifecycle nativo para cancelar a
+subscription no fechamento, sem campo de subscription ou override de `close`.
+Fechar não cancela a leitura de storage já iniciada; `isClosed`/`emit.isDone`
+impedem resultados tardios. Falhas de leitura/watch usam `addError` e `Failure`,
+sem detalhes internos ou suposição de token ausente. O watch continua ativo após
+falhas recuperáveis e pode publicar uma presença posterior, sem retry automático
+de leitura. Presenças repetidas não duplicam estados prontos.
+
+`sessionDependenciesModule` registra repository por contrato e Bloc por factory.
+Para esta observação contínua, o único proprietário é `AppWidget`, que recebe
+`bloc: inject<SessionBloc>`, inicia em `initState`, fecha no descarte e substitui
+somente quando a factory muda. Não há singleton de Bloc nem uma instância por
+tela. `AppScreen` é apenas o splash visual e não possui operação ou fechamento.
+
+O listener de Root agenda navegação depois do frame e valida instância, estado
+atual e navigator key antes do efeito. Entrada protegida a frio passa pelo splash;
+presença resolve `/` para Dashboard e ausência/falha resolve para Welcome. Um token
+novo em Welcome/Sign-in abre Dashboard; perda/falha de observação em rota protegida
+volta a Welcome. Cadastro, reenvio e callback públicos são preservados. Essa decisão
+visual não prova autorização remota e não limpa storage em falha de observação.
+
+`app_module.dart` ativa Session e Welcome e usa as rotas já presentes em
+`authenticationModule`, sem a referência duplicada/inexistente
+`authenticationRoutesModule`. Dashboard, Settings e demais destinos comentados
+não foram reativados nem migrados incidentalmente. O teste composto de Root usa
+repositories/Blocs reais de Session, Authentication e Settings com clients
+mockados e Dashboard visual de teste para validar login → token → Dashboard →
+logout → limpeza → Welcome com o mesmo proprietário de Session.
+
+Os [flows Session/Root](test/features/root/presentation/screens/app/e2e/README.md)
+reutilizam a fixture local de logout e estão preparados, não executados em
+dispositivo. Falhas/leitura pendente do storage são verificadas nos testes Flutter,
+não injetadas por uma API HTTP ou por bypasses de segurança no app.
+
+### User: Repository E Perfil Com Bloc
+
+`IUserRepository` fica em `user/application/repositories/` e retorna diretamente
+`Future<UserEntity>` em `getById`/`update` e `Future<void>` em `delete`.
+`UserException`, em `application/exceptions/`, transporta os erros esperados.
+O repository concreto fica em `user/infrastructure/repositories/`, recebe
+`IHttpClient` e `IStorageClient` e absorve os antigos data sources local/remoto.
+
+O repository lê o ID atual do storage em cada operação, rejeita ID nulo/vazio
+ou composto só por espaços e preserva o valor original nos demais casos.
+Codifica o ID no caminho `users/<id>`, sem alterar o ID do payload JSON:API.
+Update envia somente nome/avatar fornecidos e devolve a entidade da resposta,
+sem normalização oculta. Erros HTTP preservam ordem, mensagens e metadados;
+demais falhas tipadas do client usam fallback. Parsing inválido, falhas de
+storage e exceções inesperadas propagam sem serem convertidos em falhas esperadas.
+
+Exclusão só conclui após HTTP 204 e `storage.clear()` aguardado. Outro status
+2xx lança `UserException` com fallback seguro, sem limpar o storage. Falhas remotas
+ou na limpeza não confirmam sucesso. Não há booleano: conclusão sem exceção é
+suficiente para o consumidor.
+
+`UserBloc`, em `presentation/screens/user/bloc/`, substitui os commands de
+consulta, avatar e exclusão. Um único handler `droppable` coordena os três eventos:
+operações pendentes descartam novas consultas e mutações, inclusive concorrentes
+de outro tipo, sem fila ou cancelamento HTTP. Estados sealed distinguem consulta,
+perfil pronto, salvamento de avatar, exclusão e seus resultados. A disponibilidade
+das ações deriva do estado. Falhas de mutação preservam o perfil confirmado;
+`UserException` preserva a mesma `ErrorsEntity`, inclusive vazia. Falhas inesperadas
+usam `addError` e fallback seguro. Fechamento impede publicações tardias.
+
+Avatar delega a seed original ao repository e só confirma se a entidade retornada
+contiver a mesma seed. Falha ou resposta divergente permite nova tentativa manual,
+sem retry automático. Conclusão de `delete` publica sucesso e bloqueia novas
+operações; exceções publicam falha. Sucesso não navega nem mostra toast: Session
+observa a limpeza do token.
+
+`UserScreen` recebe a factory estável `bloc: inject<UserBloc>`, cria em `initState`,
+fecha em `dispose` e substitui/fecha somente se a factory mudar. O módulo registra
+Bloc por factory e repository pelo contrato, sem data sources. `BlocConsumer`
+separa renderização dos toasts únicos. Erro de consulta usa `ErrorScreen` com retry
+e acesso à confirmação de exclusão; skeleton é excluído da semântica.
+
+O mixin possui somente estado visual da seed ainda não confirmada e o timer de
+dois segundos. Gerar outra seed reinicia o debounce. Troca de factory, saída,
+edição de nome e confirmação de exclusão cancelam o timer. Diálogos e retornos
+de edição conferem o dono atual antes de enviar eventos. Salvar/excluir bloqueia
+as demais ações. A volta da edição só recarrega após uma mutação confirmada.
+Previews mantêm uma factory estável; somente a tela fecha o Bloc.
+
+`EditBloc`, em `presentation/screens/edit/bloc/`, substitui o último command de
+User. `EditSubmittedEvent(name)` delega o nome original ao contrato. Os estados
+sealed são `Initial`, `Submitting`, `Success(user)` e `Failure(errors)`.
+`droppable` descarta envios iguais ou diferentes durante uma operação. Sucesso
+bloqueia novas submissões; falha permite retry manual, preserva os erros esperados
+e usa `addError` com fallback seguro para falhas inesperadas. Fechamento não
+cancela HTTP, mas impede estados e feedback tardios.
+
+`EditScreen` recebe `bloc: inject<EditBloc>` por factory, cria e fecha a instância
+e substitui seu proprietário somente se a factory mudar. O formulário mantém a
+entrada e os erros por campo: rejeita nome vazio ou igual ao inicial após trim,
+faz trim somente ao enviar e preserva a entrada após falha. Botão e teclado usam
+o mesmo guard. Erros 422 pelo pointer de nome ficam no campo; editar limpa esse
+erro, e somente erros restantes aparecem em toast. Sucesso mostra o feedback
+existente e devolve a entidade da API pelo callback de navegação já existente,
+uma única vez. O perfil recarrega ao receber esse resultado confirmado.
+
+User não depende mais de CommandIt. O teste composto do módulo verifica factories
+independentes dos dois Blocs, estabilidade, argumentos de edição, PATCH com o
+repository real sobre clients mockados e retorno/recarga após conclusão remota.
+Dashboard mantém os demais contratos financeiros legados. Os [flows de perfil](test/features/user/presentation/screens/user/e2e/README.md)
+e de [edição de nome](test/features/user/presentation/screens/edit/e2e/README.md)
+preparam Success/Failure/Loading com fixture HTTP isolada, sem execução em dispositivo.
+
+### Metrics: Repository E Consulta Com Bloc
+
+`IMetricsRepository` fica em `metrics/application/repositories/` e retorna
+`Future<ExpenseMetricsEntity> getExpenses({startDate, endDate, groupBy})`.
+`MetricsException` transporta `ErrorsEntity` nas falhas esperadas. A implementação
+em `metrics/infrastructure/repositories/` recebe `IHttpClient` diretamente e
+absorve o data source remoto removido, sem storage ou operações de escrita.
+
+O repository consulta `metrics/expenses`, serializa datas civis sem conversão de
+fuso e envia somente os filtros fornecidos. Não inventa período, agrupamento,
+datas complementares ou validação remota. Ausência de filtros mantém query nula.
+O DTO permanece interno a infrastructure e devolve entidade com centavos inteiros,
+categorias imutáveis na ordem da API, categorias desconhecidas e distinção entre
+agrupamento ausente e vazio. Percentuais continuam `double`, pois não são dinheiro.
+
+Respostas HTTP de erro viram `MetricsException`, preservando mensagens, ordem,
+pointer e parameter. Demais `HttpClientException` usam fallback seguro. Parsing
+inválido (`TypeError`/`FormatException`) e falhas inesperadas propagam, sem catch
+genérico que as transforme em erro de negócio ou sucesso vazio.
+
+`ExpenseMetricsBloc`, em `metrics/presentation/bloc/`, substitui o command de
+consulta compartilhada, sem criar uma screen artificial. Recebe
+`ExpenseMetricsRequestedEvent` com filtros opcionais e delega os valores sem
+normalização. Estados sealed distinguem `Initial`, `Loading`, `Success(data)` e
+`Failure(errors)`. Somente sucesso expõe métricas; zero, categorias ausentes e
+categorias vazias permanecem resultados válidos, não falhas.
+
+O handler usa `restartable`: uma consulta nova invalida o resultado anterior,
+sem cancelar HTTP. Sucessos e falhas obsoletos ou posteriores ao fechamento não
+publicam estados. `MetricsException` preserva a mesma `ErrorsEntity`; falhas
+inesperadas usam `addError` e fallback seguro. Sucesso permite refresh e falha
+permite retry manual, sem request automática na criação ou retry automático.
+
+O módulo registra o repository pelo contrato e o Bloc por factory independente.
+Os dois previews consumidores usam BlocBuilder e PreviewResourceWidget como único
+dono do fechamento. Metrics não depende mais de CommandIt. A Dashboard mantém sua
+própria coordenação pelo contrato: preserva o erro esperado de Metrics quando a
+leitura paralela o envolve em `ParallelWaitError`, sem migrar Expense/Insight ou
+adicionar um Bloc intermediário à Dashboard.
+
+### Clients Compartilhados
 
 `coreDependenciesModule` registra Dio, `IHttpClient` e `IStorageClient`.
 `BASE_URL` padrão: `https://app.cordato.cloud/api/`. Bases devem preservar `/api/`;
@@ -458,9 +622,9 @@ Navegação nova usa extensões de BuildContext (`pushNamed`, `replace`, `pop`,
 de navegação; `SignUpFooterWidget` substitui a rota diretamente pelo contexto.
 Callbacks legados não devem ser removidos sem migrar todos os consumidores.
 
-Root contém `AppScreen` e `AppWidget`. Quando Session e destinos estão ligados,
-AppScreen escolhe a entrada e AppWidget observa perda do token e logout.
-A abertura não faz consulta de validade ao backend.
+Root contém `AppScreen`, o splash visual, e `AppWidget`, proprietário do
+SessionBloc e das decisões globais de navegação. A abertura lê presença no
+storage e não faz consulta de validade ao backend.
 
 `main.dart` inicializa o Firebase padrão antes de montar ModularApp. Core,
 Crashlytics e Messaging usam o projeto `trocado-d362e`, com identificador
@@ -469,8 +633,9 @@ Firebase configuradas. Falha de inicialização impede o início do app.
 
 O bootstrap resolve `ICrashClient` e conecta FlutterError e PlatformDispatcher;
 erros do framework são não fatais e erros assíncronos não tratados são fatais.
-O handler global CommandIt ainda existente pertence ao legado; não é parte do
-novo desenho Bloc nem uma razão para restaurar a dependência removida.
+O handler global CommandIt foi removido de `main.dart`; seus testes legados ainda
+precisam ser migrados/removidos com os demais consumidores antigos. `addError`
+usa o mecanismo de Bloc e não implica integração automática com Crashlytics.
 
 Clients Firebase ficam em `core/infrastructure/clients/firebase/`. Messaging
 expõe permissão, token e streams; NotificationClient encapsula o plugin local,
@@ -627,7 +792,8 @@ O repository e o contrato de Authentication já seguem o novo desenho.
 Sign-in, Sign-up, reenvio e callback têm Bloc, estados sealed, testes de Bloc,
 widget e flows E2E. O módulo de Authentication possui testes próprios para DI
 e roteamento do callback, sem garantir a composição global do aplicativo.
-Isso não significa que toda Authentication ou o aplicativo estejam migrados.
+Os fluxos de Authentication e a observação Session/Root usam o novo desenho;
+isso não significa que todo o aplicativo esteja migrado ou componha seus destinos.
 
 | Área | Situação encontrada |
 | --- | --- |
@@ -636,11 +802,14 @@ Isso não significa que toda Authentication ou o aplicativo estejam migrados.
 | Reenvio | ResendEmailBloc por factory, cooldown e feedback no mixin da tela. |
 | Callback | CallbackBloc por factory, latest-link-wins e navegação/feedback no listener da tela. |
 | Logout | LogoutBloc em Settings, contrato de Authentication e navegação global por sessão preservada. |
-| User, Session, Expense, Insight e Metrics | Ainda possuem contratos/implementações/data sources no desenho anterior. |
+| Session | Contrato em application, repository direto em infrastructure e SessionBloc contínuo. |
+| User | Contrato/repository migrados; perfil, avatar e exclusão com UserBloc; edição de nome com EditBloc; sem commands. |
+| Metrics | Contrato em application, repository direto em infrastructure e ExpenseMetricsBloc por factory, sem Either/data source/commands. |
+| Expense e Insight | Ainda possuem contratos/implementações/data sources no desenho anterior. |
 | Dashboard | Já usa Bloc, mas depende de contratos e resultados financeiros legados. |
-| Bootstrap e Root | Ainda referenciam CommandIt/SessionCommand. |
+| Bootstrap e Root | AppWidget é dono do SessionBloc; AppScreen apenas visual; handler CommandIt removido do bootstrap. |
 | Dependências/core | CommandIt não está no pubspec; Either e `response<T>` foram removidos, com consumidores ainda existentes. |
-| Composição global | Há módulos comentados e referência a `authenticationRoutesModule` sem definição no módulo atual de Authentication. |
+| Composição global | Session/Welcome ativos e referência duplicada de Authentication removida; Dashboard/Settings e outros destinos seguem comentados. |
 | E2E | Flows presentes, dependentes de build compilável e composição de sessão/destinos restaurada corretamente. |
 
 Portanto, não há garantia de análise, build, suíte completa ou navegação E2E
@@ -679,6 +848,86 @@ liberação e Bearer. A análise global permanece bloqueada pelo legado, assim c
 foram removidos; Authentication não usa mais commands, mas Session/Root e demais
 features permanecem em migração. Os flows E2E de logout não foram executados.
 
+Na migração de Session, `flutter pub get` concluiu e a análise focada de Session,
+Root, bootstrap/composição e seus testes passou sem problemas. O lote de
+arquitetura, Authentication, Settings, Session, Root e storage passou com 250
+testes, incluindo 49 novos de Session/Root. A verificação adicional de
+`session_interceptor_test.dart` foi bloqueada pelo import legado de Expense que
+ainda depende de `Either`. A análise global encontrou 550 problemas, inclusive
+testes do handler CommandIt removido e consumidores antigos de `Either`/
+`response<T>`; `flutter test` completo também falhou. Não houve execução E2E em
+dispositivo. Os caminhos dos subflows/scripts novos foram conferidos, o que não
+constitui validação de sintaxe ou execução Maestro.
+
+Na primeira rodada de User, `flutter pub get` concluiu e a análise focada de
+domain/application/infrastructure e seus testes passou sem problemas. Os testes
+focados cobrem payload, parsing, ID, erros HTTP e propagação de falhas inesperadas,
+além da ordem/espera da exclusão e limpeza. O comando `flutter test
+test/architecture test/features/authentication test/features/settings
+test/features/session test/features/root test/features/user/application
+test/features/user/infrastructure test/features/user/domain` passou com 289 testes.
+A análise e a suíte globais continuam
+bloqueadas por `Either`, `response<T>` e CommandIt nos consumidores legados;
+os testes dos commands de User e de Dashboard foram adaptados, mas sua execução
+continua bloqueada por essas dependências. Nenhum E2E foi executado nesta rodada.
+
+Na segunda rodada de User, `flutter pub get` concluiu. A análise focada da tela,
+Bloc, preview e testes passou sem problemas. O lote focado da primeira rodada,
+acrescentando `test/features/user/presentation/screens/user`, passou com 344 testes
+(55 adicionais, incluindo 32 de Bloc, 22 de tela e um check arquitetural).
+`flutter test test/features/user/user_module_test.dart` foi executado e bloqueado
+na compilação por CommandIt da rota `edit`, não por um teste de DI aprovado.
+A análise e a suíte globais também continuam bloqueadas pelo legado. Foram removidos
+somente os cenários obsoletos de UserCommand do teste do handler CommandIt legado;
+erros esperados/inesperados de User agora são verificados pelo mecanismo do Bloc.
+A fixture de User passou em verificações HTTP locais de perfil, avatar, respostas
+401/422/503, exclusão 204, liberação e isolamento de endpoints. Isso não valida
+Maestro nem os seletores em dispositivo. Nenhum E2E foi executado nesta rodada.
+
+Na terceira rodada de User, `flutter pub get` concluiu e a análise focada de toda
+a feature, testes/suporte de User e check arquitetural passou sem problemas.
+`flutter test test/architecture test/features/authentication test/features/settings
+test/features/session test/features/root test/features/user` passou com 374 testes,
+incluindo 11 de EditBloc, 18 de EditScreen e o teste composto de módulo anteriormente
+bloqueado. O command e seus testes legados foram removidos; o check arquitetural
+agora impede commands em todo User. A análise e a suíte globais continuam bloqueadas
+pelo legado de outras features (`Either`, `response<T>` e CommandIt), sem novos
+problemas identificados em User. A fixture compartilhada passou em verificações
+HTTP locais de nome 422/200, perfil preservado, compatibilidade do avatar, Bearer
+e retenção/liberação. Nenhum flow E2E foi executado em dispositivo.
+
+Na simplificação de `delete` para `Future<void>`, `flutter pub get` e a análise
+focada de User, seu suporte/testes e o preview consumidor de Dashboard concluíram
+sem problemas. `flutter test test/architecture test/features/user` passou com
+137 testes. Análise e testes globais foram executados e continuam falhando pelos
+consumidores legados de outras features. Não houve execução E2E nesta alteração.
+
+Na primeira rodada de Metrics, `flutter pub get` concluiu. A análise focada de
+application/infrastructure/domain, fakes de preview, seus testes/suporte e check
+arquitetural passou sem problemas. O comando `flutter test test/architecture
+test/features/authentication test/features/settings test/features/session
+test/features/root test/features/user test/features/metrics/application
+test/features/metrics/infrastructure test/features/metrics/domain
+test/features/metrics/presentation/extensions` passou com 456 testes. A cobertura
+inclui filtros opcionais, datas civis, centavos grandes sem perda de precisão,
+categorias, parsing inválido, erros HTTP, falhas inesperadas e espera da resposta.
+
+Os testes de módulo/command de Metrics e do Bloc consumidor de Dashboard foram
+executados, mas continuam bloqueados na compilação por CommandIt e pelo Either
+dos demais contextos financeiros. A análise e a suíte globais também falham
+nesses consumidores legados. Não foram restauradas dependências antigas nem
+declarados DI, UI, previews ou E2E aprovados em execução nesta rodada.
+
+Na substituição do command de Metrics, `flutter pub get` concluiu. `dart analyze`
+de Metrics, testes/suporte, check arquitetural e dos dois previews consumidores
+passou sem problemas. `flutter test test/architecture test/features/metrics`
+passou com 106 testes, incluindo 14 de Bloc e o teste de módulo com repository
+real sobre HTTP mockado. A análise global encontrou 334 problemas e `flutter test`
+global terminou com 606 testes aprovados e 22 falhas, incluindo compilação legada
+por Either/CommandIt/response, testes antigos de headers e referência não resolvida
+a `userDependenciesModule` fora do escopo. Não houve execução visual dos previews
+ou E2E; a Dashboard ainda importa os contratos financeiros legados.
+
 O código financeiro existente inclui formulário compartilhado de criação/edição,
 listagem com paginação/filtros/gestos, métricas e insights na Dashboard, além de
 perfil e avatar. São comportamentos a preservar durante migrações, não modelos
@@ -715,6 +964,7 @@ flutter test test/features/authentication/presentation/screens/sign_up
 flutter test test/features/authentication/presentation/screens/resend_email
 flutter test test/features/authentication/presentation/screens/callback test/features/authentication/authentication_callback_module_test.dart
 flutter test test/features/settings
+flutter test test/features/session test/features/root
 ```
 
 Registre comandos, resultado e causa de bloqueios. Teste focado aprovado não

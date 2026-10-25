@@ -1,13 +1,11 @@
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/features/metrics/application/repositories/metrics_repository.dart';
-import 'package:cordato/features/metrics/domain/repositories/interface_metrics_repository.dart';
-import 'package:cordato/features/metrics/infrastructure/remoto/metrics_remote_data_source.dart';
-import 'package:cordato/features/metrics/presentation/commands/get_expense_metrics_command.dart';
+import 'package:cordato/features/metrics/infrastructure/repositories/metrics_repository.dart';
+import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_bloc.dart';
+import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
-final metricsDependenciesModule = createModule(
+final metricsModule = createModule(
   register: (context) => context
-    ..addLazySingleton<IMetricsRemoteDataSource>(MetricsRemoteDataSource.new)
     ..addLazySingleton<IMetricsRepository>(MetricsRepository.new)
-    ..add(GetExpenseMetricsCommand.new),
+    ..add(ExpenseMetricsBloc.new),
 );

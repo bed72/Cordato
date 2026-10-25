@@ -137,15 +137,13 @@ Widget _screenPreview({
       ),
       metricsRepository: MetricsPreviewRepository(
         loading: loading,
-        type: empty
-            ? Right(
-                ExpenseMetricsEntity(
-                  id: 'empty-month',
-                  endDate: end,
-                  categories: [],
-                  totalAmount: 0,
-                  startDate: month,
-                ),
+        data: empty
+            ? ExpenseMetricsEntity(
+                id: 'empty-month',
+                endDate: end,
+                categories: [],
+                totalAmount: 0,
+                startDate: month,
               )
             : null,
       ),

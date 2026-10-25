@@ -7,13 +7,14 @@ import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
-import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';
+import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart';
-import 'package:cordato/features/metrics/domain/repositories/interface_metrics_repository.dart';
+import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
+import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_state.dart';
@@ -130,7 +131,7 @@ final class DashboardBloc({
           phase: .ready,
           firstMonth: firstMonth,
           user: user,
-          metrics: _value(metrics),
+          metrics: metrics,
           insights: .unmodifiable(_value(insights)),
           expenses: _value(expenses),
         ),
@@ -142,7 +143,19 @@ final class DashboardBloc({
           currentMonth: previous.currentMonth,
           selectedMonth: month,
           phase: .failure,
-          financialError: error is ErrorsEntity ? error : .unknown(),
+          financialError: switch (error) {
+            ErrorsEntity() => error,
+            MetricsException(:final errors) => errors,
+            ParallelWaitError(
+              errors: (
+                AsyncError(error: MetricsException(:final errors)),
+                null,
+                null,
+              ),
+            ) =>
+              errors,
+            _ => .unknown(),
+          },
         ),
       );
     }
@@ -150,7 +163,7 @@ final class DashboardBloc({
 
   Future<UserEntity?> _getUser() async {
     try {
-      return _value<UserEntity>(await _userRepository.getById());
+      return await _userRepository.getById();
     } catch (_) {
       return null;
     }

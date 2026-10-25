@@ -1,0 +1,5 @@
+appId: com.bed.cordato
+name: Session - Pending revocation preserves protected route
+tags: [session, loading]
+---
+- runFlow: ../../../../../settings/presentation/screens/settings/e2e/Loading.yaml

@@ -6,8 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/core/domain/either.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
-import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart'
-    as user;
+import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/repositories/interface_expense_repository.dart'
@@ -15,8 +14,7 @@ import 'package:cordato/features/expense/domain/repositories/interface_expense_r
 import 'package:cordato/features/insight/domain/repositories/interface_insight_repository.dart'
     as insight;
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
-import 'package:cordato/features/metrics/domain/repositories/interface_metrics_repository.dart'
-    as metrics;
+import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_state.dart';
@@ -93,9 +91,7 @@ void main() {
     return states;
   }
 
-  void stubMetrics(
-    Future<metrics.GetExpensesRepositoryType> Function() response,
-  ) {
+  void stubMetrics(Future<ExpenseMetricsEntity> Function() response) {
     when(
       () => metricsRepository.getExpenses(
         groupBy: .category,
@@ -130,7 +126,7 @@ void main() {
     expenses = ExpenseRepositoryMock();
     insights = InsightRepositoryMock();
     metricsRepository = MetricsRepositoryMock();
-    when(() => users.getById()).thenAnswer((_) async => const Right(profile));
+    when(() => users.getById()).thenAnswer((_) async => profile);
     when(history).thenAnswer((_) async => Right(page([DateTime(2024, 1)])));
     stubRecent(() async => Right(page([])));
     stubInsights(() async => const Right([]));
@@ -141,8 +137,7 @@ void main() {
         endDate: any(named: 'endDate'),
       ),
     ).thenAnswer(
-      (call) async =>
-          Right(totals(call.namedArguments[#startDate] as DateTime)),
+      (call) async => totals(call.namedArguments[#startDate] as DateTime),
     );
     bloc = create();
   });
@@ -212,7 +207,7 @@ void main() {
   test(
     'reads User and history in parallel before starting the sections',
     () async {
-      final pendingUser = Completer<user.GetByIdRepositoryType>();
+      final pendingUser = Completer<UserEntity>();
       final pendingHistory = Completer<expense.GetRepositoryType>();
       when(() => users.getById()).thenAnswer((_) => pendingUser.future);
       when(history).thenAnswer((_) => pendingHistory.future);
@@ -221,7 +216,7 @@ void main() {
       verify(history).called(1);
       verifyZeroInteractions(metricsRepository);
       verifyZeroInteractions(insights);
-      pendingUser.complete(const Right(profile));
+      pendingUser.complete(profile);
       await flush();
       expect(bloc.state.user, isNull);
       verifyZeroInteractions(metricsRepository);
@@ -235,14 +230,14 @@ void main() {
     'does not publish completed sections while another section is pending',
     () async {
       final states = recordStates();
-      final pendingMetrics = Completer<metrics.GetExpensesRepositoryType>();
+      final pendingMetrics = Completer<ExpenseMetricsEntity>();
       final pendingInsights = Completer<insight.GetRepositoryType>();
       final pendingExpenses = Completer<expense.GetRepositoryType>();
       stubMetrics(() => pendingMetrics.future);
       stubInsights(() => pendingInsights.future);
       stubRecent(() => pendingExpenses.future);
       await send(DashboardOpened());
-      pendingMetrics.complete(Right(totals(DateTime(2026, 10))));
+      pendingMetrics.complete(totals(DateTime(2026, 10)));
       pendingExpenses.complete(Right(page([])));
       await flush();
       expect(states.length, 1);
@@ -279,11 +274,11 @@ void main() {
           stubRecent(() => pending.future);
           switch (section) {
             case 'metrics':
-              stubMetrics(() async => Left(errors));
+              stubMetrics(() async => throw MetricsException(errors: errors));
             case 'insights':
               stubInsights(() async => Left(errors));
             case 'expenses':
-              stubMetrics(() async => Right(totals(DateTime(2026, 10))));
+              stubMetrics(() async => totals(DateTime(2026, 10)));
           }
           final states = recordStates();
           await send(DashboardOpened());
@@ -318,7 +313,7 @@ void main() {
       () async {
         when(() => users.getById()).thenAnswer((_) async {
           if (unexpected) throw StateError('user');
-          return Left(ErrorsEntity.unknown());
+          throw UserException(errors: .unknown());
         });
         when(history).thenAnswer((_) async {
           if (unexpected) throw StateError('history');
@@ -395,7 +390,7 @@ void main() {
   );
 
   test('blocked events neither cancel nor queue work during loading', () async {
-    final pending = Completer<metrics.GetExpensesRepositoryType>();
+    final pending = Completer<ExpenseMetricsEntity>();
     stubMetrics(() => pending.future);
     await send(DashboardOpened());
     for (final event in <DashboardEvent>[
@@ -409,7 +404,7 @@ void main() {
     }
     await flush();
     expect(bloc.state.isLoading, isTrue);
-    pending.complete(Right(totals(DateTime(2026, 10))));
+    pending.complete(totals(DateTime(2026, 10)));
     await flush();
     expect(bloc.state.phase, DashboardPhaseEnum.ready);
     verify(history).called(1);
@@ -488,21 +483,23 @@ void main() {
   });
 
   test('retry is a normal load and clears the previous failure only with complete success', () async {
-    stubMetrics(() async => Left(ErrorsEntity.unknown()));
+    stubMetrics(
+      () async => throw MetricsException(errors: ErrorsEntity.unknown()),
+    );
     await send(DashboardOpened());
     final failed = bloc.state;
     await send(DashboardRefreshRequested());
     await send(DashboardPreviousMonthRequested());
     expect(bloc.state, same(failed));
-    final pendingUser = Completer<user.GetByIdRepositoryType>();
+    final pendingUser = Completer<UserEntity>();
     when(() => users.getById()).thenAnswer((_) => pendingUser.future);
-    stubMetrics(() async => Right(totals(DateTime(2026, 10))));
+    stubMetrics(() async => totals(DateTime(2026, 10)));
     final states = recordStates();
     await send(DashboardRetryRequested());
     expect(bloc.state.phase, DashboardPhaseEnum.loading);
     expect(bloc.state.financialError, isNull);
     await send(DashboardRetryRequested());
-    pendingUser.complete(const Right(profile));
+    pendingUser.complete(profile);
     await flush();
     expect(states.map((state) => state.phase), [
       DashboardPhaseEnum.loading,
@@ -514,7 +511,9 @@ void main() {
   test(
     'a failed retry returns to error without automatically retrying',
     () async {
-      stubMetrics(() async => Left(ErrorsEntity.unknown()));
+      stubMetrics(
+        () async => throw MetricsException(errors: ErrorsEntity.unknown()),
+      );
       await send(DashboardOpened());
       final states = recordStates();
       await send(DashboardRetryRequested());
@@ -531,17 +530,17 @@ void main() {
     test(
       'confirmed changes replace a pending cycle and ignore old ${staleError ? 'errors' : 'data'}',
       () async {
-        final pending = Completer<metrics.GetExpensesRepositoryType>();
+        final pending = Completer<ExpenseMetricsEntity>();
         stubMetrics(() => pending.future);
         await send(DashboardOpened());
-        stubMetrics(() async => Right(totals(DateTime(2026, 10), cents: 700)));
+        stubMetrics(() async => totals(DateTime(2026, 10), cents: 700));
         await send(DashboardExpensesChanged());
         expect(bloc.state.metrics!.totalAmount, 700);
         final ready = bloc.state;
         if (staleError) {
           pending.completeError(StateError('obsolete'));
         } else {
-          pending.complete(Right(totals(DateTime(2026, 10), cents: 100)));
+          pending.complete(totals(DateTime(2026, 10), cents: 100));
         }
         await flush();
         expect(bloc.state, same(ready));
@@ -557,14 +556,16 @@ void main() {
       'confirmed changes replace ${event.runtimeType} without waiting for obsolete history',
       () async {
         if (event is DashboardRetryRequested) {
-          stubMetrics(() async => Left(ErrorsEntity.unknown()));
+          stubMetrics(
+            () async => throw MetricsException(errors: ErrorsEntity.unknown()),
+          );
         }
         await send(DashboardOpened());
         final pending = Completer<expense.GetRepositoryType>();
         when(history).thenAnswer((_) => pending.future);
         await send(event);
         when(history).thenAnswer((_) async => Right(page([])));
-        stubMetrics(() async => Right(totals(DateTime(2026, 10))));
+        stubMetrics(() async => totals(DateTime(2026, 10)));
         await send(DashboardExpensesChanged());
         final ready = bloc.state;
         expect(ready.phase, DashboardPhaseEnum.ready);
@@ -585,7 +586,7 @@ void main() {
       clearInteractions(metricsRepository);
       final states = recordStates();
       when(() => users.getById())
-          .thenAnswer((_) async => Left(ErrorsEntity.unknown()));
+          .thenAnswer((_) async => throw UserException(errors: .unknown()));
       await send(DashboardUserRequested());
       expect(states.map((state) => state.phase), [
         DashboardPhaseEnum.loading,
@@ -604,10 +605,10 @@ void main() {
   );
 
   test('returning from User during loading replaces the whole cycle without waiting for old User', () async {
-    final pending = Completer<user.GetByIdRepositoryType>();
+    final pending = Completer<UserEntity>();
     when(() => users.getById()).thenAnswer((_) => pending.future);
     await send(DashboardOpened());
-    when(() => users.getById()).thenAnswer((_) async => const Right(profile));
+    when(() => users.getById()).thenAnswer((_) async => profile);
     await send(DashboardUserRequested());
     final ready = bloc.state;
     expect(ready.phase, DashboardPhaseEnum.ready);
@@ -621,13 +622,13 @@ void main() {
 
   test('confirmed changes replace a pending profile refresh', () async {
     await send(DashboardOpened());
-    final pending = Completer<user.GetByIdRepositoryType>();
+    final pending = Completer<UserEntity>();
     when(() => users.getById()).thenAnswer((_) => pending.future);
     await send(DashboardUserRequested());
-    when(() => users.getById()).thenAnswer((_) async => const Right(profile));
+    when(() => users.getById()).thenAnswer((_) async => profile);
     await send(DashboardExpensesChanged());
     final ready = bloc.state;
-    pending.complete(Left(ErrorsEntity.unknown()));
+    pending.completeError(UserException(errors: .unknown()));
     await flush();
     expect(bloc.state, same(ready));
     expect(bloc.state.user, same(profile));
@@ -638,7 +639,7 @@ void main() {
       'closing during ${pendingHistory ? 'history' : 'sections'} ignores late completion',
       () async {
         final oldHistory = Completer<expense.GetRepositoryType>();
-        final oldMetrics = Completer<metrics.GetExpensesRepositoryType>();
+        final oldMetrics = Completer<ExpenseMetricsEntity>();
         if (pendingHistory) {
           when(history).thenAnswer((_) => oldHistory.future);
         } else {

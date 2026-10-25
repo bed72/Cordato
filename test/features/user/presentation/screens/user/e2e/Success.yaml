@@ -1,0 +1,25 @@
+appId: com.bed.cordato
+name: User - Success
+tags: [user, success]
+env:
+  TEST_SERVER: http://127.0.0.1:8770
+  SCENARIO: success
+---
+- runFlow: subflows/prepare.yaml
+- tapOn: Gerar outro avatar
+- extendedWaitUntil:
+    visible: Avatar atualizado
+    timeout: 10000
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.avatarRequests === 1 && output.stats.avatar !== null}
+- tapOn: Excluir conta
+- tapOn: Voltar
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.deleteRequests === 0}
+- tapOn: Excluir conta
+- tapOn: Confirmar
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- runScript: scripts/stats.js
+- assertTrue: ${output.stats.deleteRequests === 1 && output.stats.authorized && output.stats.unexpected.length === 0}

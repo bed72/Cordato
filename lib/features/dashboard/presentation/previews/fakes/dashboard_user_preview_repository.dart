@@ -1,27 +1,26 @@
-import 'package:cordato/features/core/domain/either.dart';
+import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
-import 'package:cordato/features/user/domain/repositories/interface_user_repository.dart';
+import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
 final class DashboardUserPreviewRepository({final ErrorsEntity? failure})
     implements IUserRepository {
   @override
-  Future<GetByIdRepositoryType> getById() async => failure != null
-      ? Left(failure!)
-      : const Right(
-          UserEntity(
-            name: 'Gabriel',
-            status: 'active',
-            id: 'preview-user',
-            email: 'preview@example.com',
-          ),
-        );
+  Future<UserEntity> getById() async {
+    if (failure != null) throw UserException(errors: failure!);
+    return const UserEntity(
+      name: 'Gabriel',
+      status: 'active',
+      id: 'preview-user',
+      email: 'preview@example.com',
+    );
+  }
 
   @override
-  Future<DeleteRepositoryType> delete() async => Left(.unknown());
+  Future<void> delete() async => throw UserException(errors: .unknown());
 
   @override
-  Future<UpdateRepositoryType> update({String? name, String? avatar}) async =>
-      Left(.unknown());
+  Future<UserEntity> update({String? name, String? avatar}) async =>
+      throw UserException(errors: .unknown());
 }

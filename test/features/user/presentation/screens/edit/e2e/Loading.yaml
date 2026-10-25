@@ -1,0 +1,31 @@
+appId: com.bed.cordato
+name: Edit User - Loading
+tags: [user, edit, loading]
+env:
+  TEST_SERVER: http://127.0.0.1:8770
+  SCENARIO: edit-loading
+onFlowComplete:
+  - runScript: ../../user/e2e/scripts/release.js
+---
+- runFlow: ../../user/e2e/subflows/prepare.yaml
+- tapOn: '(?s)Nome.*'
+- tapOn: Pessoa E2E
+- eraseText
+- inputText: Novo nome
+- hideKeyboard
+- tapOn:
+    text: Atualizar
+    retryTapIfNoChange: false
+- assertVisible: Atualize o seu nome de exibição.
+- assertVisible:
+    text: Novo nome
+    enabled: false
+- assertNotVisible: Nome atualizado
+- runScript: ../../user/e2e/scripts/stats.js
+- assertTrue: ${output.stats.nameRequests === 1 && output.stats.name === 'Pessoa E2E'}
+- runScript: ../../user/e2e/scripts/release.js
+- extendedWaitUntil:
+    visible: Gerencie os dados da sua conta.
+    timeout: 10000
+- runScript: ../../user/e2e/scripts/stats.js
+- assertTrue: ${output.stats.nameRequests === 1 && output.stats.name === 'Novo nome' && output.stats.authorized && output.stats.unexpected.length === 0}

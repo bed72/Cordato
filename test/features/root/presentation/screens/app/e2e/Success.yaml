@@ -1,0 +1,29 @@
+appId: com.bed.cordato
+name: Session - Startup and logout
+tags: [session, success]
+env:
+  TEST_SERVER: http://127.0.0.1:8769
+  SCENARIO: success
+  EMAIL: Person@Example.com
+  PASSWORD: Teste1
+---
+- runFlow: ../../../../../settings/presentation/screens/settings/e2e/subflows/prepare.yaml
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: Pessoa E2E
+    timeout: 15000
+- runScript: ../../../../../settings/presentation/screens/settings/e2e/scripts/stats.js
+- assertTrue: ${output.stats.requests === 1 && output.stats.logoutRequests === 0}
+- tapOn: Menu
+- runFlow: ../../../../../settings/presentation/screens/settings/e2e/subflows/confirm.yaml
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: Continuar
+    timeout: 15000
+- runScript: ../../../../../settings/presentation/screens/settings/e2e/scripts/stats.js
+- assertTrue: ${output.stats.requests === 1 && output.stats.logoutRequests === 1 && output.stats.logoutAuthorized && output.stats.unexpected.length === 0}
