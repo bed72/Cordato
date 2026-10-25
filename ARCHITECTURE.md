@@ -556,6 +556,12 @@ aprovados neste checkout. Não restaure dependências antigas apenas para escond
 a migração incompleta; também não declare comportamento de módulo desativado
 como disponível no app em execução.
 
+Na migração de Sign-up, `flutter pub get` concluiu e o lote focado de arquitetura,
+application/infrastructure de Authentication, validators e telas Sign-in/Sign-up
+passou (120 testes). `flutter analyze` e `flutter test` completos continuam
+bloqueados pelos consumidores legados de CommandIt, `Either` e `response<T>`;
+o módulo atual compõe cadastro com factory, mas não corrige a composição global.
+
 O código financeiro existente inclui formulário compartilhado de criação/edição,
 listagem com paginação/filtros/gestos, métricas e insights na Dashboard, além de
 perfil e avatar. São comportamentos a preservar durante migrações, não modelos

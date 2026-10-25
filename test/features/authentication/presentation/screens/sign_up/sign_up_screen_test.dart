@@ -104,7 +104,8 @@ void main() {
       }
       factory.dispose();
       (router.routerDelegate as ChangeNotifier).dispose();
-      (router.routeInformationProvider as PlatformRouteInformationProvider).dispose();
+      (router.routeInformationProvider as PlatformRouteInformationProvider)
+          .dispose();
     });
     await tester.pumpWidget(
       MaterialApp.router(

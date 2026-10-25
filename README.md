@@ -163,6 +163,9 @@ Os flows Maestro estão em
 [`test/features/authentication/presentation/screens/sign_in/e2e/`](test/features/authentication/presentation/screens/sign_in/e2e/README.md).
 Seu README descreve fixture, encaminhamento de porta e execução sequencial.
 Não execute contra produção: usam dados fictícios e limpam dados/keychain do app.
+Os flows de cadastro estão em
+[`sign_up/e2e/`](test/features/authentication/presentation/screens/sign_up/e2e/README.md),
+com fixture própria na porta 8766; ainda não foram executados em dispositivo.
 Dependem de build compilável e módulos de sessão/destinos ativos; sua existência
 não significa validação em dispositivo. Não há suíte Flutter `integration_test`.
 
