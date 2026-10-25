@@ -1,0 +1,30 @@
+appId: com.bed.cordato
+name: Resend-email - Failure
+tags: [resend-email, failure]
+env:
+  TEST_SERVER: http://127.0.0.1:8767
+  SCENARIO: failure
+  EMAIL: Person@Example.com
+  PASSWORD: Teste1
+---
+- runFlow: subflows/prepare.yaml
+- tapOn:
+    text: Reenviar
+    retryTapIfNoChange: false
+- assertVisible: Limite de reenvios atingido.
+- assertVisible: ${EMAIL}
+- assertNotVisible: Você poderá reenviar em .*
+- assertVisible:
+    text: Reenviar
+    enabled: true
+- runScript: ../../sign_up/e2e/scripts/stats.js
+- assertTrue: ${output.stats.requests === 1}
+- tapOn:
+    text: Reenviar
+    retryTapIfNoChange: false
+- assertVisible: E-mail reenviado
+- assertVisible:
+    text: Reenviar
+    enabled: false
+- runScript: ../../sign_up/e2e/scripts/stats.js
+- assertTrue: ${output.stats.requests === 2 && output.stats.credentialsMatch && output.stats.unexpected.length === 0}

@@ -36,10 +36,11 @@ Leia [ARCHITECTURE.md](ARCHITECTURE.md) para decisões e fronteiras e
 compilação/composição. A documentação não significa que a migração foi concluída.**
 
 Authentication já possui contrato em application e repository em infrastructure.
-Sign-in e cadastro usam Bloc, controle de submissões concorrentes, falhas tipadas
+Sign-in, cadastro e reenvio usam Bloc, controle de submissões concorrentes, falhas tipadas
 e testes de Bloc/tela. Cadastro mantém erros por campo, retry manual e navegação
-para confirmação sem criar sessão. Reenvio, confirmação e logout ainda possuem
-apresentação legada baseada em commands.
+para confirmação sem criar sessão. Reenvio preserva cooldown inicial/de sucesso
+de 60 segundos e retry manual imediato após falha, sem criar sessão.
+Confirmação por link e logout ainda possuem apresentação legada baseada em commands.
 
 Outras features ainda referenciam `Either`, `response<T>` e CommandIt removidos.
 Há módulos desativados em `app_module.dart` e referência a módulo de rotas de
@@ -157,6 +158,7 @@ flutter test test/features/authentication/infrastructure/repositories
 flutter test test/features/authentication/presentation/screens/sign_in/bloc
 flutter test test/features/authentication/presentation/screens/sign_in/sign_in_screen_test.dart
 flutter test test/features/authentication/presentation/screens/sign_up
+flutter test test/features/authentication/presentation/screens/resend_email
 ```
 
 Os flows Maestro estão em
@@ -166,6 +168,12 @@ Não execute contra produção: usam dados fictícios e limpam dados/keychain do
 Os flows de cadastro estão em
 [`sign_up/e2e/`](test/features/authentication/presentation/screens/sign_up/e2e/README.md),
 com fixture própria na porta 8766; ainda não foram executados em dispositivo.
+Os flows de
+[`resend_email/e2e/`](test/features/authentication/presentation/screens/resend_email/e2e/README.md)
+usam fixture na porta 8767, aguardam o cooldown real e também não foram executados
+em dispositivo. Bloc/tela de reenvio têm 23 testes novos aprovados; o lote focado
+de arquitetura e Authentication tem 143 testes aprovados. A análise focada está
+limpa, mas análise/suíte globais continuam bloqueadas pelo legado.
 Dependem de build compilável e módulos de sessão/destinos ativos; sua existência
 não significa validação em dispositivo. Não há suíte Flutter `integration_test`.
 

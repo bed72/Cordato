@@ -1,0 +1,32 @@
+appId: com.bed.cordato
+name: Resend-email - Success
+tags: [resend-email, success]
+env:
+  TEST_SERVER: http://127.0.0.1:8767
+  SCENARIO: success
+  EMAIL: Person@Example.com
+  PASSWORD: Teste1
+---
+- runFlow: subflows/prepare.yaml
+- tapOn:
+    text: Reenviar
+    retryTapIfNoChange: false
+- assertVisible: E-mail reenviado
+- assertVisible: Verifique seu e-mail
+- assertVisible:
+    text: Reenviar
+    enabled: false
+- assertVisible: Você poderá reenviar em .*
+- runScript: ../../sign_up/e2e/scripts/stats.js
+- assertTrue: ${output.stats.requests === 1 && output.stats.credentialsMatch && output.stats.unexpected.length === 0}
+- extendedWaitUntil:
+    notVisible: Você poderá reenviar em .*
+    timeout: 70000
+- runScript: ../../sign_up/e2e/scripts/stats.js
+- assertTrue: ${output.stats.requests === 1}
+- tapOn:
+    text: Reenviar
+    retryTapIfNoChange: false
+- assertVisible: E-mail reenviado
+- runScript: ../../sign_up/e2e/scripts/stats.js
+- assertTrue: ${output.stats.requests === 2 && output.stats.credentialsMatch && output.stats.unexpected.length === 0}

@@ -16,7 +16,7 @@ import 'package:cordato/features/authentication/presentation/screens/sign_in/blo
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/callback/commands/callback_command.dart';
-import 'package:cordato/features/authentication/presentation/screens/resend_email/commands/resend_email_command.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_bloc.dart';
 
 final authenticationModule = createModule(
   path: RouteEnum.app.path,
@@ -26,12 +26,12 @@ final authenticationModule = createModule(
     ..add<SignInBloc>(SignInBloc.new)
     ..add<SignUpBloc>(SignUpBloc.new)
     ..addLazySingleton<CallbackCommand>(CallbackCommand.new)
-    ..addLazySingleton<ResendEmailCommand>(ResendEmailCommand.new)
+    ..add<ResendEmailBloc>(ResendEmailBloc.new)
     ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
     ..route(
       RouteEnum.authenticationConfirm.path,
       child: (_, state) => ResendEmailScreen(
-        command: inject<ResendEmailCommand>(),
+        bloc: inject<ResendEmailBloc>,
         email: state.arguments as String? ?? '',
       ),
     )

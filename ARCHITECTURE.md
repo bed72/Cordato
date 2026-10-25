@@ -284,7 +284,33 @@ Testes Flutter cobrem Bloc, formulário, navegação e lifecycle. Os flows e a
 fixture isolada estão no [README E2E de Sign-up](test/features/authentication/presentation/screens/sign_up/e2e/README.md);
 não foram executados em dispositivo devido aos bloqueios globais existentes.
 
-### Client Compartilhado
+### Reenvio Com Bloc
+
+`ResendEmailScreen` recebe uma factory estável de `ResendEmailBloc`, cria a
+instância em `initState`, substitui/fecha quando a factory muda e fecha no
+descarte. `ResendEmailSubmittedEvent(email)` delega o endereço sem normalização.
+Os estados sealed são `Initial`, `Submitting`, `Success` e `Failure(errors)`;
+o Bloc usa `droppable`, preserva falhas esperadas, reporta inesperadas via
+`addError` com fallback seguro e ignora conclusões após fechamento.
+
+Ao contrário do cadastro, sucesso permite uma nova intenção de reenvio. A UI
+mantém o cooldown inicial de 60 segundos e o reinicia somente após sucesso,
+exibindo o toast existente sem navegar nem criar sessão. Falha mostra os erros
+remotos, com fallback para mensagens ausentes, e permite retry manual imediato.
+O e-mail permanece somente leitura; endereço vazio, cooldown e submissão pendente
+bloqueiam o botão. Não há envio automático na entrada ou ao terminar o cooldown.
+
+O timer pertence ao mixin da tela e é cancelado no descarte. A contagem usa os
+ticks decorridos do timer periódico, não o número de callbacks, permitindo
+contabilizar ticks atrasados e avançar o tempo virtual nos testes. Rebuild e
+troca de factory não reiniciam o cooldown nem repetem feedback. O fechamento do
+Bloc não cancela a request HTTP em andamento.
+
+O [README E2E de Resend-email](test/features/authentication/presentation/screens/resend_email/e2e/README.md)
+documenta os flows Success/Failure/Loading e a fixture isolada, ainda sem execução
+em dispositivo por causa dos bloqueios globais do app.
+
+### HTTP
 
 `coreDependenciesModule` registra Dio, `IHttpClient` e `IStorageClient`.
 `BASE_URL` padrão: `https://app.cordato.cloud/api/`. Bases devem preservar `/api/`;
@@ -343,8 +369,8 @@ Módulos usam `createModule` do Modular 7, pertencem à feature e registram
 interfaces para implementações. Separe dependências compartilhadas de rotas
 quando necessário; não crie módulos vazios para padronizar a árvore.
 
-`authenticationModule` registra repository, validators, SignInBloc e SignUpBloc
-por factory e os commands ainda legados de reenvio e confirmação, além de rotas.
+`authenticationModule` registra repository, validators, SignInBloc, SignUpBloc e
+ResendEmailBloc por factory e o command ainda legado de confirmação, além de rotas.
 Não o descreva como uma separação de módulos já concluída. O estado da composição
 global depende dos registros efetivamente ativos em `app_module.dart`.
 
@@ -543,7 +569,8 @@ Isso não significa que toda Authentication ou o aplicativo estejam migrados.
 | --- | --- |
 | Sign-in | Novo padrão implementado. |
 | Cadastro | SignUpBloc por factory, lifecycle da tela e confirmação por navegação de contexto. |
-| Reenvio, callback e logout | Repository novo; apresentação ainda usa commands legados. |
+| Reenvio | ResendEmailBloc por factory, cooldown e feedback no mixin da tela. |
+| Callback e logout | Repository novo; apresentação ainda usa commands legados. |
 | User, Session, Expense, Insight e Metrics | Ainda possuem contratos/implementações/data sources no desenho anterior. |
 | Dashboard | Já usa Bloc, mas depende de contratos e resultados financeiros legados. |
 | Bootstrap e Root | Ainda referenciam CommandIt/SessionCommand. |
@@ -561,6 +588,12 @@ application/infrastructure de Authentication, validators e telas Sign-in/Sign-up
 passou (120 testes). `flutter analyze` e `flutter test` completos continuam
 bloqueados pelos consumidores legados de CommandIt, `Either` e `response<T>`;
 o módulo atual compõe cadastro com factory, mas não corrige a composição global.
+
+Na migração de Resend-email, `flutter pub get` e a análise focada da tela/Bloc e
+seus testes concluíram sem problemas. O lote focado acima, incluindo reenvio,
+passou com 143 testes (23 novos). `flutter analyze` global encontrou 568 problemas
+nos consumidores legados; `flutter test` completo também falhou por essas
+dependências removidas. A migração não altera callback, logout ou composição global.
 
 O código financeiro existente inclui formulário compartilhado de criação/edição,
 listagem com paginação/filtros/gestos, métricas e insights na Dashboard, além de
@@ -595,6 +628,7 @@ flutter test test/features/authentication/infrastructure/repositories
 flutter test test/features/authentication/presentation/screens/sign_in/bloc
 flutter test test/features/authentication/presentation/screens/sign_in/sign_in_screen_test.dart
 flutter test test/features/authentication/presentation/screens/sign_up
+flutter test test/features/authentication/presentation/screens/resend_email
 ```
 
 Registre comandos, resultado e causa de bloqueios. Teste focado aprovado não

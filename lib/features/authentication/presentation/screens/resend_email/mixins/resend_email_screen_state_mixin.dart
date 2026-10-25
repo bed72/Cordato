@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/commands/command_failure_exception.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_bloc.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_event.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_state.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
 
@@ -11,37 +13,41 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
   static const _cooldown = Duration(seconds: 60);
 
   Timer? _timer;
-  late DateTime _cooldownEndsAt;
+  late ResendEmailBloc bloc;
   Duration remaining = _cooldown;
+
+  bool get canResend =>
+      remaining == .zero && widget.email.isNotEmpty && bloc.state.canSubmit;
 
   @override
   void initState() {
     super.initState();
-    widget.command.execute.results.addListener(_handleResend);
+    bloc = widget.bloc();
     _startCooldown();
   }
 
   @override
   void didUpdateWidget(covariant ResendEmailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.command == widget.command) return;
-    oldWidget.command.execute.results.removeListener(_handleResend);
-    widget.command.execute.results.addListener(_handleResend);
+    if (oldWidget.bloc == widget.bloc) return;
+    unawaited(bloc.close());
+    bloc = widget.bloc();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    widget.command.execute.results.removeListener(_handleResend);
+    unawaited(bloc.close());
     super.dispose();
   }
 
   void _startCooldown() {
     _timer?.cancel();
-    _cooldownEndsAt = DateTime.now().add(_cooldown);
+
     setState(() => remaining = _cooldown);
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final timeLeft = _cooldownEndsAt.difference(DateTime.now());
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final timeLeft = _cooldown - Duration(seconds: timer.tick);
       setState(
         () => remaining = timeLeft.isNegative ? Duration.zero : timeLeft,
       );
@@ -53,20 +59,15 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
   }
 
   void resend() {
-    if (remaining > Duration.zero ||
-        widget.email.isEmpty ||
-        widget.command.execute.isRunning.value) {
-      return;
-    }
-    widget.command.execute.run(widget.email);
+    if (!canResend) return;
+    bloc.add(ResendEmailSubmittedEvent(email: widget.email));
   }
 
-  void _handleResend() {
-    final data = widget.command.execute.results.value;
-    if (!mounted || data.isRunning || data.paramData == null) return;
+  void handleResend(ResendEmailState state) {
+    if (!mounted || bloc.isClosed) return;
 
-    if (data.hasError) {
-      if (data.error case CommandFailureException(:final errors)
+    if (state is ResendEmailFailure) {
+      if (state case ResendEmailFailure(:final errors)
           when errors.errors.isNotEmpty) {
         context.showToast(
           variant: .error,
@@ -78,14 +79,16 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
               )
               .join('\n'),
         );
+
         return;
       }
+
       context.showToast(
         variant: .error,
         title: 'Erro ao reenviar e-mail',
         description: 'Não foi possível reenviar o e-mail. Tente novamente.',
       );
-    } else if (data.data == true) {
+    } else if (state is ResendEmailSuccess) {
       _startCooldown();
       context.showToast(
         title: 'E-mail reenviado',
