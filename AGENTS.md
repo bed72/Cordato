@@ -174,6 +174,9 @@ contratos de aplicação dos contextos que consulta.
   `Bloc Function()` por construtor, criam a instância e possuem seu fechamento.
   Não converta essas telas incidentalmente: migre rota, consumidores, previews
   e testes juntos quando a tarefa incluir a adoção do escopo Modular.
+- `ExpenseSuggestionsBloc` também usa `provide` e `addBloc` na rota de Expense;
+  screen/formulário recebem a instância e não a fecham. Isso não migra o
+  `ExpenseBloc`, que continua com factory estável e ownership pela screen.
 - Para os fluxos com ownership pela screen, crie em `initState`, feche em
   `dispose` e feche/substitua em `didUpdateWidget`
   somente quando a factory mudar. Rebuild comum não cria outro Bloc.
@@ -282,7 +285,7 @@ commands. Espelhe o caminho de produção em `test/features/<feature>/`.
 - Use `mocktail`, `bloc_test` e `flutter_test`. Em teste de Bloc, mocke o contrato
   de repository, não o client HTTP. Em teste do repository, mocke os clients.
 - Nos testes de screen, use o tema real, `pt_BR` e provider de toast. Respeite
-  o ownership do fluxo: Sign-in usa escopo externo; os demais mantêm a screen
+  o ownership do fluxo: Sign-in e sugestões de Expense usam escopo externo; os demais mantêm a screen
   como dona do Bloc. Não mascare erros de lifecycle fechando-o por outro dono.
 - Controle operações pendentes com `Completer` ou sinais observáveis; não dependa
   de sleeps arbitrários para provar concorrência.
@@ -301,7 +304,7 @@ commands. Espelhe o caminho de produção em `test/features/<feature>/`.
 
 Previews usam `@CordatoPreview`, tema real, localização e toast compartilhados.
 Ficam em `presentation/previews/`; fakes de catálogo não usam rede, storage ou
-mocktail. Mantenha um único dono de cada recurso, inclusive Bloc. Sign-in recebe
+mocktail. Mantenha um único dono de cada recurso, inclusive Bloc. Sign-in e sugestões de Expense recebem
 uma instância com ownership externo; a screen não fecha o Bloc. Use
 `PreviewResourceWidget` quando o recurso não pertencer ao lifecycle da tela.
 Execute `dart run tool/widget_preview.dart`; `.widget_preview/` não é versionado.

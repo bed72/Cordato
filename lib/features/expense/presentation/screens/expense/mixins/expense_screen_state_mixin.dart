@@ -9,17 +9,18 @@ mixin ExpenseScreenStateMixin on State<ExpenseScreen> {
   @override
   void initState() {
     super.initState();
-    bloc = widget.bloc();
+    bloc = widget.expenseBloc();
     loadExpense();
   }
 
   @override
   void didUpdateWidget(ExpenseScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.bloc != widget.bloc || oldWidget.id != widget.id) {
-      if (oldWidget.bloc != widget.bloc) {
+    if (oldWidget.expenseBloc != widget.expenseBloc ||
+        oldWidget.id != widget.id) {
+      if (oldWidget.expenseBloc != widget.expenseBloc) {
         bloc.close();
-        bloc = widget.bloc();
+        bloc = widget.expenseBloc();
       }
       loadExpense();
     }

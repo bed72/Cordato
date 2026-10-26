@@ -597,6 +597,36 @@ transporta os erros esperados. O repository concreto fica em
 `expense/infrastructure/repositories/` e usa `IHttpClient` diretamente, sem data
 source, Either, storage ou dependência de outro contexto financeiro.
 
+Sugestões usam `suggestions({required String query})`, retornando uma lista imutável
+de `ExpenseSuggestionEntity` com ID, descrição e centavos opcionais positivos.
+`ExpenseSuggestionResponse` interpreta JSON:API em infrastructure; o repository
+chama `expenses/suggestions` com query separada, sem expor DTOs ou inventar valor
+quando `amount` está ausente/null. Parsing inválido propaga como nas demais operações.
+
+`ExpenseSuggestionsBloc` é independente de consulta/submissão do gasto. Processa
+eventos concorrentemente com geração latest-wins: uma entrada/invalidação nova
+impede publicação de operações antigas, inclusive durante o debounce de 300 ms.
+A política inicial é consultar a partir de 3 caracteres. Invalidar impede o HTTP
+do debounce obsoleto; chamadas já iniciadas não são fisicamente canceladas. Estados
+sealed distinguem idle/loading/success/failure e identificam a revisão da consulta.
+Uma ponte local de apresentação conclui Futures do `optionsBuilder` por resultado,
+invalidação ou fechamento e cancela subscriptions; não executa HTTP ou debounce.
+
+O novo Bloc é fornecido exclusivamente pelo `provide` da rota `/expense` com
+`addBloc`; Modular cria e fecha a instância. Screen e formulário recebem-na, sem
+duplicar bind ou owner. `ExpenseBloc` mantém o lifecycle anterior pela screen.
+Somente cadastro consulta sugestões. A origem manual/automática do valor e a
+seleção pertencem ao formulário: resposta recebida não preenche campos, seleção
+não salva, valores manuais não são sobrescritos e data civil é preservada.
+
+O core oferece `AutocompleteTextFieldWidget<T>` sobre `RawAutocomplete`, compondo
+o `TextFieldWidget` existente com foco externo opcional. Não conhece Expense ou
+rede. Um controller interno sincroniza valores com o controller emprestado;
+renovar o motor nativo ao recuperar foco/concluir composição preserva o campo
+por GlobalKey, sem editar artificialmente o texto ou recriar a cada tecla. O campo
+padrão não força o encerramento de composição IME. Recursos externos não são
+descartados e trocas de controller/foco transferem listeners.
+
 GET/POST/PATCH/DELETE preservam o endpoint relativo `expenses`, ID codificado no
 caminho, payload JSON:API, descrição original e centavos inteiros. Atualização
 envia somente atributos fornecidos, sem inserir data ou normalizar o formulário.
@@ -779,7 +809,7 @@ exemplo é a extensão do Modular; evite ambiguidade com extensões do flutter_b
 Testes e previews podem usar um escopo externo ou `PreviewResourceWidget` como
 dono, sem tornar a screen dependente do roteador para renderizar.
 
-Hoje somente Sign-in usa esse padrão. SignUpBloc, ResendEmailBloc, CallbackBloc
+Hoje Sign-in e `ExpenseSuggestionsBloc` usam esse padrão. SignUpBloc, ResendEmailBloc, CallbackBloc
 e os demais Blocs de tela ainda são factories com ownership pelas screens;
 SessionBloc permanece global e pertence a `AppWidget`. Não declare migração
 completa nem altere outros lifecycles incidentalmente.
@@ -791,7 +821,7 @@ no Modular 7.1.1, binds são indexados pelo path e features irmãs com o mesmo p
 sobrescrevem registros. O módulo sem path evita colisão, disponibiliza o repository
 para logout e preserva factories, sem tornar Blocs singletons. Perde-se o descarte
 automático dos binds por saída da feature; telas ainda não migradas fecham seus
-Blocs e o provide de Sign-in continua fechando sua instância por página.
+Blocs; os provides de Sign-in e sugestões fecham suas instâncias por página.
 Outros módulos com paths exclusivos não foram reorganizados.
 
 `test/app_module_test.dart` monta a composição real, verifica resolução sem

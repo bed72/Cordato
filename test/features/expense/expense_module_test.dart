@@ -12,6 +12,9 @@ import 'package:cordato/features/core/infrastructure/clients/http/responses/resp
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/expense_module.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_bloc.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_event.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_state.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/expense_screen.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
@@ -72,6 +75,92 @@ void main() {
       expect(request.path, 'expenses');
       expect(request.query, {'page[size]': 6});
       verifyNoMoreInteractions(http);
+    },
+  );
+
+  testWidgets(
+    'suggestions are page-scoped, stable, closed on exit and recreated',
+    (tester) async {
+      final http = HttpClientMock();
+      final pending = Completer<Responses>();
+      when(() => http.get(parameter: any(named: 'parameter')))
+          .thenAnswer((_) => pending.future);
+      final boot = bootstrapModule(
+        createModule(
+          register: (context) {
+            context
+              ..addInstance<IHttpClient>(http)
+              ..addInstance<IDateFormatter>(DateFormatter())
+              ..addInstance<IMoneyFormatter>(MoneyFormatter())
+              ..module(expenseModule)
+              ..route(
+                '/previous',
+                child: (_, _) => const Scaffold(body: Text('Anterior')),
+              );
+          },
+        ),
+      );
+      final router = modularRouterConfig(
+        boot.routes,
+        injector: boot.injector,
+        manager: boot.manager,
+        initialRoute: '/previous',
+      );
+      addTearDown(() async {
+        if (!pending.isCompleted) {
+          pending.complete(const Responses(status: 200, body: {'data': []}));
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        (router.routerDelegate as ChangeNotifier).dispose();
+        (router.routeInformationProvider as PlatformRouteInformationProvider)
+            .dispose();
+        boot.injector.dispose();
+      });
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: Themes.light,
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: const [Locale('pt', 'BR')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          routerConfig: router,
+          builder: (_, child) => ToastProviderWidget(child: child!),
+        ),
+      );
+      await tester.pumpAndSettle();
+      unawaited(tester.element(find.text('Anterior')).pushNamed('/expense'));
+      await tester.pumpAndSettle();
+      final first = tester
+          .widget<ExpenseScreen>(find.byType(ExpenseScreen))
+          .suggestionsBloc;
+      tester.element(find.byType(ExpenseScreen)).markNeedsBuild();
+      await tester.pump();
+      expect(
+        tester
+            .widget<ExpenseScreen>(find.byType(ExpenseScreen))
+            .suggestionsBloc,
+        same(first),
+      );
+      first.add(const ExpenseSuggestionsRequested(revision: 1, query: 'Alu'));
+      await tester.pump();
+      await tester.pump(ExpenseSuggestionsBloc.debounce);
+      expect(first.state, isA<ExpenseSuggestionsLoading>());
+      tester.element(find.byType(ExpenseScreen)).pop();
+      await tester.pumpAndSettle();
+      expect(first.isClosed, isTrue);
+      final stateOnExit = first.state;
+      pending.complete(const Responses(status: 200, body: {'data': []}));
+      await tester.pumpAndSettle();
+      expect(first.state, same(stateOnExit));
+      unawaited(tester.element(find.text('Anterior')).pushNamed('/expense'));
+      await tester.pumpAndSettle();
+      final second = tester
+          .widget<ExpenseScreen>(find.byType(ExpenseScreen))
+          .suggestionsBloc;
+      expect(second, isNot(same(first)));
+      expect(second.isClosed, isFalse);
+      expect(second.state, isA<ExpenseSuggestionsIdle>());
+      expect(tester.takeException(), isNull);
     },
   );
 
@@ -169,8 +258,8 @@ void main() {
       tester.element(find.byType(ExpenseScreen)).markNeedsBuild();
       await tester.pump();
       expect(
-        tester.widget<ExpenseScreen>(find.byType(ExpenseScreen)).bloc,
-        screen.bloc,
+        tester.widget<ExpenseScreen>(find.byType(ExpenseScreen)).expenseBloc,
+        screen.expenseBloc,
       );
       await tester.enterText(find.byType(TextField).first, '  Novo  ');
       await tester.pump();

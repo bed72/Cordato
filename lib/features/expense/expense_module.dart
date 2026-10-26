@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/core/presentation/extensions/bloc_scoped_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
@@ -12,7 +13,7 @@ import 'package:cordato/features/expense/presentation/screens/expense/expense_sc
 import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
-
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_date_validation.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_cents_validation.dart';
@@ -66,6 +67,8 @@ final expenseModule = createModule(
       )
       ..route(
         RouteEnum.expense.path,
+        provide: (scope) =>
+            scope.addBloc<ExpenseSuggestionsBloc>(ExpenseSuggestionsBloc.new),
         child: (context, state) {
           final id = switch (state.arguments) {
             String id => id,
@@ -81,10 +84,11 @@ final expenseModule = createModule(
             key: ValueKey((id, previous)),
             id: id,
             returnToPrevious: previous,
-            bloc: inject<ExpenseBloc>,
+            expenseBloc: inject<ExpenseBloc>,
             dateFormatter: inject<IDateFormatter>(),
             moneyFormatter: inject<IMoneyFormatter>(),
             validator: inject<ExpenseFormValidator>(),
+            suggestionsBloc: context.read<ExpenseSuggestionsBloc>(),
           );
         },
       );

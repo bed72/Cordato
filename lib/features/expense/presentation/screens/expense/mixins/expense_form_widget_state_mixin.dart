@@ -3,12 +3,13 @@ import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_event.dart';
-import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
 import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
 
+import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_event.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_form_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_date_picker_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/calculator/cents_calculator_widget.dart';
@@ -17,6 +18,11 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
   final descriptionController = TextEditingController();
 
   int cents = 0;
+  bool hasManualAmount = false;
+  ExpenseSuggestionEntity? _selectedSuggestion;
+
+  int? get suggestedAmountAction =>
+      hasManualAmount ? _selectedSuggestion?.cents : null;
   String? dateFailure;
   String? centsFailure;
   String? descriptionFailure;
@@ -25,11 +31,11 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
 
   bool get isEditing => widget.id != null;
 
-  bool get _isRunning => widget.bloc.state.isSubmitting;
+  bool get _isRunning => widget.expenseBloc.state.isSubmitting;
 
   bool get canSubmit {
     if (!widget.enabled ||
-        !widget.bloc.state.canSubmit ||
+        !widget.expenseBloc.state.canSubmit ||
         (isEditing && widget.initialExpense == null)) {
       return false;
     }
@@ -73,7 +79,40 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
   }
 
   void onDescriptionChanged(String value) {
-    if (descriptionFailure != null) setState(() => descriptionFailure = null);
+    setState(() {
+      descriptionFailure = null;
+      if (_selectedSuggestion != null && !hasManualAmount) cents = 0;
+      _selectedSuggestion = null;
+    });
+  }
+
+  void selectSuggestion(ExpenseSuggestionEntity suggestion) {
+    if (!widget.enabled || _isRunning || isEditing) return;
+    setState(() {
+      _selectedSuggestion = suggestion;
+      descriptionFailure = null;
+      if (!hasManualAmount) {
+        cents = suggestion.cents ?? 0;
+        if (suggestion.cents != null) centsFailure = null;
+      }
+    });
+    if (cents == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) selectAmount();
+      });
+    } else {
+      context.dismissKeyboard();
+    }
+  }
+
+  void applySuggestedAmount() {
+    final amount = _selectedSuggestion?.cents;
+    if (amount == null || !widget.enabled || _isRunning) return;
+    setState(() {
+      cents = amount;
+      centsFailure = null;
+      hasManualAmount = false;
+    });
   }
 
   Future<void> selectAmount() async {
@@ -96,6 +135,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
       if (value == null || _isRunning) return;
       setState(() {
         cents = value;
+        hasManualAmount = true;
         centsFailure = null;
       });
     } finally {
@@ -159,7 +199,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     )) {
       if (isEditing) {
         final initial = widget.initialExpense!;
-        widget.bloc.add(
+        widget.expenseBloc.add(
           ExpenseSubmittedEvent(
             id: widget.id!,
             cents: validCents == initial.cents.cents ? null : validCents,
@@ -173,7 +213,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
         );
         return;
       }
-      widget.bloc.add(
+      widget.expenseBloc.add(
         ExpenseSubmittedEvent(
           keepFormOpen: keepFormOpen,
           cents: validCents,
@@ -217,6 +257,8 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
 
     setState(() {
       cents = 0;
+      hasManualAmount = false;
+      _selectedSuggestion = null;
       dateFailure = null;
       centsFailure = null;
       descriptionFailure = null;

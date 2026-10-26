@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart'
+    show debugDefaultTargetPlatformOverride;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,9 +15,14 @@ import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/hold_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/widgets/calculator/cents_calculator_keyboard_widget.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
+import 'package:cordato/features/authentication/presentation/widgets/amount_field_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_suggestion_item_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/expense_screen.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_cents_validation.dart';
@@ -27,6 +34,7 @@ import '../../../../../support/expense/mocks/expense_repository_mock.dart';
 void main() {
   setUpAll(() => initializeDateFormatting('pt_BR'));
   late ExpenseRepositoryMock repository;
+  late ExpenseSuggestionsBloc suggestionsBloc;
   late ExpenseBloc Function() factory;
   late List<ExpenseBloc> blocs;
   late List<ExpenseEntity> updated;
@@ -46,6 +54,8 @@ void main() {
   );
   setUp(() {
     repository = ExpenseRepositoryMock();
+    when(() => repository.suggestions(query: any(named: 'query')))
+        .thenAnswer((_) async => []);
     blocs = [];
     updated = [];
     content = null;
@@ -75,10 +85,15 @@ void main() {
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
+    if (content == null) {
+      suggestionsBloc = ExpenseSuggestionsBloc(repository: repository);
+      addTearDown(suggestionsBloc.close);
+    }
     final screen = ExpenseScreen(
       id: id,
       returnToPrevious: returnToPrevious,
-      bloc: blocFactory ?? factory,
+      expenseBloc: blocFactory ?? factory,
+      suggestionsBloc: suggestionsBloc,
       validator: validator,
       dateFormatter: DateFormatter(),
       moneyFormatter: MoneyFormatter(),
@@ -181,6 +196,181 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> suggest(WidgetTester tester, String query) async {
+    await tester.enterText(find.byType(TextField).first, query);
+    await tester.pump();
+    await tester.pump(ExpenseSuggestionsBloc.debounce);
+    await tester.pumpAndSettle();
+  }
+
+  final rentSuggestion = ExpenseSuggestionEntity(
+    id: 'rent',
+    description: 'Aluguel',
+    cents: 160000,
+  );
+  final marketSuggestion = ExpenseSuggestionEntity(
+    id: 'market',
+    description: 'Mercado',
+  );
+
+  testWidgets('description has no clear button when populated', (tester) async {
+    await pump(tester, id: null);
+    await tester.enterText(find.byType(TextField).first, 'Mercado');
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextField>(find.byType(TextField).first)
+          .decoration!
+          .suffixIcon,
+      isNull,
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      'Mercado',
+    );
+    await finish(tester);
+  });
+
+  for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
+    testWidgets('calculator respects bottom safe area on ${platform.name}', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = platform;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      tester.view.padding = const FakeViewPadding(bottom: 48);
+      tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+      addTearDown(tester.view.resetPadding);
+      addTearDown(tester.view.resetViewPadding);
+      await pump(tester, id: null);
+      await tester.tap(find.byType(AmountFieldWidget));
+      await tester.pumpAndSettle();
+
+      final keyboard = find.byType(CentsCalculatorKeyboardWidget);
+      expect(keyboard, findsOneWidget);
+      expect(
+        tester.getBottomLeft(keyboard).dy,
+        lessThanOrEqualTo(844 - 48 - 32),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('1'));
+      await tester.tap(find.text('✓'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<AmountFieldWidget>(find.byType(AmountFieldWidget)).value,
+        100,
+      );
+      await finish(tester);
+      debugDefaultTargetPlatformOverride = null;
+    });
+  }
+
+  testWidgets(
+    'selection fills description and cents, editing removes automatic amount',
+    (tester) async {
+      when(() => repository.suggestions(query: 'Alu'))
+          .thenAnswer((_) async => [rentSuggestion]);
+      await pump(tester, id: null);
+      await suggest(tester, ' Alu ');
+      expect(
+        tester.widget<AmountFieldWidget>(find.byType(AmountFieldWidget)).value,
+        0,
+      );
+      expect(find.byType(ExpenseSuggestionItemWidget), findsOneWidget);
+      await tester.tap(find.byType(ExpenseSuggestionItemWidget));
+      await tester.pumpAndSettle();
+      expect(find.byType(ExpenseSuggestionItemWidget), findsNothing);
+      expect(
+        tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+        'Aluguel',
+      );
+      expect(
+        tester.widget<AmountFieldWidget>(find.byType(AmountFieldWidget)).value,
+        160000,
+      );
+      verifyNever(
+        () => repository.create(
+          cents: any(named: 'cents'),
+          description: any(named: 'description'),
+          occurredOn: any(named: 'occurredOn'),
+        ),
+      );
+      await tester.enterText(find.byType(TextField).first, 'Outro');
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<AmountFieldWidget>(find.byType(AmountFieldWidget)).value,
+        0,
+      );
+      await finish(tester);
+    },
+  );
+
+  testWidgets('manual amount survives suggestion until explicit replacement', (
+    tester,
+  ) async {
+    when(() => repository.suggestions(query: 'Alu'))
+        .thenAnswer((_) async => [rentSuggestion]);
+    await pump(tester, id: null);
+    await prepareCreation(tester);
+    expect(
+      tester.widget<AmountFieldWidget>(find.byType(AmountFieldWidget)).value,
+      100,
+    );
+    await suggest(tester, 'Alu');
+    expect(find.text('Usar descrição'), findsOneWidget);
+    await tester.tap(find.byType(ExpenseSuggestionItemWidget));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<AmountFieldWidget>(find.byType(AmountFieldWidget)).value,
+      100,
+    );
+    await tester.tap(find.textContaining('Usar valor sugerido:'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<AmountFieldWidget>(find.byType(AmountFieldWidget)).value,
+      160000,
+    );
+    await finish(tester);
+  });
+
+  testWidgets('description-only selection opens calculator once', (
+    tester,
+  ) async {
+    when(() => repository.suggestions(query: 'Mer'))
+        .thenAnswer((_) async => [marketSuggestion]);
+    await pump(tester, id: null);
+    await suggest(tester, 'Mer');
+    await tester.tap(find.byType(ExpenseSuggestionItemWidget));
+    await tester.pumpAndSettle();
+    expect(find.text('Valor do gasto'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      'Mercado',
+    );
+    await tester.tap(find.text('1'));
+    await tester.tap(find.text('✓'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<AmountFieldWidget>(find.byType(AmountFieldWidget)).value,
+      100,
+    );
+    await finish(tester);
+  });
+
+  testWidgets('failure is silent and manual form remains usable', (
+    tester,
+  ) async {
+    when(() => repository.suggestions(query: 'Novo'))
+        .thenThrow(ExpenseException(errors: .unknown()));
+    await pump(tester, id: null);
+    await prepareCreation(tester);
+    expect(
+      tester.widget<AmountFieldWidget>(find.byType(AmountFieldWidget)).value,
+      100,
+    );
+    expect(find.byType(ExpenseSuggestionItemWidget), findsNothing);
+    await finish(tester);
+  });
+
   testWidgets(
     'unchanged edit is disabled, trim belongs to form and success is unique',
     (tester) async {
@@ -196,6 +386,7 @@ void main() {
       expect(blocs, hasLength(1));
       verify(() => repository.getById(id: '1')).called(1);
       verify(() => repository.update(id: '1', description: 'Novo')).called(1);
+      verifyNever(() => repository.suggestions(query: any(named: 'query')));
       await finish(tester);
     },
   );

@@ -12,6 +12,7 @@ import 'package:cordato/features/expense/application/exceptions/expense_exceptio
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
+import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
 
@@ -357,7 +358,81 @@ void main() {
     verifyZeroInteractions(client);
   });
 
-  for (final operation in ['getById', 'get', 'create', 'update', 'delete']) {
+  test(
+    'suggestions preserve order, optional cents and special query characters',
+    () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Responses(
+          status: 200,
+          body: {
+            'data': [
+              {
+                'id': 'rent',
+                'type': 'expense-suggestions',
+                'attributes': {'description': 'Aluguel', 'amount': 160000},
+              },
+              {
+                'id': 'market',
+                'type': 'expense-suggestions',
+                'attributes': {'description': 'Mercado'},
+              },
+            ],
+          },
+        ),
+      );
+      const query = ' [Demo] Aluguél & ?/# ';
+      final result = await repository.suggestions(query: query);
+      expect(result.map((item) => item.id), ['rent', 'market']);
+      expect(result.map((item) => item.cents), [160000, null]);
+      expect(() => result.clear(), throwsUnsupportedError);
+      final request =
+          verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      expect(request.path, 'expenses/suggestions');
+      expect(request.query, {'query': query});
+      expect(request.body, isNull);
+      expect(request.headers, isNull);
+    },
+  );
+
+  test(
+    'empty suggestions succeed but malformed suggestions propagate',
+    () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Responses(status: 200, body: {'data': []}),
+      );
+      expect(await repository.suggestions(query: 'Mer'), isEmpty);
+      for (final data in [
+        null,
+        {},
+        [
+          {
+            'id': 'bad',
+            'attributes': {'description': 10},
+          },
+        ],
+      ]) {
+        when(
+          () => client.get(parameter: any(named: 'parameter')),
+        ).thenAnswer((_) async => Responses(status: 200, body: {'data': data}));
+        await expectLater(
+          repository.suggestions(query: 'Mer'),
+          throwsA(isA<TypeError>()),
+        );
+      }
+    },
+  );
+
+  for (final operation in [
+    'getById',
+    'get',
+    'create',
+    'update',
+    'delete',
+    'suggestions',
+  ]) {
     Future<Object?> execute() async {
       if (operation == 'delete') {
         await repository.delete(id: '8');
@@ -366,6 +441,7 @@ void main() {
       return switch (operation) {
         'getById' => repository.getById(id: '8'),
         'get' => repository.get(),
+        'suggestions' => repository.suggestions(query: 'Mer'),
         'create' => repository.create(cents: 0, description: ' Original '),
         'update' => repository.update(id: '8', cents: 0),
         _ => throw StateError(operation),
@@ -374,7 +450,7 @@ void main() {
 
     void stub(Future<Responses> Function() answer) {
       switch (operation) {
-        case 'getById' || 'get':
+        case 'getById' || 'get' || 'suggestions':
           when(() => client.get(parameter: any(named: 'parameter')))
               .thenAnswer((_) => answer());
         case 'create':
@@ -483,7 +559,7 @@ void main() {
       });
       expect(complete, isFalse);
       pending.complete(
-        operation == 'get'
+        operation == 'get' || operation == 'suggestions'
             ? listing
             : operation == 'delete'
             ? const Responses(status: 204, body: {})
@@ -502,6 +578,10 @@ void main() {
       'amount',
       'fraction',
     ]) {
+      if (operation == 'suggestions' &&
+          (malformed == 'date' || malformed == 'category')) {
+        continue;
+      }
       test(
         '$operation propagates invalid $malformed without partial success',
         () async {
@@ -521,7 +601,7 @@ void main() {
           stub(
             () async => Responses(
               status: 200,
-              body: operation == 'get'
+              body: operation == 'get' || operation == 'suggestions'
                   ? {
                       'data': [resource, invalid],
                       'links': {'next': null, 'prev': null},
@@ -550,7 +630,7 @@ void main() {
       stub(
         () async => Responses(
           status: 200,
-          body: operation == 'get'
+          body: operation == 'get' || operation == 'suggestions'
               ? {
                   'data': [large],
                   'links': {'next': null, 'prev': null},
@@ -559,6 +639,10 @@ void main() {
         ),
       );
       final result = await execute();
+      if (result is List<ExpenseSuggestionEntity>) {
+        expect(result.single.cents, 9007199254740993);
+        return;
+      }
       final expense = result is ExpenseEntity
           ? result
           : (result as ExpensePageEntity).items.single;

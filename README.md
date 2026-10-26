@@ -52,8 +52,9 @@ significa que todas as demais features já foram migradas.
 
 Sign-in é o piloto de escopo de página do Modular V7: a extension `addBloc` do
 core registra o Bloc no `provide` da rota, que cria e fecha a instância. A tela
-recebe o Bloc pronto e mantém `BlocConsumer`; os demais fluxos continuam com
-ownership pelas telas e Session permanece sob ownership global de `AppWidget`.
+recebe o Bloc pronto e mantém `BlocConsumer`. O novo `ExpenseSuggestionsBloc`
+também pertence ao escopo da rota; os demais fluxos continuam com ownership pelas
+telas e Session permanece sob ownership global de `AppWidget`.
 
 Session também usa contrato em application, repository direto em infrastructure
 e Bloc. `AppWidget` é o único dono da observação contínua e do fechamento;
@@ -106,6 +107,13 @@ rota; Dashboard e métricas recarregam ao retornar da listagem, mesmo sem altera
 Expense não depende mais de CommandIt. Dashboard consome resultados diretos de
 todos os contextos consultados.
 
+No novo gasto, Descrição oferece autocomplete remoto com `RawAutocomplete` nativo
+e o mesmo `TextFieldWidget` do core. A busca começa em 3 caracteres, após 300 ms;
+respostas antigas são ignoradas e falhas não bloqueiam cadastro manual. Selecionar
+preenche a descrição e o valor opcional; valores confirmados manualmente são
+preservados, com ação explícita para usar o sugerido. A data não muda e selecionar
+não salva nem configura recorrência. Edição não consulta sugestões.
+
 Os testes de responses cobrem DTOs e exceções HTTP atuais, sem `Either` ou
 `response<T>`. Messaging expõe `register()` e `onRegistered` com stream de FIDs,
 sem usar as APIs depreciadas de token.
@@ -116,11 +124,13 @@ usam um único módulo sem path por feature, com URLs completas e binds root-own
 isso elimina a colisão no escopo `/` e disponibiliza o contrato para logout.
 
 Última verificação de código: **`flutter analyze` sem problemas; `flutter test`
-com 917 aprovados, sem falhas**, incluindo abertura de cadastro, edição, listagem
-e Settings na composição real em `test/app_module_test.dart`.
-Na verificação anterior de previews, o catálogo compilou/serviu, mas atingiu
-timeout sem cliente conectado; não houve validação visual nem execução E2E.
-Não houve nova validação visual ou E2E nesta correção de composição.
+com 1006 aprovados, sem falhas**, incluindo arquitetura, core, Expense e composição
+real. Build iOS de debug para simulador aprovado com API de fixtures isolada.
+Os quatro flows de sugestões passaram no iPhone 17 Pro / iOS 26.5: descrição e
+valor, descrição sem valor, falha com cadastro manual e loading não bloqueante.
+Android e backend real não foram exercitados. O catálogo de previews compilou e
+serviu; a execução foi encerrada por timeout sem cliente conectado, sem validação
+visual do catálogo.
 Os detalhes estão em [Estado atual e migração](ARCHITECTURE.md#estado-atual-e-migração).
 
 O código existente inclui os seguintes fluxos, cuja disponibilidade depende da

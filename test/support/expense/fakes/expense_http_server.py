@@ -3,7 +3,7 @@ import datetime
 import sys
 from pathlib import Path
 from http.server import ThreadingHTTPServer
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'authentication' / 'fakes'))
 from sign_in_http_server import SignInFixtureHandler, SignInFixtureState
@@ -13,7 +13,8 @@ class ExpenseFixtureState(SignInFixtureState):
     def reset(self, configuration):
         super().reset(configuration)
         with self.lock:
-            self.operations = {'create': 0, 'update': 0, 'delete': 0}
+            self.operations = {'create': 0, 'update': 0, 'delete': 0, 'suggestions': 0}
+            self.queries = []
             self.authorized = True
             self.items = [{'type': 'expenses', 'id': 'fixture-expense', 'attributes': {
                 'description': 'Mercado E2E', 'amount': 1500, 'category': 'food',
@@ -24,6 +25,8 @@ class ExpenseFixtureState(SignInFixtureState):
         result = super().snapshot()
         with self.lock:
             result.update(operations=dict(self.operations), authorized=self.authorized,
+                          queries=list(self.queries),
+                          amounts=[item['attributes']['amount'] for item in self.items],
                           descriptions=[item['attributes']['description'] for item in self.items])
         return result
 
@@ -39,6 +42,8 @@ class ExpenseFixtureHandler(SignInFixtureHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
+        if path == '/api/expenses/suggestions':
+            return self.suggestions()
         if path not in ['/api/expenses', '/api/expenses/fixture-expense']:
             return super().do_GET()
         if not self.authorize():
@@ -52,6 +57,35 @@ class ExpenseFixtureHandler(SignInFixtureHandler):
             self.respond(200, {'data': items[0]})
         else:
             self.respond(404, {'errors': [{'detail': 'Despesa ausente'}]})
+
+    def suggestions(self):
+        if not self.authorize():
+            return
+        state = self.server.fixture_state
+        query = parse_qs(urlsplit(self.path).query).get('query', [''])[0]
+        with state.lock:
+            index = state.operations['suggestions']
+            state.operations['suggestions'] += 1
+            state.queries.append(query)
+            responses = state.configuration.get('suggestionsResponses', [{}])
+            response = responses[min(index, len(responses) - 1)]
+            release = state.release
+        if response.get('gate') and not release.wait(timeout=60):
+            self.respond(504, {'errors': [{'detail': 'Fixture não liberada'}]})
+            return
+        if response.get('status', 200) != 200:
+            self.respond(response['status'], response.get('body', {'errors': []}))
+            return
+        with state.lock:
+            if state.release is not release:
+                self.respond(409, {'errors': [{'detail': 'Cenário substituído'}]})
+                return
+        items = [
+            {'id': 'market', 'type': 'expense-suggestions', 'attributes': {'description': 'Mercado'}},
+            {'id': 'rent', 'type': 'expense-suggestions', 'attributes': {'description': 'Aluguel', 'amount': 160000}},
+        ]
+        filtered = [item for item in items if query.casefold() in item['attributes']['description'].casefold()]
+        self.respond(200, response.get('body', {'data': filtered}))
 
     def do_POST(self):
         if urlsplit(self.path).path != '/api/expenses':

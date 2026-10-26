@@ -25,8 +25,8 @@ monetários são centavos inteiros e família é uma lente de leitura autorizada
 
 Modular V7 organiza DI e rotas com `createModule`. Para estado de página novo ou
 explicitamente migrado, prefira `provide` com `BlocScopedExtension.addBloc` do
-core: Modular cria e fecha a instância e a screen apenas a recebe. Somente
-Sign-in foi migrado. As demais screens mantêm factories estáveis e ownership
+core: Modular cria e fecha a instância e a screen apenas a recebe. Sign-in e o
+novo `ExpenseSuggestionsBloc` usam esse padrão. As demais screens mantêm factories estáveis e ownership
 local; Session continua global sob AppWidget. Não duplique owners ou binds.
 Dependências entre features precisam estar disponíveis fora de seus escopos de
 rota. Authentication e Expense usam um módulo sem path por feature, com URLs

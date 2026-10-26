@@ -15,6 +15,12 @@ if (SCENARIO === 'loading') {
   configuration.createResponses = [{gate: true}];
   configuration.deleteResponses = [{gate: true}];
 }
+if (SCENARIO === 'suggestions-failure') {
+  configuration.suggestionsResponses = [{status: 503, body: {errors: [{detail: 'Sugestões indisponíveis'}]}}];
+}
+if (SCENARIO === 'suggestions-loading') {
+  configuration.suggestionsResponses = [{gate: true}];
+}
 var response = http.post(TEST_SERVER + '/__test/reset', {
   headers: {'Content-Type': 'application/json'}, body: JSON.stringify(configuration)
 });

@@ -10,11 +10,11 @@ final class const ExpenseResponse({
   required final ExpenseCategoryEnum category,
 }) {
   factory ExpenseResponse.fromJson(Map<String, dynamic> json) {
-    final data = json['data'] as Map<String, dynamic>;
-    final attributes = data['attributes'] as Map<String, dynamic>;
+    final root = json['data'] as Map<String, dynamic>;
+    final attributes = root['attributes'] as Map<String, dynamic>;
 
     return ExpenseResponse(
-      id: data['id'] as String,
+      id: root['id'] as String,
       amount: attributes['amount'] as int,
       description: attributes['description'] as String,
       occurredOn: DateTime.parse(attributes['occurred_on'] as String),
@@ -28,9 +28,9 @@ final class const ExpenseResponse({
 extension ExpenseResponseToEntity on ExpenseResponse {
   ExpenseEntity toEntity() => ExpenseEntity(
     id: id,
-    cents: AmountValueObject.create(cents: amount),
     category: category,
     occurredOn: occurredOn,
     description: description,
+    cents: AmountValueObject.create(cents: amount),
   );
 }

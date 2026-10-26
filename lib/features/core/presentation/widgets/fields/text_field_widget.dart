@@ -11,33 +11,34 @@ class const TextFieldWidget({
   required final String hint,
   required final String label,
   final String? failure,
-  final ValueChanged<String>? onChanged,
-  final TextEditingController? controller,
-  final TextInputAction? inputAction,
   final String? initialValue,
+  final FocusNode? focusNode,
   final IconData? trailingIcon,
   final TextInputType? keyboardType,
-  final ValueChanged<String>? onSubmitted,
-  final int maxLines = 1,
+  final TextInputAction? inputAction,
   final Iterable<String>? autofillHints,
+  final VoidCallback? onTrailingIconTap,
+  final ValueChanged<String>? onChanged,
+  final TextEditingController? controller,
+  final ValueChanged<String>? onSubmitted,
   final ValueChanged<bool>? onFocusChanged,
-  final bool enabled = true,
   final List<TextInputFormatter>? inputFormatters,
+  final int maxLines = 1,
+  final bool enabled = true,
   final bool readOnly = false,
   final bool absorbing = false,
   final bool autofocus = false,
-  final VoidCallback? onTrailingIconTap,
   final bool obscureText = false,
-  final TextCapitalization textCapitalization = .none,
   final bool hideTrailingIconWhenEmpty = false,
+  final TextCapitalization textCapitalization = .none,
 }) extends StatefulWidget {
   @override
   State<TextFieldWidget> createState() => _TextFieldWidgetState();
 }
 
 class _TextFieldWidgetState extends State<TextFieldWidget> {
-  late final FocusNode _focus;
-  late final TextEditingController _controller;
+  late FocusNode _focus;
+  late TextEditingController _controller;
 
   bool _hasText = false;
   bool _isFocused = false;
@@ -50,18 +51,20 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
     }
     if (_isFailure) return colors.error;
     if (_isFocused) return colors.primary;
+
     return colors.onSurfaceVariant;
   }
 
   @override
   void initState() {
     super.initState();
-    _focus = FocusNode();
+    _focus = widget.focusNode ?? FocusNode();
     _controller =
         widget.controller ??
         TextEditingController(text: widget.initialValue ?? '');
 
     _focus.addListener(_onFocusChange);
+    _isFocused = _focus.hasFocus;
 
     _hasText = _controller.text.isNotEmpty;
     _controller.addListener(_onControllerChanged);
@@ -70,6 +73,22 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
   @override
   void didUpdateWidget(TextFieldWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      _focus.removeListener(_onFocusChange);
+      if (oldWidget.focusNode == null) _focus.dispose();
+      _focus = widget.focusNode ?? FocusNode();
+      _focus.addListener(_onFocusChange);
+      _isFocused = _focus.hasFocus;
+    }
+    if (oldWidget.controller != widget.controller) {
+      final value = _controller.value;
+      _controller.removeListener(_onControllerChanged);
+      if (oldWidget.controller == null) _controller.dispose();
+
+      _controller = widget.controller ?? TextEditingController.fromValue(value);
+      _controller.addListener(_onControllerChanged);
+      _hasText = _controller.text.isNotEmpty;
+    }
     if (widget.controller == null &&
         oldWidget.controller == null &&
         widget.initialValue != oldWidget.initialValue &&
@@ -80,9 +99,8 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
 
   @override
   void dispose() {
-    _focus
-      ..removeListener(_onFocusChange)
-      ..dispose();
+    _focus.removeListener(_onFocusChange);
+    if (widget.focusNode == null) _focus.dispose();
 
     _controller.removeListener(_onControllerChanged);
     if (widget.controller == null) _controller.dispose();
@@ -100,9 +118,6 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
   }
 
   void _onChanged(String value) {
-    if (!_controller.value.composing.isCollapsed) {
-      _controller.clearComposing();
-    }
     widget.onChanged?.call(value);
   }
 

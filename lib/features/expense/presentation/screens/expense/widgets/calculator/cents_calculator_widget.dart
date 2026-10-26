@@ -18,22 +18,27 @@ final class _CentsCalculatorWidgetState extends State<CentsCalculatorWidget>
     with CentsCalculatorWidgetStateMixin {
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const .only(top: 6.0),
-      child: Column(
-        spacing: 16.0,
-        mainAxisSize: .min,
-        crossAxisAlignment: .start,
-        children: [
-          CentsCalculatorFieldWidget(value: displayValue),
-          CentsCalculatorKeyboardWidget(
-            onClear: clear,
-            onDelete: delete,
-            onSubmit: confirm,
-            onDigit: appendDigit,
-            onDecimalSeparator: appendDecimalSeparator,
-          ),
-        ],
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      child: Padding(
+        padding: const .only(top: 6.0),
+        child: Column(
+          spacing: 16.0,
+          mainAxisSize: .min,
+          crossAxisAlignment: .start,
+          children: [
+            CentsCalculatorFieldWidget(value: displayValue),
+            CentsCalculatorKeyboardWidget(
+              onClear: clear,
+              onDelete: delete,
+              onSubmit: confirm,
+              onDigit: appendDigit,
+              onDecimalSeparator: appendDecimalSeparator,
+            ),
+          ],
+        ),
       ),
     );
   }

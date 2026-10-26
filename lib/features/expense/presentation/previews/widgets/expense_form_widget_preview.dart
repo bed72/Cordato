@@ -1,21 +1,27 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:cordato/features/core/presentation/previews/preview.dart';
-import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
+import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+
 import 'package:cordato/features/expense/presentation/previews/fakes/expense_preview_repository.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_event.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_app_bar_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_bloc.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_form_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_app_bar_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_skeleton_widget.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_form_validator.dart';
-import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_cents_validation.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_date_validation.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_cents_validation.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_description_validation.dart';
 
 @CordatoPreview(
@@ -56,29 +62,36 @@ Widget _formPreview({bool editing = false, bool loading = false}) {
       return bloc;
     },
     dispose: (bloc) => bloc.close(),
-    builder: (bloc) => BlocBuilder<ExpenseBloc, ExpenseState>(
-      bloc: bloc,
-      builder: (_, _) {
-        final form = ExpenseFormWidget(
-          id: editing ? expense.id : null,
-          initialExpense: editing ? expense : null,
-          enabled: !loading,
-          bloc: bloc,
-          moneyFormatter: MoneyFormatter(),
-          dateFormatter: DateFormatter(),
-          validator: const ExpenseFormValidator(
-            centsValidation: ExpenseCentsValidation(),
-            dateValidation: ExpenseDateValidation(),
-            descriptionValidation: ExpenseDescriptionValidation(),
-          ),
-        );
-        return Scaffold(
-          appBar: const ExpenseAppBarWidget(),
-          body: SafeArea(
-            child: loading ? ExpenseSkeletonWidget(child: form) : form,
-          ),
-        );
-      },
+    builder: (bloc) => PreviewResourceWidget<ExpenseSuggestionsBloc>(
+      create: () => ExpenseSuggestionsBloc(
+        repository: ExpensePreviewRepository(expense: expense),
+      ),
+      dispose: (suggestions) => suggestions.close(),
+      builder: (suggestions) => BlocBuilder<ExpenseBloc, ExpenseState>(
+        bloc: bloc,
+        builder: (_, _) {
+          final form = ExpenseFormWidget(
+            expenseBloc: bloc,
+            enabled: !loading,
+            suggestionsBloc: suggestions,
+            dateFormatter: DateFormatter(),
+            id: editing ? expense.id : null,
+            moneyFormatter: MoneyFormatter(),
+            initialExpense: editing ? expense : null,
+            validator: const ExpenseFormValidator(
+              centsValidation: ExpenseCentsValidation(),
+              dateValidation: ExpenseDateValidation(),
+              descriptionValidation: ExpenseDescriptionValidation(),
+            ),
+          );
+          return Scaffold(
+            appBar: const ExpenseAppBarWidget(),
+            body: SafeArea(
+              child: loading ? ExpenseSkeletonWidget(child: form) : form,
+            ),
+          );
+        },
+      ),
     ),
   );
 }

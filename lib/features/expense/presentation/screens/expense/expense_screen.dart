@@ -10,6 +10,7 @@ import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_bloc.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_form_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_app_bar_widget.dart';
@@ -22,10 +23,11 @@ final class const ExpenseScreen({
   super.key,
   final String? id,
   final bool returnToPrevious = false,
-  required final ExpenseBloc Function() bloc,
   required final IDateFormatter dateFormatter,
   required final IMoneyFormatter moneyFormatter,
   required final ExpenseFormValidator validator,
+  required final ExpenseBloc Function() expenseBloc,
+  required final ExpenseSuggestionsBloc suggestionsBloc,
 }) extends StatefulWidget {
   @override
   State<ExpenseScreen> createState() => _ExpenseScreenState();
@@ -94,12 +96,13 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
   }) => ExpenseFormWidget(
     key: ValueKey((bloc, widget.id, enabled)),
     id: widget.id,
+    expenseBloc: bloc,
     enabled: enabled,
     validator: widget.validator,
     initialExpense: initialExpense,
-    bloc: bloc,
     dateFormatter: widget.dateFormatter,
     moneyFormatter: widget.moneyFormatter,
+    suggestionsBloc: widget.suggestionsBloc,
     returnToPrevious: widget.returnToPrevious,
   );
 }

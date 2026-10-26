@@ -1,10 +1,17 @@
-import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
-import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
+import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
+
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
 final class ExpensesPreviewRepository({required final ExpensePageEntity data})
     implements IExpenseRepository {
+  @override
+  Future<List<ExpenseSuggestionEntity>> suggestions({
+    required String query,
+  }) async => [];
+
   @override
   Future<void> delete({required String id}) async =>
       throw ExpenseException(errors: .unknown());

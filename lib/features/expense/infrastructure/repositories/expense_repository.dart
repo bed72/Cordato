@@ -4,16 +4,46 @@ import 'package:cordato/features/core/infrastructure/clients/http/responses/resp
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/serializers/civil_date_serializer.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
-import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
-import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
+import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
+
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_page_response.dart';
+import 'package:cordato/features/expense/infrastructure/responses/expense_suggestion_response.dart';
 
 final class ExpenseRepository({required final IHttpClient _httpClient})
     implements IExpenseRepository {
+  @override
+  Future<List<ExpenseSuggestionEntity>> suggestions({
+    required String query,
+  }) async {
+    try {
+      final response = await _httpClient.get(
+        parameter: Requests(
+          query: {'query': query},
+          path: '${HttpPathEnum.expenses.path}/suggestions',
+        ),
+      );
+
+      return .unmodifiable(
+        (response.body['data'] as List).map(
+          (item) =>
+              ExpenseSuggestionResponse.fromJson(item as Map<String, dynamic>)
+                  .toEntity(),
+        ),
+      );
+    } on HttpResponseException catch (exception) {
+      throw ExpenseException(errors: exception.errors.toEntity());
+    } on HttpClientException {
+      throw ExpenseException(errors: .unknown());
+    }
+  }
+
   @override
   Future<ExpenseEntity> getById({required String id}) async {
     try {
@@ -22,6 +52,7 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
           path: '${HttpPathEnum.expenses.path}/${Uri.encodeComponent(id)}',
         ),
       );
+
       return ExpenseResponse.fromJson(response.body).toEntity();
     } on HttpResponseException catch (exception) {
       throw ExpenseException(errors: exception.errors.toEntity());
@@ -38,6 +69,7 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
           path: '${HttpPathEnum.expenses.path}/${Uri.encodeComponent(id)}',
         ),
       );
+
       if (response.status != 204) throw ExpenseException(errors: .unknown());
     } on HttpResponseException catch (exception) {
       throw ExpenseException(errors: exception.errors.toEntity());
@@ -49,27 +81,29 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
   @override
   Future<ExpensePageEntity> get({
     String? sort,
-    String? category,
-    int pageSize = 30,
     DateTime? to,
     DateTime? from,
     String? pageLink,
+    String? category,
+    int pageSize = 30,
   }) async {
     try {
       final response = await _httpClient.get(
         parameter: Requests(
           path: HttpPathEnum.expenses.path,
           query: _pageQuery(
-            sort: sort,
             to: to,
+            sort: sort,
             from: from,
             category: category,
-            pageSize: pageSize > 0 ? pageSize : 30,
             pageLink: pageLink,
+            pageSize: pageSize > 0 ? pageSize : 30,
           ),
         ),
       );
+
       final page = ExpensePageResponse.fromJson(response.body);
+
       return ExpensePageEntity(
         items: page.items.map((item) => item.toEntity()).toList(),
         next: page.next,
