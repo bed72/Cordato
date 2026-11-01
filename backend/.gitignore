@@ -1,0 +1,35 @@
+# Credenciais e configuração privada
+.env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+
+# Dados, arquivos enviados, backups e logs do PocketBase
+pb_data/
+pb_public/
+backups/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Binários e downloads locais do PocketBase
+/pocketbase
+/pocketbase.exe
+pocketbase_*/
+*.zip
+
+# Artefatos locais e temporários
+/node_modules/
+/dist/
+/coverage/
+*.tsbuildinfo
+.tmp/
+.temp/
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+*.pyc

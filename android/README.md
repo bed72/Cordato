@@ -3,26 +3,6 @@
 Android release builds require a dedicated signing key. Never use the Android
 debug key or commit signing material, passwords, aliases, or `key.properties`.
 
-## Firebase Configuration
-
-Android uses Firebase project `trocado-d362e` with package `com.bed.cordato`.
-The Google Services Gradle plugin reads `app/google-services.json` during debug
-and release builds. Flutter initializes Firebase Core before starting the app
-using `lib/features/core/infrastructure/clients/firebase/firebase_options.dart`.
-Regeneration instructions are in the root
-README's Firebase section.
-
-The Crashlytics Gradle plugin is also applied. Collection follows the Firebase
-default. Flutter error handlers delegate to `ICrashClient`, resolved by Modular.
-Keep R8 mapping files and any Dart symbols produced by
-`--split-debug-info`; upload Dart symbols separately with
-`firebase crashlytics:symbols:upload --app=1:929522866059:android:7303f64f0cd02c16f7418e <directory>`.
-
-Cloud Messaging requires Google Play Services. The manifest declares
-`POST_NOTIFICATIONS`; runtime permission is exposed by `IMessagingClient` and
-is not requested at startup. Device-token registration with the application
-backend is not implemented yet. Push delivery still needs a real-device test.
-
 ## Local Notifications
 
 `flutter_local_notifications` uses the existing `ic_notification` drawable and

@@ -6,6 +6,18 @@ Estas regras orientam alterações no aplicativo Flutter Cordato e em seus teste
 A arquitetura canônica está em [ARCHITECTURE.md](ARCHITECTURE.md); o início rápido
 e o estado do produto estão em [README.md](README.md).
 
+O serviço PocketBase independente está isolado em `backend/`, com orientações
+próprias em [backend/AGENTS.md](backend/AGENTS.md). A presença do backend neste
+repositório não significa que o aplicativo já consuma sua API. Não migrar o cliente
+Flutter nem executar deploy como parte de manutenção localizada do backend.
+
+PocketBase é o backend adotado, mas o cliente ainda usa o contrato HTTP anterior.
+Descrições JSON:API, token opaco, revogação remota e callback assinado neste
+documento referem-se ao Flutter atual, não a requisitos para recriar a API antiga
+no PocketBase. Não trate troca de `BASE_URL` como integração. Diferenças e lacunas
+estão em [ARCHITECTURE.md](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração);
+alterações de contrato exigem tarefa explícita com consumidores e testes.
+
 Authentication/Sign-in é a implementação de referência para novas features e
 migrações. O padrão obrigatório é:
 

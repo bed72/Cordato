@@ -18,8 +18,8 @@ final class const AppBarDashboardWidget({
   Widget build(BuildContext context) {
     return AppBar(
       titleSpacing: 16.0,
-      title: UserNameWidget(user: user, isLoading: isLoading),
       toolbarHeight: preferredSize.height,
+      title: UserNameWidget(user: user, isLoading: isLoading),
       actions: [
         Padding(
           padding: const .only(right: 16.0),

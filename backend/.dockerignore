@@ -1,0 +1,7 @@
+# Lista de permissão: nenhum segredo, binário ou dado local entra no build.
+**
+!Dockerfile
+!docker/
+!docker/entrypoint.sh
+!pb_migrations/
+!pb_migrations/*.js

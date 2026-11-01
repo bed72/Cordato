@@ -38,7 +38,11 @@ deleguem a mesma chamada. O Bloc nunca depende da implementação do repository.
 Cordato oferece finanças pessoais e familiares. A pessoa é dona dos dados;
 família é somente uma lente autorizada de leitura. O backend Kotlin legado é
 referência de domínio, não dependência de execução ou modelo de pastas Flutter.
-Não há schema ou migrations do backend versionados neste repositório.
+O serviço PocketBase 0.41.1 agora está versionado separadamente em `backend/`,
+incluindo schema, migrations, Compose e testes próprios. Seu contexto de build
+fica restrito a essa pasta; runtime e volume são independentes do aplicativo.
+Essa inclusão não migra os clients, contratos ou fluxos Flutter para PocketBase,
+nem declara equivalência com os recursos financeiros do backend anterior.
 
 | Contexto/feature | Escopo |
 | --- | --- |
@@ -71,6 +75,11 @@ As garantias de autorização pertencem ao serviço responsável e exigem testes
 no backend; o aplicativo não as prova por ocultar ações na interface.
 
 ## Estrutura E Responsabilidades
+
+O repositório contém duas unidades independentes: `lib/` e `test/` para o
+aplicativo Flutter; `backend/` para o serviço PocketBase e seus testes. A árvore
+abaixo descreve apenas o aplicativo. A organização Flutter não deve ser aplicada
+ao runtime do backend.
 
 ```text
 lib/
@@ -178,6 +187,47 @@ uma feature para contornar imports proibidos.
   somente contrato e exceção de aplicação de Authentication. Não importa a
   apresentação ou a implementação do repository de Authentication.
 
+## Backend PocketBase E Limite De Integração
+
+O backend adotado está em `backend/`, com PocketBase 0.41.1 e APIs nativas.
+Schema e regras ficam em `pb_migrations/`; empacotamento em `Dockerfile`,
+`compose.yml` e `docker/`; testes em `tests/`. Não há hooks, worker ou runtime
+Node. Configuração operacional e evidências pertencem ao
+[README do backend](backend/README.md); suas regras de manutenção estão em
+[backend/AGENTS.md](backend/AGENTS.md).
+
+O escopo implementado é conta individual e CRUD de despesas próprias. Login
+exige e-mail verificado, exclusão da conta remove suas despesas e regras nativas
+protegem propriedade. Isso não implementa família, orçamento, agregações,
+insights ou sugestões remotas.
+
+### Contrato Atual Do Cliente Versus Backend Adotado
+
+| Aspecto | Flutter atual | PocketBase atual |
+| --- | --- | --- |
+| Transporte | Endpoints próprios e envelopes JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
+| Autenticação | Token opaco/ID em storage; logout revoga remotamente. | Autenticação nativa da coleção `users`; não reproduz o contrato anterior de logout. |
+| Confirmação | URL assinada recebida pelo callback Flutter. | Verificação nativa; templates apontam para telas PocketBase. Cadastro não envia confirmação automaticamente. |
+| Erros e paginação | Erros com pointer/parameter e links de continuação opacos. | Formatos nativos PocketBase; exigem adaptação em infrastructure. |
+| Datas de despesas | Semântica de data civil. | `occurred_on` opcional como Date UTC, sem default. |
+| Categoria | Contrato e validação atuais do cliente. | Select opcional; vazio não significa `other`. |
+| Recursos derivados | Metrics, Insight e sugestões têm consumidores HTTP. | Sem implementação equivalente nesta configuração. |
+
+Centavos inteiros continuam obrigatórios. A representação UTC do campo nativo
+não resolve a semântica de data civil: essa compatibilidade precisa ser definida
+antes da integração, sem conversão implícita de fuso ou perda de significado.
+
+Trocar a URL não é migração. SDK/adapters, persistência de sessão, mapeamento de
+erros, verificação de e-mail, paginação e destino dos recursos ausentes precisam
+de decisão e implementação próprias. Nenhuma escolha de SDK ou estratégia para
+os recursos ausentes é estabelecida por esta atualização documental.
+
+A arquitetura de camadas Flutter permanece válida. As seções seguintes descrevem
+o código executável atual, incluindo o transporte anterior, e não endpoints a
+recriar no PocketBase. A integração futura deverá atualizar implementação,
+consumidores e testes juntos, sem apresentar fixtures como homologação do serviço.
+Não há migração de dados, contas ou sessões do backend anterior neste trabalho.
+
 ## Referência Executável: Authentication/Sign-in
 
 ### Caminho De Uma Tentativa
@@ -238,7 +288,7 @@ No Bloc:
 - `isClosed` e `emit.isDone` impedem publicação de conclusões obsoletas.
 
 `addError` usa o mecanismo do Bloc; não representa, por si só, integração
-automática com Crashlytics. O Bloc não recebe CrashClient nem callback de telemetry.
+automática com telemetria. O Bloc não recebe client nem callback de telemetry.
 
 Na UI, erros 422 com pointers conhecidos e detalhe vão para os campos. Os
 restantes vão para toast, sem duplicação; ausência de mensagens usa fallback
@@ -861,30 +911,14 @@ Root contém `AppScreen`, o splash visual, e `AppWidget`, proprietário do
 SessionBloc e das decisões globais de navegação. A abertura lê presença no
 storage e não faz consulta de validade ao backend.
 
-`main.dart` inicializa o Firebase padrão antes de montar ModularApp. Core,
-Crashlytics e Messaging usam o projeto `trocado-d362e`, com identificador
-`com.bed.cordato` para Android/iOS. Outras plataformas não possuem opções
-Firebase configuradas. Falha de inicialização impede o início do app.
+`main.dart` inicializa o binding Flutter e monta ModularApp sem depender de
+serviços remotos. Não há client de crash reporting ou push remoto registrado
+no core; os handlers padrão do Flutter e da plataforma são preservados.
+`addError` usa o mecanismo de Bloc, sem envio automático a serviços externos.
 
-O bootstrap resolve `ICrashClient` e conecta FlutterError e PlatformDispatcher;
-erros do framework são não fatais e erros assíncronos não tratados são fatais.
-O handler global CommandIt foi removido de `main.dart`, assim como seus testes
-legados. `addError`
-usa o mecanismo de Bloc e não implica integração automática com Crashlytics.
-
-Clients Firebase ficam em `core/infrastructure/clients/firebase/`. Messaging
-expõe permissão, `register()`, `onRegistered` e mensagens em primeiro plano.
-O registro retorna `Future<void>` e delega ao SDK, sem bloquear por consulta
-prévia ao APNs; o stream entrega Firebase Installation IDs (FIDs), não tokens
-FCM legados. O consumidor deve assinar `onRegistered` antes de chamar `register()`
-e cancelar sua própria subscription. O client não registra automaticamente na
-construção nem solicita permissão durante o registro.
-NotificationClient encapsula o plugin local,
-exige `initialize()` antes de `show` e usa o canal `cordato_default`.
-O app não integra automaticamente envio de FID ao backend, notificação em
-primeiro plano, navegação por toque ou handler Dart de background.
-APNs remoto e entrega real de push ainda exigem verificação.
-Símbolos iOS Release são enviados por `ios/upload_crashlytics_symbols.sh`.
+NotificationClient encapsula o plugin de notificações locais, exige
+`initialize()` antes de `show` e usa o canal `cordato_default`. Não há integração
+automática de navegação por toque ou recebimento de notificações remotas.
 
 ## Interface, Dart E Previews
 

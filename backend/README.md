@@ -1,0 +1,171 @@
+# Cordato — PocketBase
+
+Serviço independente **PocketBase 0.41.1** para contas e despesas pessoais, preparado para Docker Compose no Dokploy. Sem Node, hooks, worker, IA ou Batch API.
+
+O backend vive em `backend/` no repositório do aplicativo Flutter, mas tem build, serviço e volume próprios. Execute os comandos deste documento **a partir de `backend/`**. A transferência dos arquivos não integra nem migra o cliente Flutter para a API PocketBase.
+
+## Escopo E Fontes De Verdade
+
+Este documento descreve o serviço existente, sua operação e limites de validação.
+As camadas do aplicativo e as diferenças de integração estão em
+[ARCHITECTURE.md](../ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração);
+o panorama do produto está no [README da raiz](../README.md). As orientações
+específicas de manutenção ficam em [AGENTS.md](AGENTS.md).
+
+- **Implementado na configuração:** contas individuais e despesas próprias,
+  autenticação/verificação nativas, regras de propriedade e cascata.
+- **Ausente nesta configuração:** métricas agregadas, insights, sugestões de
+  despesas, orçamentos e família. A presença de consumidores Flutter não cria
+  esses recursos no PocketBase.
+- **Pendente:** migração dos adapters e fluxos Flutter, compatibilidade de data
+  civil com `occurred_on` UTC e homologação integrada. Não basta mudar a URL.
+- **Fora desta etapa documental:** alterações de código/schema, migração de
+  dados, provisionamento remoto e deploy.
+
+Os exemplos Dart abaixo ilustram chamadas nativas para uma integração futura;
+não representam código já utilizado pelo aplicativo. As evidências locais ao
+final são registros anteriores, não verificações executadas nesta revisão.
+
+## Arquivos
+
+- `compose.yml`: um serviço `pocketbase`, volume persistente e rede externa `dokploy-network`.
+- `Dockerfile`: base Alpine fixada por digest e binário oficial Linux verificado por SHA-256, com suporte amd64, arm64 e arm/v7; execução sem root. Atualizações da base exigem revisão do digest.
+- `docker/entrypoint.sh`: exige chave de criptografia de 32 bytes, fixa opções seguras e inicia o serviço.
+- `pb_migrations/1793491200_initial.js`: schema, permissões, superusuário e settings em uma única migration transacional, **exclusiva para banco novo**.
+- `.env.example`: nomes das variáveis, sem segredos.
+
+## Instalação no Dokploy
+
+O DNS `pocketbase.cordato.cloud` já foi criado como CNAME para `dokploy.cordato.cloud`. DNS não configura o proxy nem emite certificado.
+
+1. Criar um serviço **Docker Compose** apontando para o repositório Flutter e o arquivo **`backend/compose.yml`**. O `build.context: .` é relativo à pasta desse Compose: deve resolver para `backend/`, com `backend/Dockerfile`, nunca para a raiz Flutter. Não incluir fontes/assets do app no contexto. Conferir que `dokploy-network` existe e que o projeto/volume são novos e vazios. Não reutilizar banco ou volume do Drocato. Se já houver uma instalação Cordato, preservar explicitamente o projeto Compose e o volume existentes; mudar a origem Git não autoriza recriar dados.
+2. No ambiente privado do **serviço Compose**, configurar as variáveis abaixo. Não usar build args para segredos nem carregar o `.env` remanescente do antigo Node.
+3. Na configuração de domínio do Dokploy, usar **`pocketbase.cordato.cloud`**, serviço **`pocketbase`**, porta interna **8090**, caminho `/`, HTTPS com certificado. O TLS termina no Traefik; internamente o serviço usa HTTP. Não publicar 8090 no host.
+4. Após autorização operacional, executar o deploy. As migrations pendentes são aplicadas ao iniciar; falha de bootstrap deve interromper o serviço. `--automigrate=false` impede geração automática pelo painel, **não** impede aplicar migrations versionadas.
+5. Conferir `/api/health`, painel `https://pocketbase.cordato.cloud/_/`, envio de e-mail e login administrativo com MFA. A saúde HTTP não prova entrega SMTP, isolamento entre contas ou backup recuperável.
+
+| Variável | Uso |
+| --- | --- |
+| `POCKETBASE_PUBLIC_URL` | URL absoluta HTTPS para os links. Padrão do Compose: `https://pocketbase.cordato.cloud` |
+| `POCKETBASE_ADMIN_EMAIL` | E-mail válido do único administrador inicial |
+| `POCKETBASE_ADMIN_PASSWORD` | Senha forte inicial do administrador, sob a política nativa de superusuários |
+| `SMTP_PASSWORD` | Credencial SMTP Resend, normalmente a API key do provedor |
+| `POCKETBASE_ENCRYPTION_KEY` | **Obrigatória em todos os reinícios**, exatamente 32 bytes; usar 32 caracteres ASCII aleatórios |
+
+Gere e armazene a chave em um gerenciador de segredos. Não imprima ambiente resolvido (`docker compose config`), chaves, respostas de autenticação ou links de confirmação em logs compartilhados. Não forneça credenciais na linha de comando.
+
+Administrador e SMTP são provisionados **uma única vez**. Após a migration concluir, `POCKETBASE_ADMIN_EMAIL`, `POCKETBASE_ADMIN_PASSWORD` e `SMTP_PASSWORD` podem sair do ambiente: configurações e hash da senha já estão no volume. Reiniciar com outros valores não rotaciona credenciais nem sobrescreve ajustes feitos no painel. Rotacione pelo painel/API nativos, com autorização e atualização correspondente no provedor. Preserve a chave de criptografia: perdê-la impede ler as configurações; trocá-la diretamente não é uma rotação suportada.
+
+O `.env` do antigo projeto Node permaneceu no diretório anterior e não foi lido nem transferido. Nenhum segredo foi trazido para `backend/`. O Dokploy deve receber somente as variáveis listadas. Para validações Compose pela CLI, use um arquivo privado explícito **fora do repositório**, evitando carregar arquivos `.env` implicitamente.
+
+### Settings iniciais
+
+- Identidade **Cordato**, cor `#27a06c`, remetente `Cordato <contato@cordato.cloud>`.
+- SMTP `smtp.resend.com:465`, TLS, usuário `resend`, AUTH `PLAIN`. O domínio remetente precisa estar autorizado no Resend.
+- Templates HTML pt-BR de confirmação, recuperação, troca de e-mail, OTP e alerta de login; sem recursos externos. Links usam as telas nativas `/_/#/auth/.../{TOKEN}`.
+- Superusuário com senha, OTP de seis caracteres/180 segundos, MFA de 600 segundos e alerta de novo login. Não existe conta técnica de worker. Garantir acesso à caixa administrativa e entrega SMTP antes de operar; não desabilitar MFA para contornar problemas de envio.
+- Rate limits nativos: `*:auth` **4/3s**, `*:create` **30/6s**, `/api/` **300/10s**, sem IPs excluídos. Batch desabilitado.
+- Proxy: `X-Forwarded-For`, `useLeftmostIP=false`. O Traefik precisa normalizar esse header, e a origem não pode ficar exposta diretamente. A rede compartilhada Dokploy não substitui isolamento entre serviços não confiáveis.
+- Arquivos e backups locais, S3 desabilitado. Backup automático domingo **00:00 UTC**, retenção de **três** cópias. Logs mantêm defaults nativos; não habilitar debug.
+
+### Persistência e recuperação
+
+O volume `pocketbase_data` monta `/pb/pb_data` e é prefixado pelo projeto Compose. Manter o mesmo projeto/volume nas atualizações. Há somente uma instância; não escalar réplicas compartilhando SQLite. O filesystem da imagem é somente leitura; dados, settings e backups vão ao volume. `/tmp` tem limite de 64 MiB; revisar mediante medição se operações temporárias exigirem mais espaço.
+
+**Não usar `down -v`, reset, `migrate down` ou `history-sync` para resolver falha.** O rollback da inicial é bloqueado. Corrigir variáveis e reiniciar com o mesmo volume retoma a migration pendente; não remove nem adota contas existentes. Esta inicial não atualiza instalações antigas. Mudanças futuras no schema exigem novas migrations.
+
+O backup local não protege contra perda da VPS. Guardar cópia consistente fora do host, preservar a versão da imagem e a chave separadamente e testar restauração em destino descartável. Criptografia protege os **settings**, não todas as despesas, coleções ou arquivos. Build, deploy, restauração e alterações remotas exigem autorização própria.
+
+## Coleções
+
+### `users`
+
+Coleção auth nativa, cadastro público sem aprovação manual. Login exige e-mail confirmado. Usuário verificado consulta, altera e exclui somente a própria conta; sem `manageRule`. Campos administrativos não são liberados ao cliente. Os campos ocultos continuam sob proteção nativa, sem hook customizado.
+
+- `name`: opcional, de 2 a 32 caracteres quando preenchido, sem restrição adicional de formato.
+- `avatar`: texto opcional até 2.048 caracteres, usado como seed no Flutter; não há upload de imagem.
+- Senha: 6–16 caracteres, com minúscula ASCII, maiúscula ASCII e número. Não altera a política de `_superusers`.
+- `created` e `updated`: datas automáticas nativas em UTC, assim como em `expenses`.
+- Exclusão do usuário remove todas as suas despesas por cascata.
+
+**Sem hooks, cadastrar não envia confirmação automaticamente.** O Flutter deve criar a conta e chamar o método oficial de verificação:
+
+```dart
+await pb.collection('users').create(body: {
+  'email': email,
+  'password': password,
+  'passwordConfirm': password,
+});
+await pb.collection('users').requestVerification(email);
+// Mostrar instrução para confirmar o link recebido; depois fazer login.
+```
+
+Reenvio, recuperação e troca de e-mail usam endpoints nativos. O SDK envia o token automaticamente após login. Não enviar senha, tokenKey, verified ou timestamps em atualizações genéricas de perfil.
+
+### `expenses`
+
+Listagem, consulta, criação, alteração e exclusão exigem usuário verificado da coleção `users` e proprietário correto. O frontend envia `owner` na criação; o servidor recusa dono diferente e impede transferência. Superusuários mantêm acesso administrativo nativo completo.
+
+| Campo | Contrato |
+| --- | --- |
+| `owner` | Relação única obrigatória com `users`, cascata ao excluir a conta |
+| `amount` | Centavos inteiros positivos, entre **1 e 9007199254740991** |
+| `description` | Texto opcional, limites nativos do campo Text |
+| `occurred_on` | Date opcional com data/hora UTC; sem default |
+| `category` | Select único opcional, sem default; opções compartilhadas |
+| `created` / `updated` | Autodate nativo; cliente não deve informar |
+
+Categoria e data omitidas ficam vazias (`""`), não `null`. **O Date opcional nativo também normaliza uma entrada inválida para vazio**, em vez de retornar erro; o frontend deve validar o valor antes de enviá-lo. O frontend decide valores iniciais e formata a data/hora. Não converter valores monetários para float no modelo de negócio.
+
+```dart
+await pb.collection('expenses').create(body: {
+  'owner': pb.authStore.record!.id,
+  'amount': 2590,
+  'description': 'Almoço',
+  'occurred_on': DateTime.now().toUtc().toIso8601String(),
+  'category': 'food',
+});
+```
+
+Categorias: `food`, `pets`, `taxes`, `health`, `travel`, `housing`, `leisure`, `shopping`, `services`, `transport`, `education`, `financing`, `insurance`, `investments`, `personal_care`, `subscriptions`, `gifts_and_donations`, `other`. Traduzir rótulos no Flutter. Somente o superusuário altera as opções no schema; renomear/remover opções exige tratar registros existentes. Como `automigrate` está desabilitado, registrar alterações de schema em migrations futuras para reproduzi-las em outras instalações.
+
+IDs são strings nativas do PocketBase, **não UUIDv7**. API REST e autenticação são nativas PocketBase, não JSON:API/Sanctum: o cliente PHP anterior não é compatível sem adaptação. Este trabalho não migra dados, contas ou sessões do PHP.
+
+## Verificação
+
+Sem serviços, rede, downloads nem leitura de segredos:
+
+```sh
+python3 -m unittest discover -s tests -v
+sh -n docker/entrypoint.sh
+git diff --check
+```
+
+Os testes rápidos verificam entrypoint, chave obrigatória, argumentos seguros e `.gitignore`. Os testes nativos ficam **explicitamente skipped** sem binário. Para executá-los, após disponibilizar um PocketBase 0.41.1 executável e confiável:
+
+```sh
+POCKETBASE_TEST_BINARY=/caminho/absoluto/pocketbase python3 -m unittest discover -s tests -v
+```
+
+O teste opt-in cria apenas bancos temporários exclusivos com credenciais fictícias, executa `migrate up` e remove seus próprios temporários; nunca inicia servidor nem conecta ao Resend. Cobre schema, settings, templates, criptografia em disco, retomada sem segredos de bootstrap, rollback/retentativa, regras pelo avaliador nativo, validação monetária e cascata. Avaliação de regras não comprova todos os detalhes do transporte HTTP/SDK.
+
+### Verificação Linux via Podman (opt-in)
+
+Após autorização para build e testes locais, com a engine já disponível:
+
+```sh
+podman build --format docker -t localhost/cordato-pocketbase:verification .
+python3 tests/run_container_tests.py
+```
+
+O runner exige a imagem da aplicação e `docker.io/library/python:3.14.7-slim` já disponíveis (`--pull=never`). Não instala nem inicia a engine. Extrai o binário Linux da imagem para executar os quatro testes nativos em um container Python, depois inicia um PocketBase descartável como UID/GID 10001, com filesystem somente leitura, capabilities removidas, sem privilégios adicionais e volume exclusivo. Os oito testes HTTP executam em outro container no mesmo namespace **sem rede externa e sem portas publicadas**. Nenhum envio SMTP real é possível. Todos os e-mails/senhas são fictícios; recursos criados pelo runner são removidos em `finally`, sem tocar em outros projetos.
+
+Os testes HTTP cobrem CRUD próprio, isolamento entre contas, proprietário/timestamps protegidos (incluindo modificadores de relação), centavos e categorias, campos opcionais, avatar textual, cadastro sem auto-verificação, bloqueio de login não verificado, desafio MFA administrativo e Batch desabilitado. Não comprovam o SDK Flutter nem entrega SMTP/OTP.
+
+**Evidências locais (01/11/2026):** build Linux ARM64 aprovado no Podman, SHA-256 do ZIP oficial conferido e saída `pocketbase version 0.41.1` validada. Imagem final `8378990f13b1eb70773dca966736900d36579ec279add5e47bdaf5a1913abfab`: **41.583.014 bytes (~39,66 MiB)** descompactada, binário ~30,4 MiB, usuário `10001:10001`. Sem curl, unzip ou tzdata no runtime; UTC não exige pacote de fusos. Cinco testes rápidos, quatro nativos e oito HTTP aprovados. O único ajuste necessário nos testes nativos foi recarregar o cache de settings entre migrations antes de conferir o bootstrap.
+
+O ZIP Darwin 0.41.1 em Downloads confere com o checksum oficial, mas o executável local encerrou com `SIGKILL` e não estava mais disponível no caminho após a tentativa; por isso a validação foi feita com o **binário Linux dentro de containers**, não alterando proteções do macOS nem copiando executáveis para o Git. Docker não está instalado; build e runtime foram verificados com Podman, não com Docker Compose ou Dokploy. A arquitetura da VPS ainda deve ser conferida antes do rollout; amd64 e arm/v7 estão configuradas com checksums próprios, mas não foram executadas nesta rodada.
+
+Ainda faltam validação no Dokploy/Traefik/HTTPS, entrega real Resend/OTP, homologação Flutter, medição de desempenho/carga, cópia externa e restauração de backup e deploy. A imagem é enxuta e a versão é travada; isso **não** equivale a otimização de performance medida nem reprodução byte a byte dos pacotes APK obtidos durante builds futuros. Atualizar a versão PocketBase exige revisar URL, checksums e verificação explícita da versão; não há `latest` nem fallback silencioso.
+
+Referências: [migrations](https://pocketbase.io/docs/js-migrations/), [regras](https://pocketbase.io/docs/api-rules-and-filters/), [produção e criptografia](https://pocketbase.io/docs/going-to-production/), [checksums oficiais 0.41.1](https://ganigeorgiev.com/meta/pocketbase/pocketbase/download/v0.41.1/checksums.txt).

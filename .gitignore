@@ -63,8 +63,5 @@ android/key.properties
 *.p8
 *.pem
 *.key
-*firebase-adminsdk*.json
 *service-account*.json
 *service_account*.json
-.firebase/
-firebase-debug.log*

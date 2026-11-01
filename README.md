@@ -32,6 +32,30 @@ para código novo nem dependências a restaurar.
 Leia [ARCHITECTURE.md](ARCHITECTURE.md) para decisões e fronteiras e
 [AGENTS.md](AGENTS.md) para convenções de contribuição.
 
+## Backend PocketBase
+
+O backend adotado é **PocketBase 0.41.1**, isolado em [`backend/`](backend/README.md),
+com Compose, imagem, migrations e testes próprios. Usa APIs e regras nativas,
+sem Node, hooks ou worker. No Dokploy, usar `backend/compose.yml` com contexto de
+build em `backend/`. Ele não depende do build Flutter e não deve receber arquivos
+ou segredos do aplicativo.
+
+A configuração foi trazida do repositório backend anterior; nenhum banco, volume,
+segredo ou histórico Git foi transferido. O aplicativo **ainda não foi migrado**
+para a API PocketBase; os contratos Flutter descritos abaixo permanecem como estão.
+
+| Parte | Estado atual |
+| --- | --- |
+| Backend em `backend/` | Contas e despesas próprias nas coleções `users` e `expenses`; contrato nativo PocketBase. |
+| Cliente Flutter em `lib/` | Continua usando endpoints, envelopes JSON:API e sessão do contrato anterior. |
+| Metrics, Insight e sugestões | Existem no cliente; não há implementação equivalente no backend PocketBase atual. |
+| Budget e Family | Planejados; não implementados no backend atual nem nas features Flutter. |
+| Integração e operação | Migração do cliente, homologação integrada e validação no Dokploy ainda pendentes. |
+
+Trocar apenas `BASE_URL` não integra o aplicativo ao PocketBase. Autenticação,
+erros, paginação, datas e recursos disponíveis possuem contratos diferentes.
+Veja os [limites da integração](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração).
+
 ## Estado Do Projeto
 
 **O checkout está em transição arquitetural. Testes de composição não substituem
@@ -148,7 +172,8 @@ conclusão da migração e da composição dos módulos:
 
 `budget` e `family` são planejados, sem features Flutter implementadas.
 `identity` não reproduz o backend legado; `chat` está fora do escopo.
-O backend é externo; este repositório não contém seu schema ou migrations.
+O backend PocketBase tem schema e migrations neste repositório, em `backend/`.
+As descrições dos fluxos Flutter acima não comprovam suporte pelo novo backend.
 
 ## Stack
 
@@ -157,7 +182,7 @@ O backend é externo; este repositório não contém seu schema ou migrations.
 - `flutter_modular` 7 para composição, DI e rotas.
 - Material 3 via `material_ui`, fonte Inter e localização pt-BR.
 - Dio para HTTP JSON:API e `flutter_secure_storage` para persistência segura.
-- Firebase Core, Crashlytics, Messaging e notificações locais.
+- Notificações locais com `flutter_local_notifications`.
 - `flutter_test`, `bloc_test`, `mocktail` e Maestro para testes.
 
 ## Desenvolvimento
@@ -179,7 +204,8 @@ Após resolver os bloqueios de compilação e composição, execute em Android/i
 flutter run
 ```
 
-A API padrão é `https://app.cordato.cloud/api/`. Para outra base:
+A API padrão **do cliente ainda não migrado** é `https://app.cordato.cloud/api/`.
+Para outra base compatível com esse contrato:
 
 ```bash
 flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
@@ -187,30 +213,17 @@ flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
 
 Preserve o prefixo `/api/`. `BASE_URL` é definido no build; reinicie o app após
 alterá-lo. Confira também os overrides de `.vscode/launch.json`.
-Firebase está configurado somente para Android/iOS, com identificador
-`com.bed.cordato`, no projeto `trocado-d362e`.
 
 ### Backend Local
 
-Para Android físico via USB:
+Consulte [`backend/README.md`](backend/README.md) para configuração e verificação
+isoladas do PocketBase. O Compose atual depende da rede externa do Dokploy; não
+é uma configuração local pronta para conectar o Flutter.
 
-```bash
-adb devices
-python3 tool/android_usb_proxy.py --device <id-do-adb>
-```
-
-Mantenha o proxy aberto. Ele encaminha a API local `https://trocado.test` pelo
-loopback do Mac, valida o CA do mkcert e configura `adb reverse`. O perfil debug
-usa `http://127.0.0.1:8765/api/`; reexecute após reconectar o dispositivo.
-
-Para Android na mesma rede, `make android-lan` expõe deliberadamente o backend
-na rede local e atualiza a URL debug. O backend padrão fica em
-`../../../BackEnd/PHP/Trocado`; sobrescreva com
-`make android-lan LERD_SITE_PATH=/caminho/do/backend` quando necessário.
-HTTP local é permitido somente no build Android debug.
-
-No simulador iOS, a base local pode ser `https://trocado.test/api/`, desde que
-o domínio e o certificado estejam acessíveis no ambiente.
+O `Makefile` e `tool/android_usb_proxy.py` do ambiente PHP anterior foram removidos.
+Não use as instruções antigas de Lerd/mkcert como setup do PocketBase. Até a
+migração do cliente, os E2E Flutter usam as APIs de fixtures isoladas descritas
+nos READMEs de cada fluxo, não o novo backend nem produção.
 
 ### Previews
 
@@ -389,11 +402,15 @@ preexistentes e a ausência de validação Maestro permanecem.
 
 ## API, Sessão E Segurança
 
+Esta seção descreve o **código Flutter atual**, não o contrato PocketBase.
+As regras e a autenticação do novo serviço estão em
+[`backend/README.md`](backend/README.md#coleções).
+
 O repository de Authentication envia JSON:API e persiste token opaco e ID do
 usuário por `IStorageClient`, aguardando ambas as escritas antes de concluir.
 Não há garantia transacional entre elas. Bloc e UI não recebem token nem DTO.
 Falhas esperadas viram `AuthenticationException`; erros inesperados propagam,
-e o Bloc fornece fallback seguro e `addError` sem conhecer Crashlytics.
+e o Bloc fornece fallback seguro e `addError` sem conhecer SDKs de telemetria.
 
 Session observa o token para entrada e redirecionamento global. Não há validação
 remota ao abrir, refresh automático ou guard Modular. Um 401 protegido remove
@@ -406,33 +423,24 @@ em capturas compartilhadas. O logger não é instalado em release. Não adicione
 segredos ao código ou fixtures. Valores financeiros são centavos inteiros de BRL,
 e datas financeiras preservam seus componentes civis, sem conversão de fuso.
 
-## Firebase E Release
+## Notificações E Release
 
-Configurações Firebase ficam em
-`lib/features/core/infrastructure/clients/firebase/firebase_options.dart`,
-`firebase.json`, `android/app/google-services.json` e
-`ios/Runner/GoogleService-Info.plist`. Para regenerar com acesso ao projeto:
+Notificações locais possuem client no core. Não há integração de push remoto
+ou crash reporting. O bootstrap não depende de configuração de serviços remotos.
+O iOS usa Swift Package Manager para os plugins Flutter.
 
-```bash
-firebase login
-dart pub global activate flutterfire_cli
-flutterfire configure \
-  --project=trocado-d362e \
-  --out=lib/features/core/infrastructure/clients/firebase/firebase_options.dart \
-  --platforms=android,ios \
-  --android-package-name=com.bed.cordato \
-  --ios-bundle-id=com.bed.cordato
-```
+Verificação após remover a integração remota:
 
-Revise o diff e os comentários gerados antes de versionar. O iOS usa Swift
-Package Manager; preserve `ios/upload_crashlytics_symbols.sh` no build Release
-para dispositivo e mantenha FlutterFire CLI no PATH.
-
-Messaging e notificações locais possuem clients no core, mas o app ainda não
-envia tokens ao backend nem integra automaticamente mensagens em primeiro plano
-ou navegação por toque. Push iOS exige chave APNs no console e provisioning
-com Push Notifications; não versione a chave `.p8`. Entrega real de push e
-recebimento no Crashlytics ainda exigem validação.
+- `flutter pub get` e `flutter analyze`: concluídos, sem issues na análise.
+- `flutter test`: 988 testes passaram e um falhou em
+  `test/features/expense/presentation/screens/expense/expense_screen_test.dart:319`
+  (`manual amount survives suggestion until explicit replacement`), por não
+  encontrar `Usar descrição`. A repetição isolada reproduziu a falha; o fluxo
+  de sugestões não foi alterado nesta remoção.
+- `plutil -lint`: projeto Xcode, Info.plist e entitlements válidos.
+- `flutter build ios --simulator --debug`: concluído.
+- `flutter build apk --debug`: excedeu 120 segundos durante `assembleDebug`,
+  sem resultado conclusivo para Android.
 
 Build, assinatura e verificação Android:
 [android/README.md](android/README.md).

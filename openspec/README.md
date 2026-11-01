@@ -12,6 +12,18 @@ Atualizar documentação não executa migrações, não conclui tarefas de chang
 antigas e não comprova DI, build ou E2E. O histórico de `changes/archive/` é
 preservado como registro temporal, não como guia de implementação vigente.
 
+## Backend Adotado E Integração Pendente
+
+O serviço atual é PocketBase 0.41.1 em [`backend/`](../backend/README.md), com
+coleções `users` e `expenses` e APIs nativas. O cliente Flutter ainda usa o
+contrato HTTP anterior. Specs que descrevem JSON:API, revogação de token,
+confirmação por URL assinada ou endpoints de métricas/insights/sugestões não
+comprovam suporte desses contratos pelo PocketBase nem autorizam recriá-los.
+
+Consulte os [limites de integração](../ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração)
+antes de implementar. Esta revisão é documental: não conclui a migração do
+cliente, não altera schema e não migra dados. Specs arquivadas permanecem intactas.
+
 ## Arquitetura Vigente
 
 ```text
