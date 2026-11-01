@@ -19,9 +19,10 @@ Sign-out é local: aguarda `IStorageClient.clear()`, sem endpoint HTTP ou revoga
 do JWT no servidor. Falhas do storage propagam e não confirmam sucesso.
 As demais features ainda usam o contrato HTTP anterior.
 O JWT usa `StorageKeyEnum.token` (`@trocado.token`), sem migração automática das
-sessões das chaves anteriores. Cadastro não cria sessão nem envia e-mail automaticamente;
-a solicitação de verificação permanece separada pelo botão de reenvio.
-O primeiro envio é imediato; cooldown de 60 segundos começa somente após sucesso.
+sessões das chaves anteriores. Cadastro não cria sessão. Após criar a conta, a
+tela de confirmação solicita automaticamente o primeiro e-mail de verificação.
+Falha de envio não refaz o cadastro e permite reenvio manual imediato.
+O cooldown de 60 segundos pertence ao ResendEmailBloc e começa somente após sucesso.
 Callback recebe exatamente um `token` na query, nunca uma URL remota para GET.
 Token de verificação não pertence ao estado do Bloc nem aos logs.
 Descrições JSON:API e token opaco neste

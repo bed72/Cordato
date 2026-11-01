@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 
@@ -11,33 +13,66 @@ final class ResendEmailBloc({
   required final IAuthenticationRepository repository,
 }) extends Bloc<ResendEmailEvent, ResendEmailState> {
   this : super(const ResendEmailInitial()) {
-    on<ResendEmailSubmittedEvent>(_execute, transformer: droppable());
+    on<ResendEmailEvent>(_execute, transformer: droppable());
   }
 
   Future<void> _execute(
-    ResendEmailSubmittedEvent event,
+    ResendEmailEvent event,
     Emitter<ResendEmailState> emit,
   ) async {
-    if (!state.canSubmit) return;
+    final isInitialRequest = event is ResendEmailStartedEvent;
+    if (event.email.isEmpty) return;
+    if (isInitialRequest ? state is! ResendEmailInitial : !state.canSubmit) {
+      return;
+    }
 
     emit(const ResendEmailSubmitting());
 
     try {
       await repository.resendEmail(email: event.email);
-
-      if (isClosed || emit.isDone) return;
-
-      emit(const ResendEmailSuccess());
     } on AuthenticationException catch (error) {
       if (isClosed || emit.isDone) return;
 
-      emit(ResendEmailFailure(errors: error.errors));
+      emit(
+        ResendEmailFailure(
+          errors: error.errors,
+          isInitialRequest: isInitialRequest,
+        ),
+      );
+      return;
     } catch (error, stackTrace) {
       if (isClosed || emit.isDone) return;
 
       addError(error, stackTrace);
 
-      emit(ResendEmailFailure(errors: .unknown()));
+      emit(
+        ResendEmailFailure(
+          errors: .unknown(),
+          isInitialRequest: isInitialRequest,
+        ),
+      );
+      return;
     }
+
+    if (isClosed || emit.isDone) return;
+
+    emit(ResendEmailSuccess(isInitialRequest: isInitialRequest));
+    await emit.forEach<int>(
+      _cooldownTicks(),
+      onData: (seconds) => seconds >= 60
+          ? const ResendEmailReady()
+          : ResendEmailCooldown(timeLeft: Duration(seconds: 60 - seconds)),
+    );
   }
+
+  Stream<int> _cooldownTicks() => Stream<int>.multi((controller) {
+    final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      controller.add(timer.tick);
+      if (timer.tick >= 60) {
+        timer.cancel();
+        controller.close();
+      }
+    });
+    controller.onCancel = timer.cancel;
+  });
 }

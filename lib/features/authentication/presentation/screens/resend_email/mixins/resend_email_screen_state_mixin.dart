@@ -10,51 +10,34 @@ import 'package:cordato/features/authentication/presentation/screens/resend_emai
 import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
 
 mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
-  static const _cooldown = Duration(seconds: 60);
-
-  Timer? _timer;
   late ResendEmailBloc bloc;
-  Duration remaining = Duration.zero;
 
-  bool get canResend =>
-      remaining == .zero && widget.email.isNotEmpty && bloc.state.canSubmit;
+  Duration get remaining => bloc.state.remaining;
+
+  bool get canResend => widget.email.isNotEmpty && bloc.state.canSubmit;
 
   @override
   void initState() {
     super.initState();
     bloc = widget.bloc();
+    bloc.add(ResendEmailStartedEvent(email: widget.email));
   }
 
   @override
   void didUpdateWidget(covariant ResendEmailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.bloc == widget.bloc) return;
+    if (oldWidget.bloc == widget.bloc && oldWidget.email == widget.email) {
+      return;
+    }
     unawaited(bloc.close());
     bloc = widget.bloc();
+    bloc.add(ResendEmailStartedEvent(email: widget.email));
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     unawaited(bloc.close());
     super.dispose();
-  }
-
-  void _startCooldown() {
-    _timer?.cancel();
-
-    setState(() => remaining = _cooldown);
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      final timeLeft = _cooldown - Duration(seconds: timer.tick);
-      setState(
-        () => remaining = timeLeft.isNegative ? Duration.zero : timeLeft,
-      );
-      if (remaining == Duration.zero) {
-        _timer?.cancel();
-        _timer = null;
-      }
-    });
   }
 
   void resend() {
@@ -66,6 +49,14 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
     if (!mounted || bloc.isClosed) return;
 
     if (state is ResendEmailFailure) {
+      if (state.isInitialRequest) {
+        context.showToast(
+          variant: .error,
+          title: 'Conta criada',
+          description: 'Não foi possível enviar o e-mail de verificação. Toque em Reenviar para tentar novamente.',
+        );
+        return;
+      }
       if (state case ResendEmailFailure(:final errors)
           when errors.errors.isNotEmpty) {
         context.showToast(
@@ -88,9 +79,8 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
         description: 'Não foi possível reenviar o e-mail. Tente novamente.',
       );
     } else if (state is ResendEmailSuccess) {
-      _startCooldown();
       context.showToast(
-        title: 'E-mail reenviado',
+        title: state.isInitialRequest ? 'E-mail enviado' : 'E-mail reenviado',
         description: 'Confira sua caixa de entrada para confirmar seu e-mail.',
       );
     }

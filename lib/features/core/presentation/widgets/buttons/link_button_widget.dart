@@ -16,9 +16,8 @@ final class const LinkButtonWidget({
         label,
         style: (context.typography.bodySmall)?.copyWith(
           decoration: .underline,
-          decorationColor: onTap == null
-              ? Color.lerp(context.colors.primary, context.colors.surface, .25)
-              : context.colors.primary,
+          color: context.colors.primary,
+          decorationColor: context.colors.primary,
         ),
       ),
     );

@@ -204,7 +204,7 @@ insights ou sugestões remotas.
 | --- | --- | --- |
 | Transporte | Sign-in, cadastro, solicitação e confirmação de verificação nativos PocketBase; demais endpoints mantêm JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
 | Autenticação | Sign-in persiste JWT e `record.id` nas chaves existentes; sign-out limpa storage local sem HTTP. | Autenticação nativa da coleção `users`; não há endpoint de logout ou revogação individual do JWT ao sair. |
-| Confirmação | Solicitação nativa por `request-verification`; callback recebe `token` e usa `confirm-verification`. Template para abrir o app exige configuração explícita. Cadastro não envia e-mail automaticamente. | Verificação nativa; templates apontam para telas PocketBase. Cadastro não envia confirmação automaticamente. |
+| Confirmação | Após cadastro, confirmação solicita automaticamente `request-verification`; callback recebe `token` e usa `confirm-verification`. Cooldown de 60 segundos no Bloc somente após sucesso. App Links/Universal Links declarados; associação pública e homologação pendentes. | Verificação nativa; migration incremental direciona verificação de `users` ao app. Templates administrativos permanecem no PocketBase. A criação do record não envia confirmação por si só. |
 | Erros e paginação | HTTP aceita erros JSON:API e PocketBase; sign-in mapeia 400 de `identity`/`password` aos campos. Paginação anterior preservada. | Formatos nativos PocketBase; demais consumidores exigem adaptação em infrastructure. |
 | Datas de despesas | Semântica de data civil. | `occurred_on` opcional como Date UTC, sem default. |
 | Categoria | Contrato e validação atuais do cliente. | Select opcional; vazio não significa `other`. |
@@ -337,8 +337,9 @@ base com `/api/`, com `email`, `password` e `passwordConfirm`.
 Não envia token, `verified`, `emailVisibility` ou campos opcionais de perfil.
 A resposta 200 é um record nativo; o contrato precisa somente da conclusão,
 portanto não há DTO de cadastro, parsing dos campos não consumidos ou persistência.
-O envio opcional de verificação não é encadeado ao cadastro: permanece separado,
-evitando tratar falha de e-mail como falha da criação e recriar uma conta no retry.
+Após sucesso do cadastro, a tela de confirmação dispara automaticamente a
+solicitação de verificação como operação separada. Falha de e-mail não se torna
+falha da criação e o retry solicita somente o e-mail, sem recriar a conta.
 
 O formulário preserva validação, trim de e-mail, senha sem normalização e entrada
 após falha. Erros PocketBase 400 de `/email`, `/password` e `/passwordConfirm`
@@ -359,23 +360,30 @@ passam pelo mesmo adapter HTTP e `AuthenticationException`.
 
 `ResendEmailScreen` recebe uma factory estável de `ResendEmailBloc`, cria a
 instância em `initState`, substitui/fecha quando a factory muda e fecha no
-descarte. `ResendEmailSubmittedEvent(email)` delega o endereço sem normalização.
-Os estados sealed são `Initial`, `Submitting`, `Success` e `Failure(errors)`;
-o Bloc usa `droppable`, preserva falhas esperadas, reporta inesperadas via
-`addError` com fallback seguro e ignora conclusões após fechamento.
+descarte. A criação da instância envia `ResendEmailStartedEvent(email)`; rebuild
+comum não repete o envio. Troca de factory ou endereço fecha o Bloc anterior e
+inicia um novo fluxo. `ResendEmailSubmittedEvent(email)` representa retry manual.
+Ambos delegam o endereço sem normalização. Os estados sealed são `Initial`,
+`Submitting`, `Success`, `Cooldown(timeLeft)`, `Ready` e `Failure(errors)`.
+O Bloc usa um único handler `droppable` para os dois eventos, preserva falhas
+esperadas, reporta inesperadas via `addError` com fallback seguro e ignora
+conclusões após fechamento. `Started` só é aceito em `Initial`; endereço vazio
+não faz HTTP. `Initial`, envio pendente, sucesso e cooldown bloqueiam o botão.
 
-Ao contrário do cadastro, sucesso permite uma nova intenção de reenvio. A UI
-permite o primeiro envio imediatamente e inicia cooldown de 60 segundos somente após sucesso,
-exibindo o toast existente sem navegar nem criar sessão. Falha mostra os erros
-remotos, com fallback para mensagens ausentes, e permite retry manual imediato.
-O e-mail permanece somente leitura; endereço vazio, cooldown e submissão pendente
-bloqueiam o botão. Não há envio automático na entrada ou ao terminar o cooldown.
+Sucesso inicia cooldown de 60 segundos no Bloc, sem navegar nem criar sessão.
+Somente `Ready` ou `Failure` permitem intenção manual; terminar o cooldown não
+envia outro e-mail. O listener distingue primeiro envio e reenvio no toast.
+Falha inicial informa que a conta já foi criada e permite retry manual imediato;
+falha manual mostra os erros remotos com fallback para mensagens ausentes.
+O e-mail permanece somente leitura.
 
-O timer pertence ao mixin da tela e é cancelado no descarte. A contagem usa os
-ticks decorridos do timer periódico, não o número de callbacks, permitindo
-contabilizar ticks atrasados e avançar o tempo virtual nos testes. Rebuild e
-troca de factory não reiniciam o cooldown nem repetem feedback. O fechamento do
-Bloc não cancela a request HTTP em andamento.
+O timer pertence a um stream consumido por `emit.forEach` no Bloc. O lifecycle
+nativo cancela a subscription e o timer no fechamento, sem override de `close()`.
+A contagem usa `Timer.tick` para contabilizar ticks atrasados. A UI deriva
+disponibilidade e tempo restante somente do estado, sem timer ou flags paralelas.
+Testes com `fake_async` verificam os 60 segundos, bloqueio de duplicatas,
+ausência de retry automático e cancelamento. O fechamento do Bloc não cancela
+a request HTTP em andamento.
 
 O Bloc e o repository mantêm testes unitários; os flows de UI e sua fixture
 isolada foram removidos.
@@ -406,6 +414,19 @@ Fechamento, troca de factory e substituição do link impedem efeitos obsoletos.
 Testes próprios do módulo verificam factories independentes e repository real
 com clients mockados. Os testes de UI da rota e flows de callback foram removidos.
 A entrega nativa de deep links não é provada pelos testes unitários.
+
+O destino público é
+`https://app.cordato.cloud/authentication/confirm-email?token={TOKEN}`. Android
+declara o host/caminho e `autoVerify`; iOS declara Associated Domains nos
+entitlements usados por Debug/Profile/Release. A migration incremental
+`1793577600_users_verification_app_link.js` altera somente URLs reconhecidas do
+template de verificação de `users`, preservando HTML, assunto e templates
+administrativos; destinos personalizados não reconhecidos exigem revisão.
+`tool/app_links.dart` gera `assetlinks.json` e `apple-app-site-association` com
+identificadores públicos fornecidos explicitamente, sem página alternativa ou
+confirmação web. Não há deploy ou associação de domínio implícitos. Ordem
+de publicação, proteção de query strings nos logs e homologação estão em
+[app_links/README.md](app_links/README.md).
 
 ### Logout Em Settings
 

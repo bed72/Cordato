@@ -87,6 +87,10 @@ use the generated `build/app/intermediates/` path if this location changes.
 Para App Links, publique o SHA-256 do certificado efetivo de distribuição em
 `https://app.cordato.cloud/.well-known/assetlinks.json`, associado ao pacote
 `com.bed.cordato` pela relação `delegate_permission/common.handle_all_urls`.
+Para Google Play, usar o certificado de App Signing, não apenas o de upload.
+O manifest já declara `autoVerify` para `/authentication/confirm-email`.
+Geração dos arquivos públicos, configuração iOS, ordem de ativação do template
+PocketBase e homologação estão em [app_links/README.md](../app_links/README.md).
 
 ## Key Rotation
 

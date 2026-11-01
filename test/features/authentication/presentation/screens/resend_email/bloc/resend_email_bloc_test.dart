@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -14,6 +15,7 @@ import '../../../../../../support/authentication/mocks/authentication_repository
 
 void main() {
   const submitted = ResendEmailSubmittedEvent(email: ' Person@Example.com ');
+  const initialRequest = ResendEmailStartedEvent(email: ' Person@Example.com ');
   const errors = ErrorsEntity(
     errors: [
       ErrorEntity(
@@ -36,17 +38,20 @@ void main() {
   }
 
   group('Initial state and verification requests', () {
-    test('starts ready without automatically resending', () async {
-      final bloc = ResendEmailBloc(repository: repository);
-      addTearDown(bloc.close);
-      expect(bloc.state, isA<ResendEmailInitial>());
-      expect(bloc.state.canSubmit, isTrue);
-      expect(bloc.state.isSubmitting, isFalse);
-      verifyZeroInteractions(repository);
-    });
+    test(
+      'blocks manual resend until the screen requests initial delivery',
+      () async {
+        final bloc = ResendEmailBloc(repository: repository);
+        addTearDown(bloc.close);
+        expect(bloc.state, isA<ResendEmailInitial>());
+        expect(bloc.state.canSubmit, isFalse);
+        expect(bloc.state.isSubmitting, isFalse);
+        verifyZeroInteractions(repository);
+      },
+    );
 
     blocTest<ResendEmailBloc, ResendEmailState>(
-      'delegates the email unchanged and accepts a later manual resend',
+      'initial request delegates the email unchanged and starts cooldown',
       build: () {
         stub(() async {});
         return ResendEmailBloc(repository: repository);
@@ -55,7 +60,7 @@ void main() {
         final finished = bloc.stream.firstWhere(
           (state) => state is ResendEmailSuccess,
         );
-        bloc.add(submitted);
+        bloc.add(initialRequest);
         await finished;
         bloc.add(submitted);
       },
@@ -64,19 +69,47 @@ void main() {
             .having((state) => state.canSubmit, 'canSubmit', isFalse)
             .having((state) => state.isSubmitting, 'isSubmitting', isTrue),
         isA<ResendEmailSuccess>()
-            .having((state) => state.canSubmit, 'canSubmit', isTrue)
+            .having((state) => state.isInitialRequest, 'initial', isTrue)
+            .having((state) => state.remaining.inSeconds, 'remaining', 60)
+            .having((state) => state.canSubmit, 'canSubmit', isFalse)
             .having((state) => state.isSubmitting, 'isSubmitting', isFalse),
-        isA<ResendEmailSubmitting>(),
-        isA<ResendEmailSuccess>(),
       ],
       verify: (_) {
-        verify(() => repository.resendEmail(email: submitted.email)).called(2);
+        verify(() => repository.resendEmail(email: submitted.email)).called(1);
         verifyNoMoreInteractions(repository);
       },
     );
   });
 
   group('Failures and manual retry', () {
+    blocTest<ResendEmailBloc, ResendEmailState>(
+      'initial delivery failure preserves errors and enables manual resend',
+      build: () {
+        stub(() async => throw AuthenticationException(errors: errors));
+        return ResendEmailBloc(repository: repository);
+      },
+      act: (bloc) async {
+        final failed = bloc.stream.firstWhere(
+          (state) => state is ResendEmailFailure,
+        );
+        bloc.add(initialRequest);
+        await failed;
+        bloc.add(initialRequest);
+      },
+      expect: () => [
+        isA<ResendEmailSubmitting>(),
+        isA<ResendEmailFailure>()
+            .having((state) => state.errors, 'errors', same(errors))
+            .having((state) => state.isInitialRequest, 'initial', isTrue)
+            .having((state) => state.canSubmit, 'canSubmit', isTrue)
+            .having((state) => state.remaining, 'remaining', Duration.zero),
+      ],
+      verify: (_) =>
+          verify(() => repository.resendEmail(email: submitted.email))
+              .called(1),
+      errors: () => isEmpty,
+    );
+
     for (final failure in [errors, const ErrorsEntity(errors: [])]) {
       blocTest<ResendEmailBloc, ResendEmailState>(
         'preserves ${failure.errors.length} application errors without reporting them',
@@ -84,6 +117,7 @@ void main() {
           stub(() async => throw AuthenticationException(errors: failure));
           return ResendEmailBloc(repository: repository);
         },
+        seed: () => const ResendEmailReady(),
         act: (bloc) => bloc.add(submitted),
         expect: () => [
           isA<ResendEmailSubmitting>(),
@@ -102,6 +136,7 @@ void main() {
         stub(() async => throw unexpected);
         return ResendEmailBloc(repository: repository);
       },
+      seed: () => const ResendEmailReady(),
       act: (bloc) => bloc.add(submitted),
       expect: () => [
         isA<ResendEmailSubmitting>(),
@@ -117,40 +152,149 @@ void main() {
     );
 
     blocTest<ResendEmailBloc, ResendEmailState>(
-      'allows manual retry after failure without reusing a previous success',
+      'allows immediate manual retry after failure then starts cooldown',
       build: () {
         var attempts = 0;
         stub(() async {
-          if (++attempts == 2) throw AuthenticationException(errors: errors);
+          if (++attempts == 1) throw AuthenticationException(errors: errors);
         });
         return ResendEmailBloc(repository: repository);
       },
       act: (bloc) async {
-        final success = bloc.stream.firstWhere(
-          (state) => state is ResendEmailSuccess,
-        );
-        bloc.add(submitted);
-        await success;
         final failure = bloc.stream.firstWhere(
           (state) => state is ResendEmailFailure,
         );
-        bloc.add(submitted);
+        bloc.add(initialRequest);
         await failure;
-        verify(() => repository.resendEmail(email: submitted.email)).called(2);
+        expect(bloc.state.canSubmit, isTrue);
+        expect(bloc.state.remaining, Duration.zero);
         bloc.add(submitted);
       },
       expect: () => [
         isA<ResendEmailSubmitting>(),
-        isA<ResendEmailSuccess>(),
-        isA<ResendEmailSubmitting>(),
-        isA<ResendEmailFailure>(),
+        isA<ResendEmailFailure>().having(
+          (state) => state.isInitialRequest,
+          'initial',
+          isTrue,
+        ),
         isA<ResendEmailSubmitting>(),
         isA<ResendEmailSuccess>(),
       ],
       verify: (_) =>
           verify(() => repository.resendEmail(email: submitted.email))
-              .called(1),
+              .called(2),
     );
+  });
+
+  group('Cooldown with virtual time', () {
+    test(
+      'counts 60 seconds, drops early resends and never resends automatically',
+      () {
+        fakeAsync((async) {
+          stub(() async {});
+          final bloc = ResendEmailBloc(repository: repository);
+          bloc.add(initialRequest);
+          async.flushMicrotasks();
+
+          expect(bloc.state, isA<ResendEmailSuccess>());
+          expect(bloc.state.remaining, const Duration(seconds: 60));
+          expect(bloc.state.canSubmit, isFalse);
+
+          bloc.add(submitted);
+          bloc.add(initialRequest);
+          async.flushMicrotasks();
+          async.elapse(const Duration(seconds: 59));
+          expect(bloc.state.remaining, const Duration(seconds: 1));
+          expect(bloc.state.canSubmit, isFalse);
+          bloc.add(submitted);
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 1));
+          expect(bloc.state, isA<ResendEmailReady>());
+          expect(bloc.state.remaining, Duration.zero);
+          expect(bloc.state.canSubmit, isTrue);
+          async.elapse(const Duration(minutes: 2));
+          verify(() => repository.resendEmail(email: submitted.email))
+              .called(1);
+
+          bloc.add(initialRequest);
+          async.flushMicrotasks();
+          verifyNoMoreInteractions(repository);
+          bloc.add(submitted);
+          async.flushMicrotasks();
+          expect(bloc.state, isA<ResendEmailSuccess>());
+          expect((bloc.state as ResendEmailSuccess).isInitialRequest, isFalse);
+          expect(bloc.state.remaining, const Duration(seconds: 60));
+          verify(() => repository.resendEmail(email: submitted.email))
+              .called(1);
+
+          unawaited(bloc.close());
+          async.flushMicrotasks();
+          expect(async.periodicTimerCount, 0);
+        });
+      },
+    );
+
+    test('starts cooldown only after the HTTP operation succeeds', () {
+      fakeAsync((async) {
+        final pending = Completer<void>();
+        stub(() => pending.future);
+        final bloc = ResendEmailBloc(repository: repository);
+        bloc.add(initialRequest);
+        async.flushMicrotasks();
+
+        async.elapse(const Duration(minutes: 2));
+        expect(bloc.state, isA<ResendEmailSubmitting>());
+        expect(bloc.state.remaining, Duration.zero);
+        expect(bloc.state.canSubmit, isFalse);
+        expect(async.periodicTimerCount, 0);
+
+        pending.complete();
+        async.flushMicrotasks();
+        expect(bloc.state.remaining, const Duration(seconds: 60));
+        expect(async.periodicTimerCount, 1);
+
+        unawaited(bloc.close());
+        async.flushMicrotasks();
+        expect(async.periodicTimerCount, 0);
+      });
+    });
+
+    test('closing during cooldown cancels ticks and prevents late states', () {
+      fakeAsync((async) {
+        stub(() async {});
+        final bloc = ResendEmailBloc(repository: repository);
+        final states = <ResendEmailState>[];
+        final subscription = bloc.stream.listen(states.add);
+        bloc.add(initialRequest);
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 10));
+        final count = states.length;
+
+        unawaited(bloc.close());
+        async.flushMicrotasks();
+        expect(async.periodicTimerCount, 0);
+        async.elapse(const Duration(minutes: 2));
+        expect(states, hasLength(count));
+        expect(bloc.isClosed, isTrue);
+        unawaited(subscription.cancel());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('empty addresses do not request delivery or start cooldown', () {
+      fakeAsync((async) {
+        final bloc = ResendEmailBloc(repository: repository);
+        bloc.add(const ResendEmailStartedEvent(email: ''));
+        async.flushMicrotasks();
+        expect(bloc.state, isA<ResendEmailInitial>());
+        expect(bloc.state.canSubmit, isFalse);
+        expect(async.periodicTimerCount, 0);
+        verifyZeroInteractions(repository);
+        unawaited(bloc.close());
+        async.flushMicrotasks();
+      });
+    });
   });
 
   group('Concurrency and lifecycle', () {
@@ -165,7 +309,7 @@ void main() {
         });
         final bloc = ResendEmailBloc(repository: repository);
         addTearDown(bloc.close);
-        bloc.add(submitted);
+        bloc.add(initialRequest);
         await started.future;
         bloc.add(submitted);
         bloc.add(const ResendEmailSubmittedEvent(email: 'other@example.com'));
@@ -199,7 +343,7 @@ void main() {
         final subscription = bloc.stream.listen(states.add);
         addTearDown(subscription.cancel);
         addTearDown(bloc.close);
-        bloc.add(submitted);
+        bloc.add(initialRequest);
         await started.future;
         final closing = bloc.close();
         switch (outcome) {
@@ -225,7 +369,7 @@ void main() {
       final finished = first.stream.firstWhere(
         (state) => state is ResendEmailSuccess,
       );
-      first.add(submitted);
+      first.add(initialRequest);
       await finished;
       expect(second.state, isA<ResendEmailInitial>());
     });

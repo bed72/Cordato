@@ -32,6 +32,7 @@ final são registros anteriores, não verificações executadas nesta revisão.
 - `Dockerfile`: base Alpine fixada por digest e binário oficial Linux verificado por SHA-256, com suporte amd64, arm64 e arm/v7; execução sem root. Atualizações da base exigem revisão do digest.
 - `docker/entrypoint.sh`: exige chave de criptografia de 32 bytes, fixa opções seguras e inicia o serviço.
 - `pb_migrations/1793491200_initial.js`: schema, permissões, superusuário e settings em uma única migration transacional, **exclusiva para banco novo**.
+- `pb_migrations/1793577600_users_verification_app_link.js`: atualização incremental somente do destino de verificação de `users` para o callback HTTPS do aplicativo, sem reaplicar a inicial ou alterar templates administrativos.
 - `.env.example`: nomes das variáveis, sem segredos.
 
 ## Instalação no Dokploy
@@ -62,7 +63,7 @@ O `.env` do antigo projeto Node permaneceu no diretório anterior e não foi lid
 
 - Identidade **Trocado**, cor `#237A4B`, remetente `Trocado <contato@cordato.cloud>`.
 - SMTP `smtp.resend.com:465`, TLS, usuário `resend`, AUTH `PLAIN`. O domínio remetente precisa estar autorizado no Resend.
-- Templates HTML pt-BR de confirmação, recuperação, troca de e-mail, OTP e alerta de login; sem recursos externos. Links usam as telas nativas `/_/#/auth/.../{TOKEN}`.
+- Templates HTML pt-BR de confirmação, recuperação, troca de e-mail, OTP e alerta de login; sem recursos externos. A inicial usa telas nativas `/_/#/auth/.../{TOKEN}`. A migration incremental de app links troca somente a verificação de `users` para `https://app.cordato.cloud/authentication/confirm-email?token={TOKEN}`; os demais destinos permanecem nativos.
 - Todos os templates usam Trocado, nome no topo em 28 px, título em 24 px e corpo em 16 px; OTP em 22 px. Nome no topo e código OTP usam texto verde `#237A4B`, sem faixa de fundo ou linha verde sob o nome. Botões de ação usam fundo verde e texto branco. A cor também é usada no painel e tem contraste de aproximadamente 5,4:1 com branco. Essa identidade está na migration inicial, exclusiva para banco novo; redeploy em banco já provisionado não atualiza a cor do painel nem os templates. Domínio e endereço do remetente permanecem inalterados.
 - Superusuário com senha, OTP de seis caracteres/180 segundos, MFA de 600 segundos e alerta de novo login. Não existe conta técnica de worker. Garantir acesso à caixa administrativa e entrega SMTP antes de operar; não desabilitar MFA para contornar problemas de envio.
 - Rate limits nativos: `*:auth` **4/3s**, `*:create` **30/6s**, `/api/` **300/10s**, sem IPs excluídos. Batch desabilitado.
@@ -109,6 +110,15 @@ await pb.collection('users').requestVerification(email);
 ```
 
 Reenvio, recuperação e troca de e-mail usam endpoints nativos. O SDK envia o token automaticamente após login. Não enviar senha, tokenKey, verified ou timestamps em atualizações genéricas de perfil.
+
+Antes de publicar a migration de app links, hospedar e homologar os arquivos de
+associação de `app.cordato.cloud`, conforme
+[app_links/README.md](../app_links/README.md). Ela preserva assunto e HTML do
+template, substituindo as ocorrências do destino padrão; se já houver somente
+o destino novo, não grava novamente. Destino personalizado não reconhecido bloqueia
+a migration para revisão explícita. Não altera `_superusers`, SMTP, credenciais,
+registros ou envio inicial. Aplicação no servidor exige deploy autorizado,
+preservando volume e chave. Os links de e-mails anteriores não são reescritos.
 
 ### `expenses`
 

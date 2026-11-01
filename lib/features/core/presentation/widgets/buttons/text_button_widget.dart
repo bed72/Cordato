@@ -17,20 +17,18 @@ final class const TextButtonWidget({
     onPress: (isLoading ?? false) ? null : onTap,
     child: TextButton(
       onPressed: (isLoading ?? false) ? null : onTap,
-      style:
-          ((isLoading ?? false)
-                  ? Theme.of(context).textButtonTheme.style?.loadingStyle
-                  : Theme.of(context).textButtonTheme.style)
-              ?.merge(
-                TextButton.styleFrom(
-                  padding: .zero,
-                  minimumSize: .zero,
-                  alignment: .centerLeft,
-                  tapTargetSize: .shrinkWrap,
-                  overlayColor: Colors.transparent,
-                  backgroundColor: Colors.transparent,
-                ),
-              ),
+      style: TextButton.styleFrom(
+        padding: .zero,
+        minimumSize: .zero,
+        alignment: .centerLeft,
+        tapTargetSize: .shrinkWrap,
+        overlayColor: Colors.transparent,
+        backgroundColor: Colors.transparent,
+      ).merge(
+        (isLoading ?? false)
+            ? Theme.of(context).textButtonTheme.style?.loadingStyle
+            : Theme.of(context).textButtonTheme.style,
+      ),
       child: SwitcherAnimation(
         child: (isLoading ?? false)
             ? Builder(

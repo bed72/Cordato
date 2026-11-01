@@ -71,22 +71,30 @@ a validação da navegação em dispositivo.**
 Authentication já possui contrato em application e repository em infrastructure.
 Sign-in, cadastro e reenvio usam Bloc, controle de submissões concorrentes, falhas tipadas
 e testes de Bloc/tela. Cadastro mantém erros por campo, retry manual e navegação
-para confirmação sem criar sessão. O primeiro envio de verificação fica disponível
-imediatamente; cooldown de 60 segundos começa após sucesso. Falha permite retry
-manual imediato, sem criar sessão.
+para confirmação sem criar sessão. Ao abrir a confirmação após o cadastro, o
+primeiro envio de verificação é automático; cooldown de 60 segundos começa após
+sucesso. Falha informa que a conta foi criada e permite retry manual imediato,
+sem repetir o cadastro nem criar sessão.
 Cadastro envia `email`, `password` e `passwordConfirm` para
 `collections/users/records`, sem token. A resposta 200 é um record; o contrato
 consome somente a conclusão, sem persistir dados ou autenticar. O envio de e-mail
-é separado, pelo botão Reenviar (`collections/users/request-verification`, 204),
-sem envio automático no cadastro nem garantia de entrega pelo cliente.
+usa uma operação separada (`collections/users/request-verification`, 204),
+disparada automaticamente pela confirmação e manualmente pelo botão Reenviar.
+O ResendEmailBloc bloqueia o botão durante envio e cooldown; o cliente não garante
+entrega na caixa de entrada.
 Confirmação por link usa Bloc: recebe `token` pela query, envia POST para
 `collections/users/confirm-verification` e trata 204 como sucesso e 400 como
 inválido/expirado, sem criar sessão. Resultados obsoletos são ignorados.
 Para confirmar no app, o template de verificação da coleção `users` deve apontar
 para `https://app.cordato.cloud/authentication/confirm-email?token={TOKEN}`.
-O template/backend não foi alterado: enquanto apontar para a página padrão do
-PocketBase, a confirmação ocorre no navegador, não no callback Flutter. A entrega
-nativa do app link depende da configuração do domínio/dispositivo e não foi homologada.
+A migration `backend/pb_migrations/1793577600_users_verification_app_link.js`
+atualiza somente o destino do template de verificação de `users`, sem reaplicar
+a inicial nem alterar templates administrativos. Android e iOS já declaram o
+domínio. O gerador `tool/app_links.dart` prepara somente os arquivos de associação;
+publicação, certificados, profiles Apple e
+homologação em dispositivo ainda são necessários. Consulte
+[app_links/README.md](app_links/README.md) para a ordem de ativação. Nenhuma
+alteração local comprova deploy, entrega de e-mail ou abertura automática do app.
 Logout usa `LogoutBloc` na apresentação de Settings, consumindo o contrato de
 Authentication. `signOut` aguarda a limpeza local do storage, sem request HTTP
 ou revogação do JWT no servidor. Mantém confirmação, loading e retry manual em
