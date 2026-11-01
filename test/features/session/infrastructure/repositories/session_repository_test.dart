@@ -14,7 +14,7 @@ void main() {
 
   setUp(() {
     storage = StorageClientMock();
-    repository = SessionRepository(storage: storage);
+    repository = SessionRepository(client: storage);
   });
 
   for (final scenario in [

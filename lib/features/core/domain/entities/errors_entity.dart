@@ -10,6 +10,7 @@ final class const ErrorsEntity({required final List<ErrorEntity> errors}) {
 }
 
 final class const ErrorEntity({
+  final String? code,
   final String? title,
   final String? detail,
   final String? status,

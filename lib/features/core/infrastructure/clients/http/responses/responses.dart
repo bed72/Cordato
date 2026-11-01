@@ -22,9 +22,36 @@ final class const ErrorsResponse({required final List<ErrorResponse> errors}) {
       ),
     ],
   );
+
+  factory ErrorsResponse.fromPocketBaseJson(
+    Map<String, dynamic> json, {
+    required int status,
+  }) {
+    final message = json['message'] as String;
+    final data = json['data'] as Map<String, dynamic>;
+    final errors = data.entries.map((entry) {
+      final error = entry.value as Map<String, dynamic>;
+      final field = entry.key.replaceAll('~', '~0').replaceAll('/', '~1');
+      return ErrorResponse(
+        code: error['code'] as String,
+        title: message,
+        detail: error['message'] as String,
+        status: status.toString(),
+        pointer: '/$field',
+        parameter: entry.key,
+      );
+    }).toList();
+
+    return ErrorsResponse(
+      errors: errors.isEmpty
+          ? [ErrorResponse(status: status.toString(), detail: message)]
+          : errors,
+    );
+  }
 }
 
 final class const ErrorResponse({
+  final String? code,
   final String? title,
   final String? detail,
   final String? status,
@@ -48,6 +75,7 @@ extension ErrorsResponseToEntity on ErrorsResponse {
           errors: errors
               .map(
                 (error) => ErrorEntity(
+                  code: error.code,
                   title: error.title,
                   detail: error.detail,
                   status: error.status,

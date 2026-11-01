@@ -41,19 +41,25 @@ build em `backend/`. Ele não depende do build Flutter e não deve receber arqui
 ou segredos do aplicativo.
 
 A configuração foi trazida do repositório backend anterior; nenhum banco, volume,
-segredo ou histórico Git foi transferido. O aplicativo **ainda não foi migrado**
-para a API PocketBase; os contratos Flutter descritos abaixo permanecem como estão.
+segredo ou histórico Git foi transferido. A migração do aplicativo para PocketBase
+começou pelo sign-in; os demais fluxos ainda mantêm o contrato anterior.
 
 | Parte | Estado atual |
 | --- | --- |
 | Backend em `backend/` | Contas e despesas próprias nas coleções `users` e `expenses`; contrato nativo PocketBase. |
-| Cliente Flutter em `lib/` | Continua usando endpoints, envelopes JSON:API e sessão do contrato anterior. |
+| Cliente Flutter em `lib/` | Sign-in usa `collections/users/auth-with-password`, payload `identity`/`password` e resposta `token`/`record`. Demais operações mantêm JSON:API e o contrato anterior. |
 | Metrics e sugestões | Existem no cliente; não há implementação equivalente no backend PocketBase atual. |
 | Budget e Family | Planejados; não implementados no backend atual nem nas features Flutter. |
 | Integração e operação | Migração do cliente, homologação integrada e validação no Dokploy ainda pendentes. |
 
 Trocar apenas `BASE_URL` não integra o aplicativo ao PocketBase. Autenticação,
 erros, paginação, datas e recursos disponíveis possuem contratos diferentes.
+O Flutter mantém `HttpClient`/`IHttpClient` com Dio, interceptors e o contrato HTTP
+anterior nas operações não migradas. O SDK PocketBase não está integrado. O login
+aceita erros nativos PocketBase (400 por campo ou mensagem geral), mas logout,
+cadastro, verificação e recursos autenticados ainda precisam de migração. Mantenha
+`/api/` na base, por exemplo `https://pocketbase.cordato.cloud/api/`. Esta adaptação
+não representa homologação integrada nem migração das sessões existentes.
 Veja os [limites da integração](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração).
 
 ## Estado Do Projeto
@@ -186,7 +192,6 @@ As descrições dos fluxos Flutter acima não comprovam suporte pelo novo backen
 - `flutter_modular` 7 para composição, DI e rotas.
 - Material 3 via `material_ui`, fonte Inter e localização pt-BR.
 - Dio para HTTP JSON:API e `flutter_secure_storage` para persistência segura.
-- Notificações locais com `flutter_local_notifications`.
 - `flutter_test`, `bloc_test`, `mocktail` e Maestro para testes.
 
 ## Desenvolvimento

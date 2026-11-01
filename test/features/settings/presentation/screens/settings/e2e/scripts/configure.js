@@ -10,11 +10,9 @@ var result = http.post(TEST_SERVER + '/__test/reset', {
   body: JSON.stringify({
     email: EMAIL,
     password: PASSWORD,
-    responses: [{status: 200, body: {data: {
-      type: 'access-tokens',
-      attributes: {token: 'e2e-opaque-token'},
-      relationships: {user: {data: {type: 'users', id: 'e2e-user'}}}
-    }}}],
+    responses: [{status: 200, body: {
+      token: 'e2e-opaque-token', record: {id: 'e2e-user'}
+    }}],
     logoutResponses: logoutResponses
   })
 });

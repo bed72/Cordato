@@ -18,7 +18,9 @@ final class HttpResponseException({
   factory HttpResponseException.fromResponse(Responses response) {
     ErrorsResponse errors;
     try {
-      errors = .fromJson(response.body);
+      errors = response.body.containsKey('errors')
+          ? .fromJson(response.body)
+          : .fromPocketBaseJson(response.body, status: response.status);
     } on TypeError {
       errors = .unknown();
     } on FormatException {

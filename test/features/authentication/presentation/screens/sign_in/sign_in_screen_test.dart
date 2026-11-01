@@ -36,14 +36,14 @@ void main() {
   const fieldErrors = ErrorsEntity(
     errors: [
       ErrorEntity(
-        status: '422',
-        pointer: '/data/attributes/email',
+        status: '400',
+        pointer: '/identity',
         detail: 'E-mail rejeitado pela API.',
       ),
       ErrorEntity(
-        status: '422',
+        status: '400',
         detail: 'Senha rejeitada pela API.',
-        pointer: '/data/attributes/password',
+        pointer: '/password',
       ),
     ],
   );

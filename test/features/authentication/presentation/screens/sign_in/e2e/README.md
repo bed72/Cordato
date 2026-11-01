@@ -64,6 +64,15 @@ serviços externos e oferece respostas mínimas para a Dashboard.
 
 ## Limites
 
+O servidor de fixtures recebe `POST /api/collections/users/auth-with-password`
+com `identity` e `password`. Respostas de sucesso devem ter `token` e `record.id`;
+falhas nativas usam `status`, `message` e `data`. As respostas mínimas da Dashboard
+permanecem no contrato anterior, não validando sua integração com PocketBase.
+
+Neste checkout, os scripts `scripts/configure.js`, `scripts/stats.js` e
+`scripts/release.js` referenciados pelos flows estão ausentes. A execução E2E
+fica bloqueada até restaurá-los/adaptá-los; os YAMLs não são evidência de execução.
+
 Os três flows cobrem os estados principais, não todas as combinações possíveis.
 Falhas de storage, descarte, erros inesperados, limites de senha e classificação
 HTTP continuam sendo responsabilidade dos testes unitários correspondentes.

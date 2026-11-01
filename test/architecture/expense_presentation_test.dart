@@ -15,7 +15,9 @@ void main() {
         'package:command_it/',
         '/presentation/commands/',
         '/infrastructure/',
+        'package:pocketbase/',
         'package:dio/',
+        'package:http/',
         'package:flutter_secure_storage/',
       ]) {
         if (source.contains(forbidden)) {

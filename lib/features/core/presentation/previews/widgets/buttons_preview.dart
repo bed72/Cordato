@@ -75,7 +75,7 @@ Widget previewIconAndBackButtonWidgets() => _buttonShell(
       spacing: 20.0,
       children: [
         IconButtonWidget(
-          icon: Icons.notifications_none_rounded,
+          icon: Icons.settings_outlined,
           onPress: () {},
           iconColor: Theme.of(context).colorScheme.onPrimary,
           backgroundColor: Theme.of(context).colorScheme.primary,

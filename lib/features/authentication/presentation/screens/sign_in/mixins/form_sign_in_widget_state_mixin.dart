@@ -17,12 +17,15 @@ mixin FormSignInWidgetStateMixin on State<FormSignInWidget> {
     final passwordMessages = <String>[];
 
     for (final error in errors) {
-      if (error.status == '422' && error.detail != null) {
+      if ((error.status == '400' || error.status == '422') &&
+          error.detail != null) {
         switch (error.pointer) {
+          case '/identity':
           case '/data/attributes/email':
             emailMessages.add(error.detail!);
             continue;
           case '/data/attributes/password':
+          case '/password':
             passwordMessages.add(error.detail!);
             continue;
         }

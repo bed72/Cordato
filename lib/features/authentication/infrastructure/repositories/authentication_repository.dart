@@ -103,12 +103,7 @@ final class AuthenticationRepository({
       final response = await _httpClient.post(
         parameter: Requests(
           path: HttpPathEnum.signIn.path,
-          body: {
-            'data': {
-              'type': 'access-tokens',
-              'attributes': {'email': email, 'password': password},
-            },
-          },
+          body: {'identity': email, 'password': password},
         ),
       );
 

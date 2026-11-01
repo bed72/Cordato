@@ -4,8 +4,6 @@ appId: com.bed.cordato
 - launchApp:
     clearState: true
     clearKeychain: true
-    permissions:
-      notifications: allow
 - extendedWaitUntil:
     visible: Continuar
     timeout: 15000

@@ -11,7 +11,10 @@ próprias em [backend/AGENTS.md](backend/AGENTS.md). A presença do backend nest
 repositório não significa que o aplicativo já consuma sua API. Não migrar o cliente
 Flutter nem executar deploy como parte de manutenção localizada do backend.
 
-PocketBase é o backend adotado, mas o cliente ainda usa o contrato HTTP anterior.
+PocketBase é o backend adotado. Sign-in já usa o contrato nativo de
+`collections/users/auth-with-password`; os demais fluxos ainda usam o contrato
+HTTP anterior. O JWT permanece na chave histórica `opaqueToken`, sem migração
+das sessões existentes.
 Descrições JSON:API, token opaco, revogação remota e callback assinado neste
 documento referem-se ao Flutter atual, não a requisitos para recriar a API antiga
 no PocketBase. Não trate troca de `BASE_URL` como integração. Diferenças e lacunas
@@ -205,8 +208,10 @@ Dashboard, previews e testes próprios. Não restaurá-la a partir de specs hist
 - Formulário mantém entrada, validação e erros por campo localmente. No sign-in,
   o validator remove espaços do e-mail, mas preserva a senha; Bloc e repository
   delegam os valores recebidos sem outra normalização.
-- Desabilite campos e envio conforme o estado. Mapeie erros 422 conhecidos por
-  pointer e mostre somente os restantes em toast, com fallback seguro.
+- Desabilite campos e envio conforme o estado. No sign-in, mapeie erros PocketBase
+  400 pelos pointers `/identity` (e-mail) e `/password`, preservando `code` e
+  `parameter` na conversão HTTP. Erros 422 legados conhecidos por pointer continuam
+  aceitos. Mostre somente os restantes em toast, com fallback seguro.
 - Preserve entrada após falha; editar limpa somente o erro do campo correspondente.
 - No sign-in, sucesso não navega diretamente: a observação global da sessão
   continua responsável pelo redirecionamento.

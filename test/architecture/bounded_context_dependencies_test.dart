@@ -9,6 +9,7 @@ final _importPattern = RegExp(
 const _financialContexts = {'expense', 'budget', 'family'};
 const _forbiddenDomainImports = {
   'package:dio/',
+  'package:http/',
   'package:bloc/',
   'package:flutter_bloc/',
   'package:bloc_concurrency/',
@@ -19,6 +20,8 @@ const _forbiddenDomainImports = {
 };
 const _forbiddenPresentationImports = {
   'package:dio/',
+  'package:pocketbase/',
+  'package:http/',
   'package:supabase_flutter/',
   'package:flutter_secure_storage/',
 };
@@ -237,7 +240,10 @@ void main() {
   test('keeps migrated contexts on direct repository results without data sources', () {
     final violations = <String>[];
     for (final file in _dartFiles().where(
-      (file) => file.uri.pathSegments.contains('user') || file.uri.pathSegments.contains('metrics') || file.uri.pathSegments.contains('expense'),
+      (file) =>
+          file.uri.pathSegments.contains('user') ||
+          file.uri.pathSegments.contains('metrics') ||
+          file.uri.pathSegments.contains('expense'),
     )) {
       final source = file.readAsStringSync();
       if (source.contains('features/core/domain/either.dart') ||
@@ -266,20 +272,27 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
-  test('keeps User and Metrics presentation on Bloc without legacy commands', () {
-    final violations = <String>[];
-    for (final file in _dartFiles().where(
-      (file) => file.path.startsWith('lib/features/user/') || file.path.startsWith('lib/features/metrics/'),
-    )) {
-      final source = file.readAsStringSync();
-      if (file.uri.pathSegments.contains('commands') ||
-          source.contains('package:command_it/') ||
-          source.contains('presentation/commands/')) {
-        violations.add('${file.path}: migrated contexts must use Bloc, not commands');
+  test(
+    'keeps User and Metrics presentation on Bloc without legacy commands',
+    () {
+      final violations = <String>[];
+      for (final file in _dartFiles().where(
+        (file) =>
+            file.path.startsWith('lib/features/user/') ||
+            file.path.startsWith('lib/features/metrics/'),
+      )) {
+        final source = file.readAsStringSync();
+        if (file.uri.pathSegments.contains('commands') ||
+            source.contains('package:command_it/') ||
+            source.contains('presentation/commands/')) {
+          violations.add(
+            '${file.path}: migrated contexts must use Bloc, not commands',
+          );
+        }
       }
-    }
-    expect(violations, isEmpty, reason: violations.join('\n'));
-  });
+      expect(violations, isEmpty, reason: violations.join('\n'));
+    },
+  );
 
   test('requires financial writes to use RPCs', () {
     final violations = <String>[];

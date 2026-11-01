@@ -41,7 +41,7 @@ class SignInFixtureHandler(BaseHTTPRequestHandler):
     def respond(self, status, body):
         encoded = json.dumps(body).encode('utf-8')
         self.send_response(status)
-        self.send_header('Content-Type', 'application/vnd.api+json')
+        self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(encoded)))
         self.end_headers()
         try:
@@ -64,7 +64,7 @@ class SignInFixtureHandler(BaseHTTPRequestHandler):
             state.release.set()
             self.respond(200, state.snapshot())
             return
-        if path != '/api/authentication/sign-in':
+        if path != '/api/collections/users/auth-with-password':
             with state.lock:
                 state.unexpected.append('POST ' + path)
             self.respond(404, {'errors': [{'detail': 'Fixture ausente'}]})
@@ -82,13 +82,8 @@ class SignInFixtureHandler(BaseHTTPRequestHandler):
                 'body': {'errors': [{'detail': 'Resposta não configurada'}]},
             }
             expected = {
-                'data': {
-                    'type': 'access-tokens',
-                    'attributes': {
-                        'email': configuration.get('email', 'Person@Example.com'),
-                        'password': configuration.get('password', 'Teste1'),
-                    },
-                },
+                'identity': configuration.get('email', 'Person@Example.com'),
+                'password': configuration.get('password', 'Teste1'),
             }
             state.credentials_match = state.credentials_match and body == expected
 

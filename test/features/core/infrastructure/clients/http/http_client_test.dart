@@ -48,6 +48,86 @@ void main() {
 
   tearDown(() => dio.close(force: true));
 
+  test(
+    'converts PocketBase field errors preserving order and metadata',
+    () async {
+      status = 400;
+      body = '{"status":400,"message":"Failed to authenticate.","data":{"identity":{"code":"validation_required","message":"Missing required value."},"password":{"code":"validation_required","message":"Missing password."}}}';
+
+      await expectLater(
+        client.post(
+          parameter: const Requests(
+            path: 'collections/users/auth-with-password',
+          ),
+        ),
+        throwsA(
+          isA<HttpResponseException>()
+              .having((error) => error.status, 'status', 400)
+              .having((error) => error.errors.errors.length, 'length', 2)
+              .having(
+                (error) => error.errors.toEntity().errors.first.code,
+                'code',
+                'validation_required',
+              )
+              .having(
+                (error) => error.errors.errors.first.title,
+                'title',
+                'Failed to authenticate.',
+              )
+              .having(
+                (error) => error.errors.errors.first.detail,
+                'detail',
+                'Missing required value.',
+              )
+              .having(
+                (error) => error.errors.errors.first.pointer,
+                'pointer',
+                '/identity',
+              )
+              .having(
+                (error) => error.errors.errors.first.parameter,
+                'parameter',
+                'identity',
+              )
+              .having(
+                (error) => error.errors.errors.last.pointer,
+                'last pointer',
+                '/password',
+              ),
+        ),
+      );
+    },
+  );
+
+  test('preserves a PocketBase failure without field errors', () async {
+    status = 400;
+    body = '{"status":400,"message":"Failed to authenticate.","data":{}}';
+
+    await expectLater(
+      client.post(
+        parameter: const Requests(path: 'collections/users/auth-with-password'),
+      ),
+      throwsA(
+        isA<HttpResponseException>()
+            .having(
+              (error) => error.errors.errors.single.detail,
+              'detail',
+              'Failed to authenticate.',
+            )
+            .having(
+              (error) => error.errors.errors.single.status,
+              'status',
+              '400',
+            )
+            .having(
+              (error) => error.errors.errors.single.pointer,
+              'pointer',
+              isNull,
+            ),
+      ),
+    );
+  });
+
   test('sends every HTTP method with its request body', () async {
     final operations = <String, Future<Responses> Function()>{
       'GET': () => client.get(parameter: const Requests(path: 'items')),

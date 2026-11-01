@@ -3,16 +3,6 @@
 Android release builds require a dedicated signing key. Never use the Android
 debug key or commit signing material, passwords, aliases, or `key.properties`.
 
-## Local Notifications
-
-`flutter_local_notifications` uses the existing `ic_notification` drawable and
-the `cordato_default` channel. `app/src/main/res/raw/keep.xml` retains that icon
-when release resource shrinking is enabled. Core library desugaring is enabled
-with `com.android.tools:desugar_jdk_libs:2.1.4`; Java and Kotlin remain at 21.
-The current implementation only shows immediate notifications and does not
-require exact-alarm or boot receivers. Runtime notification permission remains
-an explicit consumer action, not part of client initialization.
-
 ## Signing Configuration
 
 Use one of the following secure configuration boundaries. Environment variables

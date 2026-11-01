@@ -149,7 +149,7 @@ Novos contratos retornam dados diretamente em `Future<T>`, sem `Either`.
 Implementa contratos de application e coordena clients, payloads, DTOs e storage.
 `AuthenticationRepository`, em `infrastructure/repositories/`, recebe
 `IHttpClient` e `IStorageClient` do core diretamente. Não usa data sources,
-Dio diretamente, BuildContext, Modular ou Bloc.
+BuildContext, Modular ou Bloc.
 
 DTOs ficam em `infrastructure/responses/`, usam Dart puro e não atravessam o
 contrato de aplicação. Casts e parsing inválidos devem falhar explicitamente;
@@ -202,10 +202,10 @@ insights ou sugestões remotas.
 
 | Aspecto | Flutter atual | PocketBase atual |
 | --- | --- | --- |
-| Transporte | Endpoints próprios e envelopes JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
-| Autenticação | Token opaco/ID em storage; logout revoga remotamente. | Autenticação nativa da coleção `users`; não reproduz o contrato anterior de logout. |
+| Transporte | Sign-in nativo PocketBase; demais endpoints mantêm JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
+| Autenticação | Sign-in persiste JWT e `record.id` nas chaves existentes; logout ainda usa revogação do contrato anterior. | Autenticação nativa da coleção `users`; não reproduz o contrato anterior de logout. |
 | Confirmação | URL assinada recebida pelo callback Flutter. | Verificação nativa; templates apontam para telas PocketBase. Cadastro não envia confirmação automaticamente. |
-| Erros e paginação | Erros com pointer/parameter e links de continuação opacos. | Formatos nativos PocketBase; exigem adaptação em infrastructure. |
+| Erros e paginação | HTTP aceita erros JSON:API e PocketBase; sign-in mapeia 400 de `identity`/`password` aos campos. Paginação anterior preservada. | Formatos nativos PocketBase; demais consumidores exigem adaptação em infrastructure. |
 | Datas de despesas | Semântica de data civil. | `occurred_on` opcional como Date UTC, sem default. |
 | Categoria | Contrato e validação atuais do cliente. | Select opcional; vazio não significa `other`. |
 | Recursos derivados | Metrics e sugestões têm consumidores HTTP. | Sem implementação equivalente nesta configuração. |
@@ -216,12 +216,12 @@ antes da integração, sem conversão implícita de fuso ou perda de significado
 
 Trocar a URL não é migração. SDK/adapters, persistência de sessão, mapeamento de
 erros, verificação de e-mail, paginação e destino dos recursos ausentes precisam
-de decisão e implementação próprias. Nenhuma escolha de SDK ou estratégia para
-os recursos ausentes é estabelecida por esta atualização documental.
+de decisão e implementação próprias. O aplicativo mantém `IHttpClient`/`HttpClient`
+com Dio, com adaptação do sign-in e erros nativos; o SDK PocketBase não está integrado ao Flutter.
 
 A arquitetura de camadas Flutter permanece válida. As seções seguintes descrevem
-o código executável atual, incluindo o transporte anterior, e não endpoints a
-recriar no PocketBase. A integração futura deverá atualizar implementação,
+o código executável atual, incluindo o transporte anterior nos demais fluxos, e não endpoints a
+recriar no PocketBase. A continuação da integração deverá atualizar implementação,
 consumidores e testes juntos, sem apresentar fixtures como homologação do serviço.
 Não há migração de dados, contas ou sessões do backend anterior neste trabalho.
 
@@ -234,9 +234,10 @@ Não há migração de dados, contas ou sessões do backend anterior neste traba
    adicional ocorre no evento, Bloc ou repository.
 3. `SignInScreen` envia `SignInSubmittedEvent(email, password)`.
 4. `SignInBloc` publica `SignInSubmitting` e aguarda o contrato `signIn`.
-5. `AuthenticationRepository` envia POST JSON:API para `authentication/sign-in`, com
-   `data.type: access-tokens` e atributos `email` e `password`.
-6. `SignInResponse.fromJson` extrai token e ID do usuário do relacionamento.
+5. `AuthenticationRepository` envia POST para `collections/users/auth-with-password`,
+   com JSON plano `identity` (e-mail) e `password`, relativo à base com `/api/`.
+6. `SignInResponse.fromJson` extrai `token` e `record.id`. Campos adicionais como
+   `verified` não são reinterpretados pelo cliente; a política de login é do backend.
 7. O repository aguarda as duas gravações por `Future.wait` antes de concluir.
 8. O Bloc publica sucesso ou falha. A navegação de sucesso pertence à observação
    global da sessão, não ao listener de SignInScreen.
@@ -287,7 +288,8 @@ No Bloc:
 `addError` usa o mecanismo do Bloc; não representa, por si só, integração
 automática com telemetria. O Bloc não recebe client nem callback de telemetry.
 
-Na UI, erros 422 com pointers conhecidos e detalhe vão para os campos. Os
+Na UI, erros PocketBase 400 com `/identity` e `/password` vão para os campos de
+e-mail e senha. Erros 422 legados com pointers conhecidos também são aceitos. Os
 restantes vão para toast, sem duplicação; ausência de mensagens usa fallback
 localizado. Editar limpa somente o erro daquele campo. Falha preserva a entrada.
 
@@ -745,14 +747,13 @@ Dashboard agora compõe somente resultados diretos de User, Metrics e
 Expense, sem Either. Uma falha no histórico continua sendo desconhecimento do
 limite inicial, não um histórico vazio confirmado. Falhas esperadas isoladas nas
 seções preservam a `ErrorsEntity` mesmo envolvidas em `ParallelWaitError`.
-Previews e testes consumidores usam entidades/resultados diretos. O teste de
-SessionInterceptor usa o repository real no lugar do data source removido.
+Previews e testes consumidores usam entidades/resultados diretos.
 
 ### Clients Compartilhados
 
-`coreDependenciesModule` registra Dio, `IHttpClient` e `IStorageClient`.
-`BASE_URL` padrão: `https://app.cordato.cloud/api/`. Bases devem preservar `/api/`;
-a factory acrescenta a barra final quando necessário.
+`coreModule` registra Dio, `IHttpClient` e `IStorageClient` como singletons lazy.
+`BASE_URL` padrão: `https://app.cordato.cloud/api/`. Bases preservam `/api/`;
+`DioFactory` acrescenta a barra final quando necessário.
 
 `Requests` possui somente `path`, `body`, `query` e `headers`. Caminhos fixos
 usam `HttpPathEnum`; IDs são codificados por `Uri.encodeComponent` no adapter
@@ -770,13 +771,18 @@ mapa vazio; corpo incompatível ou status ausente produz erro tipado.
 | `HttpUnexpectedException` | Falha Dio não classificada como transporte, sem expor causas internas. |
 
 `ErrorsResponse` converte erros para `ErrorsEntity`, incluindo `pointer` e
-`parameter` distintos. Não exponha mensagens internas ou exceções de SDK à UI.
+`parameter` distintos. Para PocketBase, converte `data.<campo>.code`/`message`,
+preserva a ordem e o status HTTP, gera pointer `/<campo>` e usa o nome original
+em `parameter`. Sem erros de campo, preserva a mensagem geral. JSON:API continua
+aceito. Não exponha mensagens internas ou exceções de SDK à UI.
 
-Headers JSON:API e Bearer pertencem aos interceptors. O SessionInterceptor só
+Headers pertencem aos interceptors: caminhos de coleções PocketBase usam
+`application/json`; os demais preservam JSON:API. Bearer permanece no
+SessionInterceptor, que só
 anexa token aos endpoints relativos protegidos reconhecidos na origem/base da
-API, incluindo recursos suportados de User e Expense. URLs absolutas não
-recebem token. Um 401 protegido remove apenas o token enviado, e somente se
-ainda for o valor armazenado; não limpa o ID nem uma sessão mais recente.
+API. URLs absolutas não recebem token. Um 401 protegido remove apenas o token
+enviado, e somente se ainda for o valor armazenado; não limpa o ID nem uma
+sessão mais recente.
 
 Storage seguro usa `FlutterSecureStorage` por `IStorageClient`. As chaves são
 `StorageKeyEnum.opaqueToken` (`@trocado.opaque_token`) e `userId`
@@ -796,10 +802,8 @@ da apresentação. Confirmação recebe URL assinada sem reconstrução ou valid
 local de host/assinatura: vazio ou 403 significa inválida, 204 sucesso e demais
 resultados tratados pelo contrato significam falha; não cria sessão.
 
-O logger Dio de debug atual registra headers e payloads sensíveis, inclusive
-credenciais e URLs assinadas; não está instalado em release. Não considere esse
-comportamento uma política segura nem amplie exposição em logs novos. Não há
-política específica configurada de redirecionamento para URLs absolutas.
+O logger Dio de debug não imprime bodies nem headers. Não registre credenciais,
+tokens ou URLs assinadas em logs novos.
 
 ## Composição, Rotas E Bootstrap
 
@@ -893,9 +897,8 @@ serviços remotos. Não há client de crash reporting ou push remoto registrado
 no core; os handlers padrão do Flutter e da plataforma são preservados.
 `addError` usa o mecanismo de Bloc, sem envio automático a serviços externos.
 
-NotificationClient encapsula o plugin de notificações locais, exige
-`initialize()` antes de `show` e usa o canal `cordato_default`. Não há integração
-automática de navegação por toque ou recebimento de notificações remotas.
+Notificações locais foram removidas, incluindo client, plugin, botão da
+Dashboard, permissão Android e configuração iOS.
 
 ## Interface, Dart E Previews
 
@@ -1041,7 +1044,7 @@ inspecionar strings de RouteEnum não prova composição Modular.
 A suíte atual ainda não garante integralmente esse contrato. Possui checks
 Supabase/RPC históricos, helper que reconhece apenas contextos financeiros e
 exceção específica para o contrato de Authentication em application. As listas
-atuais já incluem Dio entre SDKs proibidos. Migrações devem atualizar os checks
+atuais incluem Dio, PocketBase e HTTP entre SDKs proibidos. Migrações devem atualizar os checks
 para a regra geral de contratos de aplicação, não liberar infrastructure na UI.
 
 ## Estado Atual E Migração

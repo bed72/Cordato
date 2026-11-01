@@ -59,14 +59,8 @@ void main() {
         (_) async => const Responses(
           status: 200,
           body: {
-            'data': {
-              'attributes': {'token': 'fixture-token'},
-              'relationships': {
-                'user': {
-                  'data': {'id': 'fixture-user'},
-                },
-              },
-            },
+            'token': 'fixture-token',
+            'record': {'id': 'fixture-user'},
           },
         ),
       );

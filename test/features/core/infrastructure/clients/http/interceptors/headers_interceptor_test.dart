@@ -6,6 +6,41 @@ import 'package:cordato/features/core/infrastructure/clients/http/interceptors/h
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 
 void main() {
+  test('uses JSON headers for PocketBase collection requests', () async {
+    final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
+      ..interceptors.add(HeadersInterceptor());
+    addTearDown(() => dio.close(force: true));
+    RequestOptions? captured;
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          captured = options;
+          handler.resolve(
+            Response<Map<String, dynamic>>(
+              requestOptions: options,
+              statusCode: 200,
+              data: {},
+            ),
+          );
+        },
+      ),
+    );
+
+    await HttpClient(dio: dio).post(
+      parameter: const Requests(
+        path: 'collections/users/auth-with-password',
+        body: {'identity': 'test@example.com', 'password': 'fixture'},
+      ),
+    );
+
+    expect(
+      captured!.uri.toString(),
+      'https://example.com/api/collections/users/auth-with-password',
+    );
+    expect(captured!.headers[Headers.acceptHeader], Headers.jsonContentType);
+    expect(captured!.contentType, Headers.jsonContentType);
+  });
+
   test('adds JSON:API headers to requests with a body', () async {
     final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
       ..interceptors.add(HeadersInterceptor());

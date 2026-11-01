@@ -23,15 +23,8 @@ void main() {
       'https://other.example/api/email-verification/12/abc?signature=123&expires=456';
 
   const signInBody = <String, dynamic>{
-    'data': {
-      'id': 'token-id',
-      'attributes': {'token': 'opaque-token'},
-      'relationships': {
-        'user': {
-          'data': {'id': 'user-1'},
-        },
-      },
-    },
+    'token': 'fixture-token',
+    'record': {'id': 'user-1', 'verified': false},
   };
 
   late HttpClientMock client;
@@ -56,39 +49,38 @@ void main() {
     ).thenAnswer((_) async {});
   });
 
-  test('sign-in sends credentials unchanged and persists token and relationship user id', () async {
-    when(
-      () => client.post(parameter: any(named: 'parameter')),
-    ).thenAnswer((_) async => const Responses(status: 200, body: signInBody));
+  test(
+    'sign-in sends credentials unchanged and persists token and record id',
+    () async {
+      when(
+        () => client.post(parameter: any(named: 'parameter')),
+      ).thenAnswer((_) async => const Responses(status: 200, body: signInBody));
 
-    await repository.signIn(email: email, password: password);
+      await repository.signIn(email: email, password: password);
 
-    final request =
-        verify(() => client.post(parameter: captureAny(named: 'parameter')))
-                .captured
-                .single
-            as Requests;
+      final request =
+          verify(() => client.post(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
 
-    expect(request.query, isNull);
-    expect(request.headers, isNull);
-    expect(request.path, 'authentication/sign-in');
-    expect(request.body, {
-      'data': {
-        'type': 'access-tokens',
-        'attributes': {'email': email, 'password': password},
-      },
-    });
+      expect(request.query, isNull);
+      expect(request.headers, isNull);
+      expect(request.path, 'collections/users/auth-with-password');
+      expect(request.body, {'identity': email, 'password': password});
 
-    verify(
-      () => storage.write(
-        value: 'opaque-token',
-        key: StorageKeyEnum.opaqueToken.key,
-      ),
-    ).called(1);
-    verify(() => storage.write(key: StorageKeyEnum.userId.key, value: 'user-1'))
-        .called(1);
-    verifyNoMoreInteractions(storage);
-  });
+      verify(
+        () => storage.write(
+          value: 'fixture-token',
+          key: StorageKeyEnum.opaqueToken.key,
+        ),
+      ).called(1);
+      verify(
+        () => storage.write(key: StorageKeyEnum.userId.key, value: 'user-1'),
+      ).called(1);
+      verifyNoMoreInteractions(storage);
+    },
+  );
 
   test('sign-in waits for both storage writes before completing', () async {
     bool completed = false;
@@ -138,6 +130,57 @@ void main() {
     expect(completed, isTrue);
   });
 
+  test(
+    'sign-in exposes PocketBase validation errors without persisting a session',
+    () async {
+      when(() => client.post(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => throw HttpResponseException.fromResponse(
+          const Responses(
+            status: 400,
+            body: {
+              'status': 400,
+              'message': 'Failed to authenticate.',
+              'data': {
+                'identity': {
+                  'code': 'validation_required',
+                  'message': 'Missing required value.',
+                },
+              },
+            },
+          ),
+        ),
+      );
+
+      await expectLater(
+        repository.signIn(email: email, password: password),
+        throwsA(
+          isA<AuthenticationException>()
+              .having(
+                (error) => error.errors.errors.single.code,
+                'code',
+                'validation_required',
+              )
+              .having(
+                (error) => error.errors.errors.single.pointer,
+                'pointer',
+                '/identity',
+              )
+              .having(
+                (error) => error.errors.errors.single.status,
+                'status',
+                '400',
+              )
+              .having(
+                (error) => error.errors.errors.single.detail,
+                'detail',
+                'Missing required value.',
+              ),
+        ),
+      );
+      verifyZeroInteractions(storage);
+    },
+  );
+
   for (final key in [StorageKeyEnum.opaqueToken, StorageKeyEnum.userId]) {
     test('sign-in propagates a failure writing ${key.name}', () async {
       final failure = StateError('storage unavailable');
@@ -166,11 +209,11 @@ void main() {
     () async {
       for (final body in <Map<String, dynamic>>[
         {},
-        {'data': []},
+        {'record': []},
+        {'token': 'token'},
         {
-          'data': {
-            'attributes': {'token': 'token'},
-          },
+          'token': 1,
+          'record': {'id': 'user'},
         },
       ]) {
         when(() => client.post(parameter: any(named: 'parameter')))
@@ -193,14 +236,8 @@ void main() {
         (_) async => const Responses(
           status: 200,
           body: {
-            'data': {
-              'attributes': {'token': 'token', 'expires_at': 'invalid'},
-              'relationships': {
-                'user': {
-                  'data': {'id': 'user'},
-                },
-              },
-            },
+            'token': 'token',
+            'record': {'id': 'user', 'created': 'invalid'},
           },
         ),
       );
@@ -270,36 +307,39 @@ void main() {
     verifyZeroInteractions(storage);
   });
 
-  test('sign-up translates a failure received after the request starts', () async {
-    final response = Completer<Responses>();
-    when(() => client.post(parameter: any(named: 'parameter')))
-        .thenAnswer((_) => response.future);
+  test(
+    'sign-up translates a failure received after the request starts',
+    () async {
+      final response = Completer<Responses>();
+      when(() => client.post(parameter: any(named: 'parameter')))
+          .thenAnswer((_) => response.future);
 
-    final pending = repository.signUp(email: email, password: password);
-    final expectation = expectLater(
-      pending,
-      throwsA(
-        isA<AuthenticationException>().having(
-          (error) => error.errors.errors.single.detail,
-          'detail',
-          'E-mail já cadastrado.',
+      final pending = repository.signUp(email: email, password: password);
+      final expectation = expectLater(
+        pending,
+        throwsA(
+          isA<AuthenticationException>().having(
+            (error) => error.errors.errors.single.detail,
+            'detail',
+            'E-mail já cadastrado.',
+          ),
         ),
-      ),
-    );
+      );
 
-    await Future<void>.delayed(Duration.zero);
-    response.completeError(
-      HttpResponseException(
-        status: 422,
-        errors: const ErrorsResponse(
-          errors: [ErrorResponse(detail: 'E-mail já cadastrado.')],
+      await Future<void>.delayed(Duration.zero);
+      response.completeError(
+        HttpResponseException(
+          status: 422,
+          errors: const ErrorsResponse(
+            errors: [ErrorResponse(detail: 'E-mail já cadastrado.')],
+          ),
         ),
-      ),
-    );
+      );
 
-    await expectation;
-    verifyZeroInteractions(storage);
-  });
+      await expectation;
+      verifyZeroInteractions(storage);
+    },
+  );
 
   test(
     'resend sends the email unchanged and accepts an empty 202 response',

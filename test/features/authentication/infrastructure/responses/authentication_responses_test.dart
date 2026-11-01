@@ -4,36 +4,24 @@ import 'package:cordato/features/core/infrastructure/clients/http/responses/resp
 import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
 
 void main() {
-  test(
-    'sign-in reads token and the user relationship rather than the token id',
-    () {
-      final response = SignInResponse.fromJson({
-        'data': {
-          'id': 'access-token-id',
-          'attributes': {'token': 'opaque-token', 'expires_at': 'invalid'},
-          'relationships': {
-            'user': {
-              'data': {'id': 'user-id'},
-            },
-          },
-        },
-      });
+  test('sign-in reads the PocketBase token and record id', () {
+    final response = SignInResponse.fromJson({
+      'token': 'fixture-token',
+      'record': {
+        'id': 'user-id',
+        'verified': false,
+        'email': 'test@example.com',
+      },
+    });
 
-      expect(response.userId, 'user-id');
-      expect(response.token, 'opaque-token');
-    },
-  );
+    expect(response.userId, 'user-id');
+    expect(response.token, 'fixture-token');
+  });
 
   test('sign-in does not require expiration metadata', () {
     final response = SignInResponse.fromJson({
-      'data': {
-        'attributes': {'token': 'token'},
-        'relationships': {
-          'user': {
-            'data': {'id': 'user'},
-          },
-        },
-      },
+      'token': 'token',
+      'record': {'id': 'user'},
     });
 
     expect(response.token, 'token');
@@ -45,31 +33,18 @@ void main() {
     () {
       for (final body in <Map<String, dynamic>>[
         {},
-        {'data': []},
+        {'record': []},
+        {'token': 'token'},
         {
-          'data': {
-            'attributes': {'token': 'token'},
-          },
+          'token': 1,
+          'record': {'id': 'user'},
         },
         {
-          'data': {
-            'attributes': {'token': 1},
-            'relationships': {
-              'user': {
-                'data': {'id': 'user'},
-              },
-            },
-          },
+          'token': 'token',
+          'record': {'id': 1},
         },
         {
-          'data': {
-            'attributes': {'token': 'token'},
-            'relationships': {
-              'user': {
-                'data': {'id': 1},
-              },
-            },
-          },
+          'record': {'id': 'user'},
         },
       ]) {
         expect(() => SignInResponse.fromJson(body), throwsA(isA<TypeError>()));

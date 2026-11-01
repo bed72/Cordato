@@ -4,7 +4,6 @@ import 'package:cordato/features/user/domain/entities/user_entity.dart';
 
 import 'package:cordato/features/dashboard/presentation/widgets/user/user_name_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/menu_button_dashboard_widget.dart';
-import 'package:cordato/features/dashboard/presentation/widgets/notification_button_dashboard_widget.dart';
 
 final class const AppBarDashboardWidget({
   super.key,
@@ -23,14 +22,7 @@ final class const AppBarDashboardWidget({
       actions: [
         Padding(
           padding: const .only(right: 16.0),
-          child: Row(
-            spacing: 8.0,
-            mainAxisSize: .min,
-            children: [
-              const NotificationButtonDashboardWidget(),
-              const MenuButtonDashboardWidget(),
-            ],
-          ),
+          child: const MenuButtonDashboardWidget(),
         ),
       ],
     );

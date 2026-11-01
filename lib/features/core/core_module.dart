@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
@@ -11,7 +10,6 @@ import 'package:cordato/features/core/presentation/formatters/interface_money_fo
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/factories/dio_factory.dart';
-import 'package:cordato/features/core/infrastructure/clients/notification/notification_client.dart';
 
 const _baseUrl = String.fromEnvironment(
   'BASE_URL',
@@ -22,10 +20,6 @@ final coreModule = createModule(
   register: (context) => context
     ..addInstance<String>(_baseUrl)
     ..addInstance<FlutterSecureStorage>(const FlutterSecureStorage())
-    ..addLazySingleton<INotificationClient>(NotificationClient.new)
-    ..addLazySingleton<FlutterLocalNotificationsPlugin>(
-      FlutterLocalNotificationsPlugin.new,
-    )
     ..addLazySingleton<Dio>(
       () => DioFactory.create(
         baseUrl: _baseUrl,

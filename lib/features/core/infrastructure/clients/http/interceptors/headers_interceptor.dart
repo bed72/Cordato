@@ -5,8 +5,11 @@ final class HeadersInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    options.headers.putIfAbsent(Headers.acceptHeader, () => mediaType);
-    if (options.data != null) options.contentType = mediaType;
+    final contentType = options.uri.pathSegments.contains('collections')
+        ? Headers.jsonContentType
+        : mediaType;
+    options.headers.putIfAbsent(Headers.acceptHeader, () => contentType);
+    if (options.data != null) options.contentType = contentType;
 
     handler.next(options);
   }
