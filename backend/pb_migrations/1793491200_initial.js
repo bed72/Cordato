@@ -112,7 +112,7 @@ migrate((app) => {
         collection.verificationTemplate = actionTemplate("Confirme seu e-mail", "Confirme seu endereço de e-mail para acessar sua conta Trocado.", "Confirmar e-mail", "confirm-verification")
         collection.resetPasswordTemplate = actionTemplate("Redefina sua senha", "Recebemos uma solicitação para redefinir sua senha.", "Redefinir senha", "confirm-password-reset")
         collection.confirmEmailChangeTemplate = actionTemplate("Confirme seu novo e-mail", "Confirme a alteração do endereço de e-mail da sua conta Trocado.", "Confirmar novo e-mail", "confirm-email-change")
-        collection.otp.emailTemplate = emailTemplate("Seu código de acesso", '<p>Use este código para continuar seu acesso ao Trocado:</p><p style="padding:16px;background:#93D5A9;text-align:center;font-size:22px;letter-spacing:4px;color:#24332c;"><strong>{OTP}</strong></p><p>Não compartilhe este código.</p>')
+        collection.otp.emailTemplate = emailTemplate("Seu código de acesso", '<p>Use este código para continuar seu acesso ao Trocado:</p><p style="padding:16px;text-align:center;font-size:22px;letter-spacing:4px;color:#93D5A9;"><strong>{OTP}</strong></p><p>Não compartilhe este código.</p>')
         collection.authAlert.emailTemplate = emailTemplate("Novo acesso à sua conta", '<p>Identificamos um acesso à sua conta de um novo local:</p><p style="white-space:pre-wrap;overflow-wrap:anywhere;">{ALERT_INFO}</p><p>Se não reconhece este acesso, altere sua senha.</p>')
     }
     const admin = new Record(superusers)
@@ -191,7 +191,7 @@ migrate((app) => {
     function emailTemplate(title, content) {
         return {
             subject: title + " — {APP_NAME}",
-            body: '<div lang="pt-BR" style="padding:24px 12px;background:#f5f7f6;color:#24332c;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;"><div style="max-width:560px;margin:auto;padding:24px;background:white;border:1px solid #dfe8e2;border-radius:12px;"><p style="color:#24332c;font-size:28px;font-weight:bold;border-bottom:3px solid #93D5A9;">{APP_NAME}</p><h1 style="font-size:24px;">' + title + '</h1><p>Olá!</p>' + content + '<p style="margin-top:24px;">Equipe Trocado</p></div></div>',
+            body: '<div lang="pt-BR" style="padding:24px 12px;background:#f5f7f6;color:#24332c;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;"><div style="max-width:560px;margin:auto;padding:24px;background:white;border:1px solid #dfe8e2;border-radius:12px;"><p style="color:#93D5A9;font-size:28px;font-weight:bold;">{APP_NAME}</p><h1 style="font-size:24px;">' + title + '</h1><p>Olá!</p>' + content + '<p style="margin-top:24px;">Equipe Trocado</p></div></div>',
         }
     }
     function actionTemplate(title, message, label, action) {
