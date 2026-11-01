@@ -60,10 +60,10 @@ O `.env` do antigo projeto Node permaneceu no diretório anterior e não foi lid
 
 ### Settings iniciais
 
-- Identidade **Trocado**, cor `#93D5A9`, remetente `Trocado <contato@cordato.cloud>`.
+- Identidade **Trocado**, cor `#237A4B`, remetente `Trocado <contato@cordato.cloud>`.
 - SMTP `smtp.resend.com:465`, TLS, usuário `resend`, AUTH `PLAIN`. O domínio remetente precisa estar autorizado no Resend.
 - Templates HTML pt-BR de confirmação, recuperação, troca de e-mail, OTP e alerta de login; sem recursos externos. Links usam as telas nativas `/_/#/auth/.../{TOKEN}`.
-- Todos os templates usam Trocado, nome no topo em 28 px, título em 24 px e corpo em 16 px; OTP em 22 px. Nome no topo e código OTP usam texto verde `#93D5A9`, sem faixa de fundo ou linha verde sob o nome. Botões de ação mantêm fundo verde e texto escuro. Essa identidade está na migration inicial, exclusiva para banco novo; redeploy em banco já provisionado não atualiza os templates. Domínio e endereço do remetente permanecem inalterados.
+- Todos os templates usam Trocado, nome no topo em 28 px, título em 24 px e corpo em 16 px; OTP em 22 px. Nome no topo e código OTP usam texto verde `#237A4B`, sem faixa de fundo ou linha verde sob o nome. Botões de ação usam fundo verde e texto branco. A cor também é usada no painel e tem contraste de aproximadamente 5,4:1 com branco. Essa identidade está na migration inicial, exclusiva para banco novo; redeploy em banco já provisionado não atualiza a cor do painel nem os templates. Domínio e endereço do remetente permanecem inalterados.
 - Superusuário com senha, OTP de seis caracteres/180 segundos, MFA de 600 segundos e alerta de novo login. Não existe conta técnica de worker. Garantir acesso à caixa administrativa e entrega SMTP antes de operar; não desabilitar MFA para contornar problemas de envio.
 - Rate limits nativos: `*:auth` **4/3s**, `*:create` **30/6s**, `/api/` **300/10s**, sem IPs excluídos. Batch desabilitado.
 - Proxy: `X-Forwarded-For`, `useLeftmostIP=false`. O Traefik precisa normalizar esse header, e a origem não pode ficar exposta diretamente. A rede compartilhada Dokploy não substitui isolamento entre serviços não confiáveis.
