@@ -11,12 +11,21 @@ próprias em [backend/AGENTS.md](backend/AGENTS.md). A presença do backend nest
 repositório não significa que o aplicativo já consuma sua API. Não migrar o cliente
 Flutter nem executar deploy como parte de manutenção localizada do backend.
 
-PocketBase é o backend adotado. Sign-in já usa o contrato nativo de
-`collections/users/auth-with-password`; os demais fluxos ainda usam o contrato
-HTTP anterior. O JWT permanece na chave histórica `opaqueToken`, sem migração
-das sessões existentes.
-Descrições JSON:API, token opaco, revogação remota e callback assinado neste
-documento referem-se ao Flutter atual, não a requisitos para recriar a API antiga
+PocketBase é o backend adotado. Sign-in, cadastro, solicitação e confirmação de verificação
+usam os endpoints nativos `collections/users/auth-with-password`,
+`collections/users/records`, `collections/users/request-verification` e
+`collections/users/confirm-verification`.
+Sign-out é local: aguarda `IStorageClient.clear()`, sem endpoint HTTP ou revogação
+do JWT no servidor. Falhas do storage propagam e não confirmam sucesso.
+As demais features ainda usam o contrato HTTP anterior.
+O JWT usa `StorageKeyEnum.token` (`@trocado.token`), sem migração automática das
+sessões das chaves anteriores. Cadastro não cria sessão nem envia e-mail automaticamente;
+a solicitação de verificação permanece separada pelo botão de reenvio.
+O primeiro envio é imediato; cooldown de 60 segundos começa somente após sucesso.
+Callback recebe exatamente um `token` na query, nunca uma URL remota para GET.
+Token de verificação não pertence ao estado do Bloc nem aos logs.
+Descrições JSON:API e token opaco neste
+documento referem-se aos fluxos Flutter não migrados, não a requisitos para recriar a API antiga
 no PocketBase. Não trate troca de `BASE_URL` como integração. Diferenças e lacunas
 estão em [ARCHITECTURE.md](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração);
 alterações de contrato exigem tarefa explícita com consumidores e testes.
@@ -61,7 +70,7 @@ dos próprios dados; família é uma lente autorizada de leitura, não dona do d
 | Feature/contexto | Responsabilidade |
 | --- | --- |
 | `authentication` | Entrada, cadastro, confirmação de e-mail, reenvio e logout. |
-| `session` | Leitura e observação da presença do token. |
+| `session` | Validação inicial via auth-refresh e observação da presença do token. |
 | `user` | Dados pessoais, nome, avatar e exclusão da conta. |
 | `expense` | Fatos atômicos de gastos individuais. |
 | `metrics` | Agregações financeiras somente leitura. |
@@ -205,6 +214,18 @@ Dashboard, previews e testes próprios. Não restaurá-la a partir de specs hist
   `AppScreen` é apenas visual; não cria, compartilha por singleton ou fecha outro
   Bloc. A leitura inicial não sobrescreve eventos de token/watch mais recentes;
   falha de storage não é ausência confirmada nem deve apagar o token.
+- Session usa `IHttpClient` e `IStorageClient` em infrastructure para validar o
+  token inicial por `collections/users/auth-refresh`. Sem token não há HTTP.
+  Chamadas simultâneas compartilham a operação; não há retry automático.
+  Resposta válida persiste ID e token antes de concluir. Erros HTTP esperados
+  preservam `ErrorsEntity` em `SessionException`/`SessionFailure`; 403 ou falha de
+  rede não apagam storage. O interceptor invalida somente o token enviado em 401.
+  Respostas de refresh não devem sobrescrever um token mais recente observado
+  antes da persistência. As gravações e a comparação do storage não são atômicas.
+- Interceptor reconhece somente os endpoints protegidos conhecidos, relativos à
+  mesma origem/base: auth-refresh e records de users/expenses, além do legado
+  ainda consumido. POST de cadastro em users/records permanece público; não
+  autentique genericamente qualquer coleção nem faça refresh/retry no interceptor.
 - Formulário mantém entrada, validação e erros por campo localmente. No sign-in,
   o validator remove espaços do e-mail, mas preserva a senha; Bloc e repository
   delegam os valores recebidos sem outra normalização.
@@ -212,6 +233,8 @@ Dashboard, previews e testes próprios. Não restaurá-la a partir de specs hist
   400 pelos pointers `/identity` (e-mail) e `/password`, preservando `code` e
   `parameter` na conversão HTTP. Erros 422 legados conhecidos por pointer continuam
   aceitos. Mostre somente os restantes em toast, com fallback seguro.
+- No cadastro, erros PocketBase 400 com `/email` vão ao e-mail e `/password` ou
+  `/passwordConfirm` à senha; preserve os erros 409/422 legados conhecidos.
 - Preserve entrada após falha; editar limpa somente o erro do campo correspondente.
 - No sign-in, sucesso não navega diretamente: a observação global da sessão
   continua responsável pelo redirecionamento.

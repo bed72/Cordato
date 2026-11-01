@@ -10,7 +10,7 @@ import '../../../../../support/core/mocks/flutter_secure_storage_mock.dart';
 void main() {
   test('uses distinct secure-storage keys for the token and user id', () {
     expect(StorageKeyEnum.userId.key, '@trocado.user_id');
-    expect(StorageKeyEnum.opaqueToken.key, '@trocado.opaque_token');
+    expect(StorageKeyEnum.token.key, '@trocado.token');
   });
 
   late IStorageClient client;

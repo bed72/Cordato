@@ -242,6 +242,66 @@ void main() {
     },
   );
 
+  for (final passwordField in ['/password', '/passwordConfirm']) {
+    testWidgets(
+      'maps PocketBase 400 email and $passwordField errors to fields',
+      (tester) async {
+        stub(
+          () async => throw AuthenticationException(
+            errors: ErrorsEntity(
+              errors: [
+                const ErrorEntity(
+                  status: '400',
+                  pointer: '/email',
+                  code: 'validation_not_unique',
+                  detail: 'E-mail já cadastrado.',
+                ),
+                ErrorEntity(
+                  status: '400',
+                  pointer: passwordField,
+                  detail: 'Senha rejeitada.',
+                ),
+                const ErrorEntity(
+                  status: '400',
+                  pointer: '/name',
+                  detail: 'Nome rejeitado.',
+                ),
+              ],
+            ),
+          ),
+        );
+        await pumpScreen(tester);
+        await fill(tester);
+        await submit(tester);
+        await tester.pumpAndSettle();
+
+        expect(find.text('E-mail já cadastrado.'), findsOneWidget);
+        expect(find.text('Senha rejeitada.'), findsOneWidget);
+        expect(find.text('Nome rejeitado.'), findsOneWidget);
+        expect(fields(tester).first.controller!.text, email);
+        expect(fields(tester).last.controller!.text, password);
+        expect(confirmations, 0);
+        final notifier = ToastProviderWidget.of(
+          tester.element(find.byType(SignUpScreen)),
+        );
+        expect(notifier.toast!.description, 'Nome rejeitado.');
+
+        await tester.enterText(
+          find.byType(TextField).first,
+          'other@example.com',
+        );
+        await tester.pump();
+        expect(find.text('E-mail já cadastrado.'), findsNothing);
+        expect(find.text('Senha rejeitada.'), findsOneWidget);
+        await tester.enterText(find.byType(TextField).last, 'OutraSenha1');
+        await tester.pump();
+        expect(find.text('Senha rejeitada.'), findsNothing);
+        verify(() => repository.signUp(email: email, password: password))
+            .called(1);
+      },
+    );
+  }
+
   for (final errors in [
     const ErrorsEntity(errors: []),
     const ErrorsEntity(errors: [ErrorEntity()]),

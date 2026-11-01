@@ -12,7 +12,7 @@ import 'package:cordato/features/authentication/presentation/screens/callback/mi
 
 final class const CallbackScreen({
   super.key,
-  required final String? verificationUrl,
+  required final String? token,
   required final CallbackBloc Function() bloc,
 }) extends StatefulWidget {
   @override

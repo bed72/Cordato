@@ -7,6 +7,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cordato/features/session/presentation/bloc/session_bloc.dart';
 import 'package:cordato/features/session/presentation/bloc/session_event.dart';
 import 'package:cordato/features/session/presentation/bloc/session_state.dart';
+import 'package:cordato/features/session/application/exceptions/session_exception.dart';
+import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import '../../../../support/session/mocks/session_repository_mock.dart';
 
@@ -113,6 +115,32 @@ void main() {
   );
 
   final failure = StateError('private storage failure');
+  const remoteErrors = ErrorsEntity(
+    errors: [ErrorEntity(status: '403', detail: 'Refresh not allowed.')],
+  );
+  blocTest<SessionBloc, SessionState>(
+    'preserves expected refresh errors without reporting them as unexpected',
+    build: () {
+      when(
+        repository.loadSession,
+      ).thenAnswer((_) async => throw SessionException(errors: remoteErrors));
+      return SessionBloc(repository: repository);
+    },
+    act: (bloc) async {
+      final failed = bloc.stream.firstWhere((state) => state is SessionFailure);
+      bloc.add(const SessionStartedEvent());
+      await failed;
+    },
+    expect: () => [
+      isA<SessionLoading>(),
+      isA<SessionFailure>().having(
+        (state) => state.errors,
+        'errors',
+        same(remoteErrors),
+      ),
+    ],
+    errors: () => isEmpty,
+  );
   blocTest<SessionBloc, SessionState>(
     'reports an initial read failure and recovers from a later token change',
     build: () {

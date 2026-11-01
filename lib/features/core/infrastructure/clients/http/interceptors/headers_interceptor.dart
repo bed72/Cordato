@@ -8,6 +8,7 @@ final class HeadersInterceptor extends Interceptor {
     final contentType = options.uri.pathSegments.contains('collections')
         ? Headers.jsonContentType
         : mediaType;
+
     options.headers.putIfAbsent(Headers.acceptHeader, () => contentType);
     if (options.data != null) options.contentType = contentType;
 

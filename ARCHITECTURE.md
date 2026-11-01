@@ -47,7 +47,7 @@ nem declara equivalência com os recursos financeiros do backend anterior.
 | Contexto/feature | Escopo |
 | --- | --- |
 | Authentication | E-mail/senha, cadastro, confirmação por link, reenvio e logout. |
-| Session | Presença do token e observação de suas mudanças. |
+| Session | Validação inicial via auth-refresh e observação da presença do token. |
 | User | Perfil, nome, avatar e exclusão da conta. |
 | Expense | Registro, consulta, edição e exclusão de gastos individuais. |
 | Metrics | Agregações somente leitura, como totais e distribuição por categoria. |
@@ -136,8 +136,8 @@ define:
 - `signIn({required String email, required String password}) -> Future<void>`;
 - `signUp({required String email, required String password}) -> Future<void>`;
 - `resendEmail({required String email}) -> Future<void>`;
-- `logout() -> Future<void>`;
-- `confirmEmail(String url) -> Future<EmailVerificationStatusEnum>`.
+- `signOut() -> Future<void>`;
+- `confirmEmail(String token) -> Future<EmailVerificationStatusEnum>`.
 
 Não há entidade de sessão ou output de login. Token e ID são detalhes internos
 de persistência. `AuthenticationException`, em `application/exceptions/`,
@@ -202,9 +202,9 @@ insights ou sugestões remotas.
 
 | Aspecto | Flutter atual | PocketBase atual |
 | --- | --- | --- |
-| Transporte | Sign-in nativo PocketBase; demais endpoints mantêm JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
-| Autenticação | Sign-in persiste JWT e `record.id` nas chaves existentes; logout ainda usa revogação do contrato anterior. | Autenticação nativa da coleção `users`; não reproduz o contrato anterior de logout. |
-| Confirmação | URL assinada recebida pelo callback Flutter. | Verificação nativa; templates apontam para telas PocketBase. Cadastro não envia confirmação automaticamente. |
+| Transporte | Sign-in, cadastro, solicitação e confirmação de verificação nativos PocketBase; demais endpoints mantêm JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
+| Autenticação | Sign-in persiste JWT e `record.id` nas chaves existentes; sign-out limpa storage local sem HTTP. | Autenticação nativa da coleção `users`; não há endpoint de logout ou revogação individual do JWT ao sair. |
+| Confirmação | Solicitação nativa por `request-verification`; callback recebe `token` e usa `confirm-verification`. Template para abrir o app exige configuração explícita. Cadastro não envia e-mail automaticamente. | Verificação nativa; templates apontam para telas PocketBase. Cadastro não envia confirmação automaticamente. |
 | Erros e paginação | HTTP aceita erros JSON:API e PocketBase; sign-in mapeia 400 de `identity`/`password` aos campos. Paginação anterior preservada. | Formatos nativos PocketBase; demais consumidores exigem adaptação em infrastructure. |
 | Datas de despesas | Semântica de data civil. | `occurred_on` opcional como Date UTC, sem default. |
 | Categoria | Contrato e validação atuais do cliente. | Select opcional; vazio não significa `other`. |
@@ -217,7 +217,8 @@ antes da integração, sem conversão implícita de fuso ou perda de significado
 Trocar a URL não é migração. SDK/adapters, persistência de sessão, mapeamento de
 erros, verificação de e-mail, paginação e destino dos recursos ausentes precisam
 de decisão e implementação próprias. O aplicativo mantém `IHttpClient`/`HttpClient`
-com Dio, com adaptação do sign-in e erros nativos; o SDK PocketBase não está integrado ao Flutter.
+com Dio, com adaptação de sign-in, cadastro, solicitação/confirmação de verificação e erros
+nativos; o SDK PocketBase não está integrado ao Flutter.
 
 A arquitetura de camadas Flutter permanece válida. As seções seguintes descrevem
 o código executável atual, incluindo o transporte anterior nos demais fluxos, e não endpoints a
@@ -331,8 +332,18 @@ Submissões pendentes e posteriores ao sucesso são bloqueadas; falha permite
 retry manual. Falhas esperadas preservam `ErrorsEntity`; inesperadas usam
 `addError` e fallback seguro, respeitando fechamento/handler invalidado.
 
+O repository envia POST público para `collections/users/records`, relativo à
+base com `/api/`, com `email`, `password` e `passwordConfirm`.
+Não envia token, `verified`, `emailVisibility` ou campos opcionais de perfil.
+A resposta 200 é um record nativo; o contrato precisa somente da conclusão,
+portanto não há DTO de cadastro, parsing dos campos não consumidos ou persistência.
+O envio opcional de verificação não é encadeado ao cadastro: permanece separado,
+evitando tratar falha de e-mail como falha da criação e recriar uma conta no retry.
+
 O formulário preserva validação, trim de e-mail, senha sem normalização e entrada
-após falha. Erros 422 de e-mail/senha e 409 de e-mail aparecem nos campos; somente
+após falha. Erros PocketBase 400 de `/email`, `/password` e `/passwordConfirm`
+vão aos campos correspondentes; 422 de e-mail/senha e 409 legados de e-mail
+continuam aceitos. Somente
 erros restantes aparecem em toast. Campos e envio ficam desabilitados durante
 submissão. O listener substitui a rota por confirmação com o e-mail, uma única
 vez, sem criar sessão. O footer substitui a rota por sign-in via BuildContext.
@@ -343,6 +354,10 @@ não foram executados em dispositivo devido aos bloqueios globais existentes.
 
 ### Reenvio Com Bloc
 
+O repository envia POST público para `collections/users/request-verification`
+com JSON plano `email`, aceita 204 sem corpo e não persiste sessão. Erros nativos
+passam pelo mesmo adapter HTTP e `AuthenticationException`.
+
 `ResendEmailScreen` recebe uma factory estável de `ResendEmailBloc`, cria a
 instância em `initState`, substitui/fecha quando a factory muda e fecha no
 descarte. `ResendEmailSubmittedEvent(email)` delega o endereço sem normalização.
@@ -351,7 +366,7 @@ o Bloc usa `droppable`, preserva falhas esperadas, reporta inesperadas via
 `addError` com fallback seguro e ignora conclusões após fechamento.
 
 Ao contrário do cadastro, sucesso permite uma nova intenção de reenvio. A UI
-mantém o cooldown inicial de 60 segundos e o reinicia somente após sucesso,
+permite o primeiro envio imediatamente e inicia cooldown de 60 segundos somente após sucesso,
 exibindo o toast existente sem navegar nem criar sessão. Falha mostra os erros
 remotos, com fallback para mensagens ausentes, e permite retry manual imediato.
 O e-mail permanece somente leitura; endereço vazio, cooldown e submissão pendente
@@ -371,17 +386,17 @@ em dispositivo por causa dos bloqueios globais do app.
 
 `CallbackScreen` recebe uma factory estável de `CallbackBloc` e possui a criação,
 substituição e fechamento da instância. A entrada da tela envia
-`CallbackRequestedEvent(verificationUrl)` uma única vez; rebuild comum não
-repete a confirmação. Alterar a URL ou a factory inicia uma nova confirmação.
+`CallbackRequestedEvent(token)` uma única vez; rebuild comum não
+repete a confirmação. Alterar o token ou a factory inicia uma nova confirmação.
 Os estados sealed são `Initial`, `Confirming`, `Success`, `Invalid` e `Failure`;
-não armazenam a URL assinada nem dados de sessão.
+não armazenam token de verificação nem dados de sessão.
 
-O Bloc trata URL nula/vazia como inválida sem acessar o repository. Nos demais
-casos, delega a URL original, sem trim ou reconstrução, e traduz o status do
+O Bloc trata token nulo/vazio como inválido sem acessar o repository. Nos demais
+casos, delega o token original, sem trim ou decodificação adicional, e traduz o status do
 contrato. Falhas inesperadas usam `addError` e o feedback seguro já existente.
 `restartable` invalida o handler anterior quando outro link chega: somente o
 resultado mais recente pode produzir efeitos. Ao contrário do command legado,
-uma URL nova não precisa aguardar a request anterior terminar. Isso não cancela
+um token novo não precisa aguardar a request anterior terminar. Isso não cancela
 HTTP nem desfaz uma confirmação remota já iniciada.
 
 O listener mantém os três toasts existentes e usa as extensões de BuildContext
@@ -391,15 +406,16 @@ A tela mantém o indicador animado e seu rótulo semântico durante a confirmaç
 Fechamento, troca de factory e substituição do link impedem efeitos obsoletos.
 
 Testes próprios do módulo verificam factories independentes, repository real
-com clients mockados e decodificação de exatamente um `verification_url`,
+com clients mockados e decodificação de exatamente um `token` na query,
 incluindo query ausente/duplicada. Os [flows de callback](test/features/authentication/presentation/screens/callback/e2e/README.md)
 cobrem Success/Invalid/Failure/Loading com fixture local, ainda não executados
 em dispositivo. A entrega nativa de deep links não é provada pelos testes Flutter.
 
 ### Logout Em Settings
 
-Authentication continua dona da revogação e da limpeza de sessão pelo contrato
-`IAuthenticationRepository.logout`. Como a interação pertence a Configurações,
+Authentication continua dona da limpeza local de sessão pelo contrato
+`IAuthenticationRepository.signOut`. Não faz request HTTP nem revoga o JWT no
+servidor. Como a interação pertence a Configurações,
 `LogoutBloc` fica em `settings/presentation/screens/settings/bloc/`, junto dos
 eventos e estados, sem tela ou módulo artificial de logout em Authentication.
 `settingsRoutesModule` registra o Bloc por factory e injeta `bloc: inject<LogoutBloc>`;
@@ -415,28 +431,46 @@ Os estados sealed são `Initial`, `Submitting`, `Success` e `Failure(errors)`.
 `droppable` descarta duplicatas pendentes; sucesso bloqueia novos envios e falha
 permite retry manual com nova confirmação. Falhas esperadas preservam a mesma
 `ErrorsEntity`; inesperadas usam `addError` e fallback seguro. Fechamento impede
-estado/feedback tardio, não cancela revogação HTTP nem limpeza já iniciada.
+estado/feedback tardio, não cancela limpeza já iniciada.
 
-Sucesso só ocorre quando o repository conclui a revogação remota e aguarda o
-`clear()` de todo o storage. Settings não navega nem mostra toast de sucesso:
+Sucesso só ocorre quando o repository aguarda o `clear()` de todo o storage;
+falha de persistência propaga sem ser convertida em sucesso.
+Settings não navega nem mostra toast de sucesso:
 a observação global de Session continua responsável pelo redirecionamento.
 Os testes de módulo/rota usam o repository real com clients mockados para provar
-essa ordem e a espera da limpeza, além das factories independentes.
+ausência de HTTP e espera da limpeza, além das factories independentes.
 
 O [E2E de logout](test/features/settings/presentation/screens/settings/e2e/README.md)
-prepara cenários Success/Failure/Loading com login e Bearer fictícios na fixture
-local. Não foi executado em dispositivo e não prova o redirecionamento global
+prepara Success com login fictício e zero requests de logout. Os antigos flows
+Failure/Loading de revogação HTTP são incompatíveis e não devem ser executados;
+a fixture não injeta falha/atraso no storage nativo. Essas coberturas ficam nos
+testes Flutter. Não foi executado em dispositivo e não prova o redirecionamento global
 neste checkout, cuja composição ainda tem bloqueios.
 
 ### Session E Composição Root
 
 `ISessionRepository` fica em `session/application/repositories/` e retorna
 `Future<bool> loadSession()` e `Stream<bool> sessionChanges`. A implementação em
-`session/infrastructure/repositories/` usa `IStorageClient` diretamente, sem data
-source intermediário. Lê/observa somente `opaqueToken`: nulo/vazio significa
-ausência, qualquer outro valor significa presença, sem normalização, validação
-remota, expiração ou exposição do token à apresentação. Falhas de storage
-propagam; o repository não as transforma em ausência ou limpa dados.
+`session/infrastructure/repositories/` usa `IStorageClient` e `IHttpClient`
+diretamente, sem data source intermediário ou dependência de Authentication.
+`loadSession` lê `StorageKeyEnum.token`; nulo/vazio retorna ausência sem HTTP.
+Com token, envia POST sem payload para o endpoint protegido
+`collections/users/auth-refresh`: Authorization pertence ao interceptor.
+`SessionResponse` lê `token` e `record.id`; parsing inválido propaga. O ID é salvo
+primeiro, depois o token, aguardando ambas as conclusões. Chamadas simultâneas
+compartilham o Future pendente; uma chamada explícita posterior pode validar de novo.
+
+Após HTTP e antes de gravar o token, compara o valor atual com o snapshot inicial:
+se houve saída ou novo login, ignora a resposta antiga e retorna a presença atual.
+Não há CAS/transação entre comparação e gravações: falhas podem deixar persistência
+parcial e a proteção não garante atomicidade contra mudanças durante a escrita final.
+401 retorna ausência quando não há uma sessão mais recente; a remoção do token
+enviado é responsabilidade do interceptor. 403, demais erros HTTP e transporte
+lançam `SessionException` sem limpar storage. Storage e erros inesperados propagam.
+
+`sessionChanges` continua observando presença local sem expor o token nem executar
+HTTP a cada evento. O sucesso do sign-in já escreve um token recebido do backend.
+Presença local não constitui garantia de autorização de recursos financeiros.
 
 `SessionBloc`, em `session/presentation/bloc/`, começa em `Initial` e recebe
 `SessionStartedEvent` do proprietário. `Loading`, `Authenticated`,
@@ -448,12 +482,13 @@ mais recente, inclusive falha do watch, tem precedência sobre o resultado antig
 O handler aguarda `emit.onEach`, usando o lifecycle nativo para cancelar a
 subscription no fechamento, sem campo de subscription ou override de `close`.
 Fechar não cancela a leitura de storage já iniciada; `isClosed`/`emit.isDone`
-impedem resultados tardios. Falhas de leitura/watch usam `addError` e `Failure`,
+impedem resultados tardios. Falhas HTTP esperadas do refresh preservam os erros
+em `SessionFailure`, sem `addError`. Falhas inesperadas de leitura/watch usam `addError` e `Failure`,
 sem detalhes internos ou suposição de token ausente. O watch continua ativo após
 falhas recuperáveis e pode publicar uma presença posterior, sem retry automático
 de leitura. Presenças repetidas não duplicam estados prontos.
 
-`sessionDependenciesModule` registra repository por contrato e Bloc por factory.
+`sessionModule` registra repository por contrato e Bloc por factory.
 Para esta observação contínua, o único proprietário é `AppWidget`, que recebe
 `bloc: inject<SessionBloc>`, inicia em `initState`, fecha no descarte e substitui
 somente quando a factory muda. Não há singleton de Bloc nem uma instância por
@@ -780,27 +815,33 @@ Headers pertencem aos interceptors: caminhos de coleções PocketBase usam
 `application/json`; os demais preservam JSON:API. Bearer permanece no
 SessionInterceptor, que só
 anexa token aos endpoints relativos protegidos reconhecidos na origem/base da
-API. URLs absolutas não recebem token. Um 401 protegido remove apenas o token
+API. Reconhece `collections/users/auth-refresh`, records de users/expenses e seus
+IDs diretos, além dos endpoints legados ainda usados. GET de users/records é
+protegido; POST no mesmo caminho é cadastro público. Não libera coleções arbitrárias,
+sufixos extras ou origem externa. URLs absolutas não recebem token. Um 401 protegido remove apenas o token
 enviado, e somente se ainda for o valor armazenado; não limpa o ID nem uma
 sessão mais recente.
 
 Storage seguro usa `FlutterSecureStorage` por `IStorageClient`. As chaves são
-`StorageKeyEnum.opaqueToken` (`@trocado.opaque_token`) e `userId`
+`StorageKeyEnum.token` (`@trocado.token`) e `userId`
 (`@trocado.user_id`). A espera das duas escritas no sign-in não é transação:
 uma falha pode deixar gravação parcial; não documente atomicidade inexistente.
 
-Logout revoga remotamente antes de aguardar `clear()` de todo o storage.
-Falha remota não limpa a sessão; falha de limpeza não confirma sucesso.
-Não há validação do token no backend na abertura, refresh automático ou expiração
-mantida pela apresentação. A classificação de rotas autenticadas não é um guard.
+Sign-out aguarda `clear()` de todo o storage, sem HTTP e sem depender de conexão.
+Falha de limpeza propaga e não confirma sucesso. Não há revogação remota do JWT;
+um token já copiado pode continuar válido no servidor até expirar ou ser invalidado.
+Há validação por auth-refresh na abertura com token persistido. Não há refresh
+periódico, retry automático no interceptor ou expiração mantida pela apresentação.
+A classificação de rotas autenticadas não é um guard.
 
-Sign-up envia e-mail e senha sem normalização, nome padrão `Trocado` e
-`password_confirmation` igual à senha; não envia avatar e não cria sessão.
+Sign-up envia e-mail e senha sem normalização e `passwordConfirm` igual à senha;
+não envia campos opcionais de perfil e não cria sessão.
 Não há `SignUpResponse`: o método aguarda a chamada e retorna `void`.
 Reenvio também retorna `void`; cooldown e feedback permanecem responsabilidade
-da apresentação. Confirmação recebe URL assinada sem reconstrução ou validação
-local de host/assinatura: vazio ou 403 significa inválida, 204 sucesso e demais
-resultados tratados pelo contrato significam falha; não cria sessão.
+da apresentação. Confirmação envia POST público para o caminho fixo
+`collections/users/confirm-verification`, com JSON `token`: vazio ou HTTP 400
+significa inválida, 204 sucesso e demais resultados tratados pelo contrato
+significam falha. Não busca URL fornecida pelo link nem cria sessão.
 
 O logger Dio de debug não imprime bodies nem headers. Não registre credenciais,
 tokens ou URLs assinadas em logs novos.
@@ -863,7 +904,7 @@ Rotas definidas nas features e no catálogo:
 
 | Rota | Destino |
 | --- | --- |
-| `/` | AppScreen: decisão inicial pela presença do token. |
+| `/` | AppScreen: aguarda validação inicial via auth-refresh quando há token persistido. |
 | `/welcome` | Boas-vindas. |
 | `/authentication/sign-in` | SignInScreen com Bloc. |
 | `/authentication/sign-up` | Cadastro. |
@@ -889,8 +930,8 @@ Callbacks locais entre widgets de composição não são callbacks de rota.
 Outros callbacks legados exigem migração conjunta de todos os consumidores.
 
 Root contém `AppScreen`, o splash visual, e `AppWidget`, proprietário do
-SessionBloc e das decisões globais de navegação. A abertura lê presença no
-storage e não faz consulta de validade ao backend.
+SessionBloc e das decisões globais de navegação. A abertura sem token resolve
+ausência local; com token, aguarda auth-refresh e sua persistência.
 
 `main.dart` inicializa o binding Flutter e monta ModularApp sem depender de
 serviços remotos. Não há client de crash reporting ou push remoto registrado
@@ -961,7 +1002,7 @@ Repository é testado em `infrastructure/repositories/` com mocks de `IHttpClien
 e `IStorageClient`. Verifique payload exato, ausência de normalização, parsing,
 conversão de erros HTTP, metadados, propagação de defeitos inesperados e espera
 das operações de persistência. Sign-in só conclui após ambas as escritas;
-logout só limpa depois da revogação aceita e aguarda a limpeza.
+sign-out aguarda a limpeza local, não chama HTTP e propaga falha do storage.
 
 DTOs têm testes de contrato JSON, incluindo campos obrigatórios e parsing
 inválido. O client HTTP é testado separadamente, usando o

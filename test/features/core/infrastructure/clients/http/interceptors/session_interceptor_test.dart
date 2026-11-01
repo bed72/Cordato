@@ -43,24 +43,40 @@ void main() {
   });
 
   test('adds the stored bearer token only to protected requests', () async {
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
 
     await client.get(parameter: const Requests(path: 'expenses'));
 
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');
-    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verify(() => storage.read(key: StorageKeyEnum.token.key)).called(1);
 
     await client.post(
       parameter: const Requests(path: 'authentication/sign-in'),
     );
 
     expect(captured!.headers.containsKey('Authorization'), isFalse);
-    verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
+    verifyNever(() => storage.read(key: StorageKeyEnum.token.key));
   });
 
+  test(
+    'does not read or send a token for public PocketBase auth requests',
+    () async {
+      for (final path in [
+        'collections/users/auth-with-password',
+        'collections/users/records',
+        'collections/users/request-verification',
+        'collections/users/confirm-verification',
+      ]) {
+        await client.post(parameter: Requests(path: path));
+        expect(captured!.headers.containsKey('Authorization'), isFalse);
+      }
+      verifyZeroInteractions(storage);
+    },
+  );
+
   test('authenticates expense metrics with query filters', () async {
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
 
     await client.get(
@@ -72,8 +88,99 @@ void main() {
 
     expect(captured!.uri.path, '/api/metrics/expenses');
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');
-    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verify(() => storage.read(key: StorageKeyEnum.token.key)).called(1);
   });
+
+  test(
+    'authenticates PocketBase refresh and protected record routes',
+    () async {
+      when(() => storage.read(key: StorageKeyEnum.token.key))
+          .thenAnswer((_) async => 'fixture-token');
+      await client.post(
+        parameter: const Requests(path: 'collections/users/auth-refresh'),
+      );
+      expect(captured!.headers['Authorization'], 'Bearer fixture-token');
+      for (final path in [
+        'collections/users/records',
+        'collections/users/records/user-1',
+        'collections/expenses/records',
+        'collections/expenses/records/expense-1',
+      ]) {
+        await client.get(
+          parameter: Requests(path: path, query: const {'fields': 'id'}),
+        );
+        expect(captured!.headers['Authorization'], 'Bearer fixture-token');
+      }
+      await client.post(
+        parameter: const Requests(
+          path: 'collections/expenses/records',
+          body: {'amount': 100},
+        ),
+      );
+      expect(captured!.headers['Authorization'], 'Bearer fixture-token');
+      await client.patch(
+        parameter: const Requests(
+          path: 'collections/users/records/user-1',
+          body: {'name': 'Pessoa'},
+        ),
+      );
+      expect(captured!.headers['Authorization'], 'Bearer fixture-token');
+      await client.delete(
+        parameter: const Requests(
+          path: 'collections/expenses/records/expense-1',
+        ),
+      );
+      expect(captured!.headers['Authorization'], 'Bearer fixture-token');
+    },
+  );
+
+  test(
+    'does not leak token to unknown collection paths or absolute refresh URLs',
+    () async {
+      for (final path in [
+        'collections/other/records',
+        'collections/users/auth-refresh/extra',
+        'collections/users/records/user-1/extra',
+        'collections/expenses/records/expense-1/extra',
+        'collections/expenses/records-other',
+        'collections/expenses/records/',
+        'https://example.com/api/collections/users/auth-refresh',
+        'https://external.example/api/collections/expenses/records',
+      ]) {
+        await client.get(parameter: Requests(path: path));
+        expect(captured!.headers.containsKey('Authorization'), isFalse);
+      }
+      verifyZeroInteractions(storage);
+    },
+  );
+
+  test(
+    'refresh 401 only invalidates the sent token while 403 preserves it',
+    () async {
+      when(() => storage.read(key: StorageKeyEnum.token.key))
+          .thenAnswer((_) async => 'fixture-token');
+      when(() => storage.delete(key: StorageKeyEnum.token.key))
+          .thenAnswer((_) async {});
+      responseStatus = 403;
+      await expectLater(
+        client.post(
+          parameter: const Requests(path: 'collections/users/auth-refresh'),
+        ),
+        throwsA(isA<HttpResponseException>()),
+      );
+      verifyNever(() => storage.delete(key: StorageKeyEnum.token.key));
+      responseStatus = 401;
+      await expectLater(
+        client.post(
+          parameter: const Requests(path: 'collections/users/auth-refresh'),
+        ),
+        throwsA(isA<HttpResponseException>()),
+      );
+      verify(() => storage.delete(key: StorageKeyEnum.token.key)).called(1);
+      verifyNever(storage.clear);
+      verifyNever(() => storage.delete(key: StorageKeyEnum.userId.key));
+    },
+  );
 
   test('does not authenticate absolute or unrelated metrics paths', () async {
     for (final path in [
@@ -91,9 +198,9 @@ void main() {
 
   test('removes only the sent token when metrics returns 401', () async {
     responseStatus = 401;
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
-    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.delete(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async {});
 
     await expectLater(
@@ -107,7 +214,7 @@ void main() {
       ),
     );
 
-    verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verify(() => storage.delete(key: StorageKeyEnum.token.key)).called(1);
     verifyNever(() => storage.delete(key: StorageKeyEnum.userId.key));
     verifyNever(() => storage.clear());
   });
@@ -127,9 +234,9 @@ void main() {
 
   test('removes the sent token when expenses returns 401', () async {
     responseStatus = 401;
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
-    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.delete(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async {});
 
     await expectLater(
@@ -143,11 +250,11 @@ void main() {
       ),
     );
 
-    verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verify(() => storage.delete(key: StorageKeyEnum.token.key)).called(1);
   });
 
   test('does not send Authorization without a saved token', () async {
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => null);
 
     await client.get(parameter: const Requests(path: 'expenses'));
@@ -156,7 +263,7 @@ void main() {
   });
 
   test('authenticates GET, PATCH and DELETE of the user resource', () async {
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
     const parameter = Requests(path: 'users/10');
 
@@ -173,7 +280,7 @@ void main() {
 
   test('authenticates expense deletion through the repository', () async {
     responseStatus = 204;
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
     final repository = ExpenseRepository(httpClient: client);
 
@@ -181,13 +288,13 @@ void main() {
     expect(captured!.method, 'DELETE');
     expect(captured!.uri.path, '/api/expenses/1');
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');
-    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
-    verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
+    verify(() => storage.read(key: StorageKeyEnum.token.key)).called(1);
+    verifyNever(() => storage.delete(key: StorageKeyEnum.token.key));
   });
 
   test('authenticates an expense with an encoded id', () async {
     responseStatus = 204;
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
 
     await ExpenseRepository(httpClient: client).delete(id: 'a/b?c#d');
@@ -197,7 +304,7 @@ void main() {
   });
 
   test('authenticates GET, PATCH and DELETE of an expense resource', () async {
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
     const parameter = Requests(path: 'expenses/8');
 
@@ -210,8 +317,8 @@ void main() {
 
     await client.delete(parameter: parameter);
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');
-    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(3);
-    verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
+    verify(() => storage.read(key: StorageKeyEnum.token.key)).called(3);
+    verifyNever(() => storage.delete(key: StorageKeyEnum.token.key));
   });
 
   test('does not authenticate unrelated or absolute expense paths', () async {
@@ -232,9 +339,9 @@ void main() {
     'removes the sent token after an expense deletion returns 401',
     () async {
       responseStatus = 401;
-      when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+      when(() => storage.read(key: StorageKeyEnum.token.key))
           .thenAnswer((_) async => 'opaque-token');
-      when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+      when(() => storage.delete(key: StorageKeyEnum.token.key))
           .thenAnswer((_) async {});
 
       await expectLater(
@@ -248,14 +355,13 @@ void main() {
         ),
       );
       expect(captured!.headers['Authorization'], 'Bearer opaque-token');
-      verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
-          .called(1);
+      verify(() => storage.delete(key: StorageKeyEnum.token.key)).called(1);
     },
   );
 
   test('preserves the session when expense deletion is forbidden', () async {
     responseStatus = 403;
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
 
     await expectLater(
@@ -269,7 +375,7 @@ void main() {
       ),
     );
     expect(captured!.headers['Authorization'], 'Bearer opaque-token');
-    verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
+    verifyNever(() => storage.delete(key: StorageKeyEnum.token.key));
   });
 
   test('does not authenticate unrelated or external user paths', () async {
@@ -286,14 +392,14 @@ void main() {
       await client.get(parameter: Requests(path: path));
       expect(captured!.headers.containsKey('Authorization'), isFalse);
     }
-    verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
+    verifyNever(() => storage.read(key: StorageKeyEnum.token.key));
   });
 
   test('removes the sent token after a user resource returns 401', () async {
     responseStatus = 401;
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
-    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.delete(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async {});
 
     await expectLater(
@@ -306,14 +412,14 @@ void main() {
         ),
       ),
     );
-    verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verify(() => storage.delete(key: StorageKeyEnum.token.key)).called(1);
   });
 
   test('does not read the token for an unknown endpoint', () async {
     await client.get(parameter: const Requests(path: 'items'));
 
     expect(captured!.headers.containsKey('Authorization'), isFalse);
-    verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
+    verifyNever(() => storage.read(key: StorageKeyEnum.token.key));
   });
 
   test('does not accept ids on fixed authentication endpoints', () async {
@@ -349,16 +455,13 @@ void main() {
     },
   );
 
-  test('authenticates sign-out by its path without request metadata', () async {
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
-        .thenAnswer((_) async => 'opaque-token');
-
+  test('does not authenticate the removed legacy sign-out endpoint', () async {
     await client.delete(
       parameter: const Requests(path: 'authentication/sign-out'),
     );
 
-    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
-    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    expect(captured!.headers.containsKey('Authorization'), isFalse);
+    verifyZeroInteractions(storage);
   });
 
   test(
@@ -367,7 +470,7 @@ void main() {
       await client.get(parameter: const Requests(path: 'expenses-other'));
 
       expect(captured!.headers.containsKey('Authorization'), isFalse);
-      verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
+      verifyNever(() => storage.read(key: StorageKeyEnum.token.key));
     },
   );
 
@@ -377,11 +480,11 @@ void main() {
     );
 
     expect(captured!.headers.containsKey('Authorization'), isFalse);
-    verifyNever(() => storage.read(key: StorageKeyEnum.opaqueToken.key));
+    verifyNever(() => storage.read(key: StorageKeyEnum.token.key));
   });
 
   test('does not send a stale header when secure storage fails', () async {
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenThrow(StateError('storage unavailable'));
 
     await expectLater(
@@ -393,9 +496,9 @@ void main() {
 
   test('removes the token after a protected request returns 401', () async {
     responseStatus = 401;
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
-    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.delete(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async {});
 
     await expectLater(
@@ -408,7 +511,7 @@ void main() {
         ),
       ),
     );
-    verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verify(() => storage.delete(key: StorageKeyEnum.token.key)).called(1);
   });
 
   test('does not remove the token for a public 401', () async {
@@ -424,12 +527,12 @@ void main() {
         ),
       ),
     );
-    verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
+    verifyNever(() => storage.delete(key: StorageKeyEnum.token.key));
   });
 
   test('does not remove the token for a protected 403', () async {
     responseStatus = 403;
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
 
     await expectLater(
@@ -442,7 +545,7 @@ void main() {
         ),
       ),
     );
-    verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
+    verifyNever(() => storage.delete(key: StorageKeyEnum.token.key));
   });
 
   test(
@@ -450,7 +553,7 @@ void main() {
     () async {
       int reads = 0;
       responseStatus = 401;
-      when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+      when(() => storage.read(key: StorageKeyEnum.token.key))
           .thenAnswer((_) async => ++reads == 1 ? 'old-token' : 'new-token');
 
       await expectLater(
@@ -463,15 +566,15 @@ void main() {
           ),
         ),
       );
-      verifyNever(() => storage.delete(key: StorageKeyEnum.opaqueToken.key));
+      verifyNever(() => storage.delete(key: StorageKeyEnum.token.key));
     },
   );
 
   test('preserves the 401 if secure storage cannot remove the token', () async {
     responseStatus = 401;
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'opaque-token');
-    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.delete(key: StorageKeyEnum.token.key))
         .thenThrow(StateError('storage unavailable'));
 
     await expectLater(

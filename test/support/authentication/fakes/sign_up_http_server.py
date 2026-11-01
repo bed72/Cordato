@@ -11,7 +11,7 @@ class SignUpFixtureHandler(SignInFixtureHandler):
         state = self.server.fixture_state
         if path in ['/__test/reset', '/__test/release']:
             return super().do_POST()
-        if path != '/api/authentication/sign-up':
+        if path != '/api/collections/users/records':
             with state.lock:
                 state.unexpected.append('POST ' + path)
             self.respond(404, {'errors': [{'detail': 'Fixture ausente'}]})
@@ -23,25 +23,21 @@ class SignUpFixtureHandler(SignInFixtureHandler):
             configuration = state.configuration
             release = state.release
             password = configuration.get('password', 'Teste1')
-            expected = {'data': {
-                'type': 'sign-ups',
-                'attributes': {
-                    'email': configuration.get('email', 'Person@Example.com'),
-                    'name': 'Trocado',
-                    'password': password,
-                    'password_confirmation': password,
-                },
-            }}
+            expected = {
+                'email': configuration.get('email', 'Person@Example.com'),
+                'password': password,
+                'passwordConfirm': password,
+            }
             state.credentials_match = (
                 state.credentials_match and body == expected
                 and self.headers.get('Authorization') is None
             )
-            responses = configuration.get('responses', [{'status': 201}])
+            responses = configuration.get('responses', [{'status': 200}])
             response = responses[min(index, len(responses) - 1)]
         if response.get('gate') and not release.wait(timeout=60):
             self.respond(504, {'errors': [{'detail': 'Fixture não liberada'}]})
             return
-        self.respond(response.get('status', 201), response.get('body', {}))
+        self.respond(response.get('status', 200), response.get('body', {}))
         with state.lock:
             if state.release is release:
                 state.completed += 1

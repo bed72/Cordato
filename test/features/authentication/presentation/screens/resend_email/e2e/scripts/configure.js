@@ -1,9 +1,9 @@
-var responses = [{status: 202}];
+var responses = [{status: 204}];
 if (SCENARIO === 'failure') {
-  responses = [{status: 429, body: {errors: [{status: '429', title: 'Aguarde', detail: 'Limite de reenvios atingido.'}]}}, {status: 202}];
+  responses = [{status: 429, body: {status: 429, message: 'Limite de reenvios atingido.', data: {}}}, {status: 204}];
 }
 if (SCENARIO === 'loading') {
-  responses = [{status: 202, gate: true}];
+  responses = [{status: 204, gate: true}];
 }
 var result = http.post(TEST_SERVER + '/__test/reset', {
   headers: {'Content-Type': 'application/json'},

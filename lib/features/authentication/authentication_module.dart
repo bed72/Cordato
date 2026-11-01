@@ -3,9 +3,6 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/bloc_scoped_extension.dart';
 
-import 'package:cordato/features/authentication/infrastructure/repositories/authentication_repository.dart';
-import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
-
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
 
@@ -17,6 +14,9 @@ import 'package:cordato/features/authentication/presentation/screens/sign_up/blo
 import 'package:cordato/features/authentication/presentation/screens/callback/bloc/callback_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_bloc.dart';
+
+import 'package:cordato/features/authentication/infrastructure/repositories/authentication_repository.dart';
+import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 
 final authenticationModule = createModule(
   register: (context) => context
@@ -54,11 +54,10 @@ final authenticationModule = createModule(
       RouteEnum.authenticationConfirmEmail.path,
       child: (_, state) => CallbackScreen(
         bloc: inject<CallbackBloc>,
-        verificationUrl:
-            switch (state.uri.queryParametersAll['verification_url']) {
-              [final String url] => url,
-              _ => null,
-            },
+        token: switch (state.uri.queryParametersAll['token']) {
+          [final String token] => token,
+          _ => null,
+        },
       ),
     ),
 );

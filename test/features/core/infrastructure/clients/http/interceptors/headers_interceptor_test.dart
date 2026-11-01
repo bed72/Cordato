@@ -26,19 +26,23 @@ void main() {
       ),
     );
 
-    await HttpClient(dio: dio).post(
-      parameter: const Requests(
-        path: 'collections/users/auth-with-password',
-        body: {'identity': 'test@example.com', 'password': 'fixture'},
-      ),
-    );
+    for (final path in [
+      'collections/users/auth-with-password',
+      'collections/users/records',
+      'collections/users/request-verification',
+      'collections/users/confirm-verification',
+    ]) {
+      await HttpClient(dio: dio).post(
+        parameter: Requests(
+          path: path,
+          body: const {'email': 'test@example.com'},
+        ),
+      );
 
-    expect(
-      captured!.uri.toString(),
-      'https://example.com/api/collections/users/auth-with-password',
-    );
-    expect(captured!.headers[Headers.acceptHeader], Headers.jsonContentType);
-    expect(captured!.contentType, Headers.jsonContentType);
+      expect(captured!.uri.toString(), 'https://example.com/api/$path');
+      expect(captured!.headers[Headers.acceptHeader], Headers.jsonContentType);
+      expect(captured!.contentType, Headers.jsonContentType);
+    }
   });
 
   test('adds JSON:API headers to requests with a body', () async {

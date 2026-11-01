@@ -21,7 +21,7 @@ final class LogoutBloc({required final IAuthenticationRepository repository})
     emit(const LogoutSubmitting());
 
     try {
-      await repository.logout();
+      await repository.signOut();
 
       if (isClosed || emit.isDone) return;
 

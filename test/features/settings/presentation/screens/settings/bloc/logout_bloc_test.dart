@@ -42,7 +42,7 @@ void main() {
   blocTest<LogoutBloc, LogoutState>(
     'waits for repository completion and blocks further logout after success',
     build: () {
-      when(() => repository.logout()).thenAnswer((_) async {});
+      when(() => repository.signOut()).thenAnswer((_) async {});
       return LogoutBloc(repository: repository);
     },
     act: (bloc) async {
@@ -62,7 +62,7 @@ void main() {
           .having((state) => state.isSubmitting, 'isSubmitting', isFalse),
     ],
     verify: (_) {
-      verify(() => repository.logout()).called(1);
+      verify(() => repository.signOut()).called(1);
       verifyNoMoreInteractions(repository);
     },
   );
@@ -71,7 +71,7 @@ void main() {
     blocTest<LogoutBloc, LogoutState>(
       'preserves ${failure.errors.length} application errors without reporting them',
       build: () {
-        when(() => repository.logout()).thenAnswer(
+        when(() => repository.signOut()).thenAnswer(
           (_) async => throw AuthenticationException(errors: failure),
         );
         return LogoutBloc(repository: repository);
@@ -91,7 +91,8 @@ void main() {
   blocTest<LogoutBloc, LogoutState>(
     'reports unexpected failure without exposing internal details',
     build: () {
-      when(() => repository.logout()).thenAnswer((_) async => throw unexpected);
+      when(() => repository.signOut())
+          .thenAnswer((_) async => throw unexpected);
       return LogoutBloc(repository: repository);
     },
     act: (bloc) => bloc.add(requested),
@@ -112,7 +113,7 @@ void main() {
     'allows only manual retry after failure',
     build: () {
       var attempts = 0;
-      when(() => repository.logout()).thenAnswer((_) async {
+      when(() => repository.signOut()).thenAnswer((_) async {
         if (++attempts == 1) throw AuthenticationException(errors: errors);
       });
       return LogoutBloc(repository: repository);
@@ -121,7 +122,7 @@ void main() {
       final failed = bloc.stream.firstWhere((state) => state is LogoutFailure);
       bloc.add(requested);
       await failed;
-      verify(() => repository.logout()).called(1);
+      verify(() => repository.signOut()).called(1);
       bloc.add(requested);
     },
     expect: () => [
@@ -130,7 +131,7 @@ void main() {
       isA<LogoutSubmitting>(),
       isA<LogoutSuccess>(),
     ],
-    verify: (_) => verify(() => repository.logout()).called(1),
+    verify: (_) => verify(() => repository.signOut()).called(1),
   );
 
   test(
@@ -138,7 +139,7 @@ void main() {
     () async {
       final pending = Completer<void>();
       final started = Completer<void>();
-      when(() => repository.logout()).thenAnswer((_) {
+      when(() => repository.signOut()).thenAnswer((_) {
         started.complete();
         return pending.future;
       });
@@ -156,7 +157,7 @@ void main() {
       pending.complete();
       await finished;
       await Future<void>.delayed(Duration.zero);
-      verify(() => repository.logout()).called(1);
+      verify(() => repository.signOut()).called(1);
       verifyNoMoreInteractions(repository);
     },
   );
@@ -165,7 +166,7 @@ void main() {
     test('closing ignores a pending $outcome', () async {
       final pending = Completer<void>();
       final started = Completer<void>();
-      when(() => repository.logout()).thenAnswer((_) {
+      when(() => repository.signOut()).thenAnswer((_) {
         started.complete();
         return pending.future;
       });
@@ -192,7 +193,7 @@ void main() {
   }
 
   test('screen-owned instances do not share state', () async {
-    when(() => repository.logout()).thenAnswer((_) async {});
+    when(() => repository.signOut()).thenAnswer((_) async {});
     final first = LogoutBloc(repository: repository);
     final second = LogoutBloc(repository: repository);
     addTearDown(first.close);

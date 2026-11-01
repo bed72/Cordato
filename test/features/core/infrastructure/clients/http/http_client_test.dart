@@ -240,9 +240,9 @@ void main() {
     body = '{"errors":[{"title":"Sessão expirada"}]}';
     dio.interceptors.add(SessionInterceptor(storage: storage));
 
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => 'sent-token');
-    when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.delete(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async {});
 
     await expectLater(
@@ -263,7 +263,7 @@ void main() {
     verifyNever(() => storage.clear());
     verifyNever(() => storage.delete(key: StorageKeyEnum.userId.key));
 
-    verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key)).called(1);
+    verify(() => storage.delete(key: StorageKeyEnum.token.key)).called(1);
   });
 
   test('preserves a newer token when the sent token receives a 401', () async {
@@ -274,7 +274,7 @@ void main() {
 
     dio.interceptors.add(SessionInterceptor(storage: storage));
 
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+    when(() => storage.read(key: StorageKeyEnum.token.key))
         .thenAnswer((_) async => ++reads == 1 ? 'sent-token' : 'new-token');
 
     await expectLater(
@@ -293,7 +293,7 @@ void main() {
     verifyNever(() => storage.clear());
     verifyNever(() => storage.delete(key: any(named: 'key')));
 
-    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(2);
+    verify(() => storage.read(key: StorageKeyEnum.token.key)).called(2);
   });
 
   test(
@@ -353,21 +353,19 @@ void main() {
     );
   });
 
-  test('accepts a 202 response without a body for email resend', () async {
+  test('accepts a 204 response without a body for email resend', () async {
     body = '';
-    status = 202;
+    status = 204;
 
     final response = await client.post(
-      parameter: const Requests(
-        path: 'authentication/email-verification/resend',
-      ),
+      parameter: const Requests(path: 'collections/users/request-verification'),
     );
 
-    expect(response.status, 202);
+    expect(response.status, 204);
     expect(response.body, isEmpty);
     expect(
       captured!.uri.toString(),
-      'https://example.com/api/authentication/email-verification/resend',
+      'https://example.com/api/collections/users/request-verification',
     );
   });
 

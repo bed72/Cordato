@@ -19,12 +19,7 @@ appId: com.bed.cordato
 - assertVisible: ${EMAIL}
 - assertVisible:
     text: Reenviar
-    enabled: false
+    enabled: true
 - runScript: ../../../sign_up/e2e/scripts/stats.js
 - assertTrue: ${output.stats.requests === 0}
-- extendedWaitUntil:
-    notVisible: Você poderá reenviar em .*
-    timeout: 70000
-- assertVisible:
-    text: Reenviar
-    enabled: true
+- assertNotVisible: Você poderá reenviar em .*

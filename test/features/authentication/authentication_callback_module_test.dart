@@ -19,7 +19,7 @@ import '../../support/core/mocks/http_client_mock.dart';
 import '../../support/core/mocks/storage_client_mock.dart';
 
 void main() {
-  const signed = 'https://other.example/verify?signature=a%2Bb&expires=123';
+  const signed = 'fixture.a%2Bb.token';
   late HttpClientMock client;
   late StorageClientMock storage;
   late ModularBootstrap boot;
@@ -48,7 +48,7 @@ void main() {
   test(
     'registers independent CallbackBloc factories against the real repository',
     () async {
-      when(() => client.get(parameter: any(named: 'parameter')))
+      when(() => client.post(parameter: any(named: 'parameter')))
           .thenAnswer((_) async => const Responses(status: 204, body: {}));
       final first = inject<CallbackBloc>();
       final second = inject<CallbackBloc>();
@@ -58,75 +58,75 @@ void main() {
       final finished = first.stream.firstWhere(
         (state) => state is CallbackSuccess,
       );
-      first.add(const CallbackRequestedEvent(verificationUrl: signed));
+      first.add(const CallbackRequestedEvent(token: signed));
       await finished;
       expect(second.state, isA<CallbackInitial>());
       final request =
-          verify(() => client.get(parameter: captureAny(named: 'parameter')))
+          verify(() => client.post(parameter: captureAny(named: 'parameter')))
                   .captured
                   .single
               as Requests;
-      expect(request.path, signed);
+      expect(request.path, 'collections/users/confirm-verification');
+      expect(request.body, {'token': signed});
       verifyZeroInteractions(storage);
     },
   );
 
   for (final scenario in [
-    (
-      query: '?verification_url=${Uri.encodeQueryComponent(signed)}',
-      valid: true,
-    ),
+    (query: '?token=${Uri.encodeQueryComponent(signed)}', valid: true),
     (query: '', valid: false),
-    (query: '?verification_url=first&verification_url=second', valid: false),
+    (query: '?token=first&token=second', valid: false),
+    (query: '?token=', valid: false),
+    (query: '?verification_url=legacy', valid: false),
   ]) {
-    testWidgets(
-      'callback route decodes exactly one signed URL: ${scenario.query}',
-      (tester) async {
-        when(() => client.get(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => const Responses(status: 204, body: {}));
-        final router = modularRouterConfig(
-          boot.routes,
-          injector: boot.injector,
-          initialRoute:
-              '${RouteEnum.authenticationConfirmEmail.path}${scenario.query}',
-        );
-        addTearDown(() async {
-          await tester.pumpWidget(const SizedBox.shrink());
-          await tester.pumpAndSettle();
-          (router.routerDelegate as ChangeNotifier).dispose();
-          (router.routeInformationProvider as PlatformRouteInformationProvider)
-              .dispose();
-        });
-        await tester.pumpWidget(
-          MaterialApp.router(
-            theme: Themes.light,
-            locale: const Locale('pt', 'BR'),
-            supportedLocales: const [Locale('pt', 'BR')],
-            localizationsDelegates: GlobalMaterialLocalizations.delegates,
-            routerConfig: router,
-            builder: (_, child) => ToastProviderWidget(child: child!),
-          ),
-        );
+    testWidgets('callback route accepts exactly one token: ${scenario.query}', (
+      tester,
+    ) async {
+      when(() => client.post(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Responses(status: 204, body: {}));
+      final router = modularRouterConfig(
+        boot.routes,
+        injector: boot.injector,
+        initialRoute:
+            '${RouteEnum.authenticationConfirmEmail.path}${scenario.query}',
+      );
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
         await tester.pumpAndSettle();
-        expect(find.text('Que bom ter você por aqui'), findsOneWidget);
-        expect(
-          find.text(
-            scenario.valid ? 'E-mail confirmado' : 'Link inválido ou expirado',
-          ),
-          findsOneWidget,
-        );
-        if (scenario.valid) {
-          final request =
-              verify(
-                    () => client.get(parameter: captureAny(named: 'parameter')),
-                  ).captured.single
-                  as Requests;
-          expect(request.path, signed);
-        } else {
-          verifyZeroInteractions(client);
-        }
-        verifyZeroInteractions(storage);
-      },
-    );
+        (router.routerDelegate as ChangeNotifier).dispose();
+        (router.routeInformationProvider as PlatformRouteInformationProvider)
+            .dispose();
+      });
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: Themes.light,
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: const [Locale('pt', 'BR')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          routerConfig: router,
+          builder: (_, child) => ToastProviderWidget(child: child!),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Que bom ter você por aqui'), findsOneWidget);
+      expect(
+        find.text(
+          scenario.valid ? 'E-mail confirmado' : 'Link inválido ou expirado',
+        ),
+        findsOneWidget,
+      );
+      if (scenario.valid) {
+        final request =
+            verify(() => client.post(parameter: captureAny(named: 'parameter')))
+                    .captured
+                    .single
+                as Requests;
+        expect(request.path, 'collections/users/confirm-verification');
+        expect(request.body, {'token': signed});
+      } else {
+        verifyZeroInteractions(client);
+      }
+      verifyZeroInteractions(storage);
+    });
   }
 }

@@ -36,9 +36,9 @@ void main() {
       final navigatorKey = GlobalKey<NavigatorState>();
       final owners = <SessionBloc>[];
       String? token;
-      when(() => storage.watch(key: StorageKeyEnum.opaqueToken.key))
+      when(() => storage.watch(key: StorageKeyEnum.token.key))
           .thenAnswer((_) => changes.stream);
-      when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+      when(() => storage.read(key: StorageKeyEnum.token.key))
           .thenAnswer((_) async => token);
       when(
         () => storage.write(
@@ -46,7 +46,7 @@ void main() {
           value: any(named: 'value'),
         ),
       ).thenAnswer((invocation) async {
-        if (invocation.namedArguments[#key] == StorageKeyEnum.opaqueToken.key) {
+        if (invocation.namedArguments[#key] == StorageKeyEnum.token.key) {
           token = invocation.namedArguments[#value] as String;
           changes.add(token);
         }
@@ -64,8 +64,6 @@ void main() {
           },
         ),
       );
-      when(() => client.delete(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => const Responses(status: 204, body: {}));
       final module = createModule(
         register: (context) {
           context
@@ -145,14 +143,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Continuar'), findsOneWidget);
       expect(token, isNull);
+      verifyNever(() => client.delete(parameter: any(named: 'parameter')));
       expect(owners, hasLength(1));
       expect(owners.single.isClosed, isFalse);
-      verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
-      verify(() => storage.watch(key: StorageKeyEnum.opaqueToken.key))
-          .called(1);
+      verify(() => storage.read(key: StorageKeyEnum.token.key)).called(1);
+      verify(() => storage.watch(key: StorageKeyEnum.token.key)).called(1);
       verify(storage.clear).called(1);
       verify(() => client.post(parameter: any(named: 'parameter'))).called(1);
-      verify(() => client.delete(parameter: any(named: 'parameter'))).called(1);
+      verifyNoMoreInteractions(client);
     },
   );
 }

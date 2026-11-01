@@ -20,7 +20,7 @@ void main() {
     errors: [
       ErrorEntity(
         title: 'Sessão mantida',
-        detail: 'Não foi possível revogar o acesso.',
+        detail: 'Não foi possível limpar a sessão local.',
       ),
       ErrorEntity(detail: 'Tente mais tarde.'),
     ],
@@ -107,7 +107,7 @@ void main() {
   Completer<void> hold() {
     final pending = Completer<void>();
     requests.add(pending);
-    when(() => repository.logout()).thenAnswer((_) => pending.future);
+    when(() => repository.signOut()).thenAnswer((_) => pending.future);
     return pending;
   }
 
@@ -144,7 +144,7 @@ void main() {
       await tester.tap(logoutButton());
       await tester.pump();
       expect(find.byType(ConfirmationBottomSheetWidget), findsNothing);
-      verify(() => repository.logout()).called(1);
+      verify(() => repository.signOut()).called(1);
       pending.complete();
       await tester.pumpAndSettle();
       expect(find.byType(SettingsScreen), findsOneWidget);
@@ -162,7 +162,7 @@ void main() {
   testWidgets(
     'remote errors show one toast and require confirmation again for manual retry',
     (tester) async {
-      when(() => repository.logout()).thenAnswer(
+      when(() => repository.signOut()).thenAnswer(
         (_) async => throw AuthenticationException(errors: rejected),
       );
       await pumpScreen(tester);
@@ -171,7 +171,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Sessão mantida'), findsOneWidget);
       expect(
-        find.text('Não foi possível revogar o acesso.\nTente mais tarde.'),
+        find.text('Não foi possível limpar a sessão local.\nTente mais tarde.'),
         findsOneWidget,
       );
       expect(
@@ -186,13 +186,13 @@ void main() {
       expect(blocs, hasLength(1));
       expect(notifier.toast!.id, feedbackId);
       await tester.pump(const Duration(seconds: 7));
-      verify(() => repository.logout()).called(1);
-      when(() => repository.logout()).thenAnswer((_) async {});
+      verify(() => repository.signOut()).called(1);
+      when(() => repository.signOut()).thenAnswer((_) async {});
       await openConfirmation(tester);
       verifyNoMoreInteractions(repository);
       await confirm(tester);
       await tester.pumpAndSettle();
-      verify(() => repository.logout()).called(1);
+      verify(() => repository.signOut()).called(1);
       expect(tester.widget<ElevatedButton>(logoutButton()).onPressed, isNull);
     },
   );
@@ -204,7 +204,7 @@ void main() {
     testWidgets(
       'uses safe feedback for ${errors.errors.length} incomplete errors',
       (tester) async {
-        when(() => repository.logout()).thenAnswer(
+        when(() => repository.signOut()).thenAnswer(
           (_) async => throw AuthenticationException(errors: errors),
         );
         await pumpScreen(tester);
@@ -227,7 +227,7 @@ void main() {
   testWidgets(
     'unexpected errors use safe feedback without confirming success',
     (tester) async {
-      when(() => repository.logout())
+      when(() => repository.signOut())
           .thenAnswer((_) async => throw StateError('internal secret'));
       await pumpScreen(tester);
       await openConfirmation(tester);

@@ -27,9 +27,9 @@ void main() {
         captured = null;
         responseStatus = 200;
         storage = StorageClientMock();
-        when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
+        when(() => storage.read(key: StorageKeyEnum.token.key))
             .thenAnswer((_) async => 'opaque-token');
-        when(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
+        when(() => storage.delete(key: StorageKeyEnum.token.key))
             .thenAnswer((_) async {});
         dio = DioFactory.create(baseUrl: baseUrl, storage: storage)
           ..httpClientAdapter = HttpClientAdapterFake(
@@ -57,7 +57,11 @@ void main() {
             'expenses/8',
             'metrics/expenses',
             'users/10',
-            'authentication/sign-out',
+            'collections/users/auth-refresh',
+            'collections/users/records',
+            'collections/users/records/user-1',
+            'collections/expenses/records',
+            'collections/expenses/records/expense-1',
           ]) {
             await client.get(parameter: Requests(path: path));
 
@@ -84,8 +88,7 @@ void main() {
           );
           expect(captured!.uri.path, '/api/expenses');
           expect(captured!.headers['Authorization'], 'Bearer opaque-token');
-          verify(() => storage.delete(key: StorageKeyEnum.opaqueToken.key))
-              .called(1);
+          verify(() => storage.delete(key: StorageKeyEnum.token.key)).called(1);
         },
       );
     });

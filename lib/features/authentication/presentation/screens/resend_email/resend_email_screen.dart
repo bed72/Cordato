@@ -46,8 +46,7 @@ final class _ResendEmailScreenState extends State<ResendEmailScreen>
                         children: [
                           const HeaderWidget(
                             title: 'Verifique seu e-mail',
-                            description:
-                                'Enviamos um link de confirmação para você',
+                            description: 'Confirme seu endereço usando o link de verificação',
                           ),
                           EmailFieldWidget(
                             enabled: false,

@@ -8,7 +8,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cordato/features/authentication/authentication_module.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/themes/themes.dart';
@@ -27,14 +26,11 @@ void main() {
   setUpAll(() => registerFallbackValue(const Requests(path: '')));
 
   testWidgets(
-    'Settings route injects independent Blocs and awaits remote revocation then storage clearing',
+    'Settings route injects independent Blocs and awaits local storage clearing without HTTP',
     (tester) async {
       final client = HttpClientMock();
       final storage = StorageClientMock();
-      final remote = Completer<Responses>();
       final clearing = Completer<void>();
-      when(() => client.delete(parameter: any(named: 'parameter')))
-          .thenAnswer((_) => remote.future);
       when(() => storage.clear()).thenAnswer((_) => clearing.future);
       final boot = bootstrapModule(
         createModule(
@@ -60,9 +56,6 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        if (!remote.isCompleted) {
-          remote.complete(const Responses(status: 204, body: {}));
-        }
         if (!clearing.isCompleted) clearing.complete();
         for (final bloc in owned) {
           unawaited(bloc.close());
@@ -115,17 +108,7 @@ void main() {
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      final request =
-          verify(() => client.delete(parameter: captureAny(named: 'parameter')))
-                  .captured
-                  .single
-              as Requests;
-      expect(request.path, 'authentication/sign-out');
-      verifyZeroInteractions(storage);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      remote.complete(const Responses(status: 204, body: {}));
-      await tester.pump();
-      await tester.pump();
+      verifyZeroInteractions(client);
       verify(() => storage.clear()).called(1);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       clearing.complete();

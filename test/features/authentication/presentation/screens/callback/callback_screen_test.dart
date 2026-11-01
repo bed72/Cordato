@@ -16,8 +16,8 @@ import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_
 import '../../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
-  const url = 'https://other.example/confirm?signature=original&expires=123';
-  const nextUrl = 'https://other.example/confirm?signature=new&expires=456';
+  const url = 'fixture.verification.token';
+  const nextUrl = 'fixture.new.token';
   late AuthenticationRepositoryMock repository;
   late List<CallbackBloc> blocs;
   late List<Completer<EmailVerificationStatusEnum>> requests;
@@ -47,7 +47,7 @@ void main() {
               builder: (_, value, _) => ValueListenableBuilder<String?>(
                 valueListenable: link,
                 builder: (_, address, _) =>
-                    CallbackScreen(bloc: value, verificationUrl: address),
+                    CallbackScreen(bloc: value, token: address),
               ),
             ),
           ),

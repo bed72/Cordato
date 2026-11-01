@@ -112,24 +112,15 @@ void main() {
   }
 
   testWidgets(
-    'starts with a read-only email and 60 second cooldown without sending',
+    'starts with a read-only email and allows the first request immediately',
     (tester) async {
       await pumpScreen(tester);
       expect(find.text('Verifique seu e-mail'), findsOneWidget);
-      expect(find.text('Você poderá reenviar em 60 segundos'), findsOneWidget);
+      expect(find.textContaining('Você poderá reenviar'), findsNothing);
       final field = tester.widget<TextField>(find.byType(TextField));
       expect(field.enabled, isFalse);
       expect(field.controller!.text, email);
-      expect(button(tester).onPressed, isNull);
-      await resend(tester);
-      await tester.pump(const Duration(seconds: 58));
-      expect(button(tester).onPressed, isNull);
-      await tester.pump(const Duration(seconds: 1));
-      expect(find.text('Você poderá reenviar em 1 segundo'), findsOneWidget);
-      await tester.pump(const Duration(seconds: 1));
-      await tester.pumpAndSettle();
       expect(button(tester).onPressed, isNotNull);
-      expect(find.textContaining('Você poderá reenviar'), findsNothing);
       verifyZeroInteractions(repository);
     },
   );
@@ -149,7 +140,6 @@ void main() {
     (tester) async {
       final pending = hold();
       await pumpScreen(tester);
-      await expireCooldown(tester);
       await resend(tester);
       expect(button(tester).onPressed, isNull);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -313,14 +303,18 @@ void main() {
     );
   }
 
-  testWidgets('disposing during initial cooldown cancels the timer', (
+  testWidgets('disposing during success cooldown cancels the timer', (
     tester,
   ) async {
+    stub(() async {});
     await pumpScreen(tester);
+    await resend(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('Você poderá reenviar em 60 segundos'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 65));
     expect(blocs.single.isClosed, isTrue);
     expect(tester.takeException(), isNull);
-    verifyZeroInteractions(repository);
+    verify(() => repository.resendEmail(email: email)).called(1);
   });
 }

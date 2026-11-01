@@ -21,6 +21,7 @@ class SignInFixtureState:
             self.configuration = configuration
             self.requests = 0
             self.completed = 0
+            self.refresh_requests = 0
             self.credentials_match = True
             self.unexpected = []
 
@@ -29,6 +30,7 @@ class SignInFixtureState:
             return {
                 'requests': self.requests,
                 'completed': self.completed,
+                'refreshRequests': self.refresh_requests,
                 'credentialsMatch': self.credentials_match,
                 'unexpected': list(self.unexpected),
             }
@@ -39,7 +41,7 @@ class SignInFixtureHandler(BaseHTTPRequestHandler):
         pass
 
     def respond(self, status, body):
-        encoded = json.dumps(body).encode('utf-8')
+        encoded = b'' if status == 204 else json.dumps(body).encode('utf-8')
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(encoded)))
@@ -63,6 +65,16 @@ class SignInFixtureHandler(BaseHTTPRequestHandler):
         if path == '/__test/release':
             state.release.set()
             self.respond(200, state.snapshot())
+            return
+        if path == '/api/collections/users/auth-refresh':
+            with state.lock:
+                state.refresh_requests += 1
+                authorized = self.headers.get('Authorization') == 'Bearer e2e-opaque-token'
+                state.credentials_match = state.credentials_match and authorized
+            if not authorized:
+                self.respond(401, {'status': 401, 'message': 'Invalid fixture token.', 'data': {}})
+                return
+            self.respond(200, {'token': 'e2e-opaque-token', 'record': {'id': 'e2e-user', 'verified': True}})
             return
         if path != '/api/collections/users/auth-with-password':
             with state.lock:

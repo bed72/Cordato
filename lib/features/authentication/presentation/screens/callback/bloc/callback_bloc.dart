@@ -17,14 +17,14 @@ final class CallbackBloc({required final IAuthenticationRepository repository})
   ) async {
     emit(const CallbackConfirming());
 
-    final url = event.verificationUrl;
-    if (url == null || url.isEmpty) {
+    final token = event.token;
+    if (token == null || token.isEmpty) {
       emit(const CallbackInvalid());
       return;
     }
 
     try {
-      final status = await repository.confirmEmail(url);
+      final status = await repository.confirmEmail(token);
 
       if (isClosed || emit.isDone) return;
 

@@ -19,7 +19,7 @@ env:
     visible: Continuar
     timeout: 15000
 - runScript: scripts/stats.js
-- assertTrue: ${output.stats.logoutRequests === 1 && output.stats.logoutAuthorized && output.stats.unexpected.length === 0}
+- assertTrue: ${output.stats.logoutRequests === 0 && output.stats.unexpected.length === 0}
 - launchApp:
     clearState: false
 - extendedWaitUntil:

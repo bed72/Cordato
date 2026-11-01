@@ -2,6 +2,7 @@ import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 
 import 'package:cordato/features/session/application/repositories/interface_session_repository.dart';
+import 'package:cordato/features/session/application/exceptions/session_exception.dart';
 import 'package:cordato/features/session/presentation/bloc/session_event.dart';
 import 'package:cordato/features/session/presentation/bloc/session_state.dart';
 
@@ -56,6 +57,9 @@ final class SessionBloc({required final ISessionRepository repository})
             ? const SessionAuthenticated()
             : const SessionUnauthenticated(),
       );
+    } on SessionException catch (error) {
+      if (isClosed || emit.isDone || state is! SessionLoading) return;
+      emit(SessionFailure(errors: error.errors));
     } catch (error, stackTrace) {
       if (isClosed || emit.isDone) return;
 

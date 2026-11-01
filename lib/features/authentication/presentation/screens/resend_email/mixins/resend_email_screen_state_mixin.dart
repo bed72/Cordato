@@ -14,7 +14,7 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
 
   Timer? _timer;
   late ResendEmailBloc bloc;
-  Duration remaining = _cooldown;
+  Duration remaining = Duration.zero;
 
   bool get canResend =>
       remaining == .zero && widget.email.isNotEmpty && bloc.state.canSubmit;
@@ -23,7 +23,6 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
   void initState() {
     super.initState();
     bloc = widget.bloc();
-    _startCooldown();
   }
 
   @override

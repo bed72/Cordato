@@ -6,7 +6,7 @@ somente Sign-in migrou para provide/addBloc do Modular. Seletores precisam ser
 confirmados no build.
 
 - `Success.yaml`: payload único, confirmação com e-mail e ausência de sessão ao reiniciar.
-- `Failure.yaml`: validação local, conflito 409, entrada preservada e retry manual.
+- `Failure.yaml`: validação local, erro 400 PocketBase de e-mail duplicado, entrada preservada e retry manual.
 - `Loading.yaml`: resposta retida, campos bloqueados e uma única request.
 
 ## Execução
@@ -41,3 +41,10 @@ Session/Welcome e as rotas de Authentication precisam estar ativos. O servidor
 compartilha somente estado/utilitários HTTP da fixture de sign-in, não seus
 endpoints de sessão. O loading é liberado explicitamente e no teardown.
 Parsing, concorrência, lifecycle e falhas inesperadas continuam nos testes Flutter.
+
+O cadastro usa `POST /api/collections/users/records` com JSON plano (`email`,
+`password`, `passwordConfirm`), sem Authorization. A resposta 200 é um
+record, não uma sessão; o contrato retorna somente conclusão e não persiste o ID.
+O envio de verificação é uma operação separada pelo botão Reenviar, disponível
+imediatamente; cooldown começa após sucesso. Não há envio automático no cadastro. A fixture de cadastro não acessa
+o endpoint de e-mail nem valida entrega de mensagens.

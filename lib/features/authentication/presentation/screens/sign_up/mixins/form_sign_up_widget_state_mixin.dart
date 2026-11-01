@@ -21,14 +21,17 @@ mixin FormSignUpWidgetStateMixin on State<FormSignUpWidget> {
 
     for (final error in errors) {
       if (error.detail != null) {
-        // TODO UI know StatusCode??????
-        if ((error.status == '422' || error.status == '409') &&
-            error.pointer == '/data/attributes/email') {
+        if ((error.status == '400' && error.pointer == '/email') ||
+            ((error.status == '422' || error.status == '409') &&
+                error.pointer == '/data/attributes/email')) {
           emailMessages.add(error.detail!);
           continue;
         }
-        if (error.status == '422' &&
-            error.pointer == '/data/attributes/password') {
+        if ((error.status == '400' &&
+                (error.pointer == '/password' ||
+                    error.pointer == '/passwordConfirm')) ||
+            (error.status == '422' &&
+                error.pointer == '/data/attributes/password')) {
           passwordMessages.add(error.detail!);
           continue;
         }

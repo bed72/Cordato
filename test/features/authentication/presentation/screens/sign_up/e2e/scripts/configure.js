@@ -1,10 +1,10 @@
-var response = {status: 201};
+var response = {status: 200, body: {id: 'fixture-user', collectionName: 'users', email: EMAIL, verified: false}};
 var responses = [response];
 if (SCENARIO === 'failure') {
-  responses = [{status: 409, body: {errors: [{status: '409', detail: 'E-mail já cadastrado.', source: {pointer: '/data/attributes/email'}}]}}, response];
+  responses = [{status: 400, body: {status: 400, message: 'Failed to create record.', data: {email: {code: 'validation_not_unique', message: 'E-mail já cadastrado.'}}}}, response];
 }
 if (SCENARIO === 'loading') {
-  responses = [{status: 201, gate: true}];
+  responses = [{status: response.status, body: response.body, gate: true}];
 }
 var result = http.post(TEST_SERVER + '/__test/reset', {
   headers: {'Content-Type': 'application/json'},

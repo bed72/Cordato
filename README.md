@@ -42,12 +42,13 @@ ou segredos do aplicativo.
 
 A configuração foi trazida do repositório backend anterior; nenhum banco, volume,
 segredo ou histórico Git foi transferido. A migração do aplicativo para PocketBase
-começou pelo sign-in; os demais fluxos ainda mantêm o contrato anterior.
+inclui sign-in, cadastro, solicitação e confirmação de verificação; os demais fluxos ainda
+mantêm o contrato anterior.
 
 | Parte | Estado atual |
 | --- | --- |
 | Backend em `backend/` | Contas e despesas próprias nas coleções `users` e `expenses`; contrato nativo PocketBase. |
-| Cliente Flutter em `lib/` | Sign-in usa `collections/users/auth-with-password`, payload `identity`/`password` e resposta `token`/`record`. Demais operações mantêm JSON:API e o contrato anterior. |
+| Cliente Flutter em `lib/` | Sign-in, cadastro, solicitação e confirmação de verificação usam os endpoints nativos da coleção `users`. Demais operações mantêm JSON:API e o contrato anterior. |
 | Metrics e sugestões | Existem no cliente; não há implementação equivalente no backend PocketBase atual. |
 | Budget e Family | Planejados; não implementados no backend atual nem nas features Flutter. |
 | Integração e operação | Migração do cliente, homologação integrada e validação no Dokploy ainda pendentes. |
@@ -56,8 +57,8 @@ Trocar apenas `BASE_URL` não integra o aplicativo ao PocketBase. Autenticação
 erros, paginação, datas e recursos disponíveis possuem contratos diferentes.
 O Flutter mantém `HttpClient`/`IHttpClient` com Dio, interceptors e o contrato HTTP
 anterior nas operações não migradas. O SDK PocketBase não está integrado. O login
-aceita erros nativos PocketBase (400 por campo ou mensagem geral), mas logout,
-cadastro, verificação e recursos autenticados ainda precisam de migração. Mantenha
+e o cadastro aceitam erros nativos PocketBase (400 por campo ou mensagem geral), mas
+recursos autenticados ainda precisam de migração. Mantenha
 `/api/` na base, por exemplo `https://pocketbase.cordato.cloud/api/`. Esta adaptação
 não representa homologação integrada nem migração das sessões existentes.
 Veja os [limites da integração](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração).
@@ -70,13 +71,26 @@ a validação da navegação em dispositivo.**
 Authentication já possui contrato em application e repository em infrastructure.
 Sign-in, cadastro e reenvio usam Bloc, controle de submissões concorrentes, falhas tipadas
 e testes de Bloc/tela. Cadastro mantém erros por campo, retry manual e navegação
-para confirmação sem criar sessão. Reenvio preserva cooldown inicial/de sucesso
-de 60 segundos e retry manual imediato após falha, sem criar sessão.
-Confirmação por link também usa Bloc: preserva o link original, ignora resultados
-obsoletos e retorna ao sign-in com o feedback existente, sem criar sessão.
+para confirmação sem criar sessão. O primeiro envio de verificação fica disponível
+imediatamente; cooldown de 60 segundos começa após sucesso. Falha permite retry
+manual imediato, sem criar sessão.
+Cadastro envia `email`, `password` e `passwordConfirm` para
+`collections/users/records`, sem token. A resposta 200 é um record; o contrato
+consome somente a conclusão, sem persistir dados ou autenticar. O envio de e-mail
+é separado, pelo botão Reenviar (`collections/users/request-verification`, 204),
+sem envio automático no cadastro nem garantia de entrega pelo cliente.
+Confirmação por link usa Bloc: recebe `token` pela query, envia POST para
+`collections/users/confirm-verification` e trata 204 como sucesso e 400 como
+inválido/expirado, sem criar sessão. Resultados obsoletos são ignorados.
+Para confirmar no app, o template de verificação da coleção `users` deve apontar
+para `https://app.cordato.cloud/authentication/confirm-email?token={TOKEN}`.
+O template/backend não foi alterado: enquanto apontar para a página padrão do
+PocketBase, a confirmação ocorre no navegador, não no callback Flutter. A entrega
+nativa do app link depende da configuração do domínio/dispositivo e não foi homologada.
 Logout usa `LogoutBloc` na apresentação de Settings, consumindo o contrato de
-Authentication. Mantém confirmação, loading, erros e retry manual, com revogação
-remota antes da limpeza do storage. O redirecionamento continua global por sessão.
+Authentication. `signOut` aguarda a limpeza local do storage, sem request HTTP
+ou revogação do JWT no servidor. Mantém confirmação, loading e retry manual em
+falha de storage. O redirecionamento continua global por sessão.
 Authentication não possui mais apresentação baseada em commands; isso não
 significa que todas as demais features já foram migradas.
 
@@ -88,9 +102,16 @@ telas e Session permanece sob ownership global de `AppWidget`.
 
 Session também usa contrato em application, repository direto em infrastructure
 e Bloc. `AppWidget` é o único dono da observação contínua e do fechamento;
-`AppScreen` apenas mostra o splash. Uma mudança recente do token tem precedência
-sobre uma leitura inicial antiga. Falhas de storage não apagam o token nem
-confirmam ausência: Root usa Welcome como fallback seguro e mantém a observação.
+`AppScreen` apenas mostra o splash. Ao abrir com token persistido, faz POST
+`collections/users/auth-refresh` e aguarda ID/token renovados no storage. Sem
+token, não chama a API. 401 invalida somente o token enviado; 403 e falhas de rede
+preservam o storage e levam ao fallback seguro, sem fingir sessão validada.
+Chamadas simultâneas compartilham o refresh, sem retry automático. Uma mudança
+recente do token tem precedência sobre a resposta antiga, com verificações antes
+das gravações; o storage não oferece comparação/gravação transacional.
+Falhas de storage não confirmam ausência: Root usa Welcome como fallback seguro
+e mantém a observação. O interceptor também reconhece records nativos protegidos
+de users/expenses, mas isso não migra seus repositories/payloads legados.
 
 User já possui contrato em application, `UserException` e repository em
 infrastructure usando HTTP/storage diretamente, sem `Either` ou data sources.
@@ -170,14 +191,14 @@ Os detalhes estão em [Estado atual e migração](ARCHITECTURE.md#estado-atual-e
 O código existente inclui os seguintes fluxos, cuja disponibilidade depende da
 conclusão da migração e da composição dos módulos:
 
-- Boas-vindas e decisão inicial pela presença do token.
+- Boas-vindas, validação inicial de token persistido via auth-refresh e observação da sessão.
 - Entrada/cadastro com e-mail e senha, confirmação por link e reenvio com cooldown.
 - Perfil, edição do nome, avatar gerado com salvamento após dois segundos e
   exclusão da conta.
 - Criação/edição de despesas, valor em centavos, data civil e cadastro contínuo
   por hold; listagem paginada com filtros de período/categoria e gestos de edição/exclusão.
 - Dashboard mensal com métricas por categoria e seis despesas recentes.
-- Configurações e logout com revogação remota antes de limpar o storage.
+- Configurações e sign-out com limpeza local aguardada, sem HTTP ou revogação remota.
 - Tema claro/escuro, componentes compartilhados e previews.
 
 `budget` e `family` são planejados, sem features Flutter implementadas.
@@ -327,10 +348,11 @@ ainda sem execução em dispositivo. Callback tem 29 testes novos de Bloc, tela,
 DI e rotas aprovados; eles não substituem a validação de deep links nativos.
 
 O [E2E de logout](test/features/settings/presentation/screens/settings/e2e/README.md)
-usa fixture local na porta 8769 e cobre confirmação, revogação, falha e loading.
-Não foi executado em dispositivo. Os 23 testes novos de Settings/Logout incluem
-Bloc, tela e módulo com repository real sobre clients mockados, verificando
-que a conclusão aguarda a revogação e a limpeza do storage.
+usa fixture local na porta 8769 para o cenário Success, com confirmação, limpeza
+local e zero requests de logout. Failure/Loading HTTP são legados incompatíveis:
+não execute a pasta inteira. Não foi executado em dispositivo. Os testes Flutter
+de Settings/Logout incluem Bloc, tela e módulo com repository real sobre clients
+mockados, verificando espera da limpeza e propagação de falhas do storage.
 
 Session/Root têm 49 testes novos aprovados, incluindo o ciclo de sign-in/token/
 logout com repositories e Blocs reais sobre clients mockados. Os
@@ -414,19 +436,20 @@ Esta seção descreve o **código Flutter atual**, não o contrato PocketBase.
 As regras e a autenticação do novo serviço estão em
 [`backend/README.md`](backend/README.md#coleções).
 
-O repository de Authentication envia JSON:API e persiste token opaco e ID do
-usuário por `IStorageClient`, aguardando ambas as escritas antes de concluir.
+O repository de Authentication usa endpoints nativos PocketBase para autenticação
+e verificação e persiste token/ID por `IStorageClient`, aguardando ambas as escritas antes de concluir.
 Não há garantia transacional entre elas. Bloc e UI não recebem token nem DTO.
 Falhas esperadas viram `AuthenticationException`; erros inesperados propagam,
 e o Bloc fornece fallback seguro e `addError` sem conhecer SDKs de telemetria.
 
-Session observa o token para entrada e redirecionamento global. Não há validação
-remota ao abrir, refresh automático ou guard Modular. Um 401 protegido remove
+Session valida o token persistido ao abrir por auth-refresh e observa mudanças
+locais para entrada e redirecionamento global. Não há refresh periódico, retry
+automático de requests ou guard Modular. Um 401 protegido remove
 somente o token enviado se ainda for o armazenado, preservando o ID.
-Logout aceito remotamente aguarda a limpeza de todo o storage seguro.
-Confirmação de e-mail usa o link assinado sem Bearer e não cria sessão.
+Sign-out aguarda a limpeza local de todo o storage seguro, sem HTTP.
+Confirmação de e-mail envia token por POST sem Bearer e não cria sessão.
 
-O logger HTTP debug atual registra dados sensíveis; não use credenciais reais
+O logger HTTP debug está configurado sem bodies/headers; não use credenciais reais
 em capturas compartilhadas. O logger não é instalado em release. Não adicione
 segredos ao código ou fixtures. Valores financeiros são centavos inteiros de BRL,
 e datas financeiras preservam seus componentes civis, sem conversão de fuso.

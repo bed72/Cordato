@@ -17,34 +17,28 @@ final class AuthenticationRepository({
   required final IStorageClient _storageClient,
 }) implements IAuthenticationRepository {
   @override
-  Future<void> logout() async {
-    try {
-      await _httpClient.delete(
-        parameter: Requests(path: HttpPathEnum.logout.path),
-      );
-
-      await _storageClient.clear();
-    } on HttpResponseException catch (exception) {
-      throw AuthenticationException(errors: exception.errors.toEntity());
-    } on HttpClientException {
-      throw AuthenticationException(errors: .unknown());
-    }
+  Future<void> signOut() async {
+    await _storageClient.clear();
   }
 
   @override
-  Future<EmailVerificationStatusEnum> confirmEmail(String url) async {
-    if (url.isEmpty) return .invalid;
+  Future<EmailVerificationStatusEnum> confirmEmail(String token) async {
+    if (token.isEmpty) return .invalid;
 
     try {
-      final response = await _httpClient.get(parameter: Requests(path: url));
+      final response = await _httpClient.post(
+        parameter: Requests(
+          path: HttpPathEnum.confirmEmailVerification.path,
+          body: {'token': token},
+        ),
+      );
 
       return switch (response.status) {
         204 => .success,
-        403 => .invalid,
         _ => .failure,
       };
     } on HttpResponseException catch (exception) {
-      return exception.status == 403 ? .invalid : .failure;
+      return exception.status == 400 ? .invalid : .failure;
     } on HttpClientException {
       return .failure;
     }
@@ -56,12 +50,7 @@ final class AuthenticationRepository({
       await _httpClient.post(
         parameter: Requests(
           path: HttpPathEnum.resendEmailVerification.path,
-          body: {
-            'data': {
-              'type': 'email-verifications',
-              'attributes': {'email': email},
-            },
-          },
+          body: {'email': email},
         ),
       );
     } on HttpResponseException catch (exception) {
@@ -78,15 +67,9 @@ final class AuthenticationRepository({
         parameter: Requests(
           path: HttpPathEnum.signUp.path,
           body: {
-            'data': {
-              'type': 'sign-ups',
-              'attributes': {
-                'email': email,
-                'name': 'Trocado',
-                'password': password,
-                'password_confirmation': password,
-              },
-            },
+            'email': email,
+            'password': password,
+            'passwordConfirm': password,
           },
         ),
       );
@@ -114,10 +97,7 @@ final class AuthenticationRepository({
           value: data.userId,
           key: StorageKeyEnum.userId.key,
         ),
-        _storageClient.write(
-          value: data.token,
-          key: StorageKeyEnum.opaqueToken.key,
-        ),
+        _storageClient.write(value: data.token, key: StorageKeyEnum.token.key),
       ]);
     } on HttpResponseException catch (exception) {
       throw AuthenticationException(errors: exception.errors.toEntity());

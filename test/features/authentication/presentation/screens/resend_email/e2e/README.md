@@ -5,7 +5,7 @@ isso não comprova execução no app. Reenvio mantém factory e ownership pela s
 inclusive timer/cooldown; somente Sign-in migrou para provide/addBloc do Modular.
 Seletores precisam ser confirmados no build atualizado.
 
-- `Success.yaml`: cooldown inicial, envio, feedback, novo cooldown e segundo envio manual.
+- `Success.yaml`: primeiro envio imediato, feedback, cooldown e segundo envio manual.
 - `Failure.yaml`: erro 429, e-mail preservado e retry imediato, sem novo cooldown na falha.
 - `Loading.yaml`: resposta retida, bloqueio de duplicatas e cooldown após conclusão.
 
@@ -13,7 +13,7 @@ Seletores precisam ser confirmados no build atualizado.
 
 Somente em dispositivo de teste: os flows apagam dados/keychain. Nunca execute
 contra produção. A fixture escuta somente loopback, aceita cadastro para alcançar
-a tela e conta apenas reenvios. Verifica JSON:API e ausência de Bearer sem logs
+a tela e conta apenas reenvios. Verifica JSON plano `email`, resposta 204 e ausência de Bearer sem logs
 de credenciais; não acessa serviços externos. Reutiliza utilitários HTTP e scripts
 de estatísticas/liberação das fixtures existentes.
 
@@ -40,7 +40,8 @@ maestro test test/features/authentication/presentation/screens/resend_email/e2e/
 maestro test test/features/authentication/presentation/screens/resend_email/e2e/Loading.yaml
 ```
 
-Os flows aguardam os 60 segundos reais, sem reduzir o cooldown de produção.
+O primeiro envio não aguarda cooldown. Após sucesso, o flow aguarda os 60 segundos
+reais, sem reduzir o cooldown de produção.
 Loading é liberado explicitamente e no teardown. A fixture expira requests
 retidas em 60 segundos; libere antes desse prazo. Testes Flutter avançam tempo
 virtual e cobrem fallback, concorrência, troca de factory e descarte do timer/Bloc.

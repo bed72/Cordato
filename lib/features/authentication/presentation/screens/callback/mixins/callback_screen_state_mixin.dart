@@ -27,7 +27,7 @@ mixin CallbackScreenStateMixin on State<CallbackScreen> {
       unawaited(bloc.close());
       bloc = widget.bloc();
       _confirm();
-    } else if (oldWidget.verificationUrl != widget.verificationUrl) {
+    } else if (oldWidget.token != widget.token) {
       _confirm();
     }
   }
@@ -39,7 +39,7 @@ mixin CallbackScreenStateMixin on State<CallbackScreen> {
   }
 
   void _confirm() {
-    bloc.add(CallbackRequestedEvent(verificationUrl: widget.verificationUrl));
+    bloc.add(CallbackRequestedEvent(token: widget.token));
   }
 
   void handleConfirmation(CallbackState state) {

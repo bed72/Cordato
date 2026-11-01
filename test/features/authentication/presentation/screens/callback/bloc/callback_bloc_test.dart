@@ -12,9 +12,9 @@ import 'package:cordato/features/authentication/presentation/screens/callback/bl
 import '../../../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
-  const url = 'https://other.example/confirm?signature=original&expires=123';
-  const otherUrl = 'https://other.example/confirm?signature=new&expires=456';
-  const requested = CallbackRequestedEvent(verificationUrl: url);
+  const url = 'fixture.verification.token';
+  const otherUrl = 'fixture.new.token';
+  const requested = CallbackRequestedEvent(token: url);
   late AuthenticationRepositoryMock repository;
 
   setUp(() => repository = AuthenticationRepositoryMock());
@@ -30,7 +30,7 @@ void main() {
     blocTest<CallbackBloc, CallbackState>(
       'rejects missing link $missing without calling the repository',
       build: () => CallbackBloc(repository: repository),
-      act: (bloc) => bloc.add(CallbackRequestedEvent(verificationUrl: missing)),
+      act: (bloc) => bloc.add(CallbackRequestedEvent(token: missing)),
       expect: () => [isA<CallbackConfirming>(), isA<CallbackInvalid>()],
       verify: (_) => verifyZeroInteractions(repository),
     );
@@ -51,7 +51,7 @@ void main() {
     ),
   ]) {
     blocTest<CallbackBloc, CallbackState>(
-      'maps ${scenario.status.name} and delegates the complete original URL',
+      'maps ${scenario.status.name} and delegates the original token',
       build: () {
         when(() => repository.confirmEmail(url))
             .thenAnswer((_) async => scenario.status);
@@ -103,7 +103,7 @@ void main() {
         addTearDown(subscription.cancel);
         bloc.add(requested);
         await started.future;
-        bloc.add(const CallbackRequestedEvent(verificationUrl: otherUrl));
+        bloc.add(const CallbackRequestedEvent(token: otherUrl));
         await nextStarted.future;
         if (fails) {
           previous.completeError(StateError('obsolete error'));
@@ -126,7 +126,7 @@ void main() {
     );
   }
 
-  test('an empty replacement invalidates a pending valid URL', () async {
+  test('an empty replacement invalidates a pending token', () async {
     final pending = Completer<EmailVerificationStatusEnum>();
     final started = Completer<void>();
     when(() => repository.confirmEmail(url)).thenAnswer((_) {
@@ -138,7 +138,7 @@ void main() {
     bloc.add(requested);
     await started.future;
     final invalid = bloc.stream.firstWhere((state) => state is CallbackInvalid);
-    bloc.add(const CallbackRequestedEvent(verificationUrl: null));
+    bloc.add(const CallbackRequestedEvent(token: null));
     await invalid;
     pending.complete(.success);
     await Future<void>.delayed(Duration.zero);

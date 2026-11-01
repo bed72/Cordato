@@ -18,7 +18,7 @@ final class SessionInterceptor({required final IStorageClient storage})
     }
 
     try {
-      final token = await storage.read(key: StorageKeyEnum.opaqueToken.key);
+      final token = await storage.read(key: StorageKeyEnum.token.key);
       if (token != null && token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
       }
@@ -42,11 +42,11 @@ final class SessionInterceptor({required final IStorageClient storage})
 
     if (response.statusCode == 401 && _requiresToken(options)) {
       try {
-        final token = await storage.read(key: StorageKeyEnum.opaqueToken.key);
+        final token = await storage.read(key: StorageKeyEnum.token.key);
 
         if (token != null &&
             options.headers['Authorization'] == 'Bearer $token') {
-          await storage.delete(key: StorageKeyEnum.opaqueToken.key);
+          await storage.delete(key: StorageKeyEnum.token.key);
         }
       } catch (_) {}
     }
@@ -65,6 +65,7 @@ final class SessionInterceptor({required final IStorageClient storage})
           endpoint.authenticated &&
           _matches(
             endpoint: endpoint,
+            method: options.method,
             actual: options.uri.pathSegments,
             expected: base.resolve(endpoint.path).pathSegments,
           ),
@@ -72,12 +73,22 @@ final class SessionInterceptor({required final IStorageClient storage})
   }
 
   bool _matches({
+    required String method,
     required List<String> actual,
     required HttpPathEnum endpoint,
     required List<String> expected,
   }) {
-    if (listEquals(actual, expected)) return endpoint != HttpPathEnum.user;
-    if (endpoint != HttpPathEnum.user && endpoint != HttpPathEnum.expenses) {
+    if (listEquals(actual, expected)) {
+      if (endpoint == .user) return false;
+      if (endpoint == .userRecords && method == 'POST') {
+        return false;
+      }
+      return true;
+    }
+    if (endpoint != .user &&
+        endpoint != .expenses &&
+        endpoint != .userRecords &&
+        endpoint != .expenseRecords) {
       return false;
     }
     if (actual.length != expected.length + 1) return false;
