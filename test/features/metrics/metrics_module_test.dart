@@ -16,43 +16,53 @@ import '../../support/core/mocks/http_client_mock.dart';
 void main() {
   setUpAll(() => registerFallbackValue(const Requests(path: '')));
 
+  late HttpClientMock http;
+  late ModularBootstrap boot;
+
+  setUp(() {
+    http = HttpClientMock();
+    when(() => http.get(parameter: any(named: 'parameter'))).thenAnswer(
+      (_) async => const Responses(
+        status: 200,
+        body: {
+          'data': {
+            'id': 'metrics',
+            'attributes': {
+              'total_amount': '123',
+              'start_date': '2026-10-01',
+              'end_date': '2026-10-31',
+              'categories': [],
+            },
+          },
+        },
+      ),
+    );
+    boot = bootstrapModule(
+      createModule(
+        register: (context) {
+          context.addInstance<IHttpClient>(http);
+          context.module(metricsModule);
+        },
+      ),
+    );
+    addTearDown(boot.injector.dispose);
+  });
+
   test(
     'binds the contract to one HTTP-backed repository without a data source',
     () async {
-      final http = HttpClientMock();
-      when(() => http.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Responses(
-          status: 200,
-          body: {
-            'data': {
-              'id': 'metrics',
-              'attributes': {
-                'total_amount': '123',
-                'start_date': '2026-10-01',
-                'end_date': '2026-10-31',
-                'categories': [],
-              },
-            },
-          },
-        ),
-      );
-      final boot = bootstrapModule(
-        createModule(
-          register: (context) {
-            context.addInstance<IHttpClient>(http);
-            context.module(metricsModule);
-          },
-        ),
-      );
-      addTearDown(boot.injector.dispose);
       final repository = inject<IMetricsRepository>();
       expect(inject<IMetricsRepository>(), same(repository));
+
       final bloc = inject<ExpenseMetricsBloc>();
       final other = inject<ExpenseMetricsBloc>();
+
       addTearDown(bloc.close);
       addTearDown(other.close);
+
       expect(bloc, isNot(same(other)));
       expect(other.state, isA<ExpenseMetricsInitial>());
+
       final ready = bloc.stream.firstWhere(
         (state) => state is ExpenseMetricsSuccess,
       );
@@ -64,8 +74,10 @@ void main() {
         ),
       );
       final data = (await ready).metrics!;
+
       expect(data.totalAmount, 123);
       expect(data.categories, isEmpty);
+
       final request =
           verify(() => http.get(parameter: captureAny(named: 'parameter')))
                   .captured

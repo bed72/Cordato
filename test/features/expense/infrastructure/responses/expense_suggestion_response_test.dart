@@ -9,12 +9,13 @@ void main() {
     test('accepts optional amount in $attributes', () {
       final entity = ExpenseSuggestionResponse.fromJson({
         'id': 'market',
-        'type': 'expense-suggestions',
         'attributes': attributes,
+        'type': 'expense-suggestions',
       }).toEntity();
+
       expect(entity.id, 'market');
-      expect(entity.description, 'Mercado');
       expect(entity.cents, isNull);
+      expect(entity.description, 'Mercado');
     });
   }
 

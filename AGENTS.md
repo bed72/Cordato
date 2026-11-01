@@ -313,34 +313,36 @@ de composição visual, como Metrics notificar Dashboard, continuam permitidos.
 Os testes seguem a mesma arquitetura, não o padrão antigo de data sources ou
 commands. Espelhe o caminho de produção em `test/features/<feature>/`.
 
+Não adicionar Python ao projeto, inclusive em scripts, fakes e fixtures.
+Não manter nem criar testes de UI: telas, widgets, goldens, integração visual
+ou flows Maestro. Previews manuais permanecem disponíveis. Preserve testes
+unitários de Bloc, validação, formatação, contratos, infraestrutura e arquitetura.
+
 | Alvo | Cobertura mínima |
 | --- | --- |
 | Domain | Invariantes, imutabilidade e semântica dos valores, sem SDKs. |
 | Application | Contratos puros e preservação de erros nas exceções. |
 | Repository em infrastructure | Payload, DTO, clients mockados, erros HTTP, parsing inválido, ordem/espera de persistência e propagação de falhas inesperadas. |
 | Bloc | Estado inicial, sequência de estados, delegação, falha esperada/inesperada, concorrência, retry e fechamento pendente. |
-| Screen/widget | Bloc real com repository mockado; validação, teclado, loading, feedback único, rebuild, troca de proprietário e descarte. |
-| Modular/rotas | Dependências de construtor, uma instância por página, preservação em rebuild, fechamento/retorno pendente e navegação tipada sem callbacks nos argumentos. |
-| E2E Maestro | Success, Failure e Loading no app, com API de fixtures isolada. |
+| Modular/rotas | Catálogo de rotas e resolução de dependências/factories sem montar UI. |
 | Architecture | Imports, camadas, contextos e isolamento de contratos; DI/rotas exigem testes próprios. |
 
 - Use `mocktail`, `bloc_test` e `flutter_test`. Em teste de Bloc, mocke o contrato
   de repository, não o client HTTP. Em teste do repository, mocke os clients.
-- Nos testes de screen, use o tema real, `pt_BR` e provider de toast. Respeite
-  o ownership do fluxo: Sign-in e sugestões de Expense usam escopo externo; os demais mantêm a screen
-  como dona do Bloc. Não mascare erros de lifecycle fechando-o por outro dono.
 - Controle operações pendentes com `Completer` ou sinais observáveis; não dependa
   de sleeps arbitrários para provar concorrência.
+- Organize suítes extensas em `group` por operação ou responsabilidade. Separe
+  preparação, ação e verificações; extraia montagem repetida para helpers locais.
+  Sucesso e falha com expectativas diferentes ficam em cenários próprios, não em
+  condicionais dentro das asserções. Matrizes com o mesmo comportamento continuam
+  parametrizadas e precisam de nomes que identifiquem cada cenário.
+- Testes de tempo/debounce de lógica usam `fake_async`, sem `WidgetTester`
+  nem montagem de widgets. Crie e descarte recursos na zona de tempo do cenário.
 - Mocks/fakes/adapters públicos ficam em arquivos próprios sob
   `test/support/<feature>/mocks/` ou `fakes/`, nunca dentro de `*_test.dart` ou `lib/`.
 - Reutilize um double por contrato; instâncias, stubs e fixtures de cenário são
   locais a cada teste. Imports de suporte usam caminhos relativos explícitos.
 - Cancele subscriptions, conclua Futures controlados e descarte recursos criados.
-- Flows Maestro pertencem a `presentation/screens/<screen>/e2e/` na árvore de
-  testes, com README de execução e fixtures em `test/support/`.
-- Não execute fixtures com credenciais fictícias contra produção. Maestro não
-  substitui testes de parsing, storage, concorrência ou lifecycle.
-- Nunca declare E2E validado apenas porque YAML existe ou passou na sintaxe.
 
 ## Previews E Verificação
 

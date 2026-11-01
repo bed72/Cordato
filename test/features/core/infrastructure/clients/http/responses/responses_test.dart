@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 
 void main() {
   group('Responses', () {
@@ -26,8 +26,8 @@ void main() {
           },
           {
             'source': {
-              'pointer': '/data/attributes/name',
               'parameter': 'filter',
+              'pointer': '/data/attributes/name',
             },
           },
           {'detail': 'Sem origem'},
@@ -35,20 +35,20 @@ void main() {
       });
       final errors = response.toEntity().errors;
 
-      expect(response.errors, hasLength(3));
-      expect(response.errors.first.parameter, 'start_date');
       expect(errors, hasLength(3));
+      expect(errors[1].title, isNull);
       expect(errors.first.status, '422');
+      expect(errors.last.pointer, isNull);
+      expect(errors.first.pointer, isNull);
+      expect(response.errors, hasLength(3));
+      expect(errors.last.parameter, isNull);
+      expect(errors[1].parameter, 'filter');
+      expect(errors.last.detail, 'Sem origem');
+      expect(errors.first.parameter, 'start_date');
       expect(errors.first.title, 'Parâmetro inválido');
       expect(errors.first.detail, 'Informe o período.');
-      expect(errors.first.parameter, 'start_date');
-      expect(errors.first.pointer, isNull);
       expect(errors[1].pointer, '/data/attributes/name');
-      expect(errors[1].parameter, 'filter');
-      expect(errors[1].title, isNull);
-      expect(errors.last.detail, 'Sem origem');
-      expect(errors.last.pointer, isNull);
-      expect(errors.last.parameter, isNull);
+      expect(response.errors.first.parameter, 'start_date');
     });
 
     test('uses fallback for an empty error envelope or entity conversion', () {
@@ -56,11 +56,11 @@ void main() {
       final entity = const ErrorsResponse(errors: []).toEntity();
 
       expect(parsed.errors.single.title, 'Erro desconhecido');
+      expect(entity.errors.single.title, 'Erro desconhecido');
       expect(
         parsed.errors.single.detail,
         'Não foi possível processar a resposta.',
       );
-      expect(entity.errors.single.title, 'Erro desconhecido');
     });
 
     test('rejects malformed JSON instead of hiding parsing failures', () {

@@ -11,9 +11,9 @@ void main() {
           'type': 'expenses',
           'attributes': {
             'amount': 10000,
-            'occurred_on': '2026-10-08',
-            'description': 'Lanche',
             'category': 'other',
+            'description': 'Lanche',
+            'occurred_on': '2026-10-08',
             'created_at': '2026-10-06T20:16:48+00:00',
           },
         },

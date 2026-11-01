@@ -40,144 +40,120 @@ void main() {
     ).thenAnswer((_) => answer());
   }
 
-  test('starts ready without requesting registration', () async {
-    final bloc = SignUpBloc(repository: repository);
-    addTearDown(bloc.close);
-    expect(bloc.state, isA<SignUpInitial>());
-    expect(bloc.state.canSubmit, isTrue);
-    expect(bloc.state.isSubmitting, isFalse);
-    verifyZeroInteractions(repository);
+  group('Initial state and registration', () {
+    test('starts ready without requesting registration', () async {
+      final bloc = SignUpBloc(repository: repository);
+      addTearDown(bloc.close);
+      expect(bloc.state, isA<SignUpInitial>());
+      expect(bloc.state.canSubmit, isTrue);
+      expect(bloc.state.isSubmitting, isFalse);
+      verifyZeroInteractions(repository);
+    });
+
+    blocTest<SignUpBloc, SignUpState>(
+      'delegates unchanged inputs and exposes only the confirmation email',
+      build: () {
+        stub(() async {});
+        return SignUpBloc(repository: repository);
+      },
+      act: (bloc) => bloc.add(submitted),
+      expect: () => [
+        isA<SignUpSubmitting>()
+            .having((state) => state.canSubmit, 'canSubmit', isFalse)
+            .having((state) => state.isSubmitting, 'isSubmitting', isTrue),
+        isA<SignUpSuccess>()
+            .having((state) => state.email, 'email', submitted.email)
+            .having((state) => state.canSubmit, 'canSubmit', isFalse),
+      ],
+      verify: (_) {
+        verify(
+          () => repository.signUp(
+            email: submitted.email,
+            password: submitted.password,
+          ),
+        ).called(1);
+        verifyNoMoreInteractions(repository);
+      },
+    );
   });
 
-  blocTest<SignUpBloc, SignUpState>(
-    'delegates unchanged inputs and exposes only the confirmation email',
-    build: () {
-      stub(() async {});
-      return SignUpBloc(repository: repository);
-    },
-    act: (bloc) => bloc.add(submitted),
-    expect: () => [
-      isA<SignUpSubmitting>()
-          .having((state) => state.canSubmit, 'canSubmit', isFalse)
-          .having((state) => state.isSubmitting, 'isSubmitting', isTrue),
-      isA<SignUpSuccess>()
-          .having((state) => state.email, 'email', submitted.email)
-          .having((state) => state.canSubmit, 'canSubmit', isFalse),
-    ],
-    verify: (_) {
-      verify(
-        () => repository.signUp(
-          email: submitted.email,
-          password: submitted.password,
-        ),
-      ).called(1);
-      verifyNoMoreInteractions(repository);
-    },
-  );
+  group('Failures and manual retry', () {
+    for (final failure in [errors, const ErrorsEntity(errors: [])]) {
+      blocTest<SignUpBloc, SignUpState>(
+        'preserves application errors including an empty collection: ${failure.errors.length}',
+        build: () {
+          stub(() async => throw AuthenticationException(errors: failure));
+          return SignUpBloc(repository: repository);
+        },
+        act: (bloc) => bloc.add(submitted),
+        expect: () => [
+          isA<SignUpSubmitting>(),
+          isA<SignUpFailure>()
+              .having((state) => state.errors, 'errors', same(failure))
+              .having((state) => state.canSubmit, 'canSubmit', isTrue),
+        ],
+        errors: () => isEmpty,
+      );
+    }
 
-  for (final failure in [errors, const ErrorsEntity(errors: [])]) {
+    final unexpected = StateError('private failure');
     blocTest<SignUpBloc, SignUpState>(
-      'preserves application errors including an empty collection: ${failure.errors.length}',
+      'reports unexpected failures and uses safe feedback',
       build: () {
-        stub(() async => throw AuthenticationException(errors: failure));
+        stub(() async => throw unexpected);
         return SignUpBloc(repository: repository);
       },
       act: (bloc) => bloc.add(submitted),
       expect: () => [
         isA<SignUpSubmitting>(),
-        isA<SignUpFailure>()
-            .having((state) => state.errors, 'errors', same(failure))
-            .having((state) => state.canSubmit, 'canSubmit', isTrue),
+        isA<SignUpFailure>().having(
+          (state) => state.errors.errors.single.title,
+          'title',
+          'Erro desconhecido',
+        ),
       ],
-      errors: () => isEmpty,
+      errors: () => [same(unexpected)],
     );
-  }
 
-  final unexpected = StateError('private failure');
-  blocTest<SignUpBloc, SignUpState>(
-    'reports unexpected failures and uses safe feedback',
-    build: () {
-      stub(() async => throw unexpected);
-      return SignUpBloc(repository: repository);
-    },
-    act: (bloc) => bloc.add(submitted),
-    expect: () => [
-      isA<SignUpSubmitting>(),
-      isA<SignUpFailure>().having(
-        (state) => state.errors.errors.single.title,
-        'title',
-        'Erro desconhecido',
-      ),
-    ],
-    errors: () => [same(unexpected)],
-  );
-
-  blocTest<SignUpBloc, SignUpState>(
-    'retries only manually and blocks submissions after success',
-    build: () {
-      var attempts = 0;
-      stub(() async {
-        if (++attempts == 1) throw AuthenticationException(errors: errors);
-      });
-      return SignUpBloc(repository: repository);
-    },
-    act: (bloc) async {
-      final failed = bloc.stream.firstWhere((state) => state is SignUpFailure);
-      bloc.add(submitted);
-      await failed;
-      final finished = bloc.stream.firstWhere(
-        (state) => state is SignUpSuccess,
-      );
-      bloc.add(submitted);
-      await finished;
-      bloc.add(submitted);
-    },
-    expect: () => [
-      isA<SignUpSubmitting>(),
-      isA<SignUpFailure>(),
-      isA<SignUpSubmitting>(),
-      isA<SignUpSuccess>(),
-    ],
-    verify: (_) => verify(
-      () => repository.signUp(
-        email: submitted.email,
-        password: submitted.password,
-      ),
-    ).called(2),
-  );
-
-  test('drops duplicate and different submissions while pending', () async {
-    final pending = Completer<void>();
-    final started = Completer<void>();
-    stub(() {
-      started.complete();
-      return pending.future;
-    });
-    final bloc = SignUpBloc(repository: repository);
-    addTearDown(bloc.close);
-    bloc.add(submitted);
-    await started.future;
-    bloc.add(submitted);
-    bloc.add(
-      const SignUpSubmittedEvent(email: 'other@example.com', password: 'other'),
+    blocTest<SignUpBloc, SignUpState>(
+      'retries only manually and blocks submissions after success',
+      build: () {
+        var attempts = 0;
+        stub(() async {
+          if (++attempts == 1) throw AuthenticationException(errors: errors);
+        });
+        return SignUpBloc(repository: repository);
+      },
+      act: (bloc) async {
+        final failed = bloc.stream.firstWhere(
+          (state) => state is SignUpFailure,
+        );
+        bloc.add(submitted);
+        await failed;
+        final finished = bloc.stream.firstWhere(
+          (state) => state is SignUpSuccess,
+        );
+        bloc.add(submitted);
+        await finished;
+        bloc.add(submitted);
+      },
+      expect: () => [
+        isA<SignUpSubmitting>(),
+        isA<SignUpFailure>(),
+        isA<SignUpSubmitting>(),
+        isA<SignUpSuccess>(),
+      ],
+      verify: (_) => verify(
+        () => repository.signUp(
+          email: submitted.email,
+          password: submitted.password,
+        ),
+      ).called(2),
     );
-    await Future<void>.delayed(Duration.zero);
-    expect(bloc.state, isA<SignUpSubmitting>());
-    final finished = bloc.stream.firstWhere((state) => state is SignUpSuccess);
-    pending.complete();
-    await finished;
-    await Future<void>.delayed(Duration.zero);
-    verify(
-      () => repository.signUp(
-        email: submitted.email,
-        password: submitted.password,
-      ),
-    ).called(1);
-    verifyNoMoreInteractions(repository);
   });
 
-  for (final outcome in ['success', 'expected failure', 'unexpected failure']) {
-    test('closing prevents late states for $outcome', () async {
+  group('Concurrency and lifecycle', () {
+    test('drops duplicate and different submissions while pending', () async {
       final pending = Completer<void>();
       final started = Completer<void>();
       stub(() {
@@ -185,37 +161,80 @@ void main() {
         return pending.future;
       });
       final bloc = SignUpBloc(repository: repository);
-      final states = <SignUpState>[];
-      final subscription = bloc.stream.listen(states.add);
-      addTearDown(subscription.cancel);
       addTearDown(bloc.close);
       bloc.add(submitted);
       await started.future;
-      final closing = bloc.close();
-      switch (outcome) {
-        case 'success':
-          pending.complete();
-        case 'expected failure':
-          pending.completeError(AuthenticationException(errors: errors));
-        default:
-          pending.completeError(StateError('late error'));
-      }
-      await closing;
-      expect(bloc.isClosed, isTrue);
-      expect(states, [isA<SignUpSubmitting>()]);
+      bloc.add(submitted);
+      bloc.add(
+        const SignUpSubmittedEvent(
+          email: 'other@example.com',
+          password: 'other',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(bloc.state, isA<SignUpSubmitting>());
+      final finished = bloc.stream.firstWhere(
+        (state) => state is SignUpSuccess,
+      );
+      pending.complete();
+      await finished;
+      await Future<void>.delayed(Duration.zero);
+      verify(
+        () => repository.signUp(
+          email: submitted.email,
+          password: submitted.password,
+        ),
+      ).called(1);
+      verifyNoMoreInteractions(repository);
     });
-  }
 
-  test('screen instances do not share state', () async {
-    stub(() async {});
-    final first = SignUpBloc(repository: repository);
-    final second = SignUpBloc(repository: repository);
-    addTearDown(first.close);
-    addTearDown(second.close);
-    final finished = first.stream.firstWhere((state) => state is SignUpSuccess);
-    first.add(submitted);
-    await finished;
-    expect(second.state, isA<SignUpInitial>());
-    expect(second.state.canSubmit, isTrue);
+    for (final outcome in [
+      'success',
+      'expected failure',
+      'unexpected failure',
+    ]) {
+      test('closing prevents late states for $outcome', () async {
+        final pending = Completer<void>();
+        final started = Completer<void>();
+        stub(() {
+          started.complete();
+          return pending.future;
+        });
+        final bloc = SignUpBloc(repository: repository);
+        final states = <SignUpState>[];
+        final subscription = bloc.stream.listen(states.add);
+        addTearDown(subscription.cancel);
+        addTearDown(bloc.close);
+        bloc.add(submitted);
+        await started.future;
+        final closing = bloc.close();
+        switch (outcome) {
+          case 'success':
+            pending.complete();
+          case 'expected failure':
+            pending.completeError(AuthenticationException(errors: errors));
+          default:
+            pending.completeError(StateError('late error'));
+        }
+        await closing;
+        expect(bloc.isClosed, isTrue);
+        expect(states, [isA<SignUpSubmitting>()]);
+      });
+    }
+
+    test('screen instances do not share state', () async {
+      stub(() async {});
+      final first = SignUpBloc(repository: repository);
+      final second = SignUpBloc(repository: repository);
+      addTearDown(first.close);
+      addTearDown(second.close);
+      final finished = first.stream.firstWhere(
+        (state) => state is SignUpSuccess,
+      );
+      first.add(submitted);
+      await finished;
+      expect(second.state, isA<SignUpInitial>());
+      expect(second.state.canSubmit, isTrue);
+    });
   });
 }

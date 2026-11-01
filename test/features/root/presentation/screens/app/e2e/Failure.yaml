@@ -1,5 +1,0 @@
-appId: com.bed.cordato
-name: Session - Failed revocation preserves session
-tags: [session, failure]
----
-- runFlow: ../../../../../settings/presentation/screens/settings/e2e/Failure.yaml

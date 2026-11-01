@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 
 void main() {
   test('preserves the same errors including an empty list', () {

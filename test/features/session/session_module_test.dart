@@ -1,14 +1,15 @@
 import 'dart:async';
 
-import 'package:flutter_modular/flutter_modular.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
+
 import 'package:cordato/features/session/session_module.dart';
 import 'package:cordato/features/session/presentation/bloc/session_bloc.dart';
 import 'package:cordato/features/session/presentation/bloc/session_event.dart';

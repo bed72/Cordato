@@ -131,514 +131,532 @@ void main() {
     await bloc.close();
   });
 
-  test(
-    'starts in the current civil month without querying before opening',
-    () async {
-      await bloc.close();
-      final now = DateTime.now();
-      bloc = DashboardBloc(
-        userRepository: users,
-        expenseRepository: expenses,
-        metricsRepository: metricsRepository,
-      );
-      expect(bloc.state.currentMonth, DateTime(now.year, now.month));
-      expect(bloc.state.selectedMonth, DateTime(now.year, now.month));
-      expect(bloc.state.phase, DashboardPhaseEnum.loading);
-      verifyZeroInteractions(users);
-      verifyZeroInteractions(expenses);
-      verifyZeroInteractions(metricsRepository);
-    },
-  );
+  group('Initial state and coordinated loading', () {
+    test(
+      'starts in the current civil month without querying before opening',
+      () async {
+        await bloc.close();
+        final now = DateTime.now();
+        bloc = DashboardBloc(
+          userRepository: users,
+          expenseRepository: expenses,
+          metricsRepository: metricsRepository,
+        );
+        expect(bloc.state.currentMonth, DateTime(now.year, now.month));
+        expect(bloc.state.selectedMonth, DateTime(now.year, now.month));
+        expect(bloc.state.phase, DashboardPhaseEnum.loading);
+        verifyZeroInteractions(users);
+        verifyZeroInteractions(expenses);
+        verifyZeroInteractions(metricsRepository);
+      },
+    );
 
-  test('opens once and publishes all data in a single ready state', () async {
-    final states = recordStates();
-    await send(DashboardOpened());
-    expect(states.map((state) => state.phase), [
-      DashboardPhaseEnum.loading,
-      DashboardPhaseEnum.ready,
-    ]);
-    expect(bloc.state.user, same(profile));
-    expect(bloc.state.metrics!.totalAmount, 0);
-    expect(bloc.state.expenses!.items, isEmpty);
-    expect(bloc.state.firstMonth, DateTime(2024, 1));
-    await send(DashboardOpened());
-    expect(states.length, 2);
-    verify(() => users.getById()).called(1);
-    verify(history).called(1);
-    verify(
-      () => metricsRepository.getExpenses(
-        startDate: DateTime(2026, 10),
-        endDate: DateTime(2026, 10, 31),
-        groupBy: .category,
-      ),
-    ).called(1);
-    verify(
-      () => expenses.get(
-        pageSize: 6,
-        from: DateTime(2026, 10),
-        to: DateTime(2026, 10, 31),
-      ),
-    ).called(1);
-    verifyNoMoreInteractions(expenses);
-  });
-
-  test(
-    'reads User and history in parallel before starting the sections',
-    () async {
-      final pendingUser = Completer<UserEntity>();
-      final pendingHistory = Completer<ExpensePageEntity>();
-      when(() => users.getById()).thenAnswer((_) => pendingUser.future);
-      when(history).thenAnswer((_) => pendingHistory.future);
+    test('opens once and publishes all data in a single ready state', () async {
+      final states = recordStates();
       await send(DashboardOpened());
+      expect(states.map((state) => state.phase), [
+        DashboardPhaseEnum.loading,
+        DashboardPhaseEnum.ready,
+      ]);
+      expect(bloc.state.user, same(profile));
+      expect(bloc.state.metrics!.totalAmount, 0);
+      expect(bloc.state.expenses!.items, isEmpty);
+      expect(bloc.state.firstMonth, DateTime(2024, 1));
+      await send(DashboardOpened());
+      expect(states.length, 2);
       verify(() => users.getById()).called(1);
       verify(history).called(1);
-      verifyZeroInteractions(metricsRepository);
-      pendingUser.complete(profile);
-      await flush();
-      expect(bloc.state.user, isNull);
-      verifyZeroInteractions(metricsRepository);
-      pendingHistory.complete(page([]));
-      await flush();
-      expect(bloc.state.phase, DashboardPhaseEnum.ready);
-    },
-  );
-
-  test(
-    'does not publish completed sections while another section is pending',
-    () async {
-      final states = recordStates();
-      final pendingMetrics = Completer<ExpenseMetricsEntity>();
-      final pendingExpenses = Completer<ExpensePageEntity>();
-      stubMetrics(() => pendingMetrics.future);
-      stubRecent(() => pendingExpenses.future);
-      await send(DashboardOpened());
-      pendingMetrics.complete(totals(DateTime(2026, 10)));
-      await flush();
-      expect(states.length, 1);
-      expect(bloc.state.phase, DashboardPhaseEnum.loading);
-      expect(bloc.state.user, isNull);
-      expect(bloc.state.metrics, isNull);
-      expect(bloc.state.expenses, isNull);
-      pendingExpenses.complete(page([]));
-      await flush();
-      expect(states.length, 2);
-      expect(bloc.state.phase, DashboardPhaseEnum.ready);
-    },
-  );
-
-  for (final errors in [
-    const ErrorsEntity(errors: []),
-    const ErrorsEntity(
-      errors: [
-        ErrorEntity(
-          title: 'Período inválido',
-          pointer: '/data/attributes/occurred_on',
-          parameter: 'filter[from]',
+      verify(
+        () => metricsRepository.getExpenses(
+          startDate: DateTime(2026, 10),
+          endDate: DateTime(2026, 10, 31),
+          groupBy: .category,
         ),
-      ],
-    ),
-  ]) {
-    for (final section in ['metrics', 'expenses']) {
+      ).called(1);
+      verify(
+        () => expenses.get(
+          pageSize: 6,
+          from: DateTime(2026, 10),
+          to: DateTime(2026, 10, 31),
+        ),
+      ).called(1);
+      verifyNoMoreInteractions(expenses);
+    });
+
+    test(
+      'reads User and history in parallel before starting the sections',
+      () async {
+        final pendingUser = Completer<UserEntity>();
+        final pendingHistory = Completer<ExpensePageEntity>();
+        when(() => users.getById()).thenAnswer((_) => pendingUser.future);
+        when(history).thenAnswer((_) => pendingHistory.future);
+        await send(DashboardOpened());
+        verify(() => users.getById()).called(1);
+        verify(history).called(1);
+        verifyZeroInteractions(metricsRepository);
+        pendingUser.complete(profile);
+        await flush();
+        expect(bloc.state.user, isNull);
+        verifyZeroInteractions(metricsRepository);
+        pendingHistory.complete(page([]));
+        await flush();
+        expect(bloc.state.phase, DashboardPhaseEnum.ready);
+      },
+    );
+
+    test(
+      'does not publish completed sections while another section is pending',
+      () async {
+        final states = recordStates();
+        final pendingMetrics = Completer<ExpenseMetricsEntity>();
+        final pendingExpenses = Completer<ExpensePageEntity>();
+        stubMetrics(() => pendingMetrics.future);
+        stubRecent(() => pendingExpenses.future);
+        await send(DashboardOpened());
+        pendingMetrics.complete(totals(DateTime(2026, 10)));
+        await flush();
+        expect(states.length, 1);
+        expect(bloc.state.phase, DashboardPhaseEnum.loading);
+        expect(bloc.state.user, isNull);
+        expect(bloc.state.metrics, isNull);
+        expect(bloc.state.expenses, isNull);
+        pendingExpenses.complete(page([]));
+        await flush();
+        expect(states.length, 2);
+        expect(bloc.state.phase, DashboardPhaseEnum.ready);
+      },
+    );
+  });
+
+  group('Section and auxiliary failures', () {
+    for (final errors in [
+      const ErrorsEntity(errors: []),
+      const ErrorsEntity(
+        errors: [
+          ErrorEntity(
+            title: 'Período inválido',
+            pointer: '/data/attributes/occurred_on',
+            parameter: 'filter[from]',
+          ),
+        ],
+      ),
+    ]) {
+      for (final section in ['metrics', 'expenses']) {
+        test(
+          '$section preserves the original typed failure after every section completes with ${errors.errors.length} errors',
+          () async {
+            final pending = Completer<ExpensePageEntity>();
+            stubRecent(() => pending.future);
+            switch (section) {
+              case 'metrics':
+                stubMetrics(() async => throw MetricsException(errors: errors));
+              case 'expenses':
+                stubMetrics(() async => totals(DateTime(2026, 10)));
+            }
+            final states = recordStates();
+            await send(DashboardOpened());
+            expect(bloc.state.phase, DashboardPhaseEnum.loading);
+            if (section == 'expenses') {
+              pending.completeError(ExpenseException(errors: errors));
+            } else {
+              pending.complete(page([]));
+            }
+            await flush();
+            expect(states.map((state) => state.phase), [
+              DashboardPhaseEnum.loading,
+              DashboardPhaseEnum.failure,
+            ]);
+            expect(bloc.state.financialError, same(errors));
+            expect(bloc.state.canRetry, isTrue);
+            expect(bloc.state.metrics, isNull);
+          },
+        );
+      }
+    }
+
+    test('unexpected section exceptions become unknown errors without partial publication', () async {
+      stubMetrics(() => throw StateError('unexpected'));
+      await send(DashboardOpened());
+      expect(bloc.state.phase, DashboardPhaseEnum.failure);
+      expect(
+        bloc.state.financialError!.errors.first.title,
+        'Erro desconhecido',
+      );
+      verify(
+        () => expenses.get(
+          pageSize: 6,
+          from: DateTime(2026, 10),
+          to: DateTime(2026, 10, 31),
+        ),
+      ).called(1);
+    });
+
+    for (final unexpected in [false, true]) {
       test(
-        '$section preserves the original typed failure after every section completes with ${errors.errors.length} errors',
+        'auxiliary ${unexpected ? 'unexpected' : 'typed'} failures use fallbacks without a financial error',
         () async {
-          final pending = Completer<ExpensePageEntity>();
-          stubRecent(() => pending.future);
-          switch (section) {
-            case 'metrics':
-              stubMetrics(() async => throw MetricsException(errors: errors));
-            case 'expenses':
-              stubMetrics(() async => totals(DateTime(2026, 10)));
-          }
-          final states = recordStates();
+          when(() => users.getById()).thenAnswer((_) async {
+            if (unexpected) throw StateError('user');
+            throw UserException(errors: .unknown());
+          });
+          when(history).thenAnswer((_) async {
+            if (unexpected) throw StateError('history');
+            throw ExpenseException(errors: ErrorsEntity.unknown());
+          });
           await send(DashboardOpened());
-          expect(bloc.state.phase, DashboardPhaseEnum.loading);
-          if (section == 'expenses') {
-            pending.completeError(ExpenseException(errors: errors));
-          } else {
-            pending.complete(page([]));
-          }
-          await flush();
-          expect(states.map((state) => state.phase), [
-            DashboardPhaseEnum.loading,
-            DashboardPhaseEnum.failure,
-          ]);
-          expect(bloc.state.financialError, same(errors));
-          expect(bloc.state.canRetry, isTrue);
-          expect(bloc.state.metrics, isNull);
+          expect(bloc.state.phase, DashboardPhaseEnum.ready);
+          expect(bloc.state.user, isNull);
+          expect(bloc.state.firstMonth, isNull);
+          expect(bloc.state.canGoBack, isFalse);
+          expect(bloc.state.financialError, isNull);
         },
       );
     }
-  }
-
-  test('unexpected section exceptions become unknown errors without partial publication', () async {
-    stubMetrics(() => throw StateError('unexpected'));
-    await send(DashboardOpened());
-    expect(bloc.state.phase, DashboardPhaseEnum.failure);
-    expect(bloc.state.financialError!.errors.first.title, 'Erro desconhecido');
-    verify(
-      () => expenses.get(
-        pageSize: 6,
-        from: DateTime(2026, 10),
-        to: DateTime(2026, 10, 31),
-      ),
-    ).called(1);
   });
 
-  for (final unexpected in [false, true]) {
+  group('Civil periods and history boundaries', () {
+    for (final date in [DateTime(2026, 1, 20), DateTime(2024, 3, 10)]) {
+      test(
+        'loads the complete civil interval across ${date.year}-${date.month}',
+        () async {
+          await bloc.close();
+          when(history).thenAnswer((_) async => page([DateTime(2020)]));
+          bloc = create(date: date);
+          await send(DashboardOpened());
+          final states = recordStates();
+          final month = DateTime(date.year, date.month - 1);
+          final end = DateTime(date.year, date.month, 0);
+          await send(DashboardPreviousMonthRequested());
+          expect(states.map((state) => state.phase), [
+            DashboardPhaseEnum.loading,
+            DashboardPhaseEnum.ready,
+          ]);
+          expect(states.first.metrics, isNull);
+          expect(states.first.expenses, isNull);
+          expect(bloc.state.currentMonth, DateTime(date.year, date.month));
+          expect(bloc.state.selectedMonth, month);
+          verify(
+            () => metricsRepository.getExpenses(
+              startDate: month,
+              endDate: end,
+              groupBy: .category,
+            ),
+          ).called(1);
+          verify(() => expenses.get(pageSize: 6, from: month, to: end))
+              .called(1);
+          verify(() => users.getById()).called(2);
+          verify(history).called(2);
+        },
+      );
+    }
+
+    test('blocks future months and months before the first expense', () async {
+      when(history).thenAnswer((_) async => page([DateTime(2026, 10)]));
+      await send(DashboardOpened());
+      final ready = bloc.state;
+      clearInteractions(metricsRepository);
+      await send(DashboardPreviousMonthRequested());
+      await send(DashboardNextMonthRequested());
+      expect(bloc.state, same(ready));
+      verifyZeroInteractions(metricsRepository);
+    });
+
     test(
-      'auxiliary ${unexpected ? 'unexpected' : 'typed'} failures use fallbacks without a financial error',
+      'returns to the current month without navigating into the future',
       () async {
-        when(() => users.getById()).thenAnswer((_) async {
-          if (unexpected) throw StateError('user');
-          throw UserException(errors: .unknown());
-        });
-        when(history).thenAnswer((_) async {
-          if (unexpected) throw StateError('history');
-          throw ExpenseException(errors: ErrorsEntity.unknown());
-        });
         await send(DashboardOpened());
-        expect(bloc.state.phase, DashboardPhaseEnum.ready);
-        expect(bloc.state.user, isNull);
-        expect(bloc.state.firstMonth, isNull);
-        expect(bloc.state.canGoBack, isFalse);
-        expect(bloc.state.financialError, isNull);
+        await send(DashboardPreviousMonthRequested());
+        expect(bloc.state.canGoForward, isTrue);
+        await send(DashboardNextMonthRequested());
+        expect(bloc.state.selectedMonth, DateTime(2026, 10));
+        expect(bloc.state.canGoForward, isFalse);
       },
     );
-  }
 
-  for (final date in [DateTime(2026, 1, 20), DateTime(2024, 3, 10)]) {
     test(
-      'loads the complete civil interval across ${date.year}-${date.month}',
+      'blocked events neither cancel nor queue work during loading',
       () async {
-        await bloc.close();
-        when(history).thenAnswer((_) async => page([DateTime(2020)]));
-        bloc = create(date: date);
+        final pending = Completer<ExpenseMetricsEntity>();
+        stubMetrics(() => pending.future);
+        await send(DashboardOpened());
+        for (final event in <DashboardEvent>[
+          DashboardOpened(),
+          DashboardRefreshRequested(),
+          DashboardRetryRequested(),
+          DashboardPreviousMonthRequested(),
+          DashboardNextMonthRequested(),
+        ]) {
+          bloc.add(event);
+        }
+        await flush();
+        expect(bloc.state.isLoading, isTrue);
+        pending.complete(totals(DateTime(2026, 10)));
+        await flush();
+        expect(bloc.state.phase, DashboardPhaseEnum.ready);
+        verify(history).called(1);
+        verify(() => users.getById()).called(1);
+      },
+    );
+
+    test('reads the first historical civil month once and ignores opaque continuations', () async {
+      when(history).thenAnswer(
+        (_) async => page([
+          DateTime.utc(2000, 2, 29, 23),
+        ], next: 'https://other.example/?page[cursor]=opaque'),
+      );
+      await send(DashboardOpened());
+      expect(bloc.state.firstMonth, DateTime(2000, 2));
+      verify(history).called(1);
+      verify(
+        () => expenses.get(
+          pageSize: 6,
+          from: DateTime(2026, 10),
+          to: DateTime(2026, 10, 31),
+        ),
+      ).called(1);
+      verifyNoMoreInteractions(expenses);
+    });
+
+    test('successful empty history has no previous month and does not fabricate a limit', () async {
+      when(history).thenAnswer((_) async => page([]));
+      await send(DashboardOpened());
+      expect(bloc.state.phase, DashboardPhaseEnum.ready);
+      expect(bloc.state.firstMonth, isNull);
+      expect(bloc.state.canGoBack, isFalse);
+    });
+
+    test(
+      'refresh preserves the selected month when history still allows it',
+      () async {
+        await send(DashboardOpened());
+        await send(DashboardPreviousMonthRequested());
+        await send(DashboardRefreshRequested());
+        expect(bloc.state.selectedMonth, DateTime(2026, 9));
+        expect(bloc.state.metrics!.startDate, DateTime(2026, 9));
+      },
+    );
+
+    for (final dates in [
+      <DateTime>[],
+      [DateTime(2026, 10)],
+      [DateTime(2027)],
+    ]) {
+      test(
+        'refresh adjusts selection for updated history $dates without passing the current month',
+        () async {
+          await send(DashboardOpened());
+          await send(DashboardPreviousMonthRequested());
+          when(history).thenAnswer((_) async => page(dates));
+          await send(DashboardRefreshRequested());
+          expect(bloc.state.selectedMonth, DateTime(2026, 10));
+          expect(bloc.state.metrics!.startDate, DateTime(2026, 10));
+          expect(bloc.state.canGoBack, isFalse);
+          expect(bloc.state.canGoForward, isFalse);
+        },
+      );
+    }
+
+    test('history failure preserves a past selection and disables the previous month', () async {
+      await send(DashboardOpened());
+      await send(DashboardPreviousMonthRequested());
+      when(history)
+          .thenAnswer((_) async => throw ExpenseException(errors: .unknown()));
+      await send(DashboardRefreshRequested());
+      expect(bloc.state.selectedMonth, DateTime(2026, 9));
+      expect(bloc.state.metrics!.startDate, DateTime(2026, 9));
+      expect(bloc.state.canGoBack, isFalse);
+      expect(bloc.state.canGoForward, isTrue);
+    });
+  });
+
+  group('Retry and obsolete loading cycles', () {
+    test('retry is a normal load and clears the previous failure only with complete success', () async {
+      stubMetrics(
+        () async => throw MetricsException(errors: ErrorsEntity.unknown()),
+      );
+      await send(DashboardOpened());
+      final failed = bloc.state;
+      await send(DashboardRefreshRequested());
+      await send(DashboardPreviousMonthRequested());
+      expect(bloc.state, same(failed));
+      final pendingUser = Completer<UserEntity>();
+      when(() => users.getById()).thenAnswer((_) => pendingUser.future);
+      stubMetrics(() async => totals(DateTime(2026, 10)));
+      final states = recordStates();
+      await send(DashboardRetryRequested());
+      expect(bloc.state.phase, DashboardPhaseEnum.loading);
+      expect(bloc.state.financialError, isNull);
+      await send(DashboardRetryRequested());
+      pendingUser.complete(profile);
+      await flush();
+      expect(states.map((state) => state.phase), [
+        DashboardPhaseEnum.loading,
+        DashboardPhaseEnum.ready,
+      ]);
+      verify(() => users.getById()).called(2);
+    });
+
+    test(
+      'a failed retry returns to error without automatically retrying',
+      () async {
+        stubMetrics(
+          () async => throw MetricsException(errors: ErrorsEntity.unknown()),
+        );
         await send(DashboardOpened());
         final states = recordStates();
-        final month = DateTime(date.year, date.month - 1);
-        final end = DateTime(date.year, date.month, 0);
-        await send(DashboardPreviousMonthRequested());
+        await send(DashboardRetryRequested());
+        expect(states.map((state) => state.phase), [
+          DashboardPhaseEnum.loading,
+          DashboardPhaseEnum.failure,
+        ]);
+        expect(bloc.state.canRetry, isTrue);
+        verify(history).called(2);
+      },
+    );
+
+    for (final staleError in [false, true]) {
+      test(
+        'confirmed changes replace a pending cycle and ignore old ${staleError ? 'errors' : 'data'}',
+        () async {
+          final pending = Completer<ExpenseMetricsEntity>();
+          stubMetrics(() => pending.future);
+          await send(DashboardOpened());
+          stubMetrics(() async => totals(DateTime(2026, 10), cents: 700));
+          await send(DashboardExpensesChanged());
+          expect(bloc.state.metrics!.totalAmount, 700);
+          final ready = bloc.state;
+          if (staleError) {
+            pending.completeError(StateError('obsolete'));
+          } else {
+            pending.complete(totals(DateTime(2026, 10), cents: 100));
+          }
+          await flush();
+          expect(bloc.state, same(ready));
+        },
+      );
+    }
+
+    for (final event in <DashboardEvent>[
+      DashboardRefreshRequested(),
+      DashboardRetryRequested(),
+    ]) {
+      test(
+        'confirmed changes replace ${event.runtimeType} without waiting for obsolete history',
+        () async {
+          if (event is DashboardRetryRequested) {
+            stubMetrics(
+              () async =>
+                  throw MetricsException(errors: ErrorsEntity.unknown()),
+            );
+          }
+          await send(DashboardOpened());
+          final pending = Completer<ExpensePageEntity>();
+          when(history).thenAnswer((_) => pending.future);
+          await send(event);
+          when(history).thenAnswer((_) async => page([]));
+          stubMetrics(() async => totals(DateTime(2026, 10)));
+          await send(DashboardExpensesChanged());
+          final ready = bloc.state;
+          expect(ready.phase, DashboardPhaseEnum.ready);
+          pending.complete(page([DateTime(2000)]));
+          await flush();
+          expect(bloc.state, same(ready));
+        },
+      );
+    }
+  });
+
+  group('Profile refresh and lifecycle', () {
+    test(
+      'returning from User with ready content reloads only the profile',
+      () async {
+        await send(DashboardOpened());
+        final previous = bloc.state;
+        clearInteractions(expenses);
+        clearInteractions(metricsRepository);
+        final states = recordStates();
+        when(() => users.getById())
+            .thenAnswer((_) async => throw UserException(errors: .unknown()));
+        await send(DashboardUserRequested());
         expect(states.map((state) => state.phase), [
           DashboardPhaseEnum.loading,
           DashboardPhaseEnum.ready,
         ]);
         expect(states.first.metrics, isNull);
-        expect(states.first.expenses, isNull);
-        expect(bloc.state.currentMonth, DateTime(date.year, date.month));
-        expect(bloc.state.selectedMonth, month);
-        verify(
-          () => metricsRepository.getExpenses(
-            startDate: month,
-            endDate: end,
-            groupBy: .category,
-          ),
-        ).called(1);
-        verify(() => expenses.get(pageSize: 6, from: month, to: end)).called(1);
-        verify(() => users.getById()).called(2);
-        verify(history).called(2);
+        expect(bloc.state.user, isNull);
+        expect(bloc.state.metrics, same(previous.metrics));
+        expect(bloc.state.expenses, same(previous.expenses));
+        expect(bloc.state.firstMonth, previous.firstMonth);
+        verifyZeroInteractions(expenses);
+        verifyZeroInteractions(metricsRepository);
       },
     );
-  }
 
-  test('blocks future months and months before the first expense', () async {
-    when(history).thenAnswer((_) async => page([DateTime(2026, 10)]));
-    await send(DashboardOpened());
-    final ready = bloc.state;
-    clearInteractions(metricsRepository);
-    await send(DashboardPreviousMonthRequested());
-    await send(DashboardNextMonthRequested());
-    expect(bloc.state, same(ready));
-    verifyZeroInteractions(metricsRepository);
-  });
-
-  test(
-    'returns to the current month without navigating into the future',
-    () async {
+    test('returning from User during loading replaces the whole cycle without waiting for old User', () async {
+      final pending = Completer<UserEntity>();
+      when(() => users.getById()).thenAnswer((_) => pending.future);
       await send(DashboardOpened());
-      await send(DashboardPreviousMonthRequested());
-      expect(bloc.state.canGoForward, isTrue);
-      await send(DashboardNextMonthRequested());
-      expect(bloc.state.selectedMonth, DateTime(2026, 10));
-      expect(bloc.state.canGoForward, isFalse);
-    },
-  );
-
-  test('blocked events neither cancel nor queue work during loading', () async {
-    final pending = Completer<ExpenseMetricsEntity>();
-    stubMetrics(() => pending.future);
-    await send(DashboardOpened());
-    for (final event in <DashboardEvent>[
-      DashboardOpened(),
-      DashboardRefreshRequested(),
-      DashboardRetryRequested(),
-      DashboardPreviousMonthRequested(),
-      DashboardNextMonthRequested(),
-    ]) {
-      bloc.add(event);
-    }
-    await flush();
-    expect(bloc.state.isLoading, isTrue);
-    pending.complete(totals(DateTime(2026, 10)));
-    await flush();
-    expect(bloc.state.phase, DashboardPhaseEnum.ready);
-    verify(history).called(1);
-    verify(() => users.getById()).called(1);
-  });
-
-  test('reads the first historical civil month once and ignores opaque continuations', () async {
-    when(history).thenAnswer(
-      (_) async => page([
-        DateTime.utc(2000, 2, 29, 23),
-      ], next: 'https://other.example/?page[cursor]=opaque'),
-    );
-    await send(DashboardOpened());
-    expect(bloc.state.firstMonth, DateTime(2000, 2));
-    verify(history).called(1);
-    verify(
-      () => expenses.get(
-        pageSize: 6,
-        from: DateTime(2026, 10),
-        to: DateTime(2026, 10, 31),
-      ),
-    ).called(1);
-    verifyNoMoreInteractions(expenses);
-  });
-
-  test('successful empty history has no previous month and does not fabricate a limit', () async {
-    when(history).thenAnswer((_) async => page([]));
-    await send(DashboardOpened());
-    expect(bloc.state.phase, DashboardPhaseEnum.ready);
-    expect(bloc.state.firstMonth, isNull);
-    expect(bloc.state.canGoBack, isFalse);
-  });
-
-  test(
-    'refresh preserves the selected month when history still allows it',
-    () async {
-      await send(DashboardOpened());
-      await send(DashboardPreviousMonthRequested());
-      await send(DashboardRefreshRequested());
-      expect(bloc.state.selectedMonth, DateTime(2026, 9));
-      expect(bloc.state.metrics!.startDate, DateTime(2026, 9));
-    },
-  );
-
-  for (final dates in [
-    <DateTime>[],
-    [DateTime(2026, 10)],
-    [DateTime(2027)],
-  ]) {
-    test(
-      'refresh adjusts selection for updated history $dates without passing the current month',
-      () async {
-        await send(DashboardOpened());
-        await send(DashboardPreviousMonthRequested());
-        when(history).thenAnswer((_) async => page(dates));
-        await send(DashboardRefreshRequested());
-        expect(bloc.state.selectedMonth, DateTime(2026, 10));
-        expect(bloc.state.metrics!.startDate, DateTime(2026, 10));
-        expect(bloc.state.canGoBack, isFalse);
-        expect(bloc.state.canGoForward, isFalse);
-      },
-    );
-  }
-
-  test('history failure preserves a past selection and disables the previous month', () async {
-    await send(DashboardOpened());
-    await send(DashboardPreviousMonthRequested());
-    when(history)
-        .thenAnswer((_) async => throw ExpenseException(errors: .unknown()));
-    await send(DashboardRefreshRequested());
-    expect(bloc.state.selectedMonth, DateTime(2026, 9));
-    expect(bloc.state.metrics!.startDate, DateTime(2026, 9));
-    expect(bloc.state.canGoBack, isFalse);
-    expect(bloc.state.canGoForward, isTrue);
-  });
-
-  test('retry is a normal load and clears the previous failure only with complete success', () async {
-    stubMetrics(
-      () async => throw MetricsException(errors: ErrorsEntity.unknown()),
-    );
-    await send(DashboardOpened());
-    final failed = bloc.state;
-    await send(DashboardRefreshRequested());
-    await send(DashboardPreviousMonthRequested());
-    expect(bloc.state, same(failed));
-    final pendingUser = Completer<UserEntity>();
-    when(() => users.getById()).thenAnswer((_) => pendingUser.future);
-    stubMetrics(() async => totals(DateTime(2026, 10)));
-    final states = recordStates();
-    await send(DashboardRetryRequested());
-    expect(bloc.state.phase, DashboardPhaseEnum.loading);
-    expect(bloc.state.financialError, isNull);
-    await send(DashboardRetryRequested());
-    pendingUser.complete(profile);
-    await flush();
-    expect(states.map((state) => state.phase), [
-      DashboardPhaseEnum.loading,
-      DashboardPhaseEnum.ready,
-    ]);
-    verify(() => users.getById()).called(2);
-  });
-
-  test(
-    'a failed retry returns to error without automatically retrying',
-    () async {
-      stubMetrics(
-        () async => throw MetricsException(errors: ErrorsEntity.unknown()),
-      );
-      await send(DashboardOpened());
-      final states = recordStates();
-      await send(DashboardRetryRequested());
-      expect(states.map((state) => state.phase), [
-        DashboardPhaseEnum.loading,
-        DashboardPhaseEnum.failure,
-      ]);
-      expect(bloc.state.canRetry, isTrue);
-      verify(history).called(2);
-    },
-  );
-
-  for (final staleError in [false, true]) {
-    test(
-      'confirmed changes replace a pending cycle and ignore old ${staleError ? 'errors' : 'data'}',
-      () async {
-        final pending = Completer<ExpenseMetricsEntity>();
-        stubMetrics(() => pending.future);
-        await send(DashboardOpened());
-        stubMetrics(() async => totals(DateTime(2026, 10), cents: 700));
-        await send(DashboardExpensesChanged());
-        expect(bloc.state.metrics!.totalAmount, 700);
-        final ready = bloc.state;
-        if (staleError) {
-          pending.completeError(StateError('obsolete'));
-        } else {
-          pending.complete(totals(DateTime(2026, 10), cents: 100));
-        }
-        await flush();
-        expect(bloc.state, same(ready));
-      },
-    );
-  }
-
-  for (final event in <DashboardEvent>[
-    DashboardRefreshRequested(),
-    DashboardRetryRequested(),
-  ]) {
-    test(
-      'confirmed changes replace ${event.runtimeType} without waiting for obsolete history',
-      () async {
-        if (event is DashboardRetryRequested) {
-          stubMetrics(
-            () async => throw MetricsException(errors: ErrorsEntity.unknown()),
-          );
-        }
-        await send(DashboardOpened());
-        final pending = Completer<ExpensePageEntity>();
-        when(history).thenAnswer((_) => pending.future);
-        await send(event);
-        when(history).thenAnswer((_) async => page([]));
-        stubMetrics(() async => totals(DateTime(2026, 10)));
-        await send(DashboardExpensesChanged());
-        final ready = bloc.state;
-        expect(ready.phase, DashboardPhaseEnum.ready);
-        pending.complete(page([DateTime(2000)]));
-        await flush();
-        expect(bloc.state, same(ready));
-      },
-    );
-  }
-
-  test(
-    'returning from User with ready content reloads only the profile',
-    () async {
-      await send(DashboardOpened());
-      final previous = bloc.state;
-      clearInteractions(expenses);
-      clearInteractions(metricsRepository);
-      final states = recordStates();
-      when(() => users.getById())
-          .thenAnswer((_) async => throw UserException(errors: .unknown()));
+      when(() => users.getById()).thenAnswer((_) async => profile);
       await send(DashboardUserRequested());
-      expect(states.map((state) => state.phase), [
-        DashboardPhaseEnum.loading,
-        DashboardPhaseEnum.ready,
-      ]);
-      expect(states.first.metrics, isNull);
-      expect(bloc.state.user, isNull);
-      expect(bloc.state.metrics, same(previous.metrics));
-      expect(bloc.state.expenses, same(previous.expenses));
-      expect(bloc.state.firstMonth, previous.firstMonth);
-      verifyZeroInteractions(expenses);
-      verifyZeroInteractions(metricsRepository);
-    },
-  );
+      final ready = bloc.state;
+      expect(ready.phase, DashboardPhaseEnum.ready);
+      expect(ready.user, same(profile));
+      pending.completeError(StateError('old User'));
+      await flush();
+      expect(bloc.state, same(ready));
+      verify(history).called(2);
+      verify(
+        () => metricsRepository.getExpenses(
+          startDate: DateTime(2026, 10),
+          endDate: DateTime(2026, 10, 31),
+          groupBy: .category,
+        ),
+      ).called(1);
+    });
 
-  test('returning from User during loading replaces the whole cycle without waiting for old User', () async {
-    final pending = Completer<UserEntity>();
-    when(() => users.getById()).thenAnswer((_) => pending.future);
-    await send(DashboardOpened());
-    when(() => users.getById()).thenAnswer((_) async => profile);
-    await send(DashboardUserRequested());
-    final ready = bloc.state;
-    expect(ready.phase, DashboardPhaseEnum.ready);
-    expect(ready.user, same(profile));
-    pending.completeError(StateError('old User'));
-    await flush();
-    expect(bloc.state, same(ready));
-    verify(history).called(2);
-    verify(
-      () => metricsRepository.getExpenses(
-        startDate: DateTime(2026, 10),
-        endDate: DateTime(2026, 10, 31),
-        groupBy: .category,
-      ),
-    ).called(1);
+    test('confirmed changes replace a pending profile refresh', () async {
+      await send(DashboardOpened());
+      final pending = Completer<UserEntity>();
+      when(() => users.getById()).thenAnswer((_) => pending.future);
+      await send(DashboardUserRequested());
+      when(() => users.getById()).thenAnswer((_) async => profile);
+      await send(DashboardExpensesChanged());
+      final ready = bloc.state;
+      pending.completeError(UserException(errors: .unknown()));
+      await flush();
+      expect(bloc.state, same(ready));
+      expect(bloc.state.user, same(profile));
+    });
+
+    for (final pendingHistory in [false, true]) {
+      test(
+        'closing during ${pendingHistory ? 'history' : 'sections'} ignores late completion',
+        () async {
+          final oldHistory = Completer<ExpensePageEntity>();
+          final oldMetrics = Completer<ExpenseMetricsEntity>();
+          if (pendingHistory) {
+            when(history).thenAnswer((_) => oldHistory.future);
+          } else {
+            stubMetrics(() => oldMetrics.future);
+          }
+          await send(DashboardOpened());
+          final firstClose = bloc.close();
+          expect(bloc.isClosed, isTrue);
+          await firstClose;
+          final closed = bloc.state;
+          if (pendingHistory) {
+            oldHistory.complete(
+              page([DateTime(2000)], next: '?page[after]=late'),
+            );
+          } else {
+            oldMetrics.completeError(StateError('late metrics'));
+          }
+          await flush();
+          expect(bloc.state, same(closed));
+          if (pendingHistory) verifyZeroInteractions(metricsRepository);
+          verifyNever(() => expenses.get(pageLink: '?page[after]=late'));
+        },
+      );
+    }
   });
-
-  test('confirmed changes replace a pending profile refresh', () async {
-    await send(DashboardOpened());
-    final pending = Completer<UserEntity>();
-    when(() => users.getById()).thenAnswer((_) => pending.future);
-    await send(DashboardUserRequested());
-    when(() => users.getById()).thenAnswer((_) async => profile);
-    await send(DashboardExpensesChanged());
-    final ready = bloc.state;
-    pending.completeError(UserException(errors: .unknown()));
-    await flush();
-    expect(bloc.state, same(ready));
-    expect(bloc.state.user, same(profile));
-  });
-
-  for (final pendingHistory in [false, true]) {
-    test(
-      'closing during ${pendingHistory ? 'history' : 'sections'} ignores late completion',
-      () async {
-        final oldHistory = Completer<ExpensePageEntity>();
-        final oldMetrics = Completer<ExpenseMetricsEntity>();
-        if (pendingHistory) {
-          when(history).thenAnswer((_) => oldHistory.future);
-        } else {
-          stubMetrics(() => oldMetrics.future);
-        }
-        await send(DashboardOpened());
-        final firstClose = bloc.close();
-        expect(bloc.isClosed, isTrue);
-        await firstClose;
-        final closed = bloc.state;
-        if (pendingHistory) {
-          oldHistory.complete(
-            page([DateTime(2000)], next: '?page[after]=late'),
-          );
-        } else {
-          oldMetrics.completeError(StateError('late metrics'));
-        }
-        await flush();
-        expect(bloc.state, same(closed));
-        if (pendingHistory) verifyZeroInteractions(metricsRepository);
-        verifyNever(() => expenses.get(pageLink: '?page[after]=late'));
-      },
-    );
-  }
 }

@@ -42,6 +42,8 @@ void main() {
     client = HttpClient(dio: dio);
   });
 
+  tearDown(() => dio.close(force: true));
+
   test('sends the original absolute URL without authentication', () async {
     final response = await client.get(parameter: const Requests(path: url));
 

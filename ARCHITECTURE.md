@@ -348,9 +348,8 @@ erros restantes aparecem em toast. Campos e envio ficam desabilitados durante
 submissão. O listener substitui a rota por confirmação com o e-mail, uma única
 vez, sem criar sessão. O footer substitui a rota por sign-in via BuildContext.
 
-Testes Flutter cobrem Bloc, formulário, navegação e lifecycle. Os flows e a
-fixture isolada estão no [README E2E de Sign-up](test/features/authentication/presentation/screens/sign_up/e2e/README.md);
-não foram executados em dispositivo devido aos bloqueios globais existentes.
+Testes unitários cobrem o Bloc e o repository. Testes de formulário, navegação
+visual e flows de UI foram removidos por decisão do projeto.
 
 ### Reenvio Com Bloc
 
@@ -378,9 +377,8 @@ contabilizar ticks atrasados e avançar o tempo virtual nos testes. Rebuild e
 troca de factory não reiniciam o cooldown nem repetem feedback. O fechamento do
 Bloc não cancela a request HTTP em andamento.
 
-O [README E2E de Resend-email](test/features/authentication/presentation/screens/resend_email/e2e/README.md)
-documenta os flows Success/Failure/Loading e a fixture isolada, ainda sem execução
-em dispositivo por causa dos bloqueios globais do app.
+O Bloc e o repository mantêm testes unitários; os flows de UI e sua fixture
+isolada foram removidos.
 
 ### Callback Com Bloc
 
@@ -405,11 +403,9 @@ navegação recebido pela rota, sessão criada ou redirecionamento autenticado.
 A tela mantém o indicador animado e seu rótulo semântico durante a confirmação.
 Fechamento, troca de factory e substituição do link impedem efeitos obsoletos.
 
-Testes próprios do módulo verificam factories independentes, repository real
-com clients mockados e decodificação de exatamente um `token` na query,
-incluindo query ausente/duplicada. Os [flows de callback](test/features/authentication/presentation/screens/callback/e2e/README.md)
-cobrem Success/Invalid/Failure/Loading com fixture local, ainda não executados
-em dispositivo. A entrega nativa de deep links não é provada pelos testes Flutter.
+Testes próprios do módulo verificam factories independentes e repository real
+com clients mockados. Os testes de UI da rota e flows de callback foram removidos.
+A entrega nativa de deep links não é provada pelos testes unitários.
 
 ### Logout Em Settings
 
@@ -437,15 +433,9 @@ Sucesso só ocorre quando o repository aguarda o `clear()` de todo o storage;
 falha de persistência propaga sem ser convertida em sucesso.
 Settings não navega nem mostra toast de sucesso:
 a observação global de Session continua responsável pelo redirecionamento.
-Os testes de módulo/rota usam o repository real com clients mockados para provar
-ausência de HTTP e espera da limpeza, além das factories independentes.
-
-O [E2E de logout](test/features/settings/presentation/screens/settings/e2e/README.md)
-prepara Success com login fictício e zero requests de logout. Os antigos flows
-Failure/Loading de revogação HTTP são incompatíveis e não devem ser executados;
-a fixture não injeta falha/atraso no storage nativo. Essas coberturas ficam nos
-testes Flutter. Não foi executado em dispositivo e não prova o redirecionamento global
-neste checkout, cuja composição ainda tem bloqueios.
+Os testes unitários de repository e Bloc verificam ausência de HTTP e espera
+da limpeza. A composição global testa resolução de dependências sem montar UI.
+Testes de tela/rota e flows de logout foram removidos.
 
 ### Session E Composição Root
 
@@ -510,15 +500,10 @@ uma rota irmã. Blocs de
 tela continuam registrados por factory nos módulos de suas features, exceto
 Sign-in, cujo Bloc pertence ao `provide` da página.
 `test/app_module_test.dart` verifica todos os destinos de `RouteEnum` e a resolução
-de Dashboard e logout sem ativar rotas irmãs. O teste composto de Root usa
-repositories/Blocs reais de Session, Authentication e Settings com clients
-mockados e Dashboard visual de teste para validar login → token → Dashboard →
-logout → limpeza → Welcome com o mesmo proprietário de Session.
-
-Os [flows Session/Root](test/features/root/presentation/screens/app/e2e/README.md)
-reutilizam a fixture local de logout e estão preparados, não executados em
-dispositivo. Falhas/leitura pendente do storage são verificadas nos testes Flutter,
-não injetadas por uma API HTTP ou por bypasses de segurança no app.
+de Dashboard e logout sem ativar rotas irmãs. O teste visual composto de Root
+e os flows Session/Root foram removidos. Falhas/leitura pendente do storage
+continuam verificadas nos testes unitários de Session, sem API de fixtures
+ou bypasses de segurança no app.
 
 ### User: Repository E Perfil Com Bloc
 
@@ -586,12 +571,9 @@ erro, e somente erros restantes aparecem em toast. Sucesso mostra o feedback
 existente e devolve a entidade da API pelo callback de navegação já existente,
 uma única vez. O perfil recarrega ao receber esse resultado confirmado.
 
-User não depende mais de CommandIt. O teste composto do módulo verifica factories
-independentes dos dois Blocs, estabilidade, argumentos de edição, PATCH com o
-repository real sobre clients mockados e retorno/recarga após conclusão remota.
-Dashboard compõe os contratos de aplicação financeiros. Os [flows de perfil](test/features/user/presentation/screens/user/e2e/README.md)
-e de [edição de nome](test/features/user/presentation/screens/edit/e2e/README.md)
-preparam Success/Failure/Loading com fixture HTTP isolada, sem execução em dispositivo.
+User não depende mais de CommandIt. Repository e Blocs mantêm testes unitários;
+o teste visual composto do módulo e os flows de perfil/edição foram removidos.
+Dashboard compõe os contratos de aplicação financeiros.
 
 ### Metrics: Repository E Consulta Com Bloc
 
@@ -642,7 +624,8 @@ paralelo, sem publicação parcial, preservando falhas tipadas e retry manual.
 Registros históricos de Insight abaixo não representam código disponível nem
 autorizam restaurar a feature.
 
-Verificação da remoção: `flutter pub get` concluído; `flutter analyze` sem issues;
+Verificação histórica da remoção de Insight, anterior à remoção dos testes de UI:
+`flutter pub get` concluído; `flutter analyze` sem issues;
 `flutter test test/architecture test/features/dashboard test/app_module_test.dart test/features/core/infrastructure/clients/http/interceptors/session_interceptor_test.dart`
 com 80 aprovados. Após limpar diretórios vazios residuais, a repetição global
 `flutter test --reporter failures-only` teve 939 aprovados e uma falha já registrada
@@ -772,11 +755,9 @@ Isso não cancela HTTP ou desfaz mutações já iniciadas.
 
 O módulo registra os dois Blocs por factory, sem commands ou data source. Previews
 usam factories estáveis ou `PreviewResourceWidget` como único dono do recurso.
-Testes de Bloc, tela e módulo cobrem concorrência, retry, lifecycle e retorno da
-edição com repository real sobre HTTP mockado. Os flows de
-[criação](test/features/expense/presentation/screens/expense/e2e/README.md) e
-[listagem/exclusão](test/features/expense/presentation/screens/expenses/e2e/README.md)
-usam fixture HTTP isolada e estão preparados, não executados em dispositivo.
+Testes unitários de Bloc cobrem concorrência, retry e fechamento; o teste de
+módulo verifica bindings e repository real sobre HTTP mockado. Testes de UI
+e flows de criação/listagem/exclusão foram removidos.
 
 Dashboard agora compõe somente resultados diretos de User, Metrics e
 Expense, sem Either. Uma falha no histórico continua sendo desconhecimento do
@@ -981,12 +962,6 @@ test/
     infrastructure/responses/
     presentation/screens/<screen>/
       bloc/<screen>_bloc_test.dart
-      <screen>_screen_test.dart
-      e2e/
-        README.md
-        Success.yaml
-        Failure.yaml
-        Loading.yaml
   support/<feature>/
     mocks/
     fakes/
@@ -1025,27 +1000,18 @@ Use `bloc_test` com mock do contrato de aplicação, não do HTTP. Cubra:
 Controle pendências com Completer e sinais do stream; não use sleeps arbitrários
 para provar ordenação. Cancele toda subscription e feche os Blocs criados pelo teste.
 
-### Screen E Widgets
+### Limite Da Suíte
 
-Monte o Bloc real sobre mock de repository, com `Themes.light`/`Themes.dark`,
-localização pt-BR e ToastProviderWidget. Não mocke o Bloc como substituto da
-integração entre formulário, estados e efeitos.
+O projeto não mantém testes de UI: telas, widgets, goldens, integração visual
+ou Maestro. Os flows, scripts auxiliares e servidores de fixtures foram removidos.
+Não adicionar Python ao projeto. Previews continuam como ferramenta manual,
+não como validação automatizada.
 
-Cubra validação sem request, limpeza isolada de erro ao editar, trim do e-mail
-e senha preservada, envio por botão/teclado, loading e bloqueio de reenvio,
-erro por campo e toast remanescente, fallback seguro, entrada preservada e
-retry manual. Rebuild não pode reenviar ou duplicar feedback.
-
-No Sign-in, verifique uma instância por escopo, estabilidade em rebuild,
-fechamento ao sair/substituir o escopo, nova instância ao retornar e operação
-pendente sem efeitos tardios. O teste da screen usa `ModularApp.provide` como
-dono; o teste de módulo verifica o `provide` da rota real e DI dos construtores.
-Nas telas não migradas, mantenha testes de factory estável, troca de factory e
-fechamento pela screen. Nunca feche manualmente para mascarar um dono ausente.
-Conclua pendências de maneira controlada. Testes de navegação cobrem edição
-confirmada/cancelada e recarga do consumidor ao voltar pelo app bar ou sistema.
-Navegação global por sessão e persistência nativa não são provadas por uma
-montagem isolada sem router/storage.
+Preserve testes unitários de lógica de apresentação, incluindo Blocs,
+validadores, formatadores e extensões. Debounce usa `fake_async`, sem montagem
+de widgets. Testes de módulos verificam catálogo, resolução de dependências
+e independência de factories sem renderizar telas. Não comprovam navegação
+nativa, aparência, acessibilidade ou lifecycle visual.
 
 ### Doubles E Fixtures
 
@@ -1056,31 +1022,13 @@ Reutilize o double por contrato, não suas instâncias mutáveis entre suítes.
 Stubs, dados do cenário e teardown pertencem ao próprio teste.
 Imports de suporte são relativos explícitos; produção usa `package:cordato/`.
 
-### E2E Maestro
-
-Flows ficam ao lado dos testes da screen em `e2e/`. Sign-in possui:
-
-- `Success.yaml`: uma submissão, navegação e sessão preservada após reinício.
-- `Failure.yaml`: validação, erro remoto, entrada preservada e retry manual.
-- `Loading.yaml`: resposta retida, campos bloqueados e ausência de request dupla.
-
-A fixture `test/support/authentication/fakes/sign_in_http_server.py` escuta
-somente loopback e oferece controle de cenário, estatísticas e liberação da
-request. Execute sequencialmente, sem sharding e sem backend real. Os flows
-limpam dados/keychain; use dispositivo de teste e credenciais fictícias.
-
-Consulte o [README E2E de Sign-in](test/features/authentication/presentation/screens/sign_in/e2e/README.md)
-para comandos e pré-requisitos. YAML existente ou sintaticamente válido não
-significa execução aprovada. Parsing, storage, erros inesperados e lifecycle
-continuam cobertos por testes unitários/widget. Não há suíte `integration_test`.
-
 ### Testes Arquiteturais
 
 O contrato desejado verifica imports de todos os contextos relevantes,
 isolamento de domain/application, apresentação sem adapters e dependências
 entre features. Scanners devem reportar arquivo, import e regra violada.
-Ausência de feature planejada não é erro. DI e navegação exigem testes próprios:
-inspecionar strings de RouteEnum não prova composição Modular.
+Ausência de feature planejada não é erro. DI exige testes próprios:
+inspecionar strings de RouteEnum não prova resolução de dependências Modular.
 
 A suíte atual ainda não garante integralmente esse contrato. Possui checks
 Supabase/RPC históricos, helper que reconhece apenas contextos financeiros e
@@ -1091,9 +1039,8 @@ para a regra geral de contratos de aplicação, não liberar infrastructure na U
 ## Estado Atual E Migração
 
 O repository e o contrato de Authentication já seguem o novo desenho.
-Sign-in, Sign-up, reenvio e callback têm Bloc, estados sealed, testes de Bloc,
-widget e flows E2E. O módulo de Authentication possui testes próprios para DI
-e roteamento do callback, sem garantir a composição global do aplicativo.
+Sign-in, Sign-up, reenvio e callback têm Bloc, estados sealed e testes unitários.
+O módulo de Authentication possui teste próprio de DI do callback, sem montar UI.
 Os fluxos de Authentication e a observação Session/Root usam o novo desenho;
 isso não significa que todo o aplicativo esteja migrado ou componha seus destinos.
 
@@ -1114,9 +1061,16 @@ isso não significa que todo o aplicativo esteja migrado ou componha seus destin
 | Dependências/core | CommandIt, Either e `response<T>` removidos; testes de core alinhados aos DTOs e exceções HTTP atuais. |
 | Composição global | Todos os destinos registrados; Authentication e Expense sem path, sem colisão de binds; logout resolve o contrato no injector raiz. |
 | Navegação de despesas | Contexto local e resultados tipados na edição; listagem sem callbacks de rota; consumidores recarregam em qualquer retorno da listagem. |
-| E2E | Flows preparados, não executados em dispositivo nesta revisão; registro de rotas e testes Flutter não comprovam E2E. |
+| Testes de UI | Removidos, incluindo Maestro, scripts e servidores de fixtures; previews manuais preservados. |
 
-Última verificação após consolidar Authentication e Expense sem path:
+Verificação atual após remover a suíte visual: `flutter pub get` concluído,
+`flutter analyze` sem problemas e `flutter test --reporter expanded` com
+**733 aprovados, sem falhas**. O teste de conversão de erros de autenticação
+agora exige a ordem original da resposta. Os testes de debounce do Bloc de
+sugestões usam `fake_async`, sem UI. Nenhum código do aplicativo foi alterado.
+
+Verificação histórica após consolidar Authentication e Expense sem path,
+anterior à remoção dos testes de UI:
 `flutter analyze` sem problemas; `flutter test` com **917 aprovados, sem falhas**.
 O teste global de logout antes pendente passou; novos testes cobrem os binds
 root-owned e a abertura real de cadastro, edição, listagem e Settings em widget.
@@ -1330,16 +1284,14 @@ Verificações focadas:
 flutter test test/architecture
 flutter test test/features/authentication/infrastructure/repositories
 flutter test test/features/authentication/presentation/screens/sign_in/bloc
-flutter test test/features/authentication/presentation/screens/sign_in/sign_in_screen_test.dart
-flutter test test/features/authentication/authentication_sign_in_module_test.dart
 flutter test test/app_module_test.dart
 flutter test test/features/expense/expense_module_test.dart
-flutter test test/features/metrics/presentation/widgets/expense_category_metrics_card_widget_test.dart
+flutter test test/features/metrics/presentation/bloc
 flutter test test/features/authentication/presentation/screens/sign_up
 flutter test test/features/authentication/presentation/screens/resend_email
 flutter test test/features/authentication/presentation/screens/callback test/features/authentication/authentication_callback_module_test.dart
 flutter test test/features/settings
-flutter test test/features/session test/features/root
+flutter test test/features/session
 ```
 
 Registre comandos, resultado e causa de bloqueios. Teste focado aprovado não
@@ -1354,7 +1306,6 @@ Flutter; não invente resultado de análise, testes ou execução no dispositivo
 - `android/README.md`: build, assinatura e verificação de release Android.
 - `.opencode/skills/cordato-*/SKILL.md`: orientações locais alinhadas às regras.
 - `openspec/README.md`: precedência, histórico e mapa de specs vigentes/legadas.
-- `test/**/e2e/README.md`: execução de fixtures/flows e limites de validação.
 
 Mudanças estruturais atualizam os documentos afetados na mesma alteração.
 Histórico de OpenSpec não substitui o código atual nem redefine estas decisões.

@@ -169,7 +169,14 @@ resolução das dependências sem visitar módulos irmãos. Authentication e Exp
 usam um único módulo sem path por feature, com URLs completas e binds root-owned;
 isso elimina a colisão no escopo `/` e disponibiliza o contrato para logout.
 
-Verificação após remover Insight: `flutter pub get` concluído e `flutter analyze`
+Verificação atual após remover testes de UI, Maestro e servidores de fixtures:
+`flutter pub get` concluído, `flutter analyze` sem problemas e `flutter test`
+com **733 aprovados, sem falhas**. A expectativa invertida da ordem de erros
+de autenticação foi corrigida; o teste de UI de sugestões citado abaixo foi
+removido com a suíte visual. O código do aplicativo não foi alterado.
+
+Verificação histórica após remover Insight, anterior à remoção dos testes de UI:
+`flutter pub get` concluído e `flutter analyze`
 sem problemas. O lote de arquitetura, Dashboard, composição global e
 SessionInterceptor passou com **80 testes**. A suíte global repetida terminou
 com **939 aprovados e uma falha preexistente** em
@@ -213,7 +220,7 @@ As descrições dos fluxos Flutter acima não comprovam suporte pelo novo backen
 - `flutter_modular` 7 para composição, DI e rotas.
 - Material 3 via `material_ui`, fonte Inter e localização pt-BR.
 - Dio para HTTP JSON:API e `flutter_secure_storage` para persistência segura.
-- `flutter_test`, `bloc_test`, `mocktail` e Maestro para testes.
+- `flutter_test`, `bloc_test`, `mocktail` e `fake_async` para testes sem UI.
 
 ## Desenvolvimento
 
@@ -250,10 +257,9 @@ Consulte [`backend/README.md`](backend/README.md) para configuração e verifica
 isoladas do PocketBase. O Compose atual depende da rede externa do Dokploy; não
 é uma configuração local pronta para conectar o Flutter.
 
-O `Makefile` e `tool/android_usb_proxy.py` do ambiente PHP anterior foram removidos.
-Não use as instruções antigas de Lerd/mkcert como setup do PocketBase. Até a
-migração do cliente, os E2E Flutter usam as APIs de fixtures isoladas descritas
-nos READMEs de cada fluxo, não o novo backend nem produção.
+As ferramentas do ambiente PHP anterior foram removidas. Não use as instruções
+antigas de Lerd/mkcert como setup do PocketBase. O projeto não usa Python nem
+mantém servidores de fixtures HTTP para testes de UI.
 
 ### Previews
 
@@ -264,7 +270,7 @@ dart run tool/widget_preview.dart
 Abra a URL impressa. O launcher contorna a descoberta inicial vazia do previewer
 no Flutter 3.47.6/3.47.7; se necessário, atualize o painel após a análise inicial.
 Previews usam o tema real, pt-BR e fakes locais, sem rede/storage. Não substituem
-testes de contrato ou E2E. `.widget_preview/` não deve ser versionado.
+testes de contrato. `.widget_preview/` não deve ser versionado.
 Preserve um único proprietário de recursos: Sign-in recebe um Bloc externo;
 as telas ainda não migradas continuam criando/fechando sua factory. Use
 `PreviewResourceWidget` para um recurso externo ao lifecycle da tela.
@@ -296,41 +302,29 @@ o exemplo de `provide`, ownership, estado de migração e limites de DI.
 | Domain/application | Regras puras e exceções, sem SDKs. |
 | Infrastructure/repository | Mocks dos clients; payload, parsing, erros e persistência. |
 | Bloc | Repository mockado; estados, concorrência, retry e fechamento. |
-| Screen/widget | Bloc real com repository mockado; interação, feedback e lifecycle. |
-| E2E | Maestro com fixture HTTP isolada, cobrindo Success, Failure e Loading. |
+| Modular/rotas | Catálogo e resolução de dependências/factories sem montar UI. |
 | Architecture | Imports, fronteiras de contextos e direção das dependências. |
 
 Testes espelham os caminhos de `lib/`; doubles públicos ficam em arquivos
 próprios de `test/support/`, sem classes auxiliares nos arquivos `*_test.dart`.
+Testes de UI (telas, widgets, goldens e Maestro) e seus servidores de fixtures
+foram removidos por decisão do projeto. Não adicionar Python. Testes de lógica
+de apresentação, incluindo Blocs, validadores e formatadores, permanecem.
 
 ```bash
 flutter test test/architecture
 flutter test test/features/authentication/infrastructure/repositories
 flutter test test/features/authentication/presentation/screens/sign_in/bloc
-flutter test test/features/authentication/presentation/screens/sign_in/sign_in_screen_test.dart
-flutter test test/features/authentication/authentication_sign_in_module_test.dart
 flutter test test/app_module_test.dart
 flutter test test/features/authentication/presentation/screens/sign_up
 flutter test test/features/authentication/presentation/screens/resend_email
 flutter test test/features/authentication/presentation/screens/callback test/features/authentication/authentication_callback_module_test.dart
 flutter test test/features/settings
-flutter test test/features/session test/features/root
+flutter test test/features/session
 flutter test test/features/user
 flutter test test/architecture test/features/metrics
 flutter test test/architecture test/features/expense test/features/dashboard test/features/metrics test/features/core/infrastructure/clients/http/interceptors/session_interceptor_test.dart
 ```
-
-Os flows Maestro estão em
-[`test/features/authentication/presentation/screens/sign_in/e2e/`](test/features/authentication/presentation/screens/sign_in/e2e/README.md).
-Seu README descreve fixture, encaminhamento de porta e execução sequencial.
-Não execute contra produção: usam dados fictícios e limpam dados/keychain do app.
-Os flows de cadastro estão em
-[`sign_up/e2e/`](test/features/authentication/presentation/screens/sign_up/e2e/README.md),
-com fixture própria na porta 8766; ainda não foram executados em dispositivo.
-Os flows de
-[`resend_email/e2e/`](test/features/authentication/presentation/screens/resend_email/e2e/README.md)
-usam fixture na porta 8767, aguardam o cooldown real e também não foram executados
-em dispositivo.
 
 ### Histórico De Migrações E Verificações
 
@@ -342,23 +336,20 @@ Na migração de reenvio, Bloc/tela tiveram 23 testes novos aprovados; o lote fo
 de arquitetura, Authentication, Settings, Session, Root e storage tem 250 testes aprovados. A análise focada está
 limpa, mas análise/suíte globais continuam bloqueadas pelo legado.
 
-O [E2E de callback](test/features/authentication/presentation/screens/callback/e2e/README.md)
-usa fixture na porta 8768 e inclui sucesso, link inválido, falha e loading,
-ainda sem execução em dispositivo. Callback tem 29 testes novos de Bloc, tela,
-DI e rotas aprovados; eles não substituem a validação de deep links nativos.
+O antigo E2E de callback usava fixture na porta 8768 e incluía sucesso, link
+inválido, falha e loading, sem execução em dispositivo. Naquela etapa, callback
+teve 29 testes novos de Bloc, tela, DI e rotas aprovados; os testes de UI e
+flows foram removidos posteriormente.
 
-O [E2E de logout](test/features/settings/presentation/screens/settings/e2e/README.md)
-usa fixture local na porta 8769 para o cenário Success, com confirmação, limpeza
-local e zero requests de logout. Failure/Loading HTTP são legados incompatíveis:
-não execute a pasta inteira. Não foi executado em dispositivo. Os testes Flutter
-de Settings/Logout incluem Bloc, tela e módulo com repository real sobre clients
-mockados, verificando espera da limpeza e propagação de falhas do storage.
+O antigo E2E de logout usava fixture local na porta 8769 para o cenário Success,
+sem execução em dispositivo. Os testes Flutter de Settings/Logout então incluíam
+Bloc, tela e módulo com repository real sobre clients mockados. Testes de UI,
+flows e servidores de fixtures foram removidos posteriormente.
 
 Session/Root têm 49 testes novos aprovados, incluindo o ciclo de sign-in/token/
-logout com repositories e Blocs reais sobre clients mockados. Os
-[flows de Session/Root](test/features/root/presentation/screens/app/e2e/README.md)
-reutilizam a fixture de logout na porta 8769 e ainda não foram executados em
-dispositivo. A suíte do SessionInterceptor voltou a passar após migrar o repository
+logout com repositories e Blocs reais sobre clients mockados. Os antigos
+flows de Session/Root reutilizavam a fixture de logout na porta 8769 e foram
+removidos posteriormente. A suíte do SessionInterceptor voltou a passar após migrar o repository
 de Expense; a suíte global ainda não está aprovada.
 Dependem de build compilável e módulos de sessão/destinos ativos; sua existência
 não significa validação em dispositivo. Não há suíte Flutter `integration_test`.
@@ -369,9 +360,8 @@ Após substituir o command, `flutter test test/architecture test/features/metric
 passou com 106 testes, incluindo Bloc e módulo. A análise focada de Metrics e dos
 dois previews consumidores estava limpa. A Dashboard foi desbloqueada na primeira
 rodada de Expense; não houve execução visual de previews ou E2E.
-Os flows de [perfil](test/features/user/presentation/screens/user/e2e/README.md)
-e [edição de nome](test/features/user/presentation/screens/edit/e2e/README.md) usam
-a fixture local na porta 8770 e estão preparados, não executados em dispositivo.
+Os antigos flows de perfil e edição de nome usavam fixture local na porta 8770,
+sem execução em dispositivo; foram removidos posteriormente.
 Análise e suíte globais permanecem bloqueadas pelo legado.
 
 Na primeira rodada de Insight, arquitetura, Metrics e as camadas migradas de
@@ -388,10 +378,9 @@ Expense, validators, DashboardBloc, Metrics, Insight e SessionInterceptor passou
 com 380 testes. A análise focada dessas camadas e consumidores está limpa.
 Na segunda rodada, os cinco commands de Expense foram removidos. Testes de Bloc,
 tela, DI e rotas verificam sucesso/falha, concorrência, descarte, paginação e retorno
-da edição com a entidade confirmada por HTTP. Os flows de
-[criação](test/features/expense/presentation/screens/expense/e2e/README.md) e
-[listagem/exclusão](test/features/expense/presentation/screens/expenses/e2e/README.md)
-usam fixture isolada na porta 8771; não foram executados em dispositivo.
+da edição com a entidade confirmada por HTTP. Os antigos flows de criação e
+listagem/exclusão usavam fixture isolada na porta 8771, sem execução em dispositivo;
+foram removidos posteriormente.
 As rotas globais não foram reativadas. Análise/suíte globais seguem bloqueadas por
 testes antigos de responses/CommandIt, referência inexistente a
 `userDependenciesModule` e expectativas dos testes de HeadersInterceptor.
@@ -460,7 +449,8 @@ Notificações locais possuem client no core. Não há integração de push remo
 ou crash reporting. O bootstrap não depende de configuração de serviços remotos.
 O iOS usa Swift Package Manager para os plugins Flutter.
 
-Verificação após remover a integração remota:
+Verificação histórica após remover a integração remota, anterior à remoção dos
+testes de UI:
 
 - `flutter pub get` e `flutter analyze`: concluídos, sem issues na análise.
 - `flutter test`: 988 testes passaram e um falhou em

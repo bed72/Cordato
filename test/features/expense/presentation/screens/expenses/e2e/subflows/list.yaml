@@ -1,9 +1,0 @@
-appId: com.bed.cordato
----
-- runFlow: ../../../expense/e2e/subflows/login.yaml
-- scrollUntilVisible:
-    element: Ver tudo
-    direction: DOWN
-- tapOn: Ver tudo
-- assertVisible: Acompanhe todas as suas despesas.
-- assertVisible: '(?s).*Mercado E2E.*'

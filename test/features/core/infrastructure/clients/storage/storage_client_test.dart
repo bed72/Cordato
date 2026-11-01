@@ -1,6 +1,6 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
@@ -9,8 +9,8 @@ import '../../../../../support/core/mocks/flutter_secure_storage_mock.dart';
 
 void main() {
   test('uses distinct secure-storage keys for the token and user id', () {
-    expect(StorageKeyEnum.userId.key, '@trocado.user_id');
     expect(StorageKeyEnum.token.key, '@trocado.token');
+    expect(StorageKeyEnum.userId.key, '@trocado.user_id');
   });
 
   late IStorageClient client;
