@@ -60,9 +60,10 @@ O `.env` do antigo projeto Node permaneceu no diretório anterior e não foi lid
 
 ### Settings iniciais
 
-- Identidade **Cordato**, cor `#27a06c`, remetente `Cordato <contato@cordato.cloud>`.
+- Identidade **Trocado**, cor `#93D5A9`, remetente `Trocado <contato@cordato.cloud>`.
 - SMTP `smtp.resend.com:465`, TLS, usuário `resend`, AUTH `PLAIN`. O domínio remetente precisa estar autorizado no Resend.
 - Templates HTML pt-BR de confirmação, recuperação, troca de e-mail, OTP e alerta de login; sem recursos externos. Links usam as telas nativas `/_/#/auth/.../{TOKEN}`.
+- Todos os templates usam Trocado, nome no topo em 28 px, título em 24 px e corpo em 16 px; OTP em 22 px. Destaques e botões usam o verde claro com texto escuro para contraste. Essa identidade está na migration inicial, exclusiva para banco novo; redeploy em banco já provisionado não atualiza os templates. Domínio e endereço do remetente permanecem inalterados.
 - Superusuário com senha, OTP de seis caracteres/180 segundos, MFA de 600 segundos e alerta de novo login. Não existe conta técnica de worker. Garantir acesso à caixa administrativa e entrega SMTP antes de operar; não desabilitar MFA para contornar problemas de envio.
 - Rate limits nativos: `*:auth` **4/3s**, `*:create` **30/6s**, `/api/` **300/10s**, sem IPs excluídos. Batch desabilitado.
 - Proxy: `X-Forwarded-For`, `useLeftmostIP=false`. O Traefik precisa normalizar esse header, e a origem não pode ficar exposta diretamente. A rede compartilhada Dokploy não substitui isolamento entre serviços não confiáveis.
@@ -143,31 +144,19 @@ IDs são strings nativas do PocketBase, **não UUIDv7**. API REST e autenticaç�
 Sem serviços, rede, downloads nem leitura de segredos:
 
 ```sh
-python3 -m unittest discover -s tests -v
 sh -n docker/entrypoint.sh
 git diff --check
 ```
 
-Os testes rápidos verificam entrypoint, chave obrigatória, argumentos seguros e `.gitignore`. Os testes nativos ficam **explicitamente skipped** sem binário. Para executá-los, após disponibilizar um PocketBase 0.41.1 executável e confiável:
+O backend não mantém suíte de testes automatizados nem ferramentas Python por
+decisão do projeto. As verificações acima cobrem somente sintaxe shell e problemas
+de whitespace; não validam migrations, regras de acesso, HTML dos e-mails ou runtime.
+Build, execução de containers e homologação operacional exigem autorização própria.
 
-```sh
-POCKETBASE_TEST_BINARY=/caminho/absoluto/pocketbase python3 -m unittest discover -s tests -v
-```
+### Evidências históricas
 
-O teste opt-in cria apenas bancos temporários exclusivos com credenciais fictícias, executa `migrate up` e remove seus próprios temporários; nunca inicia servidor nem conecta ao Resend. Cobre schema, settings, templates, criptografia em disco, retomada sem segredos de bootstrap, rollback/retentativa, regras pelo avaliador nativo, validação monetária e cascata. Avaliação de regras não comprova todos os detalhes do transporte HTTP/SDK.
-
-### Verificação Linux via Podman (opt-in)
-
-Após autorização para build e testes locais, com a engine já disponível:
-
-```sh
-podman build --format docker -t localhost/cordato-pocketbase:verification .
-python3 tests/run_container_tests.py
-```
-
-O runner exige a imagem da aplicação e `docker.io/library/python:3.14.7-slim` já disponíveis (`--pull=never`). Não instala nem inicia a engine. Extrai o binário Linux da imagem para executar os quatro testes nativos em um container Python, depois inicia um PocketBase descartável como UID/GID 10001, com filesystem somente leitura, capabilities removidas, sem privilégios adicionais e volume exclusivo. Os oito testes HTTP executam em outro container no mesmo namespace **sem rede externa e sem portas publicadas**. Nenhum envio SMTP real é possível. Todos os e-mails/senhas são fictícios; recursos criados pelo runner são removidos em `finally`, sem tocar em outros projetos.
-
-Os testes HTTP cobrem CRUD próprio, isolamento entre contas, proprietário/timestamps protegidos (incluindo modificadores de relação), centavos e categorias, campos opcionais, avatar textual, cadastro sem auto-verificação, bloqueio de login não verificado, desafio MFA administrativo e Batch desabilitado. Não comprovam o SDK Flutter nem entrega SMTP/OTP.
+Os registros abaixo são anteriores à remoção da suíte e às alterações atuais de
+identidade dos e-mails. Não comprovam validação da imagem ou dos templates atuais.
 
 **Evidências locais (01/11/2026):** build Linux ARM64 aprovado no Podman, SHA-256 do ZIP oficial conferido e saída `pocketbase version 0.41.1` validada. Imagem final `8378990f13b1eb70773dca966736900d36579ec279add5e47bdaf5a1913abfab`: **41.583.014 bytes (~39,66 MiB)** descompactada, binário ~30,4 MiB, usuário `10001:10001`. Sem curl, unzip ou tzdata no runtime; UTC não exige pacote de fusos. Cinco testes rápidos, quatro nativos e oito HTTP aprovados. O único ajuste necessário nos testes nativos foi recarregar o cache de settings entre migrations antes de conferir o bootstrap.
 
