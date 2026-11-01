@@ -27,6 +27,7 @@ RUN apk add --no-cache ca-certificates \
 
 COPY --from=download --chmod=0555 /out/pocketbase /usr/local/bin/pocketbase
 COPY --chmod=0444 pb_migrations/ /opt/cordato/migrations/
+RUN find /opt/cordato/migrations -type d -exec chmod 0555 {} +
 COPY --chmod=0555 docker/entrypoint.sh /usr/local/bin/cordato-entrypoint
 
 RUN test "$(pocketbase --version)" = 'pocketbase version 0.41.1'

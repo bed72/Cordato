@@ -5,7 +5,6 @@ import 'package:cordato/features/core/presentation/formatters/interface_date_for
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
-import 'package:cordato/features/insight/application/repositories/interface_insight_repository.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
@@ -19,7 +18,6 @@ final dashboardModule = createModule(
       () => DashboardBloc(
         userRepository: inject<IUserRepository>(),
         expenseRepository: inject<IExpenseRepository>(),
-        insightRepository: inject<IInsightRepository>(),
         metricsRepository: inject<IMetricsRepository>(),
       ),
     );

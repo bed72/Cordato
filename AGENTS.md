@@ -62,7 +62,6 @@ dos próprios dados; família é uma lente autorizada de leitura, não dona do d
 | `user` | Dados pessoais, nome, avatar e exclusão da conta. |
 | `expense` | Fatos atômicos de gastos individuais. |
 | `metrics` | Agregações financeiras somente leitura. |
-| `insight` | Análises derivadas somente leitura, sem persistência própria. |
 | `budget` | Planejado: tetos por intervalo de datas. |
 | `family` | Planejado: organização de membros e leitura combinada. |
 | `dashboard` | Apresentação e composição, não um bounded context financeiro. |
@@ -78,7 +77,7 @@ Preserve as invariantes:
 - Orçamentos vivos da mesma pessoa não podem se sobrepor.
 - Família não concede escrita nos dados de outro membro.
 - Sair ou encerrar família não altera os dados individuais.
-- Visões combinadas e insights são derivados dos dados proprietários.
+- Visões combinadas são derivadas dos dados proprietários.
 - Não apresente autorização do backend como garantia implementada pelo Flutter.
 
 ## Camadas E Arquivos
@@ -126,9 +125,12 @@ Authentication e Session não importam uma à outra; comunicam-se pela chave de
 token do storage. Expense e Budget não dependem de outros contextos financeiros.
 Settings possui o Bloc da interação de logout e consome somente contrato e exceção
 de aplicação de Authentication, nunca sua apresentação ou repository concreto.
-Family e Insight devem consultar contextos proprietários por contratos próprios
+Family deve consultar contextos proprietários por contratos próprios
 com adapters em infrastructure, sem dependência reversa. Dashboard pode compor
 contratos de aplicação dos contextos que consulta.
+
+A feature Insight foi removida, incluindo composição, consulta remota, seção da
+Dashboard, previews e testes próprios. Não restaurá-la a partir de specs históricas.
 
 ## Repositories, HTTP E Falhas
 

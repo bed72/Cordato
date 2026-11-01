@@ -51,7 +51,6 @@ nem declara equivalência com os recursos financeiros do backend anterior.
 | User | Perfil, nome, avatar e exclusão da conta. |
 | Expense | Registro, consulta, edição e exclusão de gastos individuais. |
 | Metrics | Agregações somente leitura, como totais e distribuição por categoria. |
-| Insight | Análises derivadas somente leitura, sem persistência própria. |
 | Budget | Planejado: tetos por intervalo inclusivo de datas. |
 | Family | Planejado: membros e leitura combinada autorizada. |
 | Dashboard | Composição de apresentação, não contexto de negócio. |
@@ -69,7 +68,7 @@ Invariantes financeiras:
 - Orçamentos vivos da mesma pessoa não se sobrepõem.
 - Participar de família não concede escrita nos dados de outra pessoa.
 - Sair ou encerrar família não modifica os dados individuais.
-- Visões combinadas e insights derivam dos dados proprietários.
+- Visões combinadas derivam dos dados proprietários.
 
 As garantias de autorização pertencem ao serviço responsável e exigem testes
 no backend; o aplicativo não as prova por ocultar ações na interface.
@@ -178,11 +177,9 @@ uma feature para contornar imports proibidos.
   mesma chave de storage fazem a comunicação.
 - Expense e Budget não dependem de outros contextos financeiros.
 - Family pode ler Expense/Budget por contratos próprios e adapters de
-  infrastructure; não depende de Insight.
-- Insight pode ler contextos financeiros por contratos próprios e adapters de
-  infrastructure. Contextos proprietários não dependem de Family ou Insight.
-- Dashboard pode compor contratos de aplicação de User, Expense, Metrics e
-  Insight, sem conhecer suas implementações.
+  infrastructure. Contextos proprietários não dependem de Family.
+- Dashboard pode compor contratos de aplicação de User, Expense e Metrics,
+  sem conhecer suas implementações.
 - Settings coordena sua interação de logout com `LogoutBloc` próprio, consumindo
   somente contrato e exceção de aplicação de Authentication. Não importa a
   apresentação ou a implementação do repository de Authentication.
@@ -211,7 +208,7 @@ insights ou sugestões remotas.
 | Erros e paginação | Erros com pointer/parameter e links de continuação opacos. | Formatos nativos PocketBase; exigem adaptação em infrastructure. |
 | Datas de despesas | Semântica de data civil. | `occurred_on` opcional como Date UTC, sem default. |
 | Categoria | Contrato e validação atuais do cliente. | Select opcional; vazio não significa `other`. |
-| Recursos derivados | Metrics, Insight e sugestões têm consumidores HTTP. | Sem implementação equivalente nesta configuração. |
+| Recursos derivados | Metrics e sugestões têm consumidores HTTP. | Sem implementação equivalente nesta configuração. |
 
 Centavos inteiros continuam obrigatórios. A representação UTC do campo nativo
 não resolve a semântica de data civil: essa compatibilidade precisa ser definida
@@ -468,7 +465,7 @@ volta a Welcome. Cadastro, reenvio e callback públicos são preservados. Essa d
 visual não prova autorização remota e não limpa storage em falha de observação.
 
 `app_module.dart` ativa Session, Welcome, Authentication, Dashboard, Settings,
-User e Expense, além das dependências de Insight e Metrics. Authentication e
+User e Expense, além das dependências de Metrics. Authentication e
 Expense têm um único módulo sem path por feature; seus binds são root-owned e
 as URLs completas permanecem inalteradas. User mantém seu módulo de dependências
 compartilhadas existente. Logout resolve o contrato de Authentication sem ativar
@@ -599,44 +596,24 @@ própria coordenação pelo contrato: preserva o erro esperado de Metrics quando
 leitura paralela o envolve em `ParallelWaitError`, sem adicionar um Bloc
 intermediário à Dashboard.
 
-### Insight: Repository E Consulta Com Bloc
+### Remoção De Insight
 
-`IInsightRepository` fica em `insight/application/repositories/` e retorna
-`Future<List<InsightEntity>> get({year, month})`. `InsightException`, em
-`application/exceptions/`, transporta `ErrorsEntity` nas falhas esperadas.
-`InsightRepository`, em `infrastructure/repositories/`, chama `IHttpClient`
-diretamente, absorvendo o antigo data source remoto, sem Either, storage ou escrita.
+A feature Insight foi removida: domínio, contrato, repository, Bloc, módulo,
+seção da Dashboard, previews e testes próprios. Dashboard consulta somente
+Metrics e Expense para o conteúdo financeiro. As duas consultas continuam em
+paralelo, sem publicação parcial, preservando falhas tipadas e retry manual.
+Registros históricos de Insight abaixo não representam código disponível nem
+autorizam restaurar a feature.
 
-O endpoint relativo `insights` recebe somente `filter[year]` e `filter[month]`
-fornecidos; ausência de ambos mantém query nula. O repository não inventa mês/ano,
-completa filtros ou valida intervalos que pertencem ao backend. DTOs permanecem
-internos a infrastructure. A lista preserva ordem, conteúdo original, tipos/grupos
-desconhecidos, onboarding com período nulo e períodos de comparação/múltiplos meses.
-Lista vazia é sucesso; não há persistência nem cálculo financeiro novo no app.
-
-`HttpResponseException` vira `InsightException`, preservando mensagens, ordem,
-status, pointer e parameter. Demais `HttpClientException` usam fallback seguro.
-Parsing inválido (`TypeError`/`FormatException`) e falhas inesperadas propagam,
-sem catch genérico que as transforme em erro esperado ou lista vazia.
-
-`InsightsBloc`, em `insight/presentation/bloc/`, substitui o command de consulta
-compartilhada, sem criar uma screen artificial. `InsightsRequestedEvent` delega
-mês/ano opcionais sem normalização ou validação adicional. Estados sealed são
-`Initial`, `Loading`, `Success(data)` e `Failure(errors)`; loading e disponibilidade
-dos dados derivam do estado. Sucesso contém uma cópia imutável da lista, preservando
-ordem e identidade das entidades. Lista vazia continua sendo sucesso.
-
-`restartable` dá precedência à consulta mais recente, sem cancelar HTTP. Resultados
-e falhas obsoletos ou posteriores ao fechamento não publicam estados nem reportam
-erros. Falhas esperadas preservam a mesma `ErrorsEntity`, inclusive vazia;
-inesperadas usam `addError` e fallback seguro. Sucesso permite refresh e falha
-permite retry manual; não há request na criação ou retry automático.
-
-O módulo registra o repository pelo contrato e o Bloc por factory independente.
-Insight não depende mais de CommandIt. Previews continuam usando listas e exceções,
-sem Either. Dashboard mantém sua própria coordenação sobre o contrato, consome a
-lista diretamente e preserva os erros esperados quando `ParallelWaitError` envolve
-uma falha isolada de Insight, sem adicionar um Bloc intermediário.
+Verificação da remoção: `flutter pub get` concluído; `flutter analyze` sem issues;
+`flutter test test/architecture test/features/dashboard test/app_module_test.dart test/features/core/infrastructure/clients/http/interceptors/session_interceptor_test.dart`
+com 80 aprovados. Após limpar diretórios vazios residuais, a repetição global
+`flutter test --reporter failures-only` teve 939 aprovados e uma falha já registrada
+em `expense_screen_test.dart:319`, na sugestão de descrição. A primeira execução
+também detectou o diretório vazio de Insight; esse bloqueio foi corrigido, sem
+enfraquecer o teste arquitetural. `dart run tool/widget_preview.dart` compilou e
+serviu o catálogo, encerrado por timeout sem cliente conectado. Sem validação
+visual, execução Maestro ou alteração no backend nesta remoção.
 
 ### Expense: Repository, Formulário E Listagem Com Bloc
 
@@ -764,7 +741,7 @@ edição com repository real sobre HTTP mockado. Os flows de
 [listagem/exclusão](test/features/expense/presentation/screens/expenses/e2e/README.md)
 usam fixture HTTP isolada e estão preparados, não executados em dispositivo.
 
-Dashboard agora compõe somente resultados diretos de User, Metrics, Insight e
+Dashboard agora compõe somente resultados diretos de User, Metrics e
 Expense, sem Either. Uma falha no histórico continua sendo desconhecimento do
 limite inicial, não um histórico vazio confirmado. Falhas esperadas isoladas nas
 seções preservam a `ErrorsEntity` mesmo envolvidas em `ParallelWaitError`.
@@ -1086,7 +1063,7 @@ isso não significa que todo o aplicativo esteja migrado ou componha seus destin
 | Session | Contrato em application, repository direto em infrastructure e SessionBloc contínuo. |
 | User | Contrato/repository migrados; perfil, avatar e exclusão com UserBloc; edição de nome com EditBloc; sem commands. |
 | Metrics | Contrato em application, repository direto em infrastructure e ExpenseMetricsBloc por factory, sem Either/data source/commands. |
-| Insight | Contrato em application, repository direto em infrastructure e InsightsBloc por factory, sem Either/data source/commands. |
+| Insight | Removido do aplicativo, incluindo composição, seção da Dashboard, previews e testes próprios. |
 | Expense | ExpenseBloc e ExpensesBloc por factory; CRUD, cadastro contínuo, filtros e paginação; sem Either/data source/commands. |
 | Dashboard | Bloc agregado sobre contratos de aplicação e resultados diretos dos contextos consultados, sem Either. |
 | Bootstrap e Root | AppWidget é dono do SessionBloc; AppScreen apenas visual; handler CommandIt removido do bootstrap. |

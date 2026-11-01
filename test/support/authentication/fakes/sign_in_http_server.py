@@ -132,7 +132,7 @@ class SignInFixtureHandler(BaseHTTPRequestHandler):
                 },
             })
             return
-        if path in ['/api/expenses', '/api/insights']:
+        if path == '/api/expenses':
             self.respond(200, {'data': [], 'links': {'next': None, 'prev': None}})
             return
         if path == '/api/metrics/expenses':

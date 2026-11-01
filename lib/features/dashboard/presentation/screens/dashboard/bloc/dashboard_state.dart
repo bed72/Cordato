@@ -1,6 +1,5 @@
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/insight/domain/entities/insight_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/dashboard/presentation/enums/dashboard_phase_enum.dart';
@@ -11,7 +10,6 @@ final class DashboardState({
   final DateTime? firstMonth,
   final DateTime? _selectedMonth,
   final ExpensePageEntity? expenses,
-  final List<InsightEntity>? insights,
   final ExpenseMetricsEntity? metrics,
   final ErrorsEntity? financialError,
   final DashboardPhaseEnum phase = .loading,

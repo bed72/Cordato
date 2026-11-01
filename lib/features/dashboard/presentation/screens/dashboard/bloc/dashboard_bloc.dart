@@ -12,8 +12,6 @@ import 'package:cordato/features/expense/domain/entities/expense_page_entity.dar
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 
-import 'package:cordato/features/insight/application/repositories/interface_insight_repository.dart';
-import 'package:cordato/features/insight/application/exceptions/insight_exception.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 
@@ -23,7 +21,6 @@ import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/d
 final class DashboardBloc({
   required final IUserRepository _userRepository,
   required final IExpenseRepository _expenseRepository,
-  required final IInsightRepository _insightRepository,
   required final IMetricsRepository _metricsRepository,
 }) extends Bloc<DashboardEvent, DashboardState> {
   bool _opened = false;
@@ -83,7 +80,6 @@ final class DashboardBloc({
             selectedMonth: month,
             metrics: previous.metrics,
             expenses: previous.expenses,
-            insights: previous.insights,
             firstMonth: previous.firstMonth,
             currentMonth: previous.currentMonth,
           ),
@@ -102,16 +98,13 @@ final class DashboardBloc({
         if (month.isBefore(minimum)) month = minimum;
       }
       final end = DateTime(month.year, month.month + 1, 0);
-      final (metrics, insights, expenses) = await (
+      final (metrics, expenses) = await (
         Future.sync(
           () => _metricsRepository.getExpenses(
             startDate: month,
             endDate: end,
             groupBy: .category,
           ),
-        ),
-        Future.sync(
-          () => _insightRepository.get(year: month.year, month: month.month),
         ),
         Future.sync(
           () => _expenseRepository.get(pageSize: 6, from: month, to: end),
@@ -126,7 +119,6 @@ final class DashboardBloc({
           firstMonth: firstMonth,
           user: user,
           metrics: metrics,
-          insights: .unmodifiable(insights),
           expenses: expenses,
         ),
       );
@@ -140,27 +132,16 @@ final class DashboardBloc({
           financialError: switch (error) {
             ErrorsEntity() => error,
             MetricsException(:final errors) => errors,
-            InsightException(:final errors) => errors,
             ExpenseException(:final errors) => errors,
             ParallelWaitError(
               errors: (
                 AsyncError(error: MetricsException(:final errors)),
                 null,
-                null,
               ),
             ) =>
               errors,
             ParallelWaitError(
               errors: (
-                null,
-                AsyncError(error: InsightException(:final errors)),
-                null,
-              ),
-            ) =>
-              errors,
-            ParallelWaitError(
-              errors: (
-                null,
                 null,
                 AsyncError(error: ExpenseException(:final errors)),
               ),

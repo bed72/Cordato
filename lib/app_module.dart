@@ -5,7 +5,6 @@ import 'package:cordato/features/user/user_module.dart';
 import 'package:cordato/features/session/session_module.dart';
 import 'package:cordato/features/welcome/welcome_module.dart';
 import 'package:cordato/features/expense/expense_module.dart';
-import 'package:cordato/features/insight/insight_module.dart';
 import 'package:cordato/features/metrics/metrics_module.dart';
 import 'package:cordato/features/settings/settings_module.dart';
 import 'package:cordato/features/dashboard/dashboard_module.dart';
@@ -20,7 +19,6 @@ final appModule = createModule(
     ..module(userModule)
     ..module(sessionModule)
     ..module(expenseModule)
-    ..module(insightModule)
     ..module(metricsModule)
     ..module(welcomeModule)
     ..module(settingsModule)

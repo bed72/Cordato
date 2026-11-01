@@ -70,6 +70,13 @@ O `.env` do antigo projeto Node permaneceu no diretório anterior e não foi lid
 
 ### Persistência e recuperação
 
+Se o início falhar com `registerMigrations: permission denied`, conferir a imagem:
+os diretórios de `/opt/cordato/migrations` precisam de permissão `0555` para
+travessia pelo usuário `10001:10001`; os arquivos permanecem `0444`. O Dockerfile
+normaliza os diretórios após o `COPY`. Publicar a correção e reconstruir a imagem
+no mesmo projeto Compose, preservando volume e chave de criptografia; não executar
+como root nem recriar o banco para contornar o erro.
+
 O volume `pocketbase_data` monta `/pb/pb_data` e é prefixado pelo projeto Compose. Manter o mesmo projeto/volume nas atualizações. Há somente uma instância; não escalar réplicas compartilhando SQLite. O filesystem da imagem é somente leitura; dados, settings e backups vão ao volume. `/tmp` tem limite de 64 MiB; revisar mediante medição se operações temporárias exigirem mais espaço.
 
 **Não usar `down -v`, reset, `migrate down` ou `history-sync` para resolver falha.** O rollback da inicial é bloqueado. Corrigir variáveis e reiniciar com o mesmo volume retoma a migration pendente; não remove nem adota contas existentes. Esta inicial não atualiza instalações antigas. Mudanças futuras no schema exigem novas migrations.

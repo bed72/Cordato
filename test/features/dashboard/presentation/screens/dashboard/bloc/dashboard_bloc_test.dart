@@ -9,8 +9,6 @@ import 'package:cordato/features/user/application/exceptions/user_exception.dart
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
-import 'package:cordato/features/insight/domain/entities/insight_entity.dart';
-import 'package:cordato/features/insight/application/exceptions/insight_exception.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
@@ -20,14 +18,12 @@ import 'package:cordato/features/dashboard/presentation/enums/dashboard_phase_en
 
 import '../../../../../../support/user/mocks/user_repository_mock.dart';
 import '../../../../../../support/expense/mocks/expense_repository_mock.dart';
-import '../../../../../../support/insight/mocks/insight_repository_mock.dart';
 import '../../../../../../support/metrics/mocks/metrics_repository_mock.dart';
 
 void main() {
   late DashboardBloc bloc;
   late UserRepositoryMock users;
   late ExpenseRepositoryMock expenses;
-  late InsightRepositoryMock insights;
   late MetricsRepositoryMock metricsRepository;
   late List<StreamSubscription<DashboardState>> subscriptions;
   final today = DateTime(2026, 10, 19, 16, 30);
@@ -71,7 +67,6 @@ void main() {
     final bloc = DashboardBloc(
       userRepository: users,
       expenseRepository: expenses,
-      insightRepository: insights,
       metricsRepository: metricsRepository,
     );
     bloc.emit(DashboardState(currentMonth: date ?? today));
@@ -99,15 +94,6 @@ void main() {
     ).thenAnswer((_) => response());
   }
 
-  void stubInsights(Future<List<InsightEntity>> Function() response) {
-    when(
-      () => insights.get(
-        year: any(named: 'year'),
-        month: any(named: 'month'),
-      ),
-    ).thenAnswer((_) => response());
-  }
-
   void stubRecent(Future<ExpensePageEntity> Function() response) {
     when(
       () => expenses.get(
@@ -122,12 +108,10 @@ void main() {
     subscriptions = [];
     users = UserRepositoryMock();
     expenses = ExpenseRepositoryMock();
-    insights = InsightRepositoryMock();
     metricsRepository = MetricsRepositoryMock();
     when(() => users.getById()).thenAnswer((_) async => profile);
     when(history).thenAnswer((_) async => page([DateTime(2024, 1)]));
     stubRecent(() async => page([]));
-    stubInsights(() async => const []);
     when(
       () => metricsRepository.getExpenses(
         groupBy: .category,
@@ -155,7 +139,6 @@ void main() {
       bloc = DashboardBloc(
         userRepository: users,
         expenseRepository: expenses,
-        insightRepository: insights,
         metricsRepository: metricsRepository,
       );
       expect(bloc.state.currentMonth, DateTime(now.year, now.month));
@@ -163,7 +146,6 @@ void main() {
       expect(bloc.state.phase, DashboardPhaseEnum.loading);
       verifyZeroInteractions(users);
       verifyZeroInteractions(expenses);
-      verifyZeroInteractions(insights);
       verifyZeroInteractions(metricsRepository);
     },
   );
@@ -178,7 +160,6 @@ void main() {
     expect(bloc.state.user, same(profile));
     expect(bloc.state.metrics!.totalAmount, 0);
     expect(bloc.state.expenses!.items, isEmpty);
-    expect(bloc.state.insights, isEmpty);
     expect(bloc.state.firstMonth, DateTime(2024, 1));
     await send(DashboardOpened());
     expect(states.length, 2);
@@ -191,7 +172,6 @@ void main() {
         groupBy: .category,
       ),
     ).called(1);
-    verify(() => insights.get(year: 2026, month: 10)).called(1);
     verify(
       () => expenses.get(
         pageSize: 6,
@@ -213,7 +193,6 @@ void main() {
       verify(() => users.getById()).called(1);
       verify(history).called(1);
       verifyZeroInteractions(metricsRepository);
-      verifyZeroInteractions(insights);
       pendingUser.complete(profile);
       await flush();
       expect(bloc.state.user, isNull);
@@ -229,26 +208,21 @@ void main() {
     () async {
       final states = recordStates();
       final pendingMetrics = Completer<ExpenseMetricsEntity>();
-      final pendingInsights = Completer<List<InsightEntity>>();
       final pendingExpenses = Completer<ExpensePageEntity>();
       stubMetrics(() => pendingMetrics.future);
-      stubInsights(() => pendingInsights.future);
       stubRecent(() => pendingExpenses.future);
       await send(DashboardOpened());
       pendingMetrics.complete(totals(DateTime(2026, 10)));
-      pendingExpenses.complete(page([]));
       await flush();
       expect(states.length, 1);
       expect(bloc.state.phase, DashboardPhaseEnum.loading);
       expect(bloc.state.user, isNull);
       expect(bloc.state.metrics, isNull);
       expect(bloc.state.expenses, isNull);
-      expect(bloc.state.insights, isNull);
-      pendingInsights.complete(const []);
+      pendingExpenses.complete(page([]));
       await flush();
       expect(states.length, 2);
       expect(bloc.state.phase, DashboardPhaseEnum.ready);
-      expect(() => bloc.state.insights!.clear(), throwsUnsupportedError);
     },
   );
 
@@ -264,7 +238,7 @@ void main() {
       ],
     ),
   ]) {
-    for (final section in ['metrics', 'insights', 'expenses']) {
+    for (final section in ['metrics', 'expenses']) {
       test(
         '$section preserves the original typed failure after every section completes with ${errors.errors.length} errors',
         () async {
@@ -273,8 +247,6 @@ void main() {
           switch (section) {
             case 'metrics':
               stubMetrics(() async => throw MetricsException(errors: errors));
-            case 'insights':
-              stubInsights(() async => throw InsightException(errors: errors));
             case 'expenses':
               stubMetrics(() async => totals(DateTime(2026, 10)));
           }
@@ -304,7 +276,13 @@ void main() {
     await send(DashboardOpened());
     expect(bloc.state.phase, DashboardPhaseEnum.failure);
     expect(bloc.state.financialError!.errors.first.title, 'Erro desconhecido');
-    verify(() => insights.get(year: 2026, month: 10)).called(1);
+    verify(
+      () => expenses.get(
+        pageSize: 6,
+        from: DateTime(2026, 10),
+        to: DateTime(2026, 10, 31),
+      ),
+    ).called(1);
   });
 
   for (final unexpected in [false, true]) {
@@ -347,7 +325,6 @@ void main() {
         ]);
         expect(states.first.metrics, isNull);
         expect(states.first.expenses, isNull);
-        expect(states.first.insights, isNull);
         expect(bloc.state.currentMonth, DateTime(date.year, date.month));
         expect(bloc.state.selectedMonth, month);
         verify(
@@ -357,8 +334,6 @@ void main() {
             groupBy: .category,
           ),
         ).called(1);
-        verify(() => insights.get(year: month.year, month: month.month))
-            .called(1);
         verify(() => expenses.get(pageSize: 6, from: month, to: end)).called(1);
         verify(() => users.getById()).called(2);
         verify(history).called(2);
@@ -581,7 +556,6 @@ void main() {
       await send(DashboardOpened());
       final previous = bloc.state;
       clearInteractions(expenses);
-      clearInteractions(insights);
       clearInteractions(metricsRepository);
       final states = recordStates();
       when(() => users.getById())
@@ -594,11 +568,9 @@ void main() {
       expect(states.first.metrics, isNull);
       expect(bloc.state.user, isNull);
       expect(bloc.state.metrics, same(previous.metrics));
-      expect(bloc.state.insights, same(previous.insights));
       expect(bloc.state.expenses, same(previous.expenses));
       expect(bloc.state.firstMonth, previous.firstMonth);
       verifyZeroInteractions(expenses);
-      verifyZeroInteractions(insights);
       verifyZeroInteractions(metricsRepository);
     },
   );
@@ -616,7 +588,13 @@ void main() {
     await flush();
     expect(bloc.state, same(ready));
     verify(history).called(2);
-    verify(() => insights.get(year: 2026, month: 10)).called(1);
+    verify(
+      () => metricsRepository.getExpenses(
+        startDate: DateTime(2026, 10),
+        endDate: DateTime(2026, 10, 31),
+        groupBy: .category,
+      ),
+    ).called(1);
   });
 
   test('confirmed changes replace a pending profile refresh', () async {

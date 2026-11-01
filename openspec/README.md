@@ -56,6 +56,10 @@ há resultado confirmado. Callbacks locais de composição visual são permitido
 
 ## Como Ler As Specs Existentes
 
+A feature Insight foi removida do aplicativo. Specs e changes relacionadas a
+insights permanecem somente como histórico e não autorizam restaurar módulo,
+endpoint, seção da Dashboard, previews ou testes próprios.
+
 | Documento | Uso atual |
 | --- | --- |
 | `specs/dashboard-monthly-navigation/` | Regras mensais e retorno da listagem; detalhes antigos de commands são substituídos por Bloc/contratos de aplicação. |

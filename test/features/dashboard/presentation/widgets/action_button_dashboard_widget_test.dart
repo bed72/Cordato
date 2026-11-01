@@ -12,7 +12,6 @@ import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 
 import '../../../../support/expense/mocks/expense_repository_mock.dart';
-import '../../../../support/insight/mocks/insight_repository_mock.dart';
 import '../../../../support/metrics/mocks/metrics_repository_mock.dart';
 import '../../../../support/user/mocks/user_repository_mock.dart';
 
@@ -23,7 +22,6 @@ void main() {
       (tester) async {
         final expenses = ExpenseRepositoryMock();
         final users = UserRepositoryMock();
-        final insights = InsightRepositoryMock();
         final metrics = MetricsRepositoryMock();
         final page = ExpensePageEntity(items: [], next: null, prev: null);
         when(() => users.getById()).thenAnswer(
@@ -44,12 +42,6 @@ void main() {
           ),
         ).thenAnswer((_) async => page);
         when(
-          () => insights.get(
-            year: any(named: 'year'),
-            month: any(named: 'month'),
-          ),
-        ).thenAnswer((_) async => []);
-        when(
           () => metrics.getExpenses(
             startDate: any(named: 'startDate'),
             endDate: any(named: 'endDate'),
@@ -67,7 +59,6 @@ void main() {
         final bloc = DashboardBloc(
           userRepository: users,
           expenseRepository: expenses,
-          insightRepository: insights,
           metricsRepository: metrics,
         );
         final expense = ExpenseEntity(
@@ -135,7 +126,6 @@ void main() {
         } else {
           verifyZeroInteractions(users);
           verifyZeroInteractions(expenses);
-          verifyZeroInteractions(insights);
           verifyZeroInteractions(metrics);
         }
         expect(find.byTooltip('Adicionar gasto'), findsOneWidget);

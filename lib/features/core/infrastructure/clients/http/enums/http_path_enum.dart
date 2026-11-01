@@ -4,7 +4,6 @@ enum HttpPathEnum({
 }) {
   user(path: 'users', authenticated: true),
   expenses(path: 'expenses', authenticated: true),
-  insights(path: 'insights', authenticated: true),
   expenseMetrics(path: 'metrics/expenses', authenticated: true),
   logout(path: 'authentication/sign-out', authenticated: true),
   signIn(path: 'authentication/sign-in', authenticated: false),

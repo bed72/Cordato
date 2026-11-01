@@ -48,7 +48,7 @@ para a API PocketBase; os contratos Flutter descritos abaixo permanecem como est
 | --- | --- |
 | Backend em `backend/` | Contas e despesas próprias nas coleções `users` e `expenses`; contrato nativo PocketBase. |
 | Cliente Flutter em `lib/` | Continua usando endpoints, envelopes JSON:API e sessão do contrato anterior. |
-| Metrics, Insight e sugestões | Existem no cliente; não há implementação equivalente no backend PocketBase atual. |
+| Metrics e sugestões | Existem no cliente; não há implementação equivalente no backend PocketBase atual. |
 | Budget e Family | Planejados; não implementados no backend atual nem nas features Flutter. |
 | Integração e operação | Migração do cliente, homologação integrada e validação no Dokploy ainda pendentes. |
 
@@ -106,14 +106,9 @@ da consulta mais recente. O módulo fornece instâncias por factory e os preview
 consumidores usam BlocBuilder. Dashboard mantém seu próprio Bloc sobre o contrato,
 sem migrar os demais contextos financeiros.
 
-Insight agora usa contrato em application, `InsightException` e repository em
-infrastructure com HTTP direto, sem Either ou data source. Preserva filtros
-opcionais de mês/ano, ordem, conteúdo e períodos da API, inclusive onboarding sem
-período e lista vazia. Parsing inválido e falhas inesperadas propagam.
-`InsightsBloc` substitui o command, com estados sealed, lista de sucesso imutável,
-falhas tipadas, retry manual e precedência da consulta mais recente. O módulo
-registra instâncias por factory; Insight não depende mais de CommandIt.
-Dashboard mantém sua própria coordenação pelo contrato.
+A feature Insight foi removida do aplicativo, incluindo módulo, consultas HTTP,
+seção da Dashboard, previews e testes próprios. Referências nas verificações
+históricas abaixo não representam funcionalidade disponível.
 
 Expense também usa contrato em application, `ExpenseException` e repository em
 infrastructure com HTTP direto, sem Either ou data source. Preserva CRUD JSON:API,
@@ -147,7 +142,16 @@ resolução das dependências sem visitar módulos irmãos. Authentication e Exp
 usam um único módulo sem path por feature, com URLs completas e binds root-owned;
 isso elimina a colisão no escopo `/` e disponibiliza o contrato para logout.
 
-Última verificação de código: **`flutter analyze` sem problemas; `flutter test`
+Verificação após remover Insight: `flutter pub get` concluído e `flutter analyze`
+sem problemas. O lote de arquitetura, Dashboard, composição global e
+SessionInterceptor passou com **80 testes**. A suíte global repetida terminou
+com **939 aprovados e uma falha preexistente** em
+`expense_screen_test.dart:319` (`manual amount survives suggestion until explicit replacement`),
+que não encontrou `Usar descrição`. O catálogo de previews compilou e serviu,
+mas encerrou por timeout sem cliente conectado; não houve validação visual ou E2E.
+
+Verificação histórica anterior à remoção de integrações remotas e Insight:
+**`flutter analyze` sem problemas; `flutter test`
 com 1006 aprovados, sem falhas**, incluindo arquitetura, core, Expense e composição
 real. Build iOS de debug para simulador aprovado com API de fixtures isolada.
 Os quatro flows de sugestões passaram no iPhone 17 Pro / iOS 26.5: descrição e
@@ -166,7 +170,7 @@ conclusão da migração e da composição dos módulos:
   exclusão da conta.
 - Criação/edição de despesas, valor em centavos, data civil e cadastro contínuo
   por hold; listagem paginada com filtros de período/categoria e gestos de edição/exclusão.
-- Dashboard mensal com métricas por categoria, insights e seis despesas recentes.
+- Dashboard mensal com métricas por categoria e seis despesas recentes.
 - Configurações e logout com revogação remota antes de limpar o storage.
 - Tema claro/escuro, componentes compartilhados e previews.
 
@@ -287,8 +291,7 @@ flutter test test/features/settings
 flutter test test/features/session test/features/root
 flutter test test/features/user
 flutter test test/architecture test/features/metrics
-flutter test test/features/insight
-flutter test test/architecture test/features/expense test/features/dashboard test/features/metrics test/features/insight test/features/core/infrastructure/clients/http/interceptors/session_interceptor_test.dart
+flutter test test/architecture test/features/expense test/features/dashboard test/features/metrics test/features/core/infrastructure/clients/http/interceptors/session_interceptor_test.dart
 ```
 
 Os flows Maestro estão em

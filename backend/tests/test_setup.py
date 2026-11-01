@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 import shutil
+import shlex
 import sqlite3
 import subprocess
 import tempfile
@@ -55,6 +56,33 @@ class EntrypointTest(unittest.TestCase):
 
 
 class RepositoryTest(unittest.TestCase):
+    def test_migration_directories_are_traversable_and_files_stay_read_only(self):
+        dockerfile = (ROOT / "Dockerfile").read_text()
+        copy = "COPY --chmod=0444 pb_migrations/ /opt/cordato/migrations/"
+        fix = "RUN find /opt/cordato/migrations -type d -exec chmod 0555 {} +"
+        self.assertIn(copy, dockerfile)
+        self.assertIn(fix, dockerfile)
+        self.assertLess(dockerfile.index(copy), dockerfile.index(fix))
+        self.assertLess(dockerfile.index(fix), dockerfile.index("USER 10001:10001"))
+        with tempfile.TemporaryDirectory(prefix="cordato-permissions-") as directory:
+            migrations = Path(directory) / "migrations"
+            nested = migrations / "nested"
+            nested.mkdir(parents=True)
+            migration = nested / "initial.js"
+            migration.write_text("")
+            migration.chmod(0o444)
+            command = shlex.split(fix.removeprefix("RUN "))
+            command[1] = str(migrations)
+            try:
+                result = subprocess.run(command, capture_output=True, text=True, timeout=5)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                for path in (migrations, nested):
+                    self.assertEqual(path.stat().st_mode & 0o777, 0o555)
+                self.assertEqual(migration.stat().st_mode & 0o777, 0o444)
+            finally:
+                migrations.chmod(0o755)
+                nested.chmod(0o755)
+
     def test_private_paths_are_ignored(self):
         paths = [".env", ".env.production", "pb_data/data.db", "backups/private.zip",
                  "pocketbase", "pocketbase_0.41.1_darwin_arm64.zip"]

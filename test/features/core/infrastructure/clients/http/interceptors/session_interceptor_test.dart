@@ -112,23 +112,12 @@ void main() {
     verifyNever(() => storage.clear());
   });
 
-  test('authenticates the relative insights endpoint', () async {
-    when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
-        .thenAnswer((_) async => 'opaque-token');
-
-    await client.get(parameter: const Requests(path: 'insights'));
-
-    expect(captured!.uri.path, '/api/insights');
-    expect(captured!.headers['Authorization'], 'Bearer opaque-token');
-    verify(() => storage.read(key: StorageKeyEnum.opaqueToken.key)).called(1);
-  });
-
-  test('does not authenticate absolute or unrelated insights paths', () async {
+  test('does not authenticate unrelated paths', () async {
     for (final path in [
-      'insights/1',
-      'insights-other',
-      'https://example.com/api/insights',
-      'https://external.example/api/insights',
+      'unknown/1',
+      'expenses-other',
+      'https://example.com/api/expenses',
+      'https://external.example/api/expenses',
     ]) {
       await client.get(parameter: Requests(path: path));
       expect(captured!.headers.containsKey('Authorization'), isFalse);
@@ -136,7 +125,7 @@ void main() {
     verifyZeroInteractions(storage);
   });
 
-  test('removes the sent token when insights returns 401', () async {
+  test('removes the sent token when expenses returns 401', () async {
     responseStatus = 401;
     when(() => storage.read(key: StorageKeyEnum.opaqueToken.key))
         .thenAnswer((_) async => 'opaque-token');
@@ -144,7 +133,7 @@ void main() {
         .thenAnswer((_) async {});
 
     await expectLater(
-      client.get(parameter: const Requests(path: 'insights')),
+      client.get(parameter: const Requests(path: 'expenses')),
       throwsA(
         isA<HttpResponseException>().having(
           (error) => error.status,

@@ -13,7 +13,6 @@ import 'package:cordato/features/dashboard/presentation/widgets/action_button_da
 import 'package:cordato/features/dashboard/presentation/widgets/metrics/metrics_section_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/dashboard_month_selector_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_section_widget.dart';
-import 'package:cordato/features/dashboard/presentation/widgets/insights/insights_section_widget.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/mixins/dashboard_screen_state_mixin.dart';
 
 final class const DashboardScreen({
@@ -73,7 +72,6 @@ final class _DashboardScreenState extends State<DashboardScreen>
                           metrics: state.metrics,
                           moneyFormatter: widget.moneyFormatter,
                         ),
-                        InsightsSectionWidget(insights: state.insights),
                         ExpensesSectionWidget(
                           limit: 6,
                           page: state.expenses,

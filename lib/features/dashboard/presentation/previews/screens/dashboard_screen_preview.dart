@@ -8,10 +8,6 @@ import 'package:cordato/features/core/presentation/formatters/money_formatter.da
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/presentation/previews/fakes/metrics_preview_repository.dart';
 
-import 'package:cordato/features/insight/domain/entities/insight_entity.dart';
-import 'package:cordato/features/insight/domain/entities/insight_period_entity.dart';
-import 'package:cordato/features/insight/presentation/previews/fakes/insights_preview_repository.dart';
-
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/presentation/previews/fakes/expenses_list_preview_repository.dart';
 
@@ -112,28 +108,9 @@ Widget _screenPreview({
                   ),
               ],
       ),
-      insightRepository: InsightsPreviewRepository(
-        loading: loading,
-        failure: failure ? ErrorsEntity.unknown() : null,
-        data: empty
-            ? []
-            : [
-                InsightEntity(
-                  id: 'monthly-insight',
-                  group: 'comparison',
-                  type: 'category_lead_streak',
-                  title: 'Uma liderança recorrente',
-                  description:
-                      'Alimentação segue líder nos registros deste mês.',
-                  period: InsightPeriodEntity(
-                    to: end,
-                    from: DateTime(month.year, month.month - 2),
-                  ),
-                ),
-              ],
-      ),
       metricsRepository: MetricsPreviewRepository(
         loading: loading,
+        failure: failure ? ErrorsEntity.unknown() : null,
         data: empty
             ? ExpenseMetricsEntity(
                 id: 'empty-month',
