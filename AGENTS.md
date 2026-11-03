@@ -24,7 +24,7 @@ meia-noite UTC sem conversão de fuso; filtros finais incluem todo o dia escolhi
 Sugestões consultam até 30 registros recentes e deduplicam descrições sem
 diferenciar maiúsculas/minúsculas, sem endpoint customizado ou classificação.
 Não há migração de registros existentes nem fallback para categoria/data vazias.
-Metrics consulta `collections/expense_monthly_metrics/records`, uma view mensal
+Metrics consulta `collections/metrics/records`, uma view mensal
 somente leitura com isolamento por proprietário. Totais em centavos e percentuais
 são calculados no PocketBase, nunca no Flutter. O repository aceita meses civis
 completos; sem datas usa o mês atual, mas rejeita intervalo parcial/incompleto.
@@ -242,7 +242,7 @@ Dashboard, previews e testes próprios. Não restaurá-la a partir de specs hist
   antes da persistência. As gravações e a comparação do storage não são atômicas.
 - Interceptor reconhece somente os endpoints protegidos conhecidos, relativos à
   mesma origem/base: auth-refresh, records de users/expenses e listagem da view
-  expense_monthly_metrics, além do legado
+  metrics, além do legado
   ainda consumido. POST de cadastro em users/records permanece público; não
   autentique genericamente qualquer coleção nem faça refresh/retry no interceptor.
 - Formulário mantém entrada, validação e erros por campo localmente. No sign-in,

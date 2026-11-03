@@ -10,7 +10,7 @@ enum HttpPathEnum({
   expenseRecords(path: 'collections/expenses/records', authenticated: true),
   signIn(path: 'collections/users/auth-with-password', authenticated: false),
   expenseMetrics(
-    path: 'collections/expense_monthly_metrics/records',
+    path: 'collections/metrics/records',
     authenticated: true,
   ),
   resendEmailVerification(

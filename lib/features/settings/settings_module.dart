@@ -17,8 +17,6 @@ final settingsModule = createModule(
           onTermsPressed: () {},
           onPrivacyPressed: () {},
           onPersonalDataPressed: () => context.pushNamed(RouteEnum.user.path),
-          onSubscriptionPressed: () {},
-          onInvitePartnerPressed: () {},
           onBackPressed: (context) => context.pop(),
         ),
       );

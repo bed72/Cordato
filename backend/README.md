@@ -14,7 +14,7 @@ específicas de manutenção ficam em [AGENTS.md](AGENTS.md).
 
 - **Implementado na configuração:** contas individuais e despesas próprias,
   autenticação/verificação nativas, regras de propriedade e cascata, além da view
-  somente leitura `expense_monthly_metrics` com agregações por proprietário/mês.
+  somente leitura `metrics` com agregações por proprietário/mês.
 - **Ausente nesta configuração:** agregações por intervalos arbitrários, insights, endpoints
   customizados de sugestões, orçamentos e família. O Flutter obtém sugestões por
   GET filtrado do histórico pessoal, sem recurso adicional no servidor.
@@ -43,6 +43,7 @@ final são registros anteriores, não verificações executadas nesta revisão.
 - `pb_migrations/1793491200_initial.js`: schema, permissões, superusuário e settings em uma única migration transacional, **exclusiva para banco novo**.
 - `pb_migrations/1793577600_users_verification_app_link.js`: atualização incremental somente do destino de verificação de `users` para o callback HTTPS do aplicativo, sem reaplicar a inicial ou alterar templates administrativos.
 - `pb_migrations/1793664000_expense_monthly_metrics.js`: cria a View Collection mensal sem modificar despesas ou credenciais; aplica também depois da inicial em bancos novos. Não reaplicar a inicial para adicionar a view a uma instalação existente.
+- `pb_migrations/1793664001_rename_metrics.js`: renomeia a view para `metrics`, preservando ID, regras e consulta; aplica em instalações novas e existentes sem editar a migration anterior. Publicar o cliente com o novo endpoint junto dessa atualização do backend; não há alias para o nome antigo.
 - `.env.example`: nomes das variáveis, sem segredos.
 
 ## Instalação no Dokploy
@@ -160,7 +161,7 @@ Categorias: `food`, `pets`, `taxes`, `health`, `travel`, `housing`, `leisure`, `
 
 IDs são strings nativas do PocketBase, **não UUIDv7**. API REST e autenticação são nativas PocketBase, não JSON:API/Sanctum: o cliente PHP anterior não é compatível sem adaptação. Este trabalho não migra dados, contas ou sessões do PHP.
 
-### `expense_monthly_metrics`
+### `metrics`
 
 View Collection nativa, somente leitura, com um registro por proprietário/mês
 com despesas datadas. Somas e percentuais são calculados em SQL sobre `expenses`,
@@ -185,7 +186,7 @@ proporções, não dinheiro. Arredondamentos individuais podem somar 99,99% ou 1
 `category` vazio permanece vazio; não é reclassificado como `other`. Despesas sem
 `occurred_on` não pertencem a nenhum mês. Não há alteração ou migração dos records.
 
-Consulta do cliente: `GET /api/collections/expense_monthly_metrics/records` com
+Consulta do cliente: `GET /api/collections/metrics/records` com
 `filter=start_date = "2026-10-01"`, `page=1`, `perPage=2` e `skipTotal=true`.
 O segundo item serve para detectar violação da unicidade esperada, não para paginar
 despesas. O servidor filtra propriedade; o Flutter não envia um owner arbitrário.

@@ -86,7 +86,7 @@ void main() {
         expect(data.endDate, DateTime(2026, 10, 31));
         expect(data.categories, isNull);
         final captured = request();
-        expect(captured.path, 'collections/expense_monthly_metrics/records');
+        expect(captured.path, 'collections/metrics/records');
         expect(captured.query, {
           'page': 1,
           'perPage': 2,

@@ -61,7 +61,7 @@ void main() {
             'collections/users/auth-refresh',
             'collections/users/records/user-1',
             'collections/expenses/records/expense-1',
-            'collections/expense_monthly_metrics/records',
+            'collections/metrics/records',
           ]) {
             await client.get(parameter: Requests(path: path));
 

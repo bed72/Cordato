@@ -83,14 +83,14 @@ void main() {
 
       await client.get(
         parameter: const Requests(
-          path: 'collections/expense_monthly_metrics/records',
+          path: 'collections/metrics/records',
           query: {'filter': 'start_date = "2026-10-01"'},
         ),
       );
 
       expect(
         captured!.uri.path,
-        '/api/collections/expense_monthly_metrics/records',
+        '/api/collections/metrics/records',
       );
       expect(captured!.headers['Authorization'], 'Bearer opaque-token');
       verify(() => storage.read(key: StorageKeyEnum.token.key)).called(1);
@@ -149,10 +149,10 @@ void main() {
     test('does not leak token to unknown collection paths or absolute refresh URLs', () async {
       for (final path in [
         'collections/other/records',
-        'collections/expense_monthly_metrics/records-other',
-        'collections/expense_monthly_metrics/records/extra',
-        'https://example.com/api/collections/expense_monthly_metrics/records',
-        'https://external.example/api/collections/expense_monthly_metrics/records',
+        'collections/metrics/records-other',
+        'collections/metrics/records/extra',
+        'https://example.com/api/collections/metrics/records',
+        'https://external.example/api/collections/metrics/records',
         'collections/expenses/records/',
         'collections/expenses/records-other',
         'collections/users/auth-refresh/extra',
@@ -226,7 +226,7 @@ void main() {
       await expectLater(
         client.get(
           parameter: const Requests(
-            path: 'collections/expense_monthly_metrics/records',
+            path: 'collections/metrics/records',
           ),
         ),
         throwsA(

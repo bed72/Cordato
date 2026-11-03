@@ -13,8 +13,6 @@ import 'package:cordato/features/settings/presentation/screens/settings/bloc/log
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_logout_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_app_bar_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/mixins/settings_screen_state_mixin.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_premium_badge_widget.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_invite_partner_widget.dart';
 
 final class const SettingsScreen({
   super.key,
@@ -24,8 +22,6 @@ final class const SettingsScreen({
   final VoidCallback? onTermsPressed,
   final VoidCallback? onPrivacyPressed,
   final VoidCallback? onPersonalDataPressed,
-  final VoidCallback? onSubscriptionPressed,
-  final VoidCallback? onInvitePartnerPressed,
 }) extends StatefulWidget {
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -58,14 +54,6 @@ final class _SettingsScreenState extends State<SettingsScreen>
                       children: [
                         const SizedBox(height: 16.0),
                         MenuSectionWidget(
-                          label: 'Casal',
-                          child: SettingsInvitePartnerWidget(
-                            onInvitePartnerPressed:
-                                widget.onInvitePartnerPressed,
-                          ),
-                        ),
-                        const SizedBox(height: 24.0),
-                        MenuSectionWidget(
                           label: 'Conta',
                           child: MenuCardWidget(
                             children: [
@@ -73,12 +61,6 @@ final class _SettingsScreenState extends State<SettingsScreen>
                                 label: 'Dados pessoais',
                                 icon: lucide.user,
                                 onPressed: widget.onPersonalDataPressed,
-                              ),
-                              MenuItemWidget(
-                                label: 'Subscrição',
-                                icon: lucide.sparkles,
-                                trailing: const SettingsPremiumBadgeWidget(),
-                                onPressed: widget.onSubscriptionPressed,
                               ),
                             ],
                           ),

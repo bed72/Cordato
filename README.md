@@ -44,14 +44,14 @@ A configuração foi trazida do repositório backend anterior; nenhum banco, vol
 segredo ou histórico Git foi transferido. A migração do aplicativo para PocketBase
 inclui Authentication, Session, User (consulta de perfil, nome, avatar e exclusão)
 e Expense (CRUD, listagem e sugestões por histórico). Metrics e a distribuição
-mensal da Dashboard usam a view nativa `expense_monthly_metrics`.
+mensal da Dashboard usam a view nativa `metrics`.
 
 | Parte | Estado atual |
 | --- | --- |
 | Backend em `backend/` | Contas, despesas próprias e view mensal de métricas; contrato nativo PocketBase. |
 | Cliente Flutter em `lib/` | Authentication, Session, User, Expense e Metrics usam endpoints nativos PocketBase. |
 | Sugestões | GET filtrado do histórico pessoal de despesas, sem endpoint customizado. |
-| Metrics e Dashboard | Total e distribuição mensal por categoria calculados em SQL na view `expense_monthly_metrics`; UI e navegação preservadas. |
+| Metrics e Dashboard | Total e distribuição mensal por categoria calculados em SQL na view `metrics`; UI e navegação preservadas. |
 | Budget e Family | Planejados; não implementados no backend atual nem nas features Flutter. |
 | Integração e operação | Aplicação da migration da view, homologação integrada e validação no Dokploy ainda pendentes. |
 
@@ -149,7 +149,7 @@ Nome vazio continua exibindo `Trocado`.
 
 Metrics também usa contrato em application, `MetricsException` e repository em
 infrastructure chamando HTTP diretamente, sem Either ou data source. Consulta
-`collections/expense_monthly_metrics/records` por mês civil completo. Sem datas,
+`collections/metrics/records` por mês civil completo. Sem datas,
 usa o mês atual; intervalos parciais, incompletos ou de vários meses são rejeitados,
 sem truncamento silencioso. Total mensal, valores por categoria e percentuais vêm
 do PocketBase: não há soma ou cálculo de percentual no Flutter. Centavos chegam
@@ -163,7 +163,9 @@ consumidores usam BlocBuilder. Dashboard mantém seu próprio Bloc sobre o contr
 sem migrar os demais contextos financeiros.
 
 A migration aditiva `backend/pb_migrations/1793664000_expense_monthly_metrics.js`
-cria a view sem alterar despesas, credenciais ou a migration inicial. Instalações
+cria a view sem alterar despesas, credenciais ou a migration inicial. A migration
+`backend/pb_migrations/1793664001_rename_metrics.js` renomeia essa view para
+`metrics`, preservando seu ID, regras e consulta. Instalações
 existentes precisam aplicar essa migration em operação autorizada; o cliente novo
 não usa fallback para `metrics/expenses`. A definição das regras de proprietário
 está versionada, mas ainda requer homologação no PocketBase real.

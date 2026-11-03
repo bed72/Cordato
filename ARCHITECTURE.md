@@ -210,7 +210,7 @@ a listagem nativa filtrada do histórico pessoal.
 | Erros e paginação | HTTP aceita erros JSON:API e PocketBase; Expense usa paginação nativa e erros 400 por campo; Metrics lê a lista nativa da view. | Formatos nativos PocketBase. |
 | Datas de despesas | Data civil escrita como meia-noite UTC e lida pelos componentes do dia, sem conversão de fuso. | `occurred_on` opcional como Date UTC, sem default. |
 | Categoria | Novas despesas recebem `other`; edição preserva a categoria retornada. Sem classificação automática. | Select opcional; vazio não significa `other`. |
-| Recursos derivados | Sugestões consultam o histórico por GET filtrado; Metrics lê totais e percentuais mensais já calculados. | View `expense_monthly_metrics` agrupa despesas por proprietário/mês; sem endpoint customizado. |
+| Recursos derivados | Sugestões consultam o histórico por GET filtrado; Metrics lê totais e percentuais mensais já calculados. | View `metrics` agrupa despesas por proprietário/mês; sem endpoint customizado. |
 
 Centavos inteiros continuam obrigatórios. Expense utiliza a representação UTC
 como codificação da data civil: não chama `toUtc()` sobre a seleção local nem
@@ -635,7 +635,7 @@ Sem alteração no backend, deploy ou homologação real de regras e cascata.
 em `metrics/infrastructure/repositories/` recebe `IHttpClient` diretamente e
 absorve o data source remoto removido, sem storage ou operações de escrita.
 
-O repository consulta `collections/expense_monthly_metrics/records` com filtro
+O repository consulta `collections/metrics/records` com filtro
 `start_date` por mês civil completo. `_isCompleteMonth` valida o período sem
 conversão de fuso: ambas as datas devem delimitar o mesmo mês; ambas ausentes
 selecionam o mês atual. Datas incompletas, intervalos parciais e múltiplos meses

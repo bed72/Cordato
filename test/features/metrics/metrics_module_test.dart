@@ -84,7 +84,7 @@ void main() {
                   .captured
                   .single
               as Requests;
-      expect(request.path, 'collections/expense_monthly_metrics/records');
+      expect(request.path, 'collections/metrics/records');
       expect(request.query, {
         'page': 1,
         'perPage': 2,
