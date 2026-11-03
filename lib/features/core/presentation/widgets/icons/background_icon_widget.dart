@@ -35,7 +35,12 @@ class const BackgroundIconWidget({
         alignment: .center,
         children: [
           Center(
-            child: IconWidget(icon: icon, color: iconColor, size: iconSize),
+            child: IconWidget(
+              key: ValueKey(icon),
+              icon: icon,
+              size: iconSize,
+              color: iconColor,
+            ),
           ),
           if (hasBackground && borderGradient != null)
             Positioned.fill(
