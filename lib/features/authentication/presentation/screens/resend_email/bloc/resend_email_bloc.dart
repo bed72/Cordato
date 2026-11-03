@@ -1,7 +1,6 @@
-import 'dart:async';
-
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
+import 'package:cordato/features/authentication/presentation/email_cooldown.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_event.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_state.dart';
@@ -58,21 +57,12 @@ final class ResendEmailBloc({
 
     emit(ResendEmailSuccess(isInitialRequest: isInitialRequest));
     await emit.forEach<int>(
-      _cooldownTicks(),
-      onData: (seconds) => seconds >= 60
+      EmailCooldown.ticks(),
+      onData: (seconds) => seconds >= EmailCooldown.duration.inSeconds
           ? const ResendEmailReady()
-          : ResendEmailCooldown(timeLeft: Duration(seconds: 60 - seconds)),
+          : ResendEmailCooldown(
+              timeLeft: EmailCooldown.duration - Duration(seconds: seconds),
+            ),
     );
   }
-
-  Stream<int> _cooldownTicks() => Stream<int>.multi((controller) {
-    final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      controller.add(timer.tick);
-      if (timer.tick >= 60) {
-        timer.cancel();
-        controller.close();
-      }
-    });
-    controller.onCancel = timer.cancel;
-  });
 }

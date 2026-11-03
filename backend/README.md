@@ -25,7 +25,7 @@ específicas de manutenção ficam em [AGENTS.md](AGENTS.md).
   vazios; os campos opcionais de despesas permanecem inalterados. Metrics consulta
   a view mensal, sem somar despesas ou recalcular percentuais no cliente; a UI da
   Dashboard e a navegação por categoria/mês ficam intactas.
-- **Pendente:** aplicar a migration aditiva da view no serviço existente e homologar
+- **Pendente:** provisionar o banco novo com a migration consolidada e homologar
   o fluxo real, incluindo autorização e precisão dos valores.
   Não basta mudar a URL nem considerar testes com clients mockados como validação
   das permissões do serviço.
@@ -40,10 +40,7 @@ final são registros anteriores, não verificações executadas nesta revisão.
 - `compose.yml`: um serviço `pocketbase`, volume persistente e rede externa `dokploy-network`.
 - `Dockerfile`: base Alpine fixada por digest e binário oficial Linux verificado por SHA-256, com suporte amd64, arm64 e arm/v7; execução sem root. Atualizações da base exigem revisão do digest.
 - `docker/entrypoint.sh`: exige chave de criptografia de 32 bytes, fixa opções seguras e inicia o serviço.
-- `pb_migrations/1793491200_initial.js`: schema, permissões, superusuário e settings em uma única migration transacional, **exclusiva para banco novo**.
-- `pb_migrations/1793577600_users_verification_app_link.js`: atualização incremental somente do destino de verificação de `users` para o callback HTTPS do aplicativo, sem reaplicar a inicial ou alterar templates administrativos.
-- `pb_migrations/1793664000_expense_monthly_metrics.js`: cria a View Collection mensal sem modificar despesas ou credenciais; aplica também depois da inicial em bancos novos. Não reaplicar a inicial para adicionar a view a uma instalação existente.
-- `pb_migrations/1793664001_rename_metrics.js`: renomeia a view para `metrics`, preservando ID, regras e consulta; aplica em instalações novas e existentes sem editar a migration anterior. Publicar o cliente com o novo endpoint junto dessa atualização do backend; não há alias para o nome antigo.
+- `pb_migrations/1793491200_initial.js`: única migration transacional, **exclusiva para banco novo**. Consolida schema, permissões, superusuário, settings, view `metrics` e links de verificação e recuperação de `users` para o app. Templates administrativos permanecem nativos. As quatro migrations incrementais foram incorporadas e removidas; esta revisão não atualiza bancos existentes.
 - `.env.example`: nomes das variáveis, sem segredos.
 
 ## Instalação no Dokploy
@@ -74,7 +71,7 @@ O `.env` do antigo projeto Node permaneceu no diretório anterior e não foi lid
 
 - Identidade **Trocado**, cor `#237A4B`, remetente `Trocado <contato@cordato.cloud>`.
 - SMTP `smtp.resend.com:465`, TLS, usuário `resend`, AUTH `PLAIN`. O domínio remetente precisa estar autorizado no Resend.
-- Templates HTML pt-BR de confirmação, recuperação, troca de e-mail, OTP e alerta de login; sem recursos externos. A inicial usa telas nativas `/_/#/auth/.../{TOKEN}`. A migration incremental de app links troca somente a verificação de `users` para `https://app.cordato.cloud/authentication/confirm-email?token={TOKEN}`; os demais destinos permanecem nativos.
+- Templates HTML pt-BR de confirmação, recuperação, troca de e-mail, OTP e alerta de login; sem recursos externos. A inicial configura a verificação de `users` para `https://app.cordato.cloud/authentication/confirm-email?token={TOKEN}` e a recuperação de senha de `users` para `https://app.cordato.cloud/authentication/reset-password?token={TOKEN}`; os demais destinos e templates administrativos usam as telas nativas `/_/#/auth/.../{TOKEN}`.
 - Todos os templates usam Trocado, nome no topo em 28 px, título em 24 px e corpo em 16 px; OTP em 22 px. Nome no topo e código OTP usam texto verde `#237A4B`, sem faixa de fundo ou linha verde sob o nome. Botões de ação usam fundo verde e texto branco. A cor também é usada no painel e tem contraste de aproximadamente 5,4:1 com branco. Essa identidade está na migration inicial, exclusiva para banco novo; redeploy em banco já provisionado não atualiza a cor do painel nem os templates. Domínio e endereço do remetente permanecem inalterados.
 - Superusuário com senha, OTP de seis caracteres/180 segundos, MFA de 600 segundos e alerta de novo login. Não existe conta técnica de worker. Garantir acesso à caixa administrativa e entrega SMTP antes de operar; não desabilitar MFA para contornar problemas de envio.
 - Rate limits nativos: `*:auth` **4/3s**, `*:create` **30/6s**, `/api/` **300/10s**, sem IPs excluídos. Batch desabilitado.
@@ -122,14 +119,18 @@ await pb.collection('users').requestVerification(email);
 
 Reenvio, recuperação e troca de e-mail usam endpoints nativos. O SDK envia o token automaticamente após login. Não enviar senha, tokenKey, verified ou timestamps em atualizações genéricas de perfil.
 
-Antes de publicar a migration de app links, hospedar e homologar os arquivos de
-associação de `app.cordato.cloud`, conforme
-[app_links/README.md](../app_links/README.md). Ela preserva assunto e HTML do
-template, substituindo as ocorrências do destino padrão; se já houver somente
-o destino novo, não grava novamente. Destino personalizado não reconhecido bloqueia
-a migration para revisão explícita. Não altera `_superusers`, SMTP, credenciais,
-registros ou envio inicial. Aplicação no servidor exige deploy autorizado,
-preservando volume e chave. Os links de e-mails anteriores não são reescritos.
+Antes de provisionar o banco novo com a migration consolidada, hospedar e homologar
+os arquivos de associação de `app.cordato.cloud` e instalar o app compatível,
+conforme [app_links/README.md](../app_links/README.md). O bootstrap configura
+templates, SMTP e administrador uma única vez. Aplicação no servidor exige
+autorização operacional separada. Não reaplicar em bancos existentes nem usar
+`history-sync` como substituto de um banco novo. Links antigos não são reescritos.
+
+Se um novo e-mail de recuperação ainda apontar para
+`pocketbase.cordato.cloud/_/#/auth/confirm-password-reset/`, conferir se
+se o serviço usa a revisão com a inicial consolidada e um banco provisionado por
+ela. Um redeploy sobre o banco antigo não reaplica a inicial. Após publicar o app,
+as associações e provisionar o banco novo, solicitar um novo e-mail.
 
 ### `expenses`
 
@@ -198,8 +199,9 @@ ausentes selecionam o mês atual; intervalo incompleto, parcial ou de vários me
 é rejeitado sem request. Não há fallback para `metrics/expenses`. A view reflete
 CRUD subsequente nas novas consultas, mas não publica eventos realtime próprios.
 
-A migration é aditiva e transacional. Não iniciar serviço, reaplicar bootstrap,
-resetar volume ou executar deploy para aplicá-la sem autorização operacional.
+A view é criada diretamente na inicial transacional consolidada, somente em banco
+novo. Não iniciar serviço, reaplicar bootstrap, resetar volume ou executar deploy
+sem autorização operacional.
 Até essa aplicação e homologação reais, não afirmar que a view está implantada
 ou que o isolamento entre contas foi comprovado em runtime.
 
@@ -225,6 +227,11 @@ inferência dos campos pelo PocketBase, totais com dados reais ou isolamento ent
 contas. Nenhum serviço, container ou binário PocketBase foi iniciado nesta etapa.
 
 ### Evidências históricas
+
+Consolidação das migrations (03/11/2026): `sh -n docker/entrypoint.sh`,
+`node --check pb_migrations/1793491200_initial.js` e `git diff --check` aprovados.
+Não houve execução do PocketBase, build, reset de VPS/volume ou deploy.
+A sintaxe JavaScript não comprova a aplicação da migration em runtime.
 
 Os registros abaixo são anteriores à remoção da suíte e às alterações atuais de
 identidade dos e-mails. Não comprovam validação da imagem ou dos templates atuais.

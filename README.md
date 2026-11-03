@@ -95,9 +95,10 @@ Confirmação por link usa Bloc: recebe `token` pela query, envia POST para
 inválido/expirado, sem criar sessão. Resultados obsoletos são ignorados.
 Para confirmar no app, o template de verificação da coleção `users` deve apontar
 para `https://app.cordato.cloud/authentication/confirm-email?token={TOKEN}`.
-A migration `backend/pb_migrations/1793577600_users_verification_app_link.js`
-atualiza somente o destino do template de verificação de `users`, sem reaplicar
-a inicial nem alterar templates administrativos. Android e iOS já declaram o
+A única migration `backend/pb_migrations/1793491200_initial.js`, exclusiva para
+banco novo, configura esse destino e mantém os destinos administrativos nativos.
+As migrations incrementais foram consolidadas e removidas; bancos existentes
+não são atualizados por esta revisão. Android e iOS já declaram o
 domínio. O gerador `tool/app_links.dart` prepara somente os arquivos de associação;
 publicação, certificados, profiles Apple e
 homologação em dispositivo ainda são necessários. Consulte
@@ -107,6 +108,50 @@ Logout usa `LogoutBloc` na apresentação de Settings, consumindo o contrato de
 Authentication. `signOut` aguarda a limpeza local do storage, sem request HTTP
 ou revogação do JWT no servidor. Mantém confirmação, loading e retry manual em
 falha de storage. O redirecionamento continua global por sessão.
+Recuperação de senha usa o link “ou recupere sua conta” no sign-in, com somente
+“conta” clicável. O envio por `collections/users/request-password-reset` exige
+HTTP 204 e abre a etapa “Confira seu e-mail”, com mensagem neutra quanto à
+existência da conta. Reenvio compartilha o cooldown de 60 segundos da verificação,
+iniciado somente após sucesso; falhas permitem retry manual imediato. As duas
+etapas compartilham o Bloc da rota para preservar cooldown e e-mail durante rebuilds.
+Na confirmação do envio, campo de e-mail e botão Reenviar ficam habilitados somente
+fora do cooldown e do envio. É possível corrigir o endereço e reenviar com a mesma
+validação do formulário inicial. Falhas preservam a edição e permitem retry imediato;
+erros remotos de e-mail aparecem no campo e os demais são exibidos em toast.
+Verificação da edição no reenvio (03/11/2026): `flutter pub get` concluído,
+`flutter analyze` sem problemas, lote focado de Authentication/arquitetura/logger
+com 193 testes aprovados e `flutter test --reporter failures-only` com 954 aprovados.
+`git diff --check` aprovado. Sem homologação visual ou envio real de e-mail.
+
+O link `https://app.cordato.cloud/authentication/reset-password?token={TOKEN}`
+abre somente o app e exige exatamente um token não vazio. Antes de habilitar o
+formulário, aguarda `signOut()` para encerrar qualquer sessão local; falha de
+storage bloqueia a ação e permite retry. Nova senha segue as regras do cadastro
+e precisa coincidir com a confirmação. O POST
+`collections/users/confirm-password-reset` envia `token`, `password` e
+`passwordConfirm`, exige 204 e não autentica nem persiste sessão. Sucesso volta
+automaticamente ao sign-in com toast; token inválido/expirado também redireciona.
+Erros de campo ou rede preservam a tela e a entrada. O PocketBase invalida os
+tokens de autenticação anteriores e pode marcar a conta como verificada conforme
+seu contrato nativo. Token e senhas não ficam nos estados dos Blocs. O logger
+omite as operações de recuperação e URLs com token, e mascara Authorization.
+
+A inicial consolidada `backend/pb_migrations/1793491200_initial.js` configura
+o destino do template de recuperação de `users` para o app, mantendo destinos
+administrativos nativos. Publicar as associações atualizadas geradas
+por `tool/app_links.dart`, instalar o app atualizado e só então fazer o deploy
+autorizado do backend com banco novo. Sem o app não há página web alternativa. Entrega real de
+e-mail, aplicação da migration e abertura dos links ainda exigem homologação.
+
+Verificação local da recuperação (03/11/2026): `flutter pub get` concluído,
+`flutter analyze` sem problemas e `flutter test --reporter failures-only` com
+952 testes aprovados. O lote focado de Authentication/HTTP/arquitetura/links e
+composição passou antes dos últimos cenários adicionais. `dart run
+tool/widget_preview.dart` compilou e serviu os previews, sem cliente conectado,
+encerrando por timeout de 45 segundos; isso não comprova validação visual.
+Em `backend/`, `sh -n docker/entrypoint.sh` e `git diff --check` passaram.
+Não houve build nativo, execução da migration, deploy ou envio de e-mail real.
+
 Authentication não possui mais apresentação baseada em commands; isso não
 significa que todas as demais features já foram migradas.
 
@@ -162,12 +207,10 @@ da consulta mais recente. O módulo fornece instâncias por factory e os preview
 consumidores usam BlocBuilder. Dashboard mantém seu próprio Bloc sobre o contrato,
 sem migrar os demais contextos financeiros.
 
-A migration aditiva `backend/pb_migrations/1793664000_expense_monthly_metrics.js`
-cria a view sem alterar despesas, credenciais ou a migration inicial. A migration
-`backend/pb_migrations/1793664001_rename_metrics.js` renomeia essa view para
-`metrics`, preservando seu ID, regras e consulta. Instalações
-existentes precisam aplicar essa migration em operação autorizada; o cliente novo
-não usa fallback para `metrics/expenses`. A definição das regras de proprietário
+A inicial consolidada `backend/pb_migrations/1793491200_initial.js` cria a view
+diretamente como `metrics`, com as mesmas regras e consulta, em banco novo.
+Esta revisão não oferece atualização incremental de instalações existentes.
+O cliente não usa fallback para `metrics/expenses`. A definição das regras de proprietário
 está versionada, mas ainda requer homologação no PocketBase real.
 
 Verificação local desta integração: `flutter pub get` concluído, `flutter analyze`

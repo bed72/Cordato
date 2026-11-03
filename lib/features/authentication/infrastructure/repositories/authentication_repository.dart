@@ -10,6 +10,7 @@ import 'package:cordato/features/authentication/infrastructure/responses/sign_in
 
 import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
 import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
+import 'package:cordato/features/authentication/application/exceptions/password_reset_token_exception.dart';
 import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 
 final class AuthenticationRepository({
@@ -19,6 +20,58 @@ final class AuthenticationRepository({
   @override
   Future<void> signOut() async {
     await _storageClient.clear();
+  }
+
+  @override
+  Future<void> requestPasswordReset({required String email}) async {
+    try {
+      final response = await _httpClient.post(
+        parameter: Requests(
+          path: HttpPathEnum.requestPasswordReset.path,
+          body: {'email': email},
+        ),
+      );
+
+      if (response.status != 204) {
+        throw AuthenticationException(errors: .unknown());
+      }
+    } on HttpResponseException catch (exception) {
+      throw AuthenticationException(errors: exception.errors.toEntity());
+    } on HttpClientException {
+      throw AuthenticationException(errors: .unknown());
+    }
+  }
+
+  @override
+  Future<void> confirmPasswordReset({
+    required String token,
+    required String password,
+    required String passwordConfirm,
+  }) async {
+    try {
+      final response = await _httpClient.post(
+        parameter: Requests(
+          path: HttpPathEnum.confirmPasswordReset.path,
+          body: {
+            'token': token,
+            'password': password,
+            'passwordConfirm': passwordConfirm,
+          },
+        ),
+      );
+      if (response.status != 204) {
+        throw AuthenticationException(errors: .unknown());
+      }
+    } on HttpResponseException catch (exception) {
+      final errors = exception.errors.toEntity();
+      if (exception.status == 400 &&
+          errors.errors.any((error) => error.pointer == '/token')) {
+        throw PasswordResetTokenException(errors: errors);
+      }
+      throw AuthenticationException(errors: errors);
+    } on HttpClientException {
+      throw AuthenticationException(errors: .unknown());
+    }
   }
 
   @override

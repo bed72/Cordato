@@ -5,6 +5,14 @@ abstract interface class IAuthenticationRepository {
 
   Future<void> resendEmail({required String email});
 
+  Future<void> requestPasswordReset({required String email});
+
+  Future<void> confirmPasswordReset({
+    required String token,
+    required String password,
+    required String passwordConfirm,
+  });
+
   Future<EmailVerificationStatusEnum> confirmEmail(String token);
 
   Future<void> signUp({required String email, required String password});

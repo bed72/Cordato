@@ -10,7 +10,9 @@ enum RouteEnum(final String path, {final bool authenticated = false}) {
   authenticationSignIn('/authentication/sign-in'),
   authenticationSignUp('/authentication/sign-up'),
   authenticationConfirm('/authentication/confirm'),
-  authenticationConfirmEmail('/authentication/confirm-email');
+  authenticationConfirmEmail('/authentication/confirm-email'),
+  authenticationPasswordRecovery('/authentication/password-recovery'),
+  authenticationResetPassword('/authentication/reset-password');
 
   static Set<String> authenticatedPaths() => values
       .where((route) => route.authenticated)

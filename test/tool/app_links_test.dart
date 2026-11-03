@@ -31,25 +31,29 @@ void main() {
       },
     );
 
-    test('limits Universal Links to the verification callback', () {
-      final files = associationFiles(
-        appleAppId: appleAppId,
-        androidSha256: [fingerprint],
-      );
+    test(
+      'limits Universal Links to verification and password reset callbacks',
+      () {
+        final files = associationFiles(
+          appleAppId: appleAppId,
+          androidSha256: [fingerprint],
+        );
 
-      expect(jsonDecode(files['apple-app-site-association']!), {
-        'applinks': {
-          'details': [
-            {
-              'appIDs': [appleAppId],
-              'components': [
-                {'/': '/authentication/confirm-email'},
-              ],
-            },
-          ],
-        },
-      });
-    });
+        expect(jsonDecode(files['apple-app-site-association']!), {
+          'applinks': {
+            'details': [
+              {
+                'appIDs': [appleAppId],
+                'components': [
+                  {'/': '/authentication/confirm-email'},
+                  {'/': '/authentication/reset-password'},
+                ],
+              },
+            ],
+          },
+        });
+      },
+    );
 
     for (final invalid in [
       '',

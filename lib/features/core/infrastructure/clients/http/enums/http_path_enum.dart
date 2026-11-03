@@ -21,4 +21,12 @@ enum HttpPathEnum({
     path: 'collections/users/confirm-verification',
     authenticated: false,
   ),
+  requestPasswordReset(
+    path: 'collections/users/request-password-reset',
+    authenticated: false,
+  ),
+  confirmPasswordReset(
+    path: 'collections/users/confirm-password-reset',
+    authenticated: false,
+  ),
 }

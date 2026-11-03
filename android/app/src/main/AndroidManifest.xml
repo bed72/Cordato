@@ -40,6 +40,15 @@
                     android:path="@string/confirm_email_path" />
             </intent-filter>
 
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/confirm_email_scheme"
+                    android:host="@string/confirm_email_host"
+                    android:path="@string/reset_password_path" />
+            </intent-filter>
+
         </activity>
 
         <meta-data

@@ -1,9 +1,10 @@
-# Links de verificação do Cordato
+# Links de autenticação do Cordato
 
-Destino único para Android App Links e iOS Universal Links:
+Destinos para Android App Links e iOS Universal Links:
 
 ```text
 https://app.cordato.cloud/authentication/confirm-email?token={TOKEN}
+https://app.cordato.cloud/authentication/reset-password?token={TOKEN}
 ```
 
 O callback Flutter já aceita exatamente um `token` na query, confirma pelo
@@ -11,6 +12,12 @@ endpoint nativo do PocketBase e não cria sessão. Não usar o endereço do pain
 `/_/#/auth/...`, um redirect HTTP para ele ou um esquema customizado como destino
 do e-mail. Links antigos continuam apontando para o navegador; solicitar novo
 e-mail após atualizar o template.
+
+O callback de recuperação exige exatamente um token não vazio. Antes de mostrar
+os campos habilitados, aguarda o encerramento da sessão local. O app envia a nova
+senha e sua confirmação ao endpoint nativo `confirm-password-reset`, sem login
+automático. Sucesso e token inválido/expirado levam ao sign-in com toast; falhas
+de rede ou de campo permanecem no formulário. Não há recuperação pelo navegador.
 
 ## Gerar os arquivos públicos
 
@@ -51,21 +58,21 @@ navegador; a confirmação permanece no app.
 2. Servir ambos os arquivos de associação com HTTP **200**, sem autenticação,
    redirects ou sufixo `.json` no arquivo Apple, com `Content-Type: application/json`.
 3. Desabilitar registro de query strings no proxy, CDN e servidor para o caminho
-   de confirmação. Não adicionar analytics, session replay ou recursos externos.
+   de confirmação e redefinição. Não adicionar analytics, session replay ou recursos externos.
    O projeto não fornece página web para esse caminho; a proteção dos logs
    continua sendo responsabilidade da infraestrutura.
 4. No Apple Developer, habilitar **Associated Domains** para `com.bed.cordato` e
    regenerar os profiles de assinatura. O projeto já referencia
    `Runner/Runner.entitlements` em Debug/Profile/Release, contendo
    `applinks:app.cordato.cloud`. O esquema legado `trocado` não precisa ser removido.
-   Android já declara `autoVerify`, host e caminho exatos no manifest/resources.
+   Android já declara `autoVerify`, host e caminhos exatos no manifest/resources.
 5. Instalar builds assinados com esses identificadores e verificar a associação.
    Só então publicar o backend atualizado, com autorização operacional separada:
-   a migration `1793577600_users_verification_app_link.js` troca somente o destino
-   do template de verificação de `users`, preservando assunto, HTML, dados,
-   settings e templates de `_superusers`. Não reaplicar a migration inicial.
-   Se o template tiver destino personalizado não reconhecido, a migration falha
-   para exigir revisão, em vez de sobrescrever silenciosamente.
+   a única migration `1793491200_initial.js` configura diretamente os destinos
+   de verificação e recuperação de senha de `users` para o app e mantém destinos
+   administrativos nativos de `_superusers`. É exclusiva para banco novo;
+   as migrations incrementais foram consolidadas e removidas. Não reaplicar a
+   inicial em um banco existente. Redeploy sem banco novo não atualiza os templates.
 6. Solicitar novo e-mail e validar o link real. Entrega SMTP e abertura no app
    continuam exigindo homologação; testes unitários não comprovam essas etapas.
 
@@ -83,6 +90,10 @@ locais **não ativam** a abertura automática do app.
   preferências do usuário e cache da CDN Apple também influenciam a abertura.
 - Nas duas plataformas, testar app encerrado e aberto, confirmação válida,
   token inválido/expirado, query com tokens duplicados e ausência do app.
+- Para recuperação, testar também sessão ativa, falha ao encerrar sessão, nova
+  senha e confirmação divergentes, erros remotos por campo, falha de rede e
+  retorno automático ao sign-in após sucesso. Conferir bloqueio de reenvio por
+  60 segundos apenas após sucesso e ausência de tokens/senhas nos logs.
 - Sem o app, não há fallback fornecido pelo projeto nem confirmação automática.
   Não registrar tokens reais em logs, capturas ou relatórios.
 

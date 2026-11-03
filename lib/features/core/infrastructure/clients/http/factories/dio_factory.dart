@@ -32,10 +32,22 @@ final class DioFactory {
             printRequestHeaders: kDebugMode,
             printResponseHeaders: kDebugMode,
             printResponseMessage: kDebugMode,
+            hiddenHeaders: const {'Authorization'},
+            requestFilter: _canLog,
+            responseFilter: (response) => _canLog(response.requestOptions),
+            errorFilter: (error) => _canLog(error.requestOptions),
           ),
         ),
     ]);
 
     return dio;
   }
+
+  static bool _canLog(RequestOptions options) =>
+      !options.uri.pathSegments.any(
+        (segment) =>
+            segment == 'request-password-reset' ||
+            segment == 'confirm-password-reset',
+      ) &&
+      !options.uri.queryParameters.containsKey('token');
 }

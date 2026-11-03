@@ -422,15 +422,70 @@ A entrega nativa de deep links não é provada pelos testes unitários.
 O destino público é
 `https://app.cordato.cloud/authentication/confirm-email?token={TOKEN}`. Android
 declara o host/caminho e `autoVerify`; iOS declara Associated Domains nos
-entitlements usados por Debug/Profile/Release. A migration incremental
-`1793577600_users_verification_app_link.js` altera somente URLs reconhecidas do
-template de verificação de `users`, preservando HTML, assunto e templates
-administrativos; destinos personalizados não reconhecidos exigem revisão.
+entitlements usados por Debug/Profile/Release. A única migration
+`1793491200_initial.js`, consolidada e exclusiva para banco novo, configura o
+template de verificação de `users` para esse destino e mantém destinos
+administrativos nativos. Também cria diretamente a view `metrics`; as quatro
+migrations incrementais foram incorporadas e removidas. Esta revisão não atualiza
+bancos existentes.
 `tool/app_links.dart` gera `assetlinks.json` e `apple-app-site-association` com
 identificadores públicos fornecidos explicitamente, sem página alternativa ou
 confirmação web. Não há deploy ou associação de domínio implícitos. Ordem
 de publicação, proteção de query strings nos logs e homologação estão em
 [app_links/README.md](app_links/README.md).
+
+### Recuperação De Senha
+
+Na etapa de confirmação do envio, o campo de e-mail usa o mesmo controller e
+validator da solicitação inicial. Campo e botão Reenviar seguem `canSubmit`:
+bloqueados durante envio e cooldown, editáveis quando o cooldown termina. O evento
+de reenvio transporta o endereço atual validado; o Bloc não normaliza a entrada.
+Falhas preservam a edição local e não iniciam cooldown. Erros 400 em `/email`
+aparecem no campo também no reenvio; os demais mantêm o toast de falha.
+
+`PasswordRecoveryBloc` e `ResetPasswordBloc` pertencem ao `provide` das rotas
+`/authentication/password-recovery` e `/authentication/reset-password`. As screens
+recebem instâncias explícitas, sem criar ou fechar Blocs. A resolução usa o
+contrato de Authentication, sem depender de visitar uma rota irmã.
+
+Solicitação e “Confira seu e-mail” são duas etapas visuais da mesma rota para
+preservar cooldown e e-mail confirmado no estado, sem callbacks de navegação ou
+flags locais de execução. `requestPasswordReset(email:)` exige 204 e envia somente
+`email` para `collections/users/request-password-reset`. A confirmação visual é
+neutra quanto à existência da conta. Submissões são `droppable`; o cooldown começa
+apenas depois do sucesso, dura 60 segundos e não provoca reenvio automático.
+`EmailCooldown` compartilha duração e ticks com `ResendEmailBloc`; o lifecycle
+nativo do emitter cancela o timer quando a rota fecha. Falha no reenvio mantém
+a etapa de confirmação e habilita retry imediato.
+
+O callback extrai exatamente um token não vazio da query, decodificado uma única
+vez. Não faz GET de URL recebida e não guarda token ou senhas no estado do Bloc.
+Ao abrir, `ResetPasswordBloc` aguarda `signOut()` para limpar a sessão local antes
+de habilitar a ação; falhas de storage são reportadas e bloqueiam o formulário.
+A observação global de Session preserva essa rota pública durante o logout.
+
+`confirmPasswordReset(token:, password:, passwordConfirm:)` exige 204 e usa JSON
+plano no endpoint público `collections/users/confirm-password-reset`, sem gravar
+credenciais ou criar sessão. Erro PocketBase 400 em `/token` vira
+`PasswordResetTokenException`, preservando os erros remotos. Outros erros remotos
+viram `AuthenticationException`; falhas inesperadas não viram sucesso.
+Validações e erros por campo ficam no formulário: senha segue o cadastro,
+confirmação deve coincidir, erros 400 em `/password` e `/passwordConfirm` são
+exibidos nos respectivos campos. Editar limpa somente o erro do campo editado.
+
+Submissões pendentes e após sucesso são bloqueadas. Um novo link admitido usa
+`restartable` e invalida o handler anterior, sem cancelar HTTP ou persistência já
+iniciados. Sucesso e token inválido/expirado redirecionam ao sign-in com toast;
+falhas de rede mantêm o formulário para retry. O backend invalida JWTs anteriores
+e pode verificar o e-mail conforme a semântica nativa de reset do PocketBase.
+
+O logger não registra requests, responses ou erros dos endpoints de recuperação,
+nem URLs contendo `token`; Authorization é mascarado. A inicial consolidada
+`1793491200_initial.js` configura o link de recuperação de `users` para
+`https://app.cordato.cloud/authentication/reset-password?token={TOKEN}` e mantém
+destinos nativos em `_superusers`. Android declara o caminho exato e o gerador AASA inclui
+a rota. Publicação das associações, deploy, entrega SMTP e abertura em dispositivo
+são etapas operacionais separadas; não existe fallback web.
 
 ### Logout Em Settings
 

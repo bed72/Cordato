@@ -5,6 +5,7 @@ import 'package:cordato/features/core/presentation/extensions/bloc_scoped_extens
 
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
+import 'package:cordato/features/authentication/presentation/validators/password_reset_token_validation.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
@@ -14,6 +15,10 @@ import 'package:cordato/features/authentication/presentation/screens/sign_up/blo
 import 'package:cordato/features/authentication/presentation/screens/callback/bloc/callback_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_bloc.dart';
+import 'package:cordato/features/authentication/presentation/screens/reset_password/reset_password_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/reset_password/bloc/reset_password_bloc.dart';
+import 'package:cordato/features/authentication/presentation/screens/password_recovery/password_recovery_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/password_recovery/bloc/password_recovery_bloc.dart';
 
 import 'package:cordato/features/authentication/infrastructure/repositories/authentication_repository.dart';
 import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
@@ -48,6 +53,25 @@ final authenticationModule = createModule(
         bloc: inject<SignUpBloc>,
         emailValidation: inject<EmailValidation>(),
         passwordValidation: inject<PasswordValidation>(),
+      ),
+    )
+    ..route(
+      RouteEnum.authenticationPasswordRecovery.path,
+      provide: (scope) =>
+          scope.addBloc<PasswordRecoveryBloc>(PasswordRecoveryBloc.new),
+      child: (context, _) => PasswordRecoveryScreen(
+        bloc: context.read<PasswordRecoveryBloc>(),
+        validation: inject<EmailValidation>(),
+      ),
+    )
+    ..route(
+      RouteEnum.authenticationResetPassword.path,
+      provide: (scope) =>
+          scope.addBloc<ResetPasswordBloc>(ResetPasswordBloc.new),
+      child: (context, state) => ResetPasswordScreen(
+        bloc: context.read<ResetPasswordBloc>(),
+        validation: inject<PasswordValidation>(),
+        token: const PasswordResetTokenValidation()(state.uri),
       ),
     )
     ..route(

@@ -1,4 +1,5 @@
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/authentication/presentation/email_cooldown.dart';
 
 sealed class ResendEmailState {
   const ResendEmailState();
@@ -8,7 +9,7 @@ sealed class ResendEmailState {
   bool get canSubmit => this is ResendEmailReady || this is ResendEmailFailure;
 
   Duration get remaining => switch (this) {
-    ResendEmailSuccess() => const Duration(seconds: 60),
+    ResendEmailSuccess() => EmailCooldown.duration,
     ResendEmailCooldown(:final timeLeft) => timeLeft,
     _ => Duration.zero,
   };

@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -69,6 +69,7 @@ void main() {
 
       expect((details.single as Map)['components'], [
         {'/': path},
+        {'/': RouteEnum.authenticationResetPassword.path},
       ]);
       expect(
         ((android.single as Map)['target'] as Map)['package_name'],
@@ -76,4 +77,18 @@ void main() {
       );
     },
   );
+
+  test('Android verifies the exact HTTPS password reset route', () {
+    final manifest = File('android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
+    final resources = File('android/app/src/main/res/values/strings.xml')
+        .readAsStringSync();
+    expect(manifest, contains('android:path="@string/reset_password_path"'));
+    expect(
+      resources,
+      contains(
+        '<string name="reset_password_path">${RouteEnum.authenticationResetPassword.path}</string>',
+      ),
+    );
+  });
 }

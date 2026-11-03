@@ -50,6 +50,28 @@ void main() {
       tearDown(() => dio.close(force: true));
 
       test(
+        'password reset endpoints stay public even with a stored session',
+        () async {
+          responseStatus = 204;
+          for (final path in [
+            'request-password-reset',
+            'confirm-password-reset',
+          ]) {
+            await client.post(
+              parameter: Requests(
+                path: 'collections/users/$path',
+                body: const {},
+              ),
+            );
+            expect(captured!.uri.path, '/api/collections/users/$path');
+            expect(captured!.headers['Authorization'], isNull);
+            expect(captured!.headers['accept'], 'application/json');
+          }
+          verifyZeroInteractions(storage);
+        },
+      );
+
+      test(
         'preserves the API prefix and authenticates protected resources',
         () async {
           for (final path in [

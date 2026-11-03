@@ -39,6 +39,7 @@ Map<String, String> associationFiles({
           'appIDs': [appleAppId],
           'components': [
             {'/': '/authentication/confirm-email'},
+            {'/': '/authentication/reset-password'},
           ],
         },
       ],

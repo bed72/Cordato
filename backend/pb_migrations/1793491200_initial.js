@@ -109,9 +109,15 @@ migrate((app) => {
         tokenKey: "Chave interna de autenticação. Não compartilhar nem alterar manualmente.",
     })
     for (const collection of [users, superusers]) {
-        collection.verificationTemplate = actionTemplate("Confirme seu e-mail", "Confirme seu endereço de e-mail para acessar sua conta Trocado.", "Confirmar e-mail", "confirm-verification")
-        collection.resetPasswordTemplate = actionTemplate("Redefina sua senha", "Recebemos uma solicitação para redefinir sua senha.", "Redefinir senha", "confirm-password-reset")
-        collection.confirmEmailChangeTemplate = actionTemplate("Confirme seu novo e-mail", "Confirme a alteração do endereço de e-mail da sua conta Trocado.", "Confirmar novo e-mail", "confirm-email-change")
+        const verificationURL = collection === users
+            ? "https://app.cordato.cloud/authentication/confirm-email?token={TOKEN}"
+            : "{APP_URL}/_/#/auth/confirm-verification/{TOKEN}"
+        const resetPasswordURL = collection === users
+            ? "https://app.cordato.cloud/authentication/reset-password?token={TOKEN}"
+            : "{APP_URL}/_/#/auth/confirm-password-reset/{TOKEN}"
+        collection.verificationTemplate = actionTemplate("Confirme seu e-mail", "Confirme seu endereço de e-mail para acessar sua conta Trocado.", "Confirmar e-mail", verificationURL)
+        collection.resetPasswordTemplate = actionTemplate("Redefina sua senha", "Recebemos uma solicitação para redefinir sua senha.", "Redefinir senha", resetPasswordURL)
+        collection.confirmEmailChangeTemplate = actionTemplate("Confirme seu novo e-mail", "Confirme a alteração do endereço de e-mail da sua conta Trocado.", "Confirmar novo e-mail", "{APP_URL}/_/#/auth/confirm-email-change/{TOKEN}")
         collection.otp.emailTemplate = emailTemplate("Seu código de acesso", '<p>Use este código para continuar seu acesso ao Trocado:</p><p style="padding:16px;text-align:center;font-size:22px;letter-spacing:4px;color:#237A4B;"><strong>{OTP}</strong></p><p>Não compartilhe este código.</p>')
         collection.authAlert.emailTemplate = emailTemplate("Novo acesso à sua conta", '<p>Identificamos um acesso à sua conta de um novo local:</p><p style="white-space:pre-wrap;overflow-wrap:anywhere;">{ALERT_INFO}</p><p>Se não reconhece este acesso, altere sua senha.</p>')
     }
@@ -161,6 +167,50 @@ migrate((app) => {
         category: "Categoria opcional da lista compartilhada, gerenciada pelo superusuário. Sem valor padrão; vazio não equivale a other.",
     })
     app.save(expenses)
+    const ownMetrics = principal + " && owner = @request.auth.id"
+    const metrics = new Collection({
+        type: "view",
+        name: "metrics",
+        listRule: ownMetrics,
+        viewRule: ownMetrics,
+        createRule: null,
+        updateRule: null,
+        deleteRule: null,
+        viewQuery: `
+            SELECT
+                MIN(e.id) AS id,
+                e.owner AS owner,
+                CAST(substr(e.occurred_on, 1, 7) || '-01' AS TEXT) AS start_date,
+                CAST(date(substr(e.occurred_on, 1, 7) || '-01', '+1 month', '-1 day') AS TEXT) AS end_date,
+                CAST(SUM(CAST(e.amount AS INTEGER)) AS TEXT) AS total_amount,
+                (
+                    SELECT json_group_array(json_object(
+                        'category', grouped.category,
+                        'total_amount', grouped.total_amount,
+                        'percentage', grouped.percentage
+                    ))
+                    FROM (
+                        SELECT
+                            x.category AS category,
+                            CAST(SUM(CAST(x.amount AS INTEGER)) AS TEXT) AS total_amount,
+                            ROUND(
+                                100.0 * SUM(CAST(x.amount AS INTEGER)) /
+                                SUM(SUM(CAST(x.amount AS INTEGER))) OVER (),
+                                2
+                            ) AS percentage
+                        FROM expenses AS x
+                        WHERE x.owner = e.owner
+                            AND substr(x.occurred_on, 1, 7) = substr(e.occurred_on, 1, 7)
+                        GROUP BY x.category
+                        ORDER BY SUM(CAST(x.amount AS INTEGER)) DESC, x.category ASC
+                    ) AS grouped
+                ) AS categories
+            FROM expenses AS e
+            WHERE e.occurred_on != ''
+            GROUP BY e.owner, substr(e.occurred_on, 1, 7)
+        `,
+    })
+    app.save(metrics)
     app.save(superusers)
     app.save(admin)
     app.save(settings)
@@ -194,8 +244,7 @@ migrate((app) => {
             body: '<div lang="pt-BR" style="padding:24px 12px;background:#f5f7f6;color:#24332c;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;"><div style="max-width:560px;margin:auto;padding:24px;background:white;border:1px solid #dfe8e2;border-radius:12px;"><p style="color:#237A4B;font-size:28px;font-weight:bold;">{APP_NAME}</p><h1 style="font-size:24px;">' + title + '</h1><p>Olá!</p>' + content + '<p style="margin-top:24px;">Equipe Trocado</p></div></div>',
         }
     }
-    function actionTemplate(title, message, label, action) {
-        const url = "{APP_URL}/_/#/auth/" + action + "/{TOKEN}"
+    function actionTemplate(title, message, label, url) {
         return emailTemplate(title, '<p>' + message + '</p><p style="margin:24px 0;"><a href="' + url + '" target="_blank" rel="noopener" style="display:inline-block;padding:12px 20px;background:#237A4B;color:white;text-decoration:none;border-radius:6px;">' + label + '</a></p><p>Se o botão não funcionar, copie este link:</p><p style="overflow-wrap:anywhere;"><a href="' + url + '">' + url + '</a></p><p>Se você não solicitou esta ação, ignore este e-mail.</p>')
     }
 }, () => {

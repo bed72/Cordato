@@ -42,6 +42,18 @@ Falha de envio não refaz o cadastro e permite reenvio manual imediato.
 O cooldown de 60 segundos pertence ao ResendEmailBloc e começa somente após sucesso.
 Callback recebe exatamente um `token` na query, nunca uma URL remota para GET.
 Token de verificação não pertence ao estado do Bloc nem aos logs.
+Recuperação de senha usa `collections/users/request-password-reset` e
+`collections/users/confirm-password-reset`, públicos e com sucesso HTTP 204.
+A confirmação do envio é neutra quanto à existência da conta. `EmailCooldown`
+compartilha os 60 segundos com a verificação, iniciados somente após sucesso.
+As duas etapas de solicitação compartilham o Bloc da rota. O callback de reset
+recebe exatamente um token não vazio na query e aguarda `signOut()` antes de
+habilitar o formulário; falha de storage bloqueia a ação. Senha segue as regras
+do cadastro e a confirmação deve coincidir. Token e senhas não ficam nos estados
+nem nos logs. O logger omite operações de reset e URLs com token. Sucesso e erro
+400 em `/token` voltam ao sign-in com toast; falhas de rede e de campos preservam
+a tela. Os novos Blocs de recuperação pertencem exclusivamente ao `provide` das
+rotas; screens e previews recebem instâncias com proprietário externo explícito.
 Descrições JSON:API e token opaco neste
 documento referem-se aos fluxos Flutter não migrados, não a requisitos para recriar a API antiga
 no PocketBase. Não trate troca de `BASE_URL` como integração. Diferenças e lacunas
