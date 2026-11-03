@@ -24,7 +24,7 @@ final class UserRepository({
 
       final response = await _httpClient.get(
         parameter: Requests(
-          path: '${HttpPathEnum.user.path}/${Uri.encodeComponent(id)}',
+          path: '${HttpPathEnum.userRecords.path}/${Uri.encodeComponent(id)}',
         ),
       );
 
@@ -43,14 +43,8 @@ final class UserRepository({
 
       final response = await _httpClient.patch(
         parameter: Requests(
-          path: '${HttpPathEnum.user.path}/${Uri.encodeComponent(id)}',
-          body: {
-            'data': {
-              'id': id,
-              'type': 'users',
-              'attributes': {'name': ?name, 'avatar': ?avatar},
-            },
-          },
+          path: '${HttpPathEnum.userRecords.path}/${Uri.encodeComponent(id)}',
+          body: {'name': ?name, 'avatar': ?avatar},
         ),
       );
 
@@ -68,7 +62,7 @@ final class UserRepository({
       final id = await _getId();
       final response = await _httpClient.delete(
         parameter: Requests(
-          path: '${HttpPathEnum.user.path}/${Uri.encodeComponent(id)}',
+          path: '${HttpPathEnum.userRecords.path}/${Uri.encodeComponent(id)}',
         ),
       );
 

@@ -202,7 +202,7 @@ insights ou sugestões remotas.
 
 | Aspecto | Flutter atual | PocketBase atual |
 | --- | --- | --- |
-| Transporte | Sign-in, cadastro, solicitação e confirmação de verificação nativos PocketBase; demais endpoints mantêm JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
+| Transporte | Authentication, Session e User usam endpoints nativos PocketBase; fluxos financeiros mantêm JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
 | Autenticação | Sign-in persiste JWT e `record.id` nas chaves existentes; sign-out limpa storage local sem HTTP. | Autenticação nativa da coleção `users`; não há endpoint de logout ou revogação individual do JWT ao sair. |
 | Confirmação | Após cadastro, confirmação solicita automaticamente `request-verification`; callback recebe `token` e usa `confirm-verification`. Cooldown de 60 segundos no Bloc somente após sucesso. App Links/Universal Links declarados; associação pública e homologação pendentes. | Verificação nativa; migration incremental direciona verificação de `users` ao app. Templates administrativos permanecem no PocketBase. A criação do record não envia confirmação por si só. |
 | Erros e paginação | HTTP aceita erros JSON:API e PocketBase; sign-in mapeia 400 de `identity`/`password` aos campos. Paginação anterior preservada. | Formatos nativos PocketBase; demais consumidores exigem adaptação em infrastructure. |
@@ -217,7 +217,7 @@ antes da integração, sem conversão implícita de fuso ou perda de significado
 Trocar a URL não é migração. SDK/adapters, persistência de sessão, mapeamento de
 erros, verificação de e-mail, paginação e destino dos recursos ausentes precisam
 de decisão e implementação próprias. O aplicativo mantém `IHttpClient`/`HttpClient`
-com Dio, com adaptação de sign-in, cadastro, solicitação/confirmação de verificação e erros
+com Dio, com adaptação de Authentication, Session, User e erros
 nativos; o SDK PocketBase não está integrado ao Flutter.
 
 A arquitetura de camadas Flutter permanece válida. As seções seguintes descrevem
@@ -536,11 +536,18 @@ O repository concreto fica em `user/infrastructure/repositories/`, recebe
 
 O repository lê o ID atual do storage em cada operação, rejeita ID nulo/vazio
 ou composto só por espaços e preserva o valor original nos demais casos.
-Codifica o ID no caminho `users/<id>`, sem alterar o ID do payload JSON:API.
-Update envia somente nome/avatar fornecidos e devolve a entidade da resposta,
+Codifica o ID no caminho `collections/users/records/<id>`.
+Update envia JSON plano somente com nome/avatar fornecidos e devolve a entidade da resposta,
 sem normalização oculta. Erros HTTP preservam ordem, mensagens e metadados;
 demais falhas tipadas do client usam fallback. Parsing inválido, falhas de
 storage e exceções inesperadas propagam sem serem convertidos em falhas esperadas.
+
+`UserResponse` interpreta o record nativo PocketBase diretamente, sem envelope
+JSON:API. `UserEntity` não possui o antigo campo `status`; `verified` não é
+convertido em status nem usado como autorização local. Nome vazio é preservado
+no domínio e exibido como `Trocado` somente pela apresentação, inclusive na
+Dashboard, sem persistir esse fallback. Avatar textual vazio vira ausência de
+seed em infrastructure, preservando o fallback visual baseado no ID.
 
 Exclusão só conclui após HTTP 204 e `storage.clear()` aguardado. Outro status
 2xx lança `UserException` com fallback seguro, sem limpar o storage. Falhas remotas
@@ -585,9 +592,9 @@ cancela HTTP, mas impede estados e feedback tardios.
 
 `EditScreen` recebe `bloc: inject<EditBloc>` por factory, cria e fecha a instância
 e substitui seu proprietário somente se a factory mudar. O formulário mantém a
-entrada e os erros por campo: rejeita nome vazio ou igual ao inicial após trim,
+entrada e os erros por campo: exige de 2 a 32 caracteres Unicode após trim e rejeita nome igual ao inicial,
 faz trim somente ao enviar e preserva a entrada após falha. Botão e teclado usam
-o mesmo guard. Erros 422 pelo pointer de nome ficam no campo; editar limpa esse
+o mesmo guard. Erros PocketBase 400 com `/name` e erros 422 legados pelo pointer de nome ficam no campo; editar limpa esse
 erro, e somente erros restantes aparecem em toast. Sucesso mostra o feedback
 existente e devolve a entidade da API pelo callback de navegação já existente,
 uma única vez. O perfil recarrega ao receber esse resultado confirmado.
@@ -595,6 +602,15 @@ uma única vez. O perfil recarrega ao receber esse resultado confirmado.
 User não depende mais de CommandIt. Repository e Blocs mantêm testes unitários;
 o teste visual composto do módulo e os flows de perfil/edição foram removidos.
 Dashboard compõe os contratos de aplicação financeiros.
+
+Verificação da migração de User para PocketBase (03/11/2026): `flutter pub get`
+concluído; `flutter analyze` sem issues; verificação focada com
+`flutter test test/architecture test/features/user test/features/dashboard test/app_module_test.dart --reporter failures-only`
+com 186 testes aprovados; `flutter test --reporter failures-only` com 798 testes aprovados.
+Os testes usam clients mockados ou transporte HTTP simulado, sem acesso ao serviço.
+`dart run tool/widget_preview.dart` compilou e serviu o catálogo, encerrado por
+timeout de 45 segundos sem cliente conectado; sem validação visual manual.
+Sem alteração no backend, deploy ou homologação real de regras e cascata.
 
 ### Metrics: Repository E Consulta Com Bloc
 

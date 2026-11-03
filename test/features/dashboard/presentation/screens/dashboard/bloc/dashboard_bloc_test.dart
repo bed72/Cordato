@@ -4,17 +4,21 @@ import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
+
+import 'package:cordato/features/dashboard/presentation/enums/dashboard_phase_enum.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_state.dart';
-import 'package:cordato/features/dashboard/presentation/enums/dashboard_phase_enum.dart';
 
 import '../../../../../../support/user/mocks/user_repository_mock.dart';
 import '../../../../../../support/expense/mocks/expense_repository_mock.dart';
@@ -27,12 +31,7 @@ void main() {
   late MetricsRepositoryMock metricsRepository;
   late List<StreamSubscription<DashboardState>> subscriptions;
   final today = DateTime(2026, 10, 19, 16, 30);
-  const profile = UserEntity(
-    id: 'user',
-    name: 'Gabriel',
-    email: 'a@b.com',
-    status: 'active',
-  );
+  const profile = UserEntity(id: 'user', name: 'Gabriel', email: 'a@b.com');
 
   ExpensePageEntity page(List<DateTime> dates, {String? next}) =>
       ExpensePageEntity(

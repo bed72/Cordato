@@ -1,5 +1,5 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
@@ -10,9 +10,9 @@ import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_bloc.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.dart';
 import 'package:cordato/features/user/presentation/screens/edit/widgets/edit_user_app_bar_widget.dart';
-import 'package:cordato/features/user/presentation/screens/edit/mixins/edit_user_screen_state_mixin.dart';
+import 'package:cordato/features/user/presentation/screens/edit/mixins/edit_screen_state_mixin.dart';
 
-final class const EditUserScreen({
+final class const EditScreen({
   super.key,
   required final String initialName,
   required final EditBloc Function() bloc,
@@ -20,11 +20,11 @@ final class const EditUserScreen({
   required final void Function(BuildContext, UserEntity) onUpdated,
 }) extends StatefulWidget {
   @override
-  State<EditUserScreen> createState() => _EditUserScreenState();
+  State<EditScreen> createState() => _EditScreenState();
 }
 
-final class _EditUserScreenState extends State<EditUserScreen>
-    with EditUserScreenStateMixin {
+final class _EditScreenState extends State<EditScreen>
+    with EditScreenStateMixin {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<EditBloc, EditState>(

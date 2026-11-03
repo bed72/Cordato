@@ -4,29 +4,21 @@ final class const UserResponse({
   required final String id,
   required final String name,
   required final String email,
-  required final String status,
   final String? avatar,
 }) {
   factory UserResponse.fromJson(Map<String, dynamic> json) {
-    final data = json['data'] as Map<String, dynamic>;
-    final attributes = data['attributes'] as Map<String, dynamic>;
+    final avatar = json['avatar'] as String;
 
     return UserResponse(
-      id: data['id'] as String,
-      name: attributes['name'] as String,
-      email: attributes['email'] as String,
-      status: attributes['status'] as String,
-      avatar: attributes['avatar'] as String?,
+      id: json['id'] as String,
+      name: json['name'] as String,
+      email: json['email'] as String,
+      avatar: avatar.isEmpty ? null : avatar,
     );
   }
 }
 
 extension UserResponseToEntity on UserResponse {
-  UserEntity toEntity() => UserEntity(
-    id: id,
-    name: name,
-    email: email,
-    status: status,
-    avatar: avatar,
-  );
+  UserEntity toEntity() =>
+      UserEntity(id: id, name: name, email: email, avatar: avatar);
 }

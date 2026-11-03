@@ -42,13 +42,13 @@ ou segredos do aplicativo.
 
 A configuração foi trazida do repositório backend anterior; nenhum banco, volume,
 segredo ou histórico Git foi transferido. A migração do aplicativo para PocketBase
-inclui sign-in, cadastro, solicitação e confirmação de verificação; os demais fluxos ainda
+inclui Authentication, Session e User (consulta de perfil, nome, avatar e exclusão); os fluxos financeiros ainda
 mantêm o contrato anterior.
 
 | Parte | Estado atual |
 | --- | --- |
 | Backend em `backend/` | Contas e despesas próprias nas coleções `users` e `expenses`; contrato nativo PocketBase. |
-| Cliente Flutter em `lib/` | Sign-in, cadastro, solicitação e confirmação de verificação usam os endpoints nativos da coleção `users`. Demais operações mantêm JSON:API e o contrato anterior. |
+| Cliente Flutter em `lib/` | Authentication, Session e User usam os endpoints nativos da coleção `users`. Operações financeiras mantêm JSON:API e o contrato anterior. |
 | Metrics e sugestões | Existem no cliente; não há implementação equivalente no backend PocketBase atual. |
 | Budget e Family | Planejados; não implementados no backend atual nem nas features Flutter. |
 | Integração e operação | Migração do cliente, homologação integrada e validação no Dokploy ainda pendentes. |
@@ -58,10 +58,17 @@ erros, paginação, datas e recursos disponíveis possuem contratos diferentes.
 O Flutter mantém `HttpClient`/`IHttpClient` com Dio, interceptors e o contrato HTTP
 anterior nas operações não migradas. O SDK PocketBase não está integrado. O login
 e o cadastro aceitam erros nativos PocketBase (400 por campo ou mensagem geral), mas
-recursos autenticados ainda precisam de migração. Mantenha
+recursos financeiros ainda precisam de migração. Mantenha
 `/api/` na base, por exemplo `https://pocketbase.cordato.cloud/api/`. Esta adaptação
 não representa homologação integrada nem migração das sessões existentes.
 Veja os [limites da integração](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração).
+
+User consulta, altera e exclui a conta por `collections/users/records/{id}`.
+Nome e avatar usam JSON plano; avatar permanece uma seed textual, sem upload.
+Nome vazio é exibido como `Trocado`, sem gravar esse fallback. A edição exige
+2–32 caracteres após trim e reconhece erros nativos de nome no campo.
+A exclusão aguarda HTTP 204 e a limpeza local do storage; Session redireciona.
+A cascata das despesas está configurada no backend e requer homologação real.
 
 ## Estado Do Projeto
 

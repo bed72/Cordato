@@ -9,7 +9,7 @@ import 'package:cordato/features/user/application/repositories/interface_user_re
 
 import 'package:cordato/features/user/presentation/screens/user/user_screen.dart';
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_bloc.dart';
-import 'package:cordato/features/user/presentation/screens/edit/edit_user_screen.dart';
+import 'package:cordato/features/user/presentation/screens/edit/edit_screen.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_bloc.dart';
 
 final userDependenciesModule = createModule(
@@ -36,7 +36,7 @@ final userModule = createModule(
     )
     ..route(
       '/edit',
-      child: (_, state) => EditUserScreen(
+      child: (_, state) => EditScreen(
         bloc: inject<EditBloc>,
         onBackPressed: (context) => context.pop(),
         initialName: state.arguments as String? ?? '',

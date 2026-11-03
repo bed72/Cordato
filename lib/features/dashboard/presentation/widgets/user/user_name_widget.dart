@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
+import 'package:cordato/features/user/presentation/extensions/user_presentation_extension.dart';
 
 import 'package:cordato/features/dashboard/presentation/mixins/user_name_widget_mixin.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/avatar_dashboard_widget.dart';
@@ -16,13 +17,13 @@ final class const UserNameWidget({
   @override
   Widget build(BuildContext context) {
     if (isLoading) return _buildSkeleton(context);
-    final value = user;
+
     return _buildContent(
       context,
-      value?.name ?? 'Trocado',
-      seed: value == null
+      user?.displayName ?? 'Trocado',
+      seed: user == null
           ? 'cordato-placeholder'
-          : value.avatar ?? 'cordato-user-${value.id}',
+          : user?.avatar ?? 'cordato-user-${user?.id}',
     );
   }
 

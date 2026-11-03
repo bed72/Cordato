@@ -3,66 +3,62 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/user/infrastructure/responses/user_response.dart';
 
 void main() {
-  test('maps the JSON:API user into its domain representation', () {
-    final response = UserResponse.fromJson({
-      'data': {
-        'id': '10',
-        'type': 'users',
-        'attributes': {
-          'name': 'Trocado',
-          'status': 'active',
-          'avatar': 'chosen-avatar',
-          'email': 'person@example.com',
-          'created_at': '2026-10-05T16:48:33+00:00',
-          'updated_at': '2026-10-05T16:52:34+00:00',
-        },
-        'links': {'self': 'https://example.com/api/users/10'},
-      },
-    });
+  const record = {
+    'id': 'user12345678901',
+    'verified': true,
+    'name': 'Gabriel',
+    'collectionName': 'users',
+    'avatar': 'chosen-avatar',
+    'email': 'person@example.com',
+  };
 
-    final user = response.toEntity();
-    expect(user.id, '10');
-    expect(user.name, 'Trocado');
-    expect(user.status, 'active');
-    expect(user.avatar, 'chosen-avatar');
+  test('maps a native PocketBase record without a status field', () {
+    final user = UserResponse.fromJson(record).toEntity();
+
+    expect(user.id, record['id']);
+    expect(user.name, 'Gabriel');
     expect(user.email, 'person@example.com');
+    expect(user.avatar, 'chosen-avatar');
   });
 
-  for (final attributes in [
-    <String, dynamic>{},
-    <String, dynamic>{'avatar': null},
-  ]) {
-    test('accepts a user without an avatar seed: $attributes', () {
-      final response = UserResponse.fromJson({
-        'data': {
-          'id': '10',
-          'attributes': {
-            'name': 'Gabriel',
-            'status': 'active',
-            'email': 'person@example.com',
-            ...attributes,
-          },
-        },
-      });
+  test('preserves an empty name and maps an empty avatar to absence', () {
+    final user = UserResponse.fromJson({...record, 'name': '', 'avatar': ''})
+        .toEntity();
 
-      expect(response.avatar, isNull);
-      expect(response.toEntity().avatar, isNull);
+    expect(user.name, isEmpty);
+    expect(user.avatar, isNull);
+  });
+
+  test('preserves the original name and avatar seed', () {
+    final user = UserResponse.fromJson({
+      ...record,
+      'name': '  Nome  ',
+      'avatar': '  seed  ',
+    }).toEntity();
+
+    expect(user.name, '  Nome  ');
+    expect(user.avatar, '  seed  ');
+  });
+
+  for (final field in ['id', 'name', 'email', 'avatar']) {
+    for (final invalid in [null, 123, false]) {
+      test('rejects invalid $field: $invalid', () {
+        expect(
+          () => UserResponse.fromJson({...record, field: invalid}),
+          throwsA(isA<TypeError>()),
+        );
+      });
+    }
+
+    test('rejects missing $field', () {
+      final json = {...record}..remove(field);
+      expect(() => UserResponse.fromJson(json), throwsA(isA<TypeError>()));
     });
   }
 
-  test('rejects an avatar seed with an invalid type', () {
+  test('rejects the legacy JSON:API envelope', () {
     expect(
-      () => UserResponse.fromJson({
-        'data': {
-          'id': '10',
-          'attributes': {
-            'avatar': 123,
-            'name': 'Gabriel',
-            'status': 'active',
-            'email': 'person@example.com',
-          },
-        },
-      }),
+      () => UserResponse.fromJson({'data': record}),
       throwsA(isA<TypeError>()),
     );
   });

@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:mocktail/mocktail.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
+
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/user/application/exceptions/user_exception.dart';
+
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
+import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_bloc.dart';
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_event.dart';
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_state.dart';
@@ -13,18 +15,12 @@ import 'package:cordato/features/user/presentation/screens/user/bloc/user_state.
 import '../../../../../../support/user/mocks/user_repository_mock.dart';
 
 void main() {
-  const user = UserEntity(
-    id: '1',
-    name: 'Pessoa',
-    email: 'person@example.com',
-    status: 'active',
-  );
+  const user = UserEntity(id: '1', name: 'Pessoa', email: 'person@example.com');
   const saved = UserEntity(
     id: '1',
     name: 'API',
-    email: 'person@example.com',
-    status: 'active',
     avatar: '  seed  ',
+    email: 'person@example.com',
   );
   const errors = ErrorsEntity(
     errors: [

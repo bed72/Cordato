@@ -1,14 +1,16 @@
 import 'dart:async';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
+import 'package:flutter_test/flutter_test.dart';
+
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
+
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
-import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 import 'package:cordato/features/user/infrastructure/repositories/user_repository.dart';
+import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
 import '../../../../support/core/mocks/http_client_mock.dart';
 import '../../../../support/core/mocks/storage_client_mock.dart';
@@ -16,15 +18,10 @@ import '../../../../support/core/mocks/storage_client_mock.dart';
 void main() {
   const id = ' a/b?c#d ';
   const body = {
-    'data': {
-      'id': 'api-id',
-      'attributes': {
-        'name': 'Nome da API',
-        'email': 'person@example.com',
-        'status': 'active',
-        'avatar': 'api-avatar',
-      },
-    },
+    'id': 'api-id',
+    'name': 'Nome da API',
+    'avatar': 'api-avatar',
+    'email': 'person@example.com',
   };
   late HttpClientMock http;
   late StorageClientMock storage;
@@ -47,6 +44,67 @@ void main() {
   });
 
   group('Profile reads and updates', () {
+    test('preserves native PocketBase field errors and metadata', () async {
+      final failure = HttpResponseException.fromResponse(
+        const Responses(
+          status: 400,
+          body: {
+            'code': 400,
+            'message': 'Failed to update record.',
+            'data': {
+              'name': {
+                'code': 'validation_length_out_of_range',
+                'message': 'Must be between 2 and 32 characters.',
+              },
+              'avatar': {
+                'code': 'validation_length_out_of_range',
+                'message': 'Must be at most 2048 characters.',
+              },
+            },
+          },
+        ),
+      );
+      when(() => http.patch(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => throw failure);
+
+      await expectLater(
+        repository.update(name: 'A'),
+        throwsA(
+          isA<UserException>().having(
+            (exception) => exception.errors.errors
+                .map(
+                  (error) => (
+                    error.status,
+                    error.code,
+                    error.pointer,
+                    error.parameter,
+                    error.detail,
+                  ),
+                )
+                .toList(),
+            'ordered errors',
+            [
+              (
+                '400',
+                'validation_length_out_of_range',
+                '/name',
+                'name',
+                'Must be between 2 and 32 characters.',
+              ),
+              (
+                '400',
+                'validation_length_out_of_range',
+                '/avatar',
+                'avatar',
+                'Must be at most 2048 characters.',
+              ),
+            ],
+          ),
+        ),
+      );
+      verifyNever(() => storage.clear());
+    });
+
     test(
       'reads the current ID and maps the API resource into an entity',
       () async {
@@ -54,14 +112,16 @@ void main() {
         expect(user.id, 'api-id');
         expect(user.name, 'Nome da API');
         expect(user.email, 'person@example.com');
-        expect(user.status, 'active');
         expect(user.avatar, 'api-avatar');
         final request =
             verify(() => http.get(parameter: captureAny(named: 'parameter')))
                     .captured
                     .single
                 as Requests;
-        expect(request.path, 'users/${Uri.encodeComponent(id)}');
+        expect(
+          request.path,
+          'collections/users/records/${Uri.encodeComponent(id)}',
+        );
         expect(request.body, isNull);
         expect(request.headers, isNull);
         expect(request.query, isNull);
@@ -81,14 +141,11 @@ void main() {
                     () => http.patch(parameter: captureAny(named: 'parameter')),
                   ).captured.single
                   as Requests;
-          expect(request.path, 'users/${Uri.encodeComponent(id)}');
-          expect(request.body, {
-            'data': {
-              'id': id,
-              'type': 'users',
-              'attributes': {'name': ?name, 'avatar': ?avatar},
-            },
-          });
+          expect(
+            request.path,
+            'collections/users/records/${Uri.encodeComponent(id)}',
+          );
+          expect(request.body, {'name': ?name, 'avatar': ?avatar});
           expect(request.headers, isNull);
           expect(request.query, isNull);
           verifyNever(() => storage.clear());
@@ -219,11 +276,12 @@ void main() {
       if (operation != 'delete') {
         for (final malformed in <Map<String, dynamic>>[
           {},
+          {'id': 'id', 'name': 'Nome', 'email': 'person@example.com'},
           {
-            'data': {'id': 'id', 'attributes': {}},
-          },
-          {
-            'data': {'id': 123, 'attributes': {}},
+            'id': 123,
+            'name': 'Nome',
+            'email': 'person@example.com',
+            'avatar': '',
           },
         ]) {
           test('$operation propagates invalid parsing: $malformed', () async {
@@ -266,7 +324,10 @@ void main() {
                     .captured
                     .single
                 as Requests;
-        expect(request.path, 'users/${Uri.encodeComponent(id)}');
+        expect(
+          request.path,
+          'collections/users/records/${Uri.encodeComponent(id)}',
+        );
         expect(request.body, isNull);
         expect(request.headers, isNull);
         verify(() => storage.clear()).called(1);

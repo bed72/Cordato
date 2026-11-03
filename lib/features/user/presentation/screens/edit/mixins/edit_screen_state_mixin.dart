@@ -2,19 +2,25 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+
+import 'package:cordato/features/user/presentation/validators/name_validation.dart';
+
+import 'package:cordato/features/user/presentation/screens/edit/edit_screen.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_bloc.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_event.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.dart';
-import 'package:cordato/features/user/presentation/screens/edit/edit_user_screen.dart';
 
-mixin EditUserScreenStateMixin on State<EditUserScreen> {
+mixin EditScreenStateMixin on State<EditScreen> {
   late EditBloc bloc;
   String? nameFailure;
   late String name = widget.initialName;
+  final nameValidation = const NameValidation();
 
   bool get canUpdate =>
-      name.trim().isNotEmpty && name.trim() != widget.initialName.trim();
+      nameValidation(name) is Valid<String> &&
+      name.trim() != widget.initialName.trim();
 
   @override
   void initState() {
@@ -23,7 +29,7 @@ mixin EditUserScreenStateMixin on State<EditUserScreen> {
   }
 
   @override
-  void didUpdateWidget(covariant EditUserScreen oldWidget) {
+  void didUpdateWidget(covariant EditScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.bloc == widget.bloc) return;
     unawaited(bloc.close());
@@ -40,7 +46,10 @@ mixin EditUserScreenStateMixin on State<EditUserScreen> {
   void onNameChanged(String value) {
     setState(() {
       name = value;
-      nameFailure = null;
+      nameFailure = switch (nameValidation(value)) {
+        Invalid(:final message) => message,
+        Valid() => null,
+      };
     });
   }
 
@@ -54,10 +63,7 @@ mixin EditUserScreenStateMixin on State<EditUserScreen> {
   void handleUpdate(EditState state) {
     if (!mounted || bloc.isClosed) return;
     if (state case EditFailure(:final errors)) {
-      final fieldErrors = errors.errors.where(
-        (error) =>
-            error.status == '422' && error.pointer == '/data/attributes/name',
-      );
+      final fieldErrors = errors.errors.where(nameValidation.isFieldError);
       setState(() {
         nameFailure = fieldErrors.isEmpty
             ? null
@@ -68,8 +74,7 @@ mixin EditUserScreenStateMixin on State<EditUserScreen> {
                   .join('\n');
       });
       final remaining = errors.errors.where(
-        (error) =>
-            error.status != '422' || error.pointer != '/data/attributes/name',
+        (error) => !nameValidation.isFieldError(error),
       );
       if (remaining.isNotEmpty) {
         context.showToast(

@@ -1,7 +1,7 @@
-import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
+import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
 final class DashboardUserPreviewRepository({final ErrorsEntity? failure})
@@ -11,7 +11,6 @@ final class DashboardUserPreviewRepository({final ErrorsEntity? failure})
     if (failure != null) throw UserException(errors: failure!);
     return const UserEntity(
       name: 'Gabriel',
-      status: 'active',
       id: 'preview-user',
       email: 'preview@example.com',
     );

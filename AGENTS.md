@@ -17,7 +17,12 @@ usam os endpoints nativos `collections/users/auth-with-password`,
 `collections/users/confirm-verification`.
 Sign-out é local: aguarda `IStorageClient.clear()`, sem endpoint HTTP ou revogação
 do JWT no servidor. Falhas do storage propagam e não confirmam sucesso.
-As demais features ainda usam o contrato HTTP anterior.
+As features financeiras ainda usam o contrato HTTP anterior.
+User também usa `collections/users/records/{id}` para consulta, PATCH com JSON
+plano de nome/avatar e exclusão. Não há `status` em `UserEntity`; não o derive
+de `verified`. Nome vazio é exibido como `Trocado` somente na apresentação.
+Edição valida 2–32 caracteres Unicode após trim e mapeia erros 400 de `/name`
+ao campo. Avatar vazio do PocketBase vira ausência de seed em infrastructure.
 O JWT usa `StorageKeyEnum.token` (`@trocado.token`), sem migração automática das
 sessões das chaves anteriores. Cadastro não cria sessão. Após criar a conta, a
 tela de confirmação solicita automaticamente o primeiro e-mail de verificação.

@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:mocktail/mocktail.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
+
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/user/application/exceptions/user_exception.dart';
+
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
+import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_bloc.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_event.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.dart';
@@ -13,20 +15,15 @@ import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.
 import '../../../../../../support/user/mocks/user_repository_mock.dart';
 
 void main() {
-  const user = UserEntity(
-    id: '1',
-    name: 'API',
-    email: 'person@example.com',
-    status: 'active',
-  );
   const event = EditSubmittedEvent(name: '  Nome original  ');
+  const user = UserEntity(id: '1', name: 'API', email: 'person@example.com');
   const errors = ErrorsEntity(
     errors: [
       ErrorEntity(
         status: '422',
+        parameter: 'name',
         detail: 'Nome inválido',
         pointer: '/data/attributes/name',
-        parameter: 'name',
       ),
       ErrorEntity(title: 'Outro erro'),
     ],

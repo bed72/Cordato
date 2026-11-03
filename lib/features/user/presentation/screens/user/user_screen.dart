@@ -1,17 +1,22 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
+import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_item_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/danger_button_widget.dart';
+
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
+
+import 'package:cordato/features/user/presentation/extensions/user_presentation_extension.dart';
+
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_bloc.dart';
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_state.dart';
-import 'package:cordato/features/user/presentation/screens/user/mixins/user_screen_state_mixin.dart';
 import 'package:cordato/features/user/presentation/screens/user/widgets/user_avatar_widget.dart';
 import 'package:cordato/features/user/presentation/screens/user/widgets/user_skeleton_widget.dart';
+import 'package:cordato/features/user/presentation/screens/user/mixins/user_screen_state_mixin.dart';
+
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_app_bar_widget.dart';
 
 final class const UserScreen({
@@ -69,7 +74,6 @@ final class _UserScreenState extends State<UserScreen>
                               child: _buildUser(
                                 const UserEntity(
                                   id: '72',
-                                  status: 'active',
                                   name: 'Nome do usuário',
                                   email: 'usuario@exemplo.com',
                                 ),
@@ -102,7 +106,7 @@ final class _UserScreenState extends State<UserScreen>
           children: [
             Center(
               child: UserAvatarWidget(
-                name: user.name,
+                name: user.displayName,
                 seed: avatarSeed(user),
                 onPressed: state.canEdit ? () => generateAvatar(user) : null,
               ),
@@ -114,7 +118,7 @@ final class _UserScreenState extends State<UserScreen>
                   label: 'Nome',
                   height: 64.0,
                   spacing: 12.0,
-                  value: user.name,
+                  value: user.displayName,
                   icon: Icons.person_outline,
                   onPressed: state.canEdit ? () => editName(user) : null,
                 ),
