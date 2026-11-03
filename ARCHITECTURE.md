@@ -196,28 +196,31 @@ Node. Configuração operacional e evidências pertencem ao
 O escopo implementado é conta individual e CRUD de despesas próprias. Login
 exige e-mail verificado, exclusão da conta remove suas despesas e regras nativas
 protegem propriedade. Isso não implementa família, orçamento, agregações,
-insights ou sugestões remotas.
+insights ou endpoints customizados de sugestões. As sugestões do Flutter usam
+a listagem nativa filtrada do histórico pessoal.
 
 ### Contrato Atual Do Cliente Versus Backend Adotado
 
 | Aspecto | Flutter atual | PocketBase atual |
 | --- | --- | --- |
-| Transporte | Authentication, Session e User usam endpoints nativos PocketBase; fluxos financeiros mantêm JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
+| Transporte | Authentication, Session, User e Expense usam endpoints nativos PocketBase; Metrics mantém JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
 | Autenticação | Sign-in persiste JWT e `record.id` nas chaves existentes; sign-out limpa storage local sem HTTP. | Autenticação nativa da coleção `users`; não há endpoint de logout ou revogação individual do JWT ao sair. |
 | Confirmação | Após cadastro, confirmação solicita automaticamente `request-verification`; callback recebe `token` e usa `confirm-verification`. Cooldown de 60 segundos no Bloc somente após sucesso. App Links/Universal Links declarados; associação pública e homologação pendentes. | Verificação nativa; migration incremental direciona verificação de `users` ao app. Templates administrativos permanecem no PocketBase. A criação do record não envia confirmação por si só. |
-| Erros e paginação | HTTP aceita erros JSON:API e PocketBase; sign-in mapeia 400 de `identity`/`password` aos campos. Paginação anterior preservada. | Formatos nativos PocketBase; demais consumidores exigem adaptação em infrastructure. |
-| Datas de despesas | Semântica de data civil. | `occurred_on` opcional como Date UTC, sem default. |
-| Categoria | Contrato e validação atuais do cliente. | Select opcional; vazio não significa `other`. |
-| Recursos derivados | Metrics e sugestões têm consumidores HTTP. | Sem implementação equivalente nesta configuração. |
+| Erros e paginação | HTTP aceita erros JSON:API e PocketBase; Expense usa paginação nativa e erros 400 por campo. | Formatos nativos PocketBase; Metrics ainda exige adaptação. |
+| Datas de despesas | Data civil escrita como meia-noite UTC e lida pelos componentes do dia, sem conversão de fuso. | `occurred_on` opcional como Date UTC, sem default. |
+| Categoria | Novas despesas recebem `other`; edição preserva a categoria retornada. Sem classificação automática. | Select opcional; vazio não significa `other`. |
+| Recursos derivados | Sugestões consultam o histórico por GET filtrado; Metrics mantém endpoint legado. | Sem endpoint de sugestões ou agregações nesta configuração. |
 
-Centavos inteiros continuam obrigatórios. A representação UTC do campo nativo
-não resolve a semântica de data civil: essa compatibilidade precisa ser definida
-antes da integração, sem conversão implícita de fuso ou perda de significado.
+Centavos inteiros continuam obrigatórios. Expense utiliza a representação UTC
+como codificação da data civil: não chama `toUtc()` sobre a seleção local nem
+`toLocal()` sobre a resposta. O fim do intervalo inclusivo é enviado como limite
+exclusivo da meia-noite UTC do dia seguinte. Não há registros anteriores a migrar,
+nem fallback que invente data ou categoria para campos vazios do PocketBase.
 
 Trocar a URL não é migração. SDK/adapters, persistência de sessão, mapeamento de
 erros, verificação de e-mail, paginação e destino dos recursos ausentes precisam
 de decisão e implementação próprias. O aplicativo mantém `IHttpClient`/`HttpClient`
-com Dio, com adaptação de Authentication, Session, User e erros
+com Dio, com adaptação de Authentication, Session, User, Expense e erros
 nativos; o SDK PocketBase não está integrado ao Flutter.
 
 A arquitetura de camadas Flutter permanece válida. As seções seguintes descrevem
@@ -678,14 +681,22 @@ visual, execução Maestro ou alteração no backend nesta remoção.
 criação e atualização retornam `Future<ExpenseEntity>`; listagem retorna
 `Future<ExpensePageEntity>`; exclusão retorna `Future<void>`. `ExpenseException`
 transporta os erros esperados. O repository concreto fica em
-`expense/infrastructure/repositories/` e usa `IHttpClient` diretamente, sem data
-source, Either, storage ou dependência de outro contexto financeiro.
+`expense/infrastructure/repositories/` e usa `IHttpClient` diretamente e
+`IStorageClient` para ler o proprietário na criação, sem data source, Either
+ou dependência de outro contexto financeiro.
 
 Sugestões usam `suggestions({required String query})`, retornando uma lista imutável
 de `ExpenseSuggestionEntity` com ID, descrição e centavos opcionais positivos.
-`ExpenseSuggestionResponse` interpreta JSON:API em infrastructure; o repository
-chama `expenses/suggestions` com query separada, sem expor DTOs ou inventar valor
-quando `amount` está ausente/null. Parsing inválido propaga como nas demais operações.
+O adapter atual sempre preenche os centavos pelo record do histórico:
+`ExpenseSuggestionResponse` interpreta `id`, `description` e `amount` nativos.
+O repository consulta `collections/expenses/records` com `description ~ <valor>`,
+serializando o valor com `jsonEncode` para impedir injeção de expressões.
+Usa `page: 1`, `perPage: 30`, `skipTotal: true`, projeção dos três campos e
+ordenação `-occurred_on,-created,-id`. Deduplica descrições sem diferenciar caixa,
+mantendo a primeira ocorrência e seu valor; não busca todo o histórico para
+deduplicação global. Sem histórico, não há sugestões. Não há IA ou endpoint
+customizado. A autorização continua nas regras do backend. Parsing inválido
+propaga como nas demais operações, sem resultado parcial ou valor inventado.
 
 `ExpenseSuggestionsBloc` é independente de consulta/submissão do gasto. Processa
 eventos concorrentemente com geração latest-wins: uma entrada/invalidação nova
@@ -711,21 +722,30 @@ por GlobalKey, sem editar artificialmente o texto ou recriar a cada tecla. O cam
 padrão não força o encerramento de composição IME. Recursos externos não são
 descartados e trocas de controller/foco transferem listeners.
 
-GET/POST/PATCH/DELETE preservam o endpoint relativo `expenses`, ID codificado no
-caminho, payload JSON:API, descrição original e centavos inteiros. Atualização
-envia somente atributos fornecidos, sem inserir data ou normalizar o formulário.
-Criação preserva a data civil fornecida e usa o dia atual somente quando ausente,
-mantendo o comportamento anterior. Exclusão conclui somente após HTTP 204;
+GET/POST/PATCH/DELETE usam o endpoint relativo `collections/expenses/records`, ID
+codificado no caminho, JSON plano, descrição original e centavos inteiros.
+Criação lê `StorageKeyEnum.userId` a cada operação, aguarda o storage, rejeita ID
+nulo/vazio e envia `owner` original, `category: other`, valor, descrição e data.
+Não grava storage nem envia timestamps administrativos. Falhas do storage propagam
+sem HTTP ou sucesso. Atualização envia somente valor, descrição e data fornecidos,
+sem trocar proprietário/categoria ou normalizar o formulário. Criação preserva a
+data civil fornecida e usa o dia atual somente quando ausente, mantendo o contrato
+existente. A codificação é `YYYY-MM-DD 00:00:00.000Z`, sem converter fuso. O DTO lê
+o record plano e devolve uma data civil local pelos componentes UTC retornados,
+sem `toLocal()`. Exclusão conclui somente após HTTP 204;
 outros status de sucesso geram `ExpenseException`, sem confirmar a exclusão.
 
-Listagem preserva ordem, links opacos, filtros opcionais e fallback de pageSize
-não positivo para 30. Continuações fornecem somente a query: host e caminho não
-são seguidos, mantendo a chamada no endpoint relativo protegido. Parâmetros
-repetidos são preservados; tamanho, categoria, ordenação e limites explícitos
-prevalecem sobre os respectivos filtros da continuação. Um intervalo explícito
-remove os filtros antigos de ano/mês/dia; sem intervalo eles permanecem. Não há
-complementação de limites ausentes. Links sem query ou com fragmento lançam
-`FormatException` antes de HTTP.
+Listagem preserva ordem, filtros opcionais e fallback de pageSize não positivo
+para 30. Usa `page`/`perPage`, `sort` padrão `-occurred_on,-id` e uma expressão
+`filter` com categoria e limites civis escapados. O fim inclusivo usa `<` à
+meia-noite do dia seguinte; não há complementação de limites ausentes. O DTO lê
+`items`, `page` e `totalPages`; infrastructure constrói continuações de query com
+página, tamanho, ordenação e filtros. A apresentação continua tratando esses
+links como opacos. Host e caminho nunca são seguidos; somente `page`, `sort` e
+`filter` da continuação são aceitos, mantendo o endpoint protegido. O tamanho e
+a ordenação explícitos prevalecem; filtros explícitos substituem a expressão da
+continuação. Sem filtros explícitos, a expressão anterior é preservada. Página
+ausente/não positiva/inválida ou fragmento lançam `FormatException` antes de HTTP.
 
 `AmountValueObject.create` retorna o valor diretamente e rejeita centavos não
 positivos com `ArgumentError`, preservando igualdade por centavos e sem dependência
@@ -750,7 +770,8 @@ resultado da submissão anterior, sem cancelar a operação remota.
 Erro de consulta usa `ErrorScreen` e retry. O formulário mantém controllers,
 validação, trim da descrição, centavos, data civil e estado dos pickers; não fecha
 o Bloc recebido da tela. `BlocConsumer` renderiza loading e entrega efeitos únicos:
-422 por pointer conhecido vai ao campo; os demais erros vão ao toast. Sucesso
+400 PocketBase e 422 legado por pointer conhecido vão ao campo; os demais erros
+vão ao toast. Sucesso
 contínuo limpa o formulário somente após confirmação remota. A navegação fica nos
 widgets responsáveis, pelas extensões de `BuildContext`, sem callbacks de entrada
 em `ExpenseScreen` ou `ExpenseFormWidget`: voltar faz `pop`, edição devolve a
@@ -801,6 +822,20 @@ Expense, sem Either. Uma falha no histórico continua sendo desconhecimento do
 limite inicial, não um histórico vazio confirmado. Falhas esperadas isoladas nas
 seções preservam a `ErrorsEntity` mesmo envolvidas em `ParallelWaitError`.
 Previews e testes consumidores usam entidades/resultados diretos.
+
+Verificação da migração de Expense para PocketBase (03/11/2026):
+`flutter pub get` concluído; `flutter analyze` sem issues após corrigir a posição
+de um import novo; verificação focada com
+`flutter test test/architecture test/features/expense test/features/dashboard test/app_module_test.dart test/features/core/infrastructure/clients/http/interceptors/session_interceptor_test.dart --reporter failures-only`
+com 336 testes aprovados; `flutter test --reporter failures-only` com 821 testes
+aprovados; `git diff --check` sem problemas. Os testes usam clients mockados ou
+transporte simulado, sem homologação real de autorização ou persistência.
+`dart run tool/widget_preview.dart` compilou e serviu o catálogo; encerrado por
+timeout de 45 segundos sem cliente conectado, sem validação visual manual.
+Dashboard e Metrics não foram migradas; o endpoint de agregações permanece
+incompatível com o PocketBase atual. Sem alteração no schema/runtime do backend,
+migração de dados ou deploy. Alterações paralelas em três widgets visuais do core
+foram preservadas fora do escopo desta tarefa.
 
 ### Clients Compartilhados
 
@@ -975,6 +1010,14 @@ Dashboard, permissão Android e configuração iOS.
   Inter e localização pt-BR. Não duplique tokens ou extensões compartilhadas.
 - Reutilize botões, fields, BounceWidget, ImageWidget e ErrorScreen do core.
   Assets são centralizados em AssetEnum e declarados no pubspec.
+- Ícones explícitos usam `flutter_lucide_animated` e `LucideAnimatedIconData`,
+  renderizados somente pelo `IconWidget` do core. O renderer possui o controller
+  e anima uma vez na entrada e quando o símbolo muda, sem loops decorativos.
+  `IconInteractionWidget` delimita controles e sinaliza pressão, hover e
+  Enter/Espaço aos ícones descendentes sem disputar gestos ou atrasar callbacks.
+  Controles desabilitados, `MediaQuery.disableAnimations` e `TickerMode` inativo
+  impedem as animações Lucide. Lifecycle e descarte ficam nos mixins específicos.
+  Símbolos ausentes no catálogo usam equivalentes disponíveis no pacote.
 - Preserve rolagem, acessibilidade, texto ampliado e redução de movimento.
   Skeletons e imagens decorativas não duplicam mensagens semânticas.
 - Previews usam `@CordatoPreview`, wrappers reais de tema/localização/toast e

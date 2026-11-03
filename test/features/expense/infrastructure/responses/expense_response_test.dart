@@ -5,19 +5,14 @@ import 'package:cordato/features/expense/infrastructure/responses/expense_respon
 
 void main() {
   group('ExpenseResponse', () {
-    test('maps a JSON:API expense into a validated domain entity', () {
+    test('maps a native record into a validated civil-date domain entity', () {
       final response = ExpenseResponse.fromJson({
-        'data': {
-          'id': '9',
-          'type': 'expenses',
-          'attributes': {
-            'amount': 300,
-            'category': 'other',
-            'description': 'Game',
-            'occurred_on': '2026-10-05',
-            'created_at': '2026-10-06T19:24:29+00:00',
-          },
-        },
+        'id': '9',
+        'amount': 300,
+        'category': 'other',
+        'description': 'Game',
+        'occurred_on': '2026-10-05 00:00:00.000Z',
+        'created': '2026-10-06 19:24:29.000Z',
       });
 
       expect(response.amount, 300);
@@ -33,15 +28,11 @@ void main() {
     for (final category in ExpenseCategoryEnum.values) {
       test('recognizes the API category ${category.value}', () {
         final response = ExpenseResponse.fromJson({
-          'data': {
-            'id': '9',
-            'attributes': {
-              'amount': 300,
-              'description': 'Game',
-              'occurred_on': '2026-10-05',
-              'category': category.value,
-            },
-          },
+          'id': '9',
+          'amount': 300,
+          'description': 'Game',
+          'occurred_on': '2026-10-05 00:00:00.000Z',
+          'category': category.value,
         });
 
         expect(response.category, category);
@@ -52,15 +43,11 @@ void main() {
     test('rejects categories outside the API contract', () {
       expect(
         () => ExpenseResponse.fromJson({
-          'data': {
-            'id': '9',
-            'attributes': {
-              'amount': 300,
-              'description': 'Game',
-              'category': 'unknown',
-              'occurred_on': '2026-10-05',
-            },
-          },
+          'id': '9',
+          'amount': 300,
+          'description': 'Game',
+          'category': 'unknown',
+          'occurred_on': '2026-10-05 00:00:00.000Z',
         }),
         throwsStateError,
       );

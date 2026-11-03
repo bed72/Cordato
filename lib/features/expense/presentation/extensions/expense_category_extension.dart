@@ -1,28 +1,29 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 extension ExpenseCategoryExtension on ExpenseCategoryEnum {
-  IconData get icon => switch (this) {
-    .pets => Icons.pets_outlined,
-    .housing => Icons.home_outlined,
-    .leisure => Icons.movie_outlined,
-    .travel => Icons.flight_outlined,
-    .health => Icons.favorite_outline,
-    .food => Icons.restaurant_outlined,
-    .insurance => Icons.shield_outlined,
-    .personalCare => Icons.spa_outlined,
-    .education => Icons.school_outlined,
-    .services => Icons.handyman_outlined,
-    .financing => Icons.payments_outlined,
-    .taxes => Icons.account_balance_outlined,
-    .shopping => Icons.shopping_bag_outlined,
-    .subscriptions => Icons.autorenew_outlined,
-    .investments => Icons.trending_up_outlined,
-    .transport => Icons.directions_car_outlined,
-    .giftsAndDonations => Icons.card_giftcard_outlined,
-    .other => Icons.receipt_long_outlined,
+  lucide.LucideAnimatedIconData get icon => switch (this) {
+    .pets => lucide.rabbit,
+    .housing => lucide.home,
+    .leisure => lucide.play,
+    .travel => lucide.airplane,
+    .health => lucide.heart,
+    .food => lucide.cooking_pot,
+    .insurance => lucide.shield_check,
+    .personalCare => lucide.sparkles,
+    .education => lucide.book_text,
+    .services => lucide.wrench,
+    .financing => lucide.hand_coins,
+    .taxes => lucide.file_check,
+    .shopping => lucide.cart,
+    .subscriptions => lucide.refresh_cw,
+    .investments => lucide.trending_up,
+    .transport => lucide.truck,
+    .giftsAndDonations => lucide.hand_heart,
+    .other => lucide.file_text,
   };
 
   Color color(BuildContext context) => switch (this) {

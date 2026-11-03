@@ -1,14 +1,16 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/icons/icon_interaction_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 final class const MenuItemWidget({
   super.key,
   required final String label,
   final String? value,
-  final IconData? icon,
+  final lucide.LucideAnimatedIconData? icon,
   final Widget? leading,
   final Widget? trailing,
   final VoidCallback? onPressed,
@@ -30,9 +32,12 @@ final class const MenuItemWidget({
       button: true,
       enabled: onPressed != null,
       child: ExcludeSemantics(
-        child: onPressed == null
-            ? content
-            : BounceWidget.withOnPress(onPress: onPressed, child: content),
+        child: IconInteractionWidget(
+          enabled: onPressed != null,
+          child: onPressed == null
+              ? content
+              : BounceWidget.withOnPress(onPress: onPressed, child: content),
+        ),
       ),
     );
   }
@@ -57,7 +62,11 @@ final class const MenuItemWidget({
     if (leading != null) return leading;
     if (icon == null) return null;
 
-    return Icon(icon, size: 24.0, color: context.colors.onSurfaceVariant);
+    return IconWidget(
+      icon: icon!,
+      size: 24.0,
+      color: context.colors.onSurfaceVariant,
+    );
   }
 
   Widget _buildLabel(BuildContext context) {
@@ -94,7 +103,7 @@ final class const MenuItemWidget({
 
     return IconWidget(
       size: 24.0,
-      icon: Icons.chevron_right,
+      icon: lucide.chevron_right,
       color: context.colors.onSurfaceVariant,
     );
   }

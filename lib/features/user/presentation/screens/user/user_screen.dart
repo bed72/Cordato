@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
@@ -119,7 +120,7 @@ final class _UserScreenState extends State<UserScreen>
                   height: 64.0,
                   spacing: 12.0,
                   value: user.displayName,
-                  icon: Icons.person_outline,
+                  icon: lucide.user,
                   onPressed: state.canEdit ? () => editName(user) : null,
                 ),
                 MenuItemWidget(
@@ -129,7 +130,7 @@ final class _UserScreenState extends State<UserScreen>
                   value: user.email,
                   showChevron: false,
                   disabledOpacity: 0.5,
-                  icon: Icons.mail_outline,
+                  icon: lucide.mail_check,
                 ),
               ],
             ),

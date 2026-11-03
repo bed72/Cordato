@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
@@ -53,29 +53,29 @@ void main() {
       );
 
       expect(category.label, 'future_category');
-      expect(category.icon, Icons.receipt_long_outlined);
+      expect(category.icon, lucide.file_text);
       expect(category.asset, AssetEnum.categoryOthers);
     });
 
     const icons = {
-      'pets': Icons.pets_outlined,
-      'housing': Icons.home_outlined,
-      'leisure': Icons.movie_outlined,
-      'travel': Icons.flight_outlined,
-      'health': Icons.favorite_outline,
-      'food': Icons.restaurant_outlined,
-      'insurance': Icons.shield_outlined,
-      'education': Icons.school_outlined,
-      'personal_care': Icons.spa_outlined,
-      'services': Icons.handyman_outlined,
-      'financing': Icons.payments_outlined,
-      'taxes': Icons.account_balance_outlined,
-      'shopping': Icons.shopping_bag_outlined,
-      'subscriptions': Icons.autorenew_outlined,
-      'investments': Icons.trending_up_outlined,
-      'transport': Icons.directions_car_outlined,
-      'gifts_and_donations': Icons.card_giftcard_outlined,
-      'other': Icons.receipt_long_outlined,
+      'pets': lucide.rabbit,
+      'housing': lucide.home,
+      'leisure': lucide.play,
+      'travel': lucide.airplane,
+      'health': lucide.heart,
+      'food': lucide.cooking_pot,
+      'insurance': lucide.shield_check,
+      'education': lucide.book_text,
+      'personal_care': lucide.sparkles,
+      'services': lucide.wrench,
+      'financing': lucide.hand_coins,
+      'taxes': lucide.file_check,
+      'shopping': lucide.cart,
+      'subscriptions': lucide.refresh_cw,
+      'investments': lucide.trending_up,
+      'transport': lucide.truck,
+      'gifts_and_donations': lucide.hand_heart,
+      'other': lucide.file_text,
     };
     for (final entry in icons.entries) {
       test('uses the expense icon for ${entry.key}', () {

@@ -1,19 +1,21 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 class const BackgroundIconWidget({
   super.key,
-  required final IconData icon,
+  required final lucide.LucideAnimatedIconData icon,
   required final Color backgroundColor,
   final double? width,
   final double? height,
   final double? iconSize,
-  final Gradient? gradient,
   final Color? iconColor,
-  final BorderRadiusGeometry? borderRadius,
+  final Gradient? gradient,
   final bool? withoutBackground,
+  final Gradient? borderGradient,
+  final BorderRadiusGeometry? borderRadius,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,33 @@ class const BackgroundIconWidget({
         borderRadius: borderRadius ?? context.radius.cornerRadius100,
         color: hasBackground && gradient == null ? backgroundColor : null,
       ),
-      child: IconWidget(icon: icon, color: iconColor, size: iconSize),
+      child: Stack(
+        fit: .expand,
+        alignment: .center,
+        children: [
+          Center(
+            child: IconWidget(icon: icon, color: iconColor, size: iconSize),
+          ),
+          if (hasBackground && borderGradient != null)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ExcludeSemantics(
+                  child: ShaderMask(
+                    blendMode: BlendMode.srcIn,
+                    shaderCallback: borderGradient!.createShader,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            borderRadius ?? context.radius.cornerRadius100,
+                        border: Border.all(color: const Color(0xFFFFFFFF)),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 
 import 'package:cordato/features/authentication/presentation/mixins/password_field_widget_state_mixin.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
@@ -39,9 +40,7 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget>
       onSubmitted: widget.onSubmitted,
       initialValue: widget.initialValue,
       autofillHints: const [AutofillHints.password],
-      trailingIcon: isObscured
-          ? Icons.visibility_outlined
-          : Icons.visibility_off_outlined,
+      trailingIcon: isObscured ? lucide.eye : lucide.eye_off,
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget.dart';
@@ -70,12 +71,12 @@ final class _SettingsScreenState extends State<SettingsScreen>
                             children: [
                               MenuItemWidget(
                                 label: 'Dados pessoais',
-                                icon: Icons.person_outline,
+                                icon: lucide.user,
                                 onPressed: widget.onPersonalDataPressed,
                               ),
                               MenuItemWidget(
                                 label: 'Subscrição',
-                                icon: Icons.star_outline,
+                                icon: lucide.sparkles,
                                 trailing: const SettingsPremiumBadgeWidget(),
                                 onPressed: widget.onSubscriptionPressed,
                               ),
@@ -90,16 +91,16 @@ final class _SettingsScreenState extends State<SettingsScreen>
                               MenuItemWidget(
                                 label: 'Termos de uso',
                                 onPressed: widget.onTermsPressed,
-                                icon: Icons.description_outlined,
+                                icon: lucide.file_text,
                               ),
                               MenuItemWidget(
-                                icon: Icons.shield_outlined,
+                                icon: lucide.shield_check,
                                 label: 'Políticas de privacidade',
                                 onPressed: widget.onPrivacyPressed,
                               ),
                               MenuItemWidget(
                                 label: 'Ajuda',
-                                icon: Icons.help_outline,
+                                icon: lucide.circle_help,
                                 onPressed: widget.onHelpPressed,
                               ),
                             ],

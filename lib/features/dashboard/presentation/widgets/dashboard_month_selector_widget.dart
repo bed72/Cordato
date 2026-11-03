@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 import 'package:skeletonizer/skeletonizer.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
@@ -58,14 +59,14 @@ final class const DashboardMonthSelectorWidget({
             _buildMonthButton(
               context: context,
               label: 'Mês anterior',
-              icon: Icons.chevron_left,
+              icon: lucide.chevron_left,
               onPress: onPreviousMonth,
             ),
             const SizedBox(width: 8.0),
             _buildMonthButton(
               context: context,
               label: 'Próximo mês',
-              icon: Icons.chevron_right,
+              icon: lucide.chevron_right,
               onPress: onNextMonth,
             ),
           ],
@@ -77,7 +78,7 @@ final class const DashboardMonthSelectorWidget({
   Tooltip _buildMonthButton({
     required BuildContext context,
     required String label,
-    required IconData icon,
+    required lucide.LucideAnimatedIconData icon,
     required VoidCallback? onPress,
   }) => Tooltip(
     message: label,

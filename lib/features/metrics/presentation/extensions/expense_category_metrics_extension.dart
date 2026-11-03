@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
@@ -52,25 +53,25 @@ extension ExpenseCategoryMetricsExtension on ExpenseCategoryMetricsEntity {
     _ => category,
   };
 
-  IconData get icon => switch (category) {
-    'pets' => Icons.pets_outlined,
-    'housing' => Icons.home_outlined,
-    'leisure' => Icons.movie_outlined,
-    'travel' => Icons.flight_outlined,
-    'health' => Icons.favorite_outline,
-    'food' => Icons.restaurant_outlined,
-    'insurance' => Icons.shield_outlined,
-    'education' => Icons.school_outlined,
-    'services' => Icons.handyman_outlined,
-    'personal_care' => Icons.spa_outlined,
-    'financing' => Icons.payments_outlined,
-    'taxes' => Icons.account_balance_outlined,
-    'shopping' => Icons.shopping_bag_outlined,
-    'subscriptions' => Icons.autorenew_outlined,
-    'investments' => Icons.trending_up_outlined,
-    'transport' => Icons.directions_car_outlined,
-    'gifts_and_donations' => Icons.card_giftcard_outlined,
-    _ => Icons.receipt_long_outlined,
+  lucide.LucideAnimatedIconData get icon => switch (category) {
+    'pets' => lucide.rabbit,
+    'housing' => lucide.home,
+    'leisure' => lucide.play,
+    'travel' => lucide.airplane,
+    'health' => lucide.heart,
+    'food' => lucide.cooking_pot,
+    'insurance' => lucide.shield_check,
+    'education' => lucide.book_text,
+    'services' => lucide.wrench,
+    'personal_care' => lucide.sparkles,
+    'financing' => lucide.hand_coins,
+    'taxes' => lucide.file_check,
+    'shopping' => lucide.cart,
+    'subscriptions' => lucide.refresh_cw,
+    'investments' => lucide.trending_up,
+    'transport' => lucide.truck,
+    'gifts_and_donations' => lucide.hand_heart,
+    _ => lucide.file_text,
   };
 
   AssetEnum get asset => switch (category) {

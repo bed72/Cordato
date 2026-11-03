@@ -1,8 +1,11 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/icons/icon_interaction_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/cards/iformation_card_content_widget.dart';
 
 final class const SettingsInvitePartnerWidget({
@@ -25,14 +28,14 @@ final class const SettingsInvitePartnerWidget({
             Expanded(
               child: IformationCardContentWidget(
                 title: 'Convidar parceiro',
-                icon: Icons.person_add_alt,
+                icon: lucide.user_round_plus,
                 description: 'Comecem a usar juntos',
                 iconColor: context.colors.onPrimaryContainer,
                 iconBackgroundColor: context.colors.primaryContainer,
               ),
             ),
-            Icon(
-              Icons.chevron_right,
+            IconWidget(
+              icon: lucide.chevron_right,
               size: 24.0,
               color: context.colors.onSurfaceVariant,
             ),
@@ -46,12 +49,15 @@ final class const SettingsInvitePartnerWidget({
       enabled: onInvitePartnerPressed != null,
       label: 'Convidar parceiro',
       child: ExcludeSemantics(
-        child: onInvitePartnerPressed == null
-            ? content
-            : BounceWidget.withOnPress(
-                onPress: onInvitePartnerPressed,
-                child: content,
-              ),
+        child: IconInteractionWidget(
+          enabled: onInvitePartnerPressed != null,
+          child: onInvitePartnerPressed == null
+              ? content
+              : BounceWidget.withOnPress(
+                  onPress: onInvitePartnerPressed,
+                  child: content,
+                ),
+        ),
       ),
     );
   }

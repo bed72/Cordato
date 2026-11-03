@@ -8,6 +8,7 @@ import 'package:cordato/features/core/infrastructure/clients/http/requests/reque
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_exception_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
@@ -17,30 +18,36 @@ import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart
 import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
 
 import '../../../../support/core/mocks/http_client_mock.dart';
+import '../../../../support/core/mocks/storage_client_mock.dart';
 
 void main() {
   const attributes = {
     'amount': 1500,
     'description': ' Ônibus e metrô ',
     'category': 'transport',
-    'occurred_on': '2026-10-05',
+    'occurred_on': '2026-10-05 00:00:00.000Z',
   };
-  const resource = {'id': '8', 'type': 'expenses', 'attributes': attributes};
-  const single = Responses(status: 200, body: {'data': resource});
+  const resource = {'id': '8', ...attributes};
+  const single = Responses(status: 200, body: resource);
   const listing = Responses(
     status: 200,
     body: {
-      'data': [resource],
-      'links': {'next': '?page[after]=opaque%2Bvalue', 'prev': null},
+      'items': [resource],
+      'page': 1,
+      'totalPages': 2,
     },
   );
   late HttpClientMock client;
+  late StorageClientMock storage;
   late IExpenseRepository repository;
 
   setUpAll(() => registerFallbackValue(const Requests(path: '')));
   setUp(() {
     client = HttpClientMock();
-    repository = ExpenseRepository(httpClient: client);
+    storage = StorageClientMock();
+    when(() => storage.read(key: StorageKeyEnum.userId.key))
+        .thenAnswer((_) async => 'owner-id');
+    repository = ExpenseRepository(httpClient: client, storageClient: storage);
   });
 
   Future<ErrorsEntity> errorsOf(Future<Object?> operation) async {
@@ -53,6 +60,63 @@ void main() {
   }
 
   group('Individual records and mutations', () {
+    for (final owner in [null, '', '   ']) {
+      test('rejects missing owner "$owner" before HTTP', () async {
+        when(() => storage.read(key: StorageKeyEnum.userId.key))
+            .thenAnswer((_) async => owner);
+        await expectLater(
+          repository.create(cents: 100, description: 'Game'),
+          throwsA(isA<ExpenseException>()),
+        );
+        verifyZeroInteractions(client);
+      });
+    }
+
+    test('awaits owner lookup and preserves the original stored ID', () async {
+      final pending = Completer<String?>();
+      when(() => storage.read(key: StorageKeyEnum.userId.key))
+          .thenAnswer((_) => pending.future);
+      when(() => client.post(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => single);
+      final result = repository.create(cents: 100, description: 'Game');
+      verifyZeroInteractions(client);
+      pending.complete(' owner-id ');
+      await result;
+      final request =
+          verify(() => client.post(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      expect(request.body!['owner'], ' owner-id ');
+    });
+
+    test('reads the current owner for each creation without caching', () async {
+      when(() => client.post(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => single);
+      await repository.create(cents: 100, description: 'First');
+      when(() => storage.read(key: StorageKeyEnum.userId.key))
+          .thenAnswer((_) async => 'new-owner');
+      await repository.create(cents: 100, description: 'Second');
+      final requests = verify(
+        () => client.post(parameter: captureAny(named: 'parameter')),
+      ).captured.cast<Requests>();
+      expect(requests.map((request) => request.body!['owner']), [
+        'owner-id',
+        'new-owner',
+      ]);
+    });
+
+    test('propagates owner storage failures without HTTP', () async {
+      final failure = StateError('storage unavailable');
+      when(() => storage.read(key: StorageKeyEnum.userId.key))
+          .thenAnswer((_) async => throw failure);
+      await expectLater(
+        repository.create(cents: 100, description: 'Game'),
+        throwsA(same(failure)),
+      );
+      verifyZeroInteractions(client);
+    });
+
     test('reads an encoded id with no body, query or custom headers', () async {
       when(() => client.get(parameter: any(named: 'parameter')))
           .thenAnswer((_) async => single);
@@ -67,42 +131,47 @@ void main() {
                   .captured
                   .single
               as Requests;
-      expect(request.path, 'expenses/${Uri.encodeComponent(' a/b?c#d ')}');
+      expect(
+        request.path,
+        'collections/expenses/records/${Uri.encodeComponent(' a/b?c#d ')}',
+      );
       expect(request.body, isNull);
       expect(request.query, isNull);
       expect(request.headers, isNull);
       verifyNoMoreInteractions(client);
     });
 
-    test('creates the JSON:API payload unchanged with integer cents and civil date', () async {
-      when(() => client.post(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => single);
-      final expense = await repository.create(
-        cents: 9007199254740993,
-        description: ' Game ',
-        occurredOn: DateTime.utc(2026, 9, 1, 23),
-      );
-      expect(expense.cents.cents, 1500);
-      final request =
-          verify(() => client.post(parameter: captureAny(named: 'parameter')))
-                  .captured
-                  .single
-              as Requests;
-      expect(request.path, 'expenses');
-      expect(request.body, {
-        'data': {
-          'type': 'expenses',
-          'attributes': {
-            'amount': 9007199254740993,
-            'description': ' Game ',
-            'occurred_on': '2026-09-01',
-          },
-        },
-      });
-      expect(request.query, isNull);
-      expect(request.headers, isNull);
-      verifyNoMoreInteractions(client);
-    });
+    test(
+      'creates a native record with owner, default category and civil UTC date',
+      () async {
+        when(() => client.post(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => single);
+        final expense = await repository.create(
+          cents: 9007199254740991,
+          description: ' Game ',
+          occurredOn: DateTime.utc(2026, 9, 1, 23),
+        );
+        expect(expense.cents.cents, 1500);
+        final request =
+            verify(() => client.post(parameter: captureAny(named: 'parameter')))
+                    .captured
+                    .single
+                as Requests;
+        expect(request.path, 'collections/expenses/records');
+        expect(request.body, {
+          'owner': 'owner-id',
+          'category': 'other',
+          'amount': 9007199254740991,
+          'description': ' Game ',
+          'occurred_on': '2026-09-01 00:00:00.000Z',
+        });
+        expect(request.query, isNull);
+        expect(request.headers, isNull);
+        verifyNoMoreInteractions(client);
+        verify(() => storage.read(key: StorageKeyEnum.userId.key)).called(1);
+        verifyNoMoreInteractions(storage);
+      },
+    );
 
     test('uses the current civil date only when create has no date', () async {
       when(() => client.post(parameter: any(named: 'parameter')))
@@ -115,16 +184,13 @@ void main() {
                   .captured
                   .single
               as Requests;
-      final date = DateTime.parse(
-        ((request.body!['data'] as Map)['attributes'] as Map)['occurred_on']
-            as String,
-      );
+      final date = DateTime.parse(request.body!['occurred_on'] as String);
       expect(
-        date.isBefore(DateTime(before.year, before.month, before.day)),
+        date.isBefore(DateTime.utc(before.year, before.month, before.day)),
         isFalse,
       );
       expect(
-        date.isAfter(DateTime(after.year, after.month, after.day)),
+        date.isAfter(DateTime.utc(after.year, after.month, after.day)),
         isFalse,
       );
     });
@@ -157,16 +223,11 @@ void main() {
                         client.patch(parameter: captureAny(named: 'parameter')),
                   ).captured.single
                   as Requests;
-          expect(request.path, 'expenses/a%2Fb');
+          expect(request.path, 'collections/expenses/records/a%2Fb');
           expect(request.body, {
-            'data': {
-              'type': 'expenses',
-              'attributes': {
-                'amount': ?input.cents,
-                'description': ?input.description,
-                if (input.date != null) 'occurred_on': '2026-09-30',
-              },
-            },
+            'amount': ?input.cents,
+            'description': ?input.description,
+            if (input.date != null) 'occurred_on': '2026-09-30 00:00:00.000Z',
           });
           expect(request.headers, isNull);
           expect(request.query, isNull);
@@ -186,7 +247,7 @@ void main() {
                       client.delete(parameter: captureAny(named: 'parameter')),
                 ).captured.single
                 as Requests;
-        expect(request.path, 'expenses/a%2Fb%3Fc%23d');
+        expect(request.path, 'collections/expenses/records/a%2Fb%3Fc%23d');
         expect(request.body, isNull);
         expect(request.query, isNull);
         expect(request.headers, isNull);
@@ -204,35 +265,79 @@ void main() {
 
   group('Listing, filters and pagination', () {
     test(
-      'preserves response order, opaque links and immutable items',
+      'escapes category filter values without allowing new expressions',
+      () async {
+        when(() => client.get(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => listing);
+        await repository.get(category: 'food" || amount > 0 \\');
+        final request =
+            verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                    .captured
+                    .single
+                as Requests;
+        expect(
+          request.query!['filter'],
+          r'category = "food\" || amount > 0 \\"',
+        );
+      },
+    );
+
+    for (final date in [
+      (end: DateTime(2028, 2, 29), next: '2028-03-01'),
+      (end: DateTime(2026, 12, 31), next: '2027-01-01'),
+    ]) {
+      test('uses exclusive next-day bound after ${date.end}', () async {
+        when(() => client.get(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => listing);
+        await repository.get(to: date.end);
+        final request =
+            verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                    .captured
+                    .single
+                as Requests;
+        expect(
+          request.query!['filter'],
+          'occurred_on < "${date.next} 00:00:00.000Z"',
+        );
+      });
+    }
+
+    test(
+      'preserves response order and builds immutable native page continuations',
       () async {
         when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
           (_) async => const Responses(
             status: 200,
             body: {
-              'data': [
+              'items': [
                 resource,
-                {'id': '2', 'attributes': attributes},
+                {'id': '2', ...attributes},
               ],
-              'links': {
-                'next': '?page[after]=opaque%2Bvalue',
-                'prev': '?page[before]=previous',
-              },
+              'page': 2,
+              'totalPages': 3,
             },
           ),
         );
         final page = await repository.get();
         expect(page.items.map((item) => item.id), ['8', '2']);
-        expect(page.next, '?page[after]=opaque%2Bvalue');
-        expect(page.prev, '?page[before]=previous');
+        expect(Uri.parse(page.next!).queryParameters, {
+          'page': '3',
+          'perPage': '30',
+          'sort': '-occurred_on,-id',
+        });
+        expect(Uri.parse(page.prev!).queryParameters['page'], '1');
         expect(() => page.items.clear(), throwsUnsupportedError);
         final request =
             verify(() => client.get(parameter: captureAny(named: 'parameter')))
                     .captured
                     .single
                 as Requests;
-        expect(request.path, 'expenses');
-        expect(request.query, {'page[size]': 30});
+        expect(request.path, 'collections/expenses/records');
+        expect(request.query, {
+          'page': 1,
+          'perPage': 30,
+          'sort': '-occurred_on,-id',
+        });
         expect(request.headers, isNull);
       },
     );
@@ -241,10 +346,7 @@ void main() {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Responses(
           status: 200,
-          body: {
-            'data': [],
-            'links': {'next': null, 'prev': null},
-          },
+          body: {'items': [], 'page': 1, 'totalPages': 0},
         ),
       );
       for (final size in [0, -1, 6, 20]) {
@@ -257,7 +359,11 @@ void main() {
                     .captured
                     .single
                 as Requests;
-        expect(request.query, {'page[size]': size > 0 ? size : 30});
+        expect(request.query, {
+          'page': 1,
+          'perPage': size > 0 ? size : 30,
+          'sort': '-occurred_on,-id',
+        });
       }
     });
 
@@ -267,9 +373,9 @@ void main() {
         when(() => client.get(parameter: any(named: 'parameter')))
             .thenAnswer((_) async => listing);
         for (final link in [
-          'https://other.example/ignored?page[after]=abc%2B123&page[size]=20',
-          'expenses?page[after]=abc%2B123&page[size]=20',
-          '?page[after]=abc%2B123&page[size]=20',
+          'https://other.example/ignored?page=2&perPage=20&expand=owner',
+          'ignored?page=2&perPage=20',
+          '?page=2&perPage=20',
         ]) {
           await repository.get(pageSize: 6, pageLink: link);
           final request =
@@ -277,14 +383,18 @@ void main() {
                     () => client.get(parameter: captureAny(named: 'parameter')),
                   ).captured.single
                   as Requests;
-          expect(request.path, 'expenses');
-          expect(request.query, {'page[after]': 'abc+123', 'page[size]': 6});
+          expect(request.path, 'collections/expenses/records');
+          expect(request.query, {
+            'page': 2,
+            'perPage': 6,
+            'sort': '-occurred_on,-id',
+          });
         }
       },
     );
 
     test(
-      'reapplies explicit filters while preserving opaque repeated parameters',
+      'replaces continuation filters with explicit civil period and category',
       () async {
         when(() => client.get(parameter: any(named: 'parameter')))
             .thenAnswer((_) async => listing);
@@ -294,22 +404,19 @@ void main() {
           sort: 'occurred_on',
           from: DateTime.utc(2026, 9, 1, 23),
           to: DateTime(2026, 9, 30, 12),
-          pageLink: '?page[after]=abc%2B123&page[size]=6&sort=-occurred_on&filter[category]=travel&filter[category][]=food&filter[category][]=other&filter[from]=2025-01-01&filter[to]=2025-01-31&filter[year]=2025&filter[month]=1&filter[day]=2',
+          pageLink: '?page=2&perPage=6&sort=-occurred_on&filter=category%3D%27travel%27',
         );
         final request =
             verify(() => client.get(parameter: captureAny(named: 'parameter')))
                     .captured
                     .single
                 as Requests;
-        expect(request.path, 'expenses');
+        expect(request.path, 'collections/expenses/records');
         expect(request.query, {
-          'page[after]': 'abc+123',
-          'page[size]': 20,
+          'page': 2,
+          'perPage': 20,
           'sort': 'occurred_on',
-          'filter[category]': 'food',
-          'filter[category][]': ['food', 'other'],
-          'filter[from]': '2026-09-01',
-          'filter[to]': '2026-09-30',
+          'filter': 'category = "food" && occurred_on >= "2026-09-01 00:00:00.000Z" && occurred_on < "2026-10-01 00:00:00.000Z"',
         });
       },
     );
@@ -319,24 +426,21 @@ void main() {
       () async {
         when(() => client.get(parameter: any(named: 'parameter')))
             .thenAnswer((_) async => listing);
-        await repository.get(
-          pageLink: '?page[number]=2&filter[year]=2026&filter[month]=9&filter[day]=1&filter[category]=food&sort=-occurred_on&filter[from]=2026-09-01&filter[to]=2026-09-30',
+        final first = await repository.get(
+          category: 'food',
+          sort: 'occurred_on',
         );
+        await repository.get(pageLink: first.next);
         final request =
             verify(() => client.get(parameter: captureAny(named: 'parameter')))
                     .captured
-                    .single
+                    .last
                 as Requests;
         expect(request.query, {
-          'page[number]': '2',
-          'page[size]': 30,
-          'filter[year]': '2026',
-          'filter[month]': '9',
-          'filter[day]': '1',
-          'filter[category]': 'food',
-          'sort': '-occurred_on',
-          'filter[from]': '2026-09-01',
-          'filter[to]': '2026-09-30',
+          'page': 2,
+          'perPage': 30,
+          'filter': 'category = "food"',
+          'sort': 'occurred_on',
         });
       },
     );
@@ -355,9 +459,13 @@ void main() {
                     .single
                 as Requests;
         expect(request.query, {
-          'page[size]': 30,
-          if (limits.from != null) 'filter[from]': '2026-09-01',
-          if (limits.to != null) 'filter[to]': '2026-09-30',
+          'page': 1,
+          'perPage': 30,
+          'sort': '-occurred_on,-id',
+          if (limits.from != null)
+            'filter': 'occurred_on >= "2026-09-01 00:00:00.000Z"',
+          if (limits.to != null)
+            'filter': 'occurred_on < "2026-10-01 00:00:00.000Z"',
         });
       }
     });
@@ -365,7 +473,14 @@ void main() {
     test(
       'invalid continuations fail before HTTP without being masked',
       () async {
-        for (final link in ['', 'expenses', '?page[number]=2#fragment']) {
+        for (final link in [
+          '',
+          'expenses',
+          '?page=2#fragment',
+          '?page=0',
+          '?page=-1',
+          '?page=abc',
+        ]) {
           await expectLater(
             repository.get(pageLink: link),
             throwsFormatException,
@@ -377,64 +492,59 @@ void main() {
   });
 
   group('Suggestions', () {
-    test(
-      'suggestions preserve order, optional cents and special query characters',
-      () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => const Responses(
-            status: 200,
-            body: {
-              'data': [
-                {
-                  'id': 'rent',
-                  'type': 'expense-suggestions',
-                  'attributes': {'description': 'Aluguel', 'amount': 160000},
-                },
-                {
-                  'id': 'market',
-                  'type': 'expense-suggestions',
-                  'attributes': {'description': 'Mercado'},
-                },
-              ],
-            },
-          ),
-        );
-        const query = ' [Demo] Aluguél & ?/# ';
-        final result = await repository.suggestions(query: query);
-        expect(result.map((item) => item.id), ['rent', 'market']);
-        expect(result.map((item) => item.cents), [160000, null]);
-        expect(() => result.clear(), throwsUnsupportedError);
-        final request =
-            verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .single
-                as Requests;
-        expect(request.path, 'expenses/suggestions');
-        expect(request.query, {'query': query});
-        expect(request.body, isNull);
-        expect(request.headers, isNull);
-      },
-    );
+    test('suggestions use filtered history and keep the most recent description ignoring case', () async {
+      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+        (_) async => const Responses(
+          status: 200,
+          body: {
+            'items': [
+              {'id': 'rent', 'description': 'Aluguel', 'amount': 160000},
+              {'id': 'market', 'description': 'Mercado', 'amount': 20000},
+              {'id': 'old-rent', 'description': 'ALUGUEL', 'amount': 150000},
+            ],
+          },
+        ),
+      );
+      const query = r" [Demo] Aluguél ' || amount > 0 \ & ?/# ";
+      final result = await repository.suggestions(query: query);
+      expect(result.map((item) => item.id), ['rent', 'market']);
+      expect(result.map((item) => item.cents), [160000, 20000]);
+      expect(() => result.clear(), throwsUnsupportedError);
+      final request =
+          verify(() => client.get(parameter: captureAny(named: 'parameter')))
+                  .captured
+                  .single
+              as Requests;
+      expect(request.path, 'collections/expenses/records');
+      expect(request.query, {
+        'page': 1,
+        'perPage': 30,
+        'sort': '-occurred_on,-created,-id',
+        'filter':
+            r'''description ~ " [Demo] Aluguél ' || amount > 0 \\ & ?/# "''',
+        'skipTotal': true,
+        'fields': 'id,description,amount',
+      });
+      expect(request.body, isNull);
+      expect(request.headers, isNull);
+    });
 
     test(
       'empty suggestions succeed but malformed suggestions propagate',
       () async {
         when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => const Responses(status: 200, body: {'data': []}),
+          (_) async => const Responses(status: 200, body: {'items': []}),
         );
         expect(await repository.suggestions(query: 'Mer'), isEmpty);
         for (final data in [
           null,
           {},
           [
-            {
-              'id': 'bad',
-              'attributes': {'description': 10},
-            },
+            {'id': 'bad', 'description': 10, 'amount': 100},
           ],
         ]) {
           when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-            (_) async => Responses(status: 200, body: {'data': data}),
+            (_) async => Responses(status: 200, body: {'items': data}),
           );
           await expectLater(
             repository.suggestions(query: 'Mer'),
@@ -522,6 +632,41 @@ void main() {
           expect(errors.last.detail, 'Outro erro.');
         },
       );
+
+      test('$operation preserves PocketBase field error metadata', () async {
+        stub(
+          () async => throw HttpResponseException.fromResponse(
+            const Responses(
+              status: 400,
+              body: {
+                'status': 400,
+                'message': 'Failed to save record.',
+                'data': {
+                  'amount': {
+                    'code': 'validation_min_greater_equal_than_required',
+                    'message': 'Invalid amount.',
+                  },
+                  'description': {
+                    'code': 'validation_length_out_of_range',
+                    'message': 'Invalid description.',
+                  },
+                },
+              },
+            ),
+          ),
+        );
+        final errors = (await errorsOf(execute())).errors;
+        expect(errors.map((error) => error.pointer), [
+          '/amount',
+          '/description',
+        ]);
+        expect(errors.map((error) => error.parameter), [
+          'amount',
+          'description',
+        ]);
+        expect(errors.first.status, '400');
+        expect(errors.first.detail, 'Invalid amount.');
+      });
 
       test(
         '$operation uses safe fallback for malformed remote errors',
@@ -616,13 +761,11 @@ void main() {
               'shape' => <String, dynamic>{},
               _ => {
                 'id': 'invalid',
-                'attributes': {
-                  ...attributes,
-                  if (malformed == 'date') 'occurred_on': 'not-a-date',
-                  if (malformed == 'category') 'category': 'unknown',
-                  if (malformed == 'amount') 'amount': 0,
-                  if (malformed == 'fraction') 'amount': 1.5,
-                },
+                ...attributes,
+                if (malformed == 'date') 'occurred_on': 'not-a-date',
+                if (malformed == 'category') 'category': 'unknown',
+                if (malformed == 'amount') 'amount': 0,
+                if (malformed == 'fraction') 'amount': 1.5,
               },
             };
             stub(
@@ -630,10 +773,11 @@ void main() {
                 status: 200,
                 body: operation == 'get' || operation == 'suggestions'
                     ? {
-                        'data': [resource, invalid],
-                        'links': {'next': null, 'prev': null},
+                        'items': [resource, invalid],
+                        'page': 1,
+                        'totalPages': 1,
                       }
-                    : {'data': invalid},
+                    : invalid,
               ),
             );
             await expectLater(
@@ -650,30 +794,28 @@ void main() {
       }
 
       test('$operation preserves large integer cents in responses', () async {
-        final large = {
-          ...resource,
-          'attributes': {...attributes, 'amount': 9007199254740993},
-        };
+        final large = {...resource, 'amount': 9007199254740991};
         stub(
           () async => Responses(
             status: 200,
             body: operation == 'get' || operation == 'suggestions'
                 ? {
-                    'data': [large],
-                    'links': {'next': null, 'prev': null},
+                    'items': [large],
+                    'page': 1,
+                    'totalPages': 1,
                   }
-                : {'data': large},
+                : large,
           ),
         );
         final result = await execute();
         if (result is List<ExpenseSuggestionEntity>) {
-          expect(result.single.cents, 9007199254740993);
+          expect(result.single.cents, 9007199254740991);
           return;
         }
         final expense = result is ExpenseEntity
             ? result
             : (result as ExpensePageEntity).items.single;
-        expect(expense.cents.cents, 9007199254740993);
+        expect(expense.cents.cents, 9007199254740991);
       });
     }
   });

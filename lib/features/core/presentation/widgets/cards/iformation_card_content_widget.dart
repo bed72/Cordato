@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
@@ -6,7 +7,7 @@ import 'package:cordato/features/core/presentation/widgets/icons/background_icon
 final class const IformationCardContentWidget({
   super.key,
   required final String title,
-  required final IconData icon,
+  required final lucide.LucideAnimatedIconData icon,
   required final Color iconColor,
   required final String description,
   required final Color iconBackgroundColor,

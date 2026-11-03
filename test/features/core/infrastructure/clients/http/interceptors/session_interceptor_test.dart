@@ -295,11 +295,14 @@ void main() {
       responseStatus = 204;
       when(() => storage.read(key: StorageKeyEnum.token.key))
           .thenAnswer((_) async => 'opaque-token');
-      final repository = ExpenseRepository(httpClient: client);
+      final repository = ExpenseRepository(
+        httpClient: client,
+        storageClient: storage,
+      );
 
       await repository.delete(id: '1');
       expect(captured!.method, 'DELETE');
-      expect(captured!.uri.path, '/api/expenses/1');
+      expect(captured!.uri.path, '/api/collections/expenses/records/1');
       expect(captured!.headers['Authorization'], 'Bearer opaque-token');
       verify(() => storage.read(key: StorageKeyEnum.token.key)).called(1);
       verifyNever(() => storage.delete(key: StorageKeyEnum.token.key));
@@ -310,7 +313,10 @@ void main() {
       when(() => storage.read(key: StorageKeyEnum.token.key))
           .thenAnswer((_) async => 'opaque-token');
 
-      await ExpenseRepository(httpClient: client).delete(id: 'a/b?c#d');
+      await ExpenseRepository(
+        httpClient: client,
+        storageClient: storage,
+      ).delete(id: 'a/b?c#d');
 
       expect(captured!.uri.pathSegments.last, 'a/b?c#d');
       expect(captured!.headers['Authorization'], 'Bearer opaque-token');

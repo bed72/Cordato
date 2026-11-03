@@ -274,17 +274,20 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
 
     for (final error in errors.errors) {
       final message = error.detail ?? error.title ?? 'Valor inválido.';
-      if (error.status != '422') {
+      if (error.status != '422' && error.status != '400') {
         remaining.add(error);
         continue;
       }
 
       switch (error.pointer) {
         case '/data/attributes/amount':
+        case '/amount':
           amountMessages.add(message);
         case '/data/attributes/description':
+        case '/description':
           descriptionMessages.add(message);
         case '/data/attributes/occurred_on':
+        case '/occurred_on':
           dateMessages.add(message);
         default:
           remaining.add(error);

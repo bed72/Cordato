@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
@@ -80,7 +81,7 @@ final class _ExpenseDismissibleWidgetState
                             child: ExcludeSemantics(
                               child: Center(
                                 child: IconWidget(
-                                  icon: Icons.edit_outlined,
+                                  icon: lucide.square_pen,
                                   color: context.colors.onPrimaryContainer,
                                 ),
                               ),
@@ -98,7 +99,7 @@ final class _ExpenseDismissibleWidgetState
                             child: ExcludeSemantics(
                               child: Center(
                                 child: IconWidget(
-                                  icon: Icons.delete_outline,
+                                  icon: lucide.delete,
                                   color: context.colors.onError,
                                 ),
                               ),

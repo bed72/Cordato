@@ -14,16 +14,22 @@ específicas de manutenção ficam em [AGENTS.md](AGENTS.md).
 
 - **Implementado na configuração:** contas individuais e despesas próprias,
   autenticação/verificação nativas, regras de propriedade e cascata.
-- **Ausente nesta configuração:** métricas agregadas, insights, sugestões de
-  despesas, orçamentos e família. A presença de consumidores Flutter não cria
-  esses recursos no PocketBase.
-- **Pendente:** migração dos adapters e fluxos Flutter, compatibilidade de data
-  civil com `occurred_on` UTC e homologação integrada. Não basta mudar a URL.
+- **Ausente nesta configuração:** métricas agregadas, insights, endpoints
+  customizados de sugestões, orçamentos e família. O Flutter obtém sugestões por
+  GET filtrado do histórico pessoal, sem recurso adicional no servidor.
+- **Cliente Flutter:** Authentication, Session, User e Expense usam APIs nativas.
+  Expense envia `owner` na criação, categoria `other` e a data civil codificada
+  como meia-noite UTC, sem conversão de fuso. Paginação usa `page`/`perPage` e
+  filtros nativos. Não há migração de registros antigos ou fallback para campos
+  vazios; o schema opcional do servidor permanece inalterado.
+- **Pendente:** Metrics, integração financeira da Dashboard e homologação real.
+  Não basta mudar a URL nem considerar testes com clients mockados como validação
+  das permissões do serviço.
 - **Fora desta etapa documental:** alterações de código/schema, migração de
   dados, provisionamento remoto e deploy.
 
-Os exemplos Dart abaixo ilustram chamadas nativas para uma integração futura;
-não representam código já utilizado pelo aplicativo. As evidências locais ao
+Os exemplos Dart abaixo ilustram chamadas pelo SDK PocketBase, não integrado ao
+aplicativo, que utiliza `IHttpClient` diretamente. As evidências locais ao
 final são registros anteriores, não verificações executadas nesta revisão.
 
 ## Arquivos
@@ -136,11 +142,12 @@ Listagem, consulta, criação, alteração e exclusão exigem usuário verificad
 Categoria e data omitidas ficam vazias (`""`), não `null`. **O Date opcional nativo também normaliza uma entrada inválida para vazio**, em vez de retornar erro; o frontend deve validar o valor antes de enviá-lo. O frontend decide valores iniciais e formata a data/hora. Não converter valores monetários para float no modelo de negócio.
 
 ```dart
+final today = DateTime.now();
 await pb.collection('expenses').create(body: {
   'owner': pb.authStore.record!.id,
   'amount': 2590,
   'description': 'Almoço',
-  'occurred_on': DateTime.now().toUtc().toIso8601String(),
+  'occurred_on': DateTime.utc(today.year, today.month, today.day).toIso8601String(),
   'category': 'food',
 });
 ```

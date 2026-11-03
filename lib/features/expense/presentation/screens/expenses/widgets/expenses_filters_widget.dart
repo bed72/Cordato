@@ -1,7 +1,9 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/icons/icon_interaction_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 final class const ExpensesFiltersWidget({
@@ -58,7 +60,7 @@ final class const ExpensesFiltersWidget({
       materialTapTargetSize: .padded,
       deleteButtonTooltipMessage: removalLabel,
       disabledColor: context.colors.surfaceContainerHighest,
-      deleteIcon: const IconWidget(icon: Icons.close, size: 18.0),
+      deleteIcon: const IconWidget(icon: lucide.x, size: 18.0),
       backgroundColor: context.colors.primary.withValues(alpha: 0.15),
       shape: RoundedRectangleBorder(
         borderRadius: context.radius.cornerRadius050,
@@ -73,6 +75,11 @@ final class const ExpensesFiltersWidget({
       ),
     );
 
-    return onDeleted == null ? chip : BounceWidget.withoutOnPress(child: chip);
+    return IconInteractionWidget(
+      enabled: onDeleted != null,
+      child: onDeleted == null
+          ? chip
+          : BounceWidget.withoutOnPress(child: chip),
+    );
   }
 }

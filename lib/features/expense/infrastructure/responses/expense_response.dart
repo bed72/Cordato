@@ -10,16 +10,15 @@ final class const ExpenseResponse({
   required final ExpenseCategoryEnum category,
 }) {
   factory ExpenseResponse.fromJson(Map<String, dynamic> json) {
-    final root = json['data'] as Map<String, dynamic>;
-    final attributes = root['attributes'] as Map<String, dynamic>;
+    final date = DateTime.parse(json['occurred_on'] as String);
 
     return ExpenseResponse(
-      id: root['id'] as String,
-      amount: attributes['amount'] as int,
-      description: attributes['description'] as String,
-      occurredOn: DateTime.parse(attributes['occurred_on'] as String),
+      id: json['id'] as String,
+      amount: json['amount'] as int,
+      description: json['description'] as String,
+      occurredOn: DateTime(date.year, date.month, date.day),
       category: ExpenseCategoryEnum.values.firstWhere(
-        (category) => category.value == attributes['category'] as String,
+        (category) => category.value == json['category'] as String,
       ),
     );
   }

@@ -6,12 +6,10 @@ final class const ExpenseSuggestionResponse({
   final int? amount,
 }) {
   factory ExpenseSuggestionResponse.fromJson(Map<String, dynamic> json) {
-    final root = json['attributes'] as Map<String, dynamic>;
-
     return ExpenseSuggestionResponse(
       id: json['id'] as String,
-      amount: root['amount'] as int?,
-      description: root['description'] as String,
+      amount: json['amount'] as int,
+      description: json['description'] as String,
     );
   }
 

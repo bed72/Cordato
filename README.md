@@ -42,14 +42,16 @@ ou segredos do aplicativo.
 
 A configuração foi trazida do repositório backend anterior; nenhum banco, volume,
 segredo ou histórico Git foi transferido. A migração do aplicativo para PocketBase
-inclui Authentication, Session e User (consulta de perfil, nome, avatar e exclusão); os fluxos financeiros ainda
-mantêm o contrato anterior.
+inclui Authentication, Session, User (consulta de perfil, nome, avatar e exclusão)
+e Expense (CRUD, listagem e sugestões por histórico). Metrics ainda mantém o
+contrato anterior; a Dashboard não foi migrada nesta etapa.
 
 | Parte | Estado atual |
 | --- | --- |
 | Backend em `backend/` | Contas e despesas próprias nas coleções `users` e `expenses`; contrato nativo PocketBase. |
-| Cliente Flutter em `lib/` | Authentication, Session e User usam os endpoints nativos da coleção `users`. Operações financeiras mantêm JSON:API e o contrato anterior. |
-| Metrics e sugestões | Existem no cliente; não há implementação equivalente no backend PocketBase atual. |
+| Cliente Flutter em `lib/` | Authentication, Session, User e Expense usam endpoints nativos das coleções `users` e `expenses`. Metrics mantém JSON:API. |
+| Sugestões | GET filtrado do histórico pessoal de despesas, sem endpoint customizado. |
+| Metrics e Dashboard | Migração pendente; agregações não existem no backend PocketBase atual. |
 | Budget e Family | Planejados; não implementados no backend atual nem nas features Flutter. |
 | Integração e operação | Migração do cliente, homologação integrada e validação no Dokploy ainda pendentes. |
 
@@ -58,7 +60,7 @@ erros, paginação, datas e recursos disponíveis possuem contratos diferentes.
 O Flutter mantém `HttpClient`/`IHttpClient` com Dio, interceptors e o contrato HTTP
 anterior nas operações não migradas. O SDK PocketBase não está integrado. O login
 e o cadastro aceitam erros nativos PocketBase (400 por campo ou mensagem geral), mas
-recursos financeiros ainda precisam de migração. Mantenha
+Metrics ainda precisa de migração. Mantenha
 `/api/` na base, por exemplo `https://pocketbase.cordato.cloud/api/`. Esta adaptação
 não representa homologação integrada nem migração das sessões existentes.
 Veja os [limites da integração](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração).
@@ -153,14 +155,19 @@ seção da Dashboard, previews e testes próprios. Referências nas verificaçõ
 históricas abaixo não representam funcionalidade disponível.
 
 Expense também usa contrato em application, `ExpenseException` e repository em
-infrastructure com HTTP direto, sem Either ou data source. Preserva CRUD JSON:API,
-centavos inteiros positivos, datas civis, filtros e paginação opaca. Consulta,
+infrastructure com HTTP/storage diretos, sem Either ou data source. Usa CRUD nativo
+em `collections/expenses/records`, centavos inteiros positivos, datas civis e
+filtros/paginação PocketBase. Criação lê o ID atual do storage para `owner` e envia
+categoria `other`; atualização envia somente os campos fornecidos, sem trocar
+proprietário/categoria. A data escolhida é enviada como meia-noite UTC e lida como
+data civil, sem conversão de fuso. Consulta,
 criação e atualização retornam entidades; exclusão retorna `Future<void>` e só
 conclui após HTTP 204. `AmountValueObject.create` retorna o valor diretamente e
 rejeita centavos não positivos com `ArgumentError`. Parsing e falhas inesperadas
 propagam. `ExpenseBloc` substitui consulta/criação/edição e `ExpensesBloc` substitui
 listagem/exclusão, com estados sealed, factories estáveis e lifecycle das telas.
-Mantém validação, erros 422 por campo, retry manual, cadastro contínuo por hold,
+Mantém validação, erros PocketBase 400 e legados 422 por campo, retry manual,
+cadastro contínuo por hold,
 filtros, paginação opaca e confirmação de exclusão sem remoção otimista. Consultas
 obsoletas não sobrescrevem filtros recentes; mutações pendentes bloqueiam duplicatas.
 Listagem navega diretamente pelo `BuildContext`, sem callbacks nos argumentos de
@@ -168,12 +175,19 @@ rota; Dashboard e métricas recarregam ao retornar da listagem, mesmo sem altera
 Expense não depende mais de CommandIt. Dashboard consome resultados diretos de
 todos os contextos consultados.
 
-No novo gasto, Descrição oferece autocomplete remoto com `RawAutocomplete` nativo
-e o mesmo `TextFieldWidget` do core. A busca começa em 3 caracteres, após 300 ms;
+No novo gasto, Descrição oferece autocomplete do histórico pessoal com
+`RawAutocomplete` nativo e o mesmo `TextFieldWidget` do core. A busca começa em
+3 caracteres, após 300 ms;
 respostas antigas são ignoradas e falhas não bloqueiam cadastro manual. Selecionar
 preenche a descrição e o valor opcional; valores confirmados manualmente são
 preservados, com ação explícita para usar o sugerido. A data não muda e selecionar
 não salva nem configura recorrência. Edição não consulta sugestões.
+A consulta usa GET com filtro por descrição, valores escapados e até 30 despesas
+ordenadas por data decrescente, criação e ID. Descrições repetidas, ignorando caixa,
+mantêm o valor da ocorrência mais recente retornada. Não há deduplicação global,
+IA, previsão ou classificação automática. Sem histórico, a lista fica vazia.
+Não há migração de registros antigos, fallback para categoria/data vazias,
+alteração de schema, deploy ou homologação real nesta integração.
 
 Os testes de responses cobrem DTOs e exceções HTTP atuais, sem `Either` ou
 `response<T>`. Messaging expõe `register()` e `onRegistered` com stream de FIDs,
@@ -289,6 +303,13 @@ testes de contrato. `.widget_preview/` não deve ser versionado.
 Preserve um único proprietário de recursos: Sign-in recebe um Bloc externo;
 as telas ainda não migradas continuam criando/fechando sua factory. Use
 `PreviewResourceWidget` para um recurso externo ao lifecycle da tela.
+
+Os ícones explícitos usam `flutter_lucide_animated` pelo renderer compartilhado
+`IconWidget`. Animam na entrada, na troca do símbolo e ao pressionar, passar o
+mouse ou usar Enter/Espaço nos controles. As animações Lucide respeitam movimento
+reduzido e controles desabilitados, sem loops contínuos. Símbolos não disponíveis
+no pacote usam equivalentes do catálogo. O grupo `Core / Ícones animados` inclui
+um preview de interação, botão desabilitado e movimento reduzido.
 
 ### Modular V7 E Navegação
 

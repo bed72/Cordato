@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/serializers/civil_date_serializer.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
@@ -16,8 +20,10 @@ import 'package:cordato/features/expense/infrastructure/responses/expense_respon
 import 'package:cordato/features/expense/infrastructure/responses/expense_page_response.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_suggestion_response.dart';
 
-final class ExpenseRepository({required final IHttpClient _httpClient})
-    implements IExpenseRepository {
+final class ExpenseRepository({
+  required final IHttpClient _httpClient,
+  required final IStorageClient _storageClient,
+}) implements IExpenseRepository {
   @override
   Future<List<ExpenseSuggestionEntity>> suggestions({
     required String query,
@@ -25,17 +31,27 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
     try {
       final response = await _httpClient.get(
         parameter: Requests(
-          query: {'query': query},
-          path: '${HttpPathEnum.expenses.path}/suggestions',
+          query: {
+            'page': 1,
+            'perPage': 30,
+            'sort': '-occurred_on,-created,-id',
+            'filter': 'description ~ ${_filterValue(query)}',
+            'skipTotal': true,
+            'fields': 'id,description,amount',
+          },
+          path: HttpPathEnum.expenseRecords.path,
         ),
       );
 
+      final descriptions = <String>{};
       return .unmodifiable(
-        (response.body['data'] as List).map(
-          (item) =>
-              ExpenseSuggestionResponse.fromJson(item as Map<String, dynamic>)
-                  .toEntity(),
-        ),
+        (response.body['items'] as List)
+            .map(
+              (item) => ExpenseSuggestionResponse.fromJson(
+                item as Map<String, dynamic>,
+              ).toEntity(),
+            )
+            .where((item) => descriptions.add(item.description.toLowerCase())),
       );
     } on HttpResponseException catch (exception) {
       throw ExpenseException(errors: exception.errors.toEntity());
@@ -49,7 +65,8 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
     try {
       final response = await _httpClient.get(
         parameter: Requests(
-          path: '${HttpPathEnum.expenses.path}/${Uri.encodeComponent(id)}',
+          path:
+              '${HttpPathEnum.expenseRecords.path}/${Uri.encodeComponent(id)}',
         ),
       );
 
@@ -66,7 +83,8 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
     try {
       final response = await _httpClient.delete(
         parameter: Requests(
-          path: '${HttpPathEnum.expenses.path}/${Uri.encodeComponent(id)}',
+          path:
+              '${HttpPathEnum.expenseRecords.path}/${Uri.encodeComponent(id)}',
         ),
       );
 
@@ -88,17 +106,18 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
     int pageSize = 30,
   }) async {
     try {
+      final query = _pageQuery(
+        to: to,
+        sort: sort,
+        from: from,
+        category: category,
+        pageLink: pageLink,
+        pageSize: pageSize > 0 ? pageSize : 30,
+      );
       final response = await _httpClient.get(
         parameter: Requests(
-          path: HttpPathEnum.expenses.path,
-          query: _pageQuery(
-            to: to,
-            sort: sort,
-            from: from,
-            category: category,
-            pageLink: pageLink,
-            pageSize: pageSize > 0 ? pageSize : 30,
-          ),
+          path: HttpPathEnum.expenseRecords.path,
+          query: query,
         ),
       );
 
@@ -106,8 +125,8 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
 
       return ExpensePageEntity(
         items: page.items.map((item) => item.toEntity()).toList(),
-        next: page.next,
-        prev: page.prev,
+        next: _continuation(page.next, query),
+        prev: _continuation(page.prev, query),
       );
     } on HttpResponseException catch (exception) {
       throw ExpenseException(errors: exception.errors.toEntity());
@@ -126,17 +145,12 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
     try {
       final response = await _httpClient.patch(
         parameter: Requests(
-          path: '${HttpPathEnum.expenses.path}/${Uri.encodeComponent(id)}',
+          path:
+              '${HttpPathEnum.expenseRecords.path}/${Uri.encodeComponent(id)}',
           body: {
-            'data': {
-              'type': 'expenses',
-              'attributes': {
-                'amount': ?cents,
-                'description': ?description,
-                if (occurredOn != null)
-                  'occurred_on': formatDateSerializer(occurredOn),
-              },
-            },
+            'amount': ?cents,
+            'description': ?description,
+            if (occurredOn != null) 'occurred_on': _dateValue(occurredOn),
           },
         ),
       );
@@ -155,18 +169,19 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
     DateTime? occurredOn,
   }) async {
     try {
+      final owner = await _storageClient.read(key: StorageKeyEnum.userId.key);
+      if (owner == null || owner.trim().isEmpty) {
+        throw ExpenseException(errors: .unknown());
+      }
       final response = await _httpClient.post(
         parameter: Requests(
-          path: HttpPathEnum.expenses.path,
+          path: HttpPathEnum.expenseRecords.path,
           body: {
-            'data': {
-              'type': 'expenses',
-              'attributes': {
-                'amount': cents,
-                'description': description,
-                'occurred_on': formatDateSerializer(occurredOn ?? .now()),
-              },
-            },
+            'owner': owner,
+            'amount': cents,
+            'description': description,
+            'category': 'other',
+            'occurred_on': _dateValue(occurredOn ?? .now()),
           },
         ),
       );
@@ -186,32 +201,48 @@ final class ExpenseRepository({required final IHttpClient _httpClient})
     String? category,
     String? pageLink,
   }) {
-    final query = <String, dynamic>{};
+    final query = <String, dynamic>{'page': 1};
 
     if (pageLink != null) {
       final uri = Uri.parse(pageLink);
-      if (!uri.hasQuery || uri.fragment.isNotEmpty) {
+      final page = int.tryParse(uri.queryParameters['page'] ?? '');
+      if (page == null || page < 1 || uri.fragment.isNotEmpty) {
         throw FormatException('Link de paginação inválido');
       }
 
-      for (final entry in uri.queryParametersAll.entries) {
-        query[entry.key] = entry.value.length == 1
-            ? entry.value.single
-            : entry.value;
+      query['page'] = page;
+      for (final key in ['filter', 'sort']) {
+        if (uri.queryParameters.containsKey(key)) {
+          query[key] = uri.queryParameters[key];
+        }
       }
     }
-    query['page[size]'] = pageSize;
-    if (sort != null) query['sort'] = sort;
-    if (category != null) query['filter[category]'] = category;
-
-    if (from != null || to != null) {
-      query.remove('filter[year]');
-      query.remove('filter[month]');
-      query.remove('filter[day]');
+    query['perPage'] = pageSize;
+    query['sort'] = sort ?? query['sort'] ?? '-occurred_on,-id';
+    if (category != null || from != null || to != null) {
+      query['filter'] = [
+        if (category != null) 'category = ${_filterValue(category)}',
+        if (from != null) 'occurred_on >= ${_filterValue(_dateValue(from))}',
+        if (to != null)
+          'occurred_on < ${_filterValue(_dateValue(DateTime.utc(to.year, to.month, to.day + 1)))}',
+      ].join(' && ');
     }
-    if (from != null) query['filter[from]'] = formatDateSerializer(from);
-    if (to != null) query['filter[to]'] = formatDateSerializer(to);
 
     return query;
+  }
+
+  String _dateValue(DateTime date) =>
+      '${formatDateSerializer(date)} 00:00:00.000Z';
+
+  String _filterValue(String value) => jsonEncode(value);
+
+  String? _continuation(String? link, Map<String, dynamic> query) {
+    if (link == null) return null;
+    return Uri(
+      queryParameters: {
+        for (final entry in query.entries) entry.key: entry.value.toString(),
+        'page': Uri.parse(link).queryParameters['page']!,
+      },
+    ).toString();
   }
 }

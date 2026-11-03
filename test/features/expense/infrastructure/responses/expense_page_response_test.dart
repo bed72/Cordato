@@ -3,42 +3,68 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_page_response.dart';
 
 void main() {
-  test('parses the collection and preserves opaque pagination links', () {
+  test('parses native items and derives page continuations', () {
     final page = ExpensePageResponse.fromJson({
-      'data': [
+      'items': [
         {
           'id': '15',
-          'type': 'expenses',
-          'attributes': {
-            'amount': 10000,
-            'category': 'other',
-            'description': 'Lanche',
-            'occurred_on': '2026-10-08',
-            'created_at': '2026-10-06T20:16:48+00:00',
-          },
+          'amount': 10000,
+          'category': 'other',
+          'description': 'Lanche',
+          'occurred_on': '2026-10-08 00:00:00.000Z',
+          'created': '2026-10-06 20:16:48.000Z',
         },
       ],
-      'links': {
-        'next': 'https://trocado.test/api/expenses?page%5Bafter%5D=15',
-        'prev': null,
-      },
+      'page': 1,
+      'totalPages': 2,
     });
 
     expect(page.items.single.id, '15');
     expect(page.items.single.amount, 10000);
     expect(page.items.single.occurredOn, DateTime(2026, 10, 8));
-    expect(page.next, 'https://trocado.test/api/expenses?page%5Bafter%5D=15');
+    expect(page.next, '?page=2');
     expect(page.prev, isNull);
     expect(() => page.items.clear(), throwsUnsupportedError);
   });
 
   test('copies the supplied list instead of retaining mutable input', () {
     final items = ExpensePageResponse.fromJson({
-      'data': [],
-      'links': {'next': null, 'prev': null},
+      'items': [],
+      'page': 1,
+      'totalPages': 0,
     }).items.toList();
     final page = ExpensePageResponse(items: items, next: null, prev: null);
     expect(identical(page.items, items), isFalse);
     expect(page.items, isEmpty);
   });
+
+  for (final pageNumber in [1, 2, 3]) {
+    test('derives boundaries for page $pageNumber of 3', () {
+      final page = ExpensePageResponse.fromJson({
+        'items': [],
+        'page': pageNumber,
+        'totalPages': 3,
+      });
+      expect(page.prev, pageNumber > 1 ? '?page=${pageNumber - 1}' : null);
+      expect(page.next, pageNumber < 3 ? '?page=${pageNumber + 1}' : null);
+    });
+  }
+
+  for (final json in <Map<String, dynamic>>[
+    {},
+    {'items': [], 'page': '1', 'totalPages': 1},
+    {'items': [], 'page': 1},
+    {
+      'items': [null],
+      'page': 1,
+      'totalPages': 1,
+    },
+  ]) {
+    test('propagates malformed page $json', () {
+      expect(
+        () => ExpensePageResponse.fromJson(json),
+        throwsA(isA<TypeError>()),
+      );
+    });
+  }
 }
