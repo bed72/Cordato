@@ -35,7 +35,7 @@ Leia [ARCHITECTURE.md](ARCHITECTURE.md) para decisões e fronteiras e
 ## Backend PocketBase
 
 O backend adotado é **PocketBase 0.41.1**, isolado em [`backend/`](backend/README.md),
-com Compose, imagem, migrations e testes próprios. Usa APIs e regras nativas,
+com Compose, imagem e migrations próprias. Usa APIs e regras nativas,
 sem Node, hooks ou worker. No Dokploy, usar `backend/compose.yml` com contexto de
 build em `backend/`. Ele não depende do build Flutter e não deve receber arquivos
 ou segredos do aplicativo.
@@ -43,24 +43,23 @@ ou segredos do aplicativo.
 A configuração foi trazida do repositório backend anterior; nenhum banco, volume,
 segredo ou histórico Git foi transferido. A migração do aplicativo para PocketBase
 inclui Authentication, Session, User (consulta de perfil, nome, avatar e exclusão)
-e Expense (CRUD, listagem e sugestões por histórico). Metrics ainda mantém o
-contrato anterior; a Dashboard não foi migrada nesta etapa.
+e Expense (CRUD, listagem e sugestões por histórico). Metrics e a distribuição
+mensal da Dashboard usam a view nativa `expense_monthly_metrics`.
 
 | Parte | Estado atual |
 | --- | --- |
-| Backend em `backend/` | Contas e despesas próprias nas coleções `users` e `expenses`; contrato nativo PocketBase. |
-| Cliente Flutter em `lib/` | Authentication, Session, User e Expense usam endpoints nativos das coleções `users` e `expenses`. Metrics mantém JSON:API. |
+| Backend em `backend/` | Contas, despesas próprias e view mensal de métricas; contrato nativo PocketBase. |
+| Cliente Flutter em `lib/` | Authentication, Session, User, Expense e Metrics usam endpoints nativos PocketBase. |
 | Sugestões | GET filtrado do histórico pessoal de despesas, sem endpoint customizado. |
-| Metrics e Dashboard | Migração pendente; agregações não existem no backend PocketBase atual. |
+| Metrics e Dashboard | Total e distribuição mensal por categoria calculados em SQL na view `expense_monthly_metrics`; UI e navegação preservadas. |
 | Budget e Family | Planejados; não implementados no backend atual nem nas features Flutter. |
-| Integração e operação | Migração do cliente, homologação integrada e validação no Dokploy ainda pendentes. |
+| Integração e operação | Aplicação da migration da view, homologação integrada e validação no Dokploy ainda pendentes. |
 
 Trocar apenas `BASE_URL` não integra o aplicativo ao PocketBase. Autenticação,
 erros, paginação, datas e recursos disponíveis possuem contratos diferentes.
 O Flutter mantém `HttpClient`/`IHttpClient` com Dio, interceptors e o contrato HTTP
 anterior nas operações não migradas. O SDK PocketBase não está integrado. O login
-e o cadastro aceitam erros nativos PocketBase (400 por campo ou mensagem geral), mas
-Metrics ainda precisa de migração. Mantenha
+e o cadastro aceitam erros nativos PocketBase (400 por campo ou mensagem geral). Mantenha
 `/api/` na base, por exemplo `https://pocketbase.cordato.cloud/api/`. Esta adaptação
 não representa homologação integrada nem migração das sessões existentes.
 Veja os [limites da integração](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração).
@@ -146,15 +145,34 @@ Na Dashboard, nome e avatar usam o mesmo contrato de User/PocketBase e são
 consultados novamente ao voltar de dados pessoais ou configurações. Falhas nessa
 consulta levam à tela de erro global, inclusive durante atualização; não são
 tratadas como ausência de usuário. Retry é manual e recarrega a Dashboard completa.
-Nome vazio continua exibindo `Trocado`. A integração financeira não muda nesta etapa.
+Nome vazio continua exibindo `Trocado`.
 
 Metrics também usa contrato em application, `MetricsException` e repository em
-infrastructure chamando HTTP diretamente, sem Either ou data source. Preserva
-filtros opcionais, datas civis, centavos e categorias da API. `ExpenseMetricsBloc`
+infrastructure chamando HTTP diretamente, sem Either ou data source. Consulta
+`collections/expense_monthly_metrics/records` por mês civil completo. Sem datas,
+usa o mês atual; intervalos parciais, incompletos ou de vários meses são rejeitados,
+sem truncamento silencioso. Total mensal, valores por categoria e percentuais vêm
+do PocketBase: não há soma ou cálculo de percentual no Flutter. Centavos chegam
+como texto e são convertidos diretamente para `int`; percentuais são numéricos.
+Mês sem registro retorna total zero e agrupamento vazio; falhas e respostas
+inválidas não são tratadas como ausência de despesas. A UI e a navegação filtrada
+por categoria/mês permanecem intactas. `ExpenseMetricsBloc`
 substitui o command, com estados sealed, falhas tipadas, retry manual e precedência
 da consulta mais recente. O módulo fornece instâncias por factory e os previews
 consumidores usam BlocBuilder. Dashboard mantém seu próprio Bloc sobre o contrato,
 sem migrar os demais contextos financeiros.
+
+A migration aditiva `backend/pb_migrations/1793664000_expense_monthly_metrics.js`
+cria a view sem alterar despesas, credenciais ou a migration inicial. Instalações
+existentes precisam aplicar essa migration em operação autorizada; o cliente novo
+não usa fallback para `metrics/expenses`. A definição das regras de proprietário
+está versionada, mas ainda requer homologação no PocketBase real.
+
+Verificação local desta integração: `flutter pub get` concluído, `flutter analyze`
+sem problemas, lote focado de Metrics/Dashboard/HTTP/arquitetura/composição com
+262 testes aprovados e `flutter test --reporter failures-only` com 885 aprovados.
+Não houve execução visual, aplicação da migration, validação de permissões no
+PocketBase real ou deploy.
 
 A feature Insight foi removida do aplicativo, incluindo módulo, consultas HTTP,
 seção da Dashboard, previews e testes próprios. Referências nas verificações

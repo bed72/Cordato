@@ -1,15 +1,16 @@
-import 'package:flutter_modular/flutter_modular.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
-import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
+
 import 'package:cordato/features/metrics/metrics_module.dart';
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_bloc.dart';
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_event.dart';
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_state.dart';
+import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
 import '../../support/core/mocks/http_client_mock.dart';
 
@@ -25,15 +26,15 @@ void main() {
       (_) async => const Responses(
         status: 200,
         body: {
-          'data': {
-            'id': 'metrics',
-            'attributes': {
-              'total_amount': '123',
-              'start_date': '2026-10-01',
-              'end_date': '2026-10-31',
+          'items': [
+            {
+              'id': 'metrics',
               'categories': [],
+              'total_amount': '123',
+              'end_date': '2026-10-31',
+              'start_date': '2026-10-01',
             },
-          },
+          ],
         },
       ),
     );
@@ -83,11 +84,12 @@ void main() {
                   .captured
                   .single
               as Requests;
-      expect(request.path, 'metrics/expenses');
+      expect(request.path, 'collections/expense_monthly_metrics/records');
       expect(request.query, {
-        'start_date': '2026-10-01',
-        'end_date': '2026-10-31',
-        'group_by': 'category',
+        'page': 1,
+        'perPage': 2,
+        'filter': 'start_date = "2026-10-01"',
+        'skipTotal': true,
       });
       verifyNoMoreInteractions(http);
     },

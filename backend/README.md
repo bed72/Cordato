@@ -1,6 +1,6 @@
 # Cordato — PocketBase
 
-Serviço independente **PocketBase 0.41.1** para contas e despesas pessoais, preparado para Docker Compose no Dokploy. Sem Node, hooks, worker, IA ou Batch API.
+Serviço independente **PocketBase 0.41.1** para contas, despesas pessoais e métricas mensais, preparado para Docker Compose no Dokploy. Sem Node, hooks, worker, IA ou Batch API.
 
 O backend vive em `backend/` no repositório do aplicativo Flutter, mas tem build, serviço e volume próprios. Execute os comandos deste documento **a partir de `backend/`**. A transferência dos arquivos não integra nem migra o cliente Flutter para a API PocketBase.
 
@@ -13,20 +13,23 @@ o panorama do produto está no [README da raiz](../README.md). As orientações
 específicas de manutenção ficam em [AGENTS.md](AGENTS.md).
 
 - **Implementado na configuração:** contas individuais e despesas próprias,
-  autenticação/verificação nativas, regras de propriedade e cascata.
-- **Ausente nesta configuração:** métricas agregadas, insights, endpoints
+  autenticação/verificação nativas, regras de propriedade e cascata, além da view
+  somente leitura `expense_monthly_metrics` com agregações por proprietário/mês.
+- **Ausente nesta configuração:** agregações por intervalos arbitrários, insights, endpoints
   customizados de sugestões, orçamentos e família. O Flutter obtém sugestões por
   GET filtrado do histórico pessoal, sem recurso adicional no servidor.
-- **Cliente Flutter:** Authentication, Session, User e Expense usam APIs nativas.
+- **Cliente Flutter:** Authentication, Session, User, Expense e Metrics usam APIs nativas.
   Expense envia `owner` na criação, categoria `other` e a data civil codificada
   como meia-noite UTC, sem conversão de fuso. Paginação usa `page`/`perPage` e
   filtros nativos. Não há migração de registros antigos ou fallback para campos
-  vazios; o schema opcional do servidor permanece inalterado.
-- **Pendente:** Metrics, integração financeira da Dashboard e homologação real.
+  vazios; os campos opcionais de despesas permanecem inalterados. Metrics consulta
+  a view mensal, sem somar despesas ou recalcular percentuais no cliente; a UI da
+  Dashboard e a navegação por categoria/mês ficam intactas.
+- **Pendente:** aplicar a migration aditiva da view no serviço existente e homologar
+  o fluxo real, incluindo autorização e precisão dos valores.
   Não basta mudar a URL nem considerar testes com clients mockados como validação
   das permissões do serviço.
-- **Fora desta etapa documental:** alterações de código/schema, migração de
-  dados, provisionamento remoto e deploy.
+- **Fora desta etapa:** migração de dados, provisionamento remoto e deploy.
 
 Os exemplos Dart abaixo ilustram chamadas pelo SDK PocketBase, não integrado ao
 aplicativo, que utiliza `IHttpClient` diretamente. As evidências locais ao
@@ -39,6 +42,7 @@ final são registros anteriores, não verificações executadas nesta revisão.
 - `docker/entrypoint.sh`: exige chave de criptografia de 32 bytes, fixa opções seguras e inicia o serviço.
 - `pb_migrations/1793491200_initial.js`: schema, permissões, superusuário e settings em uma única migration transacional, **exclusiva para banco novo**.
 - `pb_migrations/1793577600_users_verification_app_link.js`: atualização incremental somente do destino de verificação de `users` para o callback HTTPS do aplicativo, sem reaplicar a inicial ou alterar templates administrativos.
+- `pb_migrations/1793664000_expense_monthly_metrics.js`: cria a View Collection mensal sem modificar despesas ou credenciais; aplica também depois da inicial em bancos novos. Não reaplicar a inicial para adicionar a view a uma instalação existente.
 - `.env.example`: nomes das variáveis, sem segredos.
 
 ## Instalação no Dokploy
@@ -156,6 +160,48 @@ Categorias: `food`, `pets`, `taxes`, `health`, `travel`, `housing`, `leisure`, `
 
 IDs são strings nativas do PocketBase, **não UUIDv7**. API REST e autenticação são nativas PocketBase, não JSON:API/Sanctum: o cliente PHP anterior não é compatível sem adaptação. Este trabalho não migra dados, contas ou sessões do PHP.
 
+### `expense_monthly_metrics`
+
+View Collection nativa, somente leitura, com um registro por proprietário/mês
+com despesas datadas. Somas e percentuais são calculados em SQL sobre `expenses`,
+sem hooks, endpoint customizado, tabela materializada ou cálculo no Flutter.
+`listRule` e `viewRule` exigem autenticação na coleção `users`, e-mail verificado
+e `owner = @request.auth.id`. Criar, editar e excluir records pela API é bloqueado.
+As regras de `expenses` não são herdadas automaticamente por views; por isso a
+view tem regras próprias e a subconsulta das categorias usa o mesmo proprietário.
+
+| Campo | Contrato |
+| --- | --- |
+| `id` | Menor ID de despesa do grupo; pode mudar quando essa despesa é excluída |
+| `owner` | Relação com o proprietário, inferida do campo de `expenses` |
+| `start_date` / `end_date` | Texto civil `YYYY-MM-DD`, primeiro e último dia do mês |
+| `total_amount` | Soma de `CAST(amount AS INTEGER)`, exposta como texto decimal em centavos |
+| `categories` | Array JSON de `{ category, total_amount, percentage }`; centavos textuais e percentual numérico com duas casas |
+
+Categorias são ordenadas por total decrescente, com desempate por categoria.
+As somas usam INTEGER de 64 bits do SQLite; overflow deve falhar, nunca retornar
+dinheiro em ponto flutuante. Percentuais usam ponto flutuante somente por serem
+proporções, não dinheiro. Arredondamentos individuais podem somar 99,99% ou 100,01%.
+`category` vazio permanece vazio; não é reclassificado como `other`. Despesas sem
+`occurred_on` não pertencem a nenhum mês. Não há alteração ou migração dos records.
+
+Consulta do cliente: `GET /api/collections/expense_monthly_metrics/records` com
+`filter=start_date = "2026-10-01"`, `page=1`, `perPage=2` e `skipTotal=true`.
+O segundo item serve para detectar violação da unicidade esperada, não para paginar
+despesas. O servidor filtra propriedade; o Flutter não envia um owner arbitrário.
+Lista `items: []` representa mês sem despesas e é convertida em zero no adapter.
+Erros HTTP, envelope inválido, múltiplos records ou período incorreto falham.
+
+O contrato do repository Flutter admite apenas meses completos. Ambas as datas
+ausentes selecionam o mês atual; intervalo incompleto, parcial ou de vários meses
+é rejeitado sem request. Não há fallback para `metrics/expenses`. A view reflete
+CRUD subsequente nas novas consultas, mas não publica eventos realtime próprios.
+
+A migration é aditiva e transacional. Não iniciar serviço, reaplicar bootstrap,
+resetar volume ou executar deploy para aplicá-la sem autorização operacional.
+Até essa aplicação e homologação reais, não afirmar que a view está implantada
+ou que o isolamento entre contas foi comprovado em runtime.
+
 ## Verificação
 
 Sem serviços, rede, downloads nem leitura de segredos:
@@ -169,6 +215,13 @@ O backend não mantém suíte de testes automatizados nem ferramentas Python por
 decisão do projeto. As verificações acima cobrem somente sintaxe shell e problemas
 de whitespace; não validam migrations, regras de acesso, HTML dos e-mails ou runtime.
 Build, execução de containers e homologação operacional exigem autorização própria.
+
+Na integração da view mensal, `sh -n docker/entrypoint.sh` e `git diff --check`
+passaram. A SQL foi preparada por `EXPLAIN QUERY PLAN` no SQLite do sistema,
+contra uma tabela vazia em memória com as colunas necessárias, sem acessar dados
+da aplicação. Isso verifica a preparação da consulta, não a execução da migration,
+inferência dos campos pelo PocketBase, totais com dados reais ou isolamento entre
+contas. Nenhum serviço, container ou binário PocketBase foi iniciado nesta etapa.
 
 ### Evidências históricas
 

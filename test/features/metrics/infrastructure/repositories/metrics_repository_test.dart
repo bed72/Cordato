@@ -1,39 +1,64 @@
 import 'dart:async';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
 
+import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_exception_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 
+import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
+
+import 'package:cordato/features/metrics/infrastructure/repositories/metrics_repository.dart';
+
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
-import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
-import 'package:cordato/features/metrics/infrastructure/repositories/metrics_repository.dart';
 
 import '../../../../support/core/mocks/http_client_mock.dart';
 
 void main() {
-  const attributes = {
+  const record = {
+    'id': 'metrics-id',
+    'owner': 'owner-id',
     'total_amount': '389205',
     'start_date': '2026-10-01',
     'end_date': '2026-10-31',
-  };
-  const resource = {
-    'id': 'metrics-id',
-    'type': 'expense-metrics',
-    'attributes': attributes,
+    'categories': [
+      {'category': 'housing', 'total_amount': '216000', 'percentage': 55.5},
+      {
+        'category': 'future_category',
+        'total_amount': '7965',
+        'percentage': 2.05,
+      },
+    ],
   };
   late HttpClientMock client;
   late IMetricsRepository repository;
 
-  Future<ErrorsEntity> errorsOf(Future<ExpenseMetricsEntity> request) async {
+  void respond(Map<String, dynamic> body) {
+    when(() => client.get(parameter: any(named: 'parameter')))
+        .thenAnswer((_) async => Responses(status: 200, body: body));
+  }
+
+  Future<ExpenseMetricsEntity> load({ExpenseMetricsGroupByEnum? groupBy}) =>
+      repository.getExpenses(
+        startDate: DateTime(2026, 10),
+        endDate: DateTime(2026, 10, 31),
+        groupBy: groupBy,
+      );
+
+  Requests request() =>
+      verify(() => client.get(parameter: captureAny(named: 'parameter')))
+              .captured
+              .single
+          as Requests;
+
+  Future<ErrorsEntity> errorsOf(Future<ExpenseMetricsEntity> operation) async {
     try {
-      await request;
+      await operation;
       fail('Expected MetricsException');
     } on MetricsException catch (exception) {
       return exception.errors;
@@ -44,197 +69,322 @@ void main() {
   setUp(() {
     client = HttpClientMock();
     repository = MetricsRepository(httpClient: client);
-    when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Responses(status: 200, body: {'data': resource}),
-    );
+    respond({
+      'items': [record],
+    });
   });
 
-  group('Requests and civil-date filters', () {
+  group('Monthly view requests', () {
     test(
-      'gets the relative endpoint without filters or custom headers',
+      'reads the native view without client-side aggregation or owner filters',
       () async {
-        final data = await repository.getExpenses();
+        final data = await load();
 
         expect(data.id, 'metrics-id');
-        expect(data.categories, isNull);
         expect(data.totalAmount, 389205);
+        expect(data.startDate, DateTime(2026, 10));
         expect(data.endDate, DateTime(2026, 10, 31));
-        expect(data.startDate, DateTime(2026, 10, 1));
-
-        final request =
-            verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .single
-                as Requests;
-
-        expect(request.body, isNull);
-        expect(request.query, isNull);
-        expect(request.headers, isNull);
-        expect(request.path, 'metrics/expenses');
+        expect(data.categories, isNull);
+        final captured = request();
+        expect(captured.path, 'collections/expense_monthly_metrics/records');
+        expect(captured.query, {
+          'page': 1,
+          'perPage': 2,
+          'filter': 'start_date = "2026-10-01"',
+          'skipTotal': true,
+        });
+        expect(captured.body, isNull);
+        expect(captured.headers, isNull);
         verifyNoMoreInteractions(client);
       },
     );
 
-    test(
-      'serializes civil dates without times or timezone conversion',
-      () async {
-        for (final utc in [false, true]) {
-          await repository.getExpenses(
-            startDate: utc
-                ? DateTime.utc(2026, 1, 2, 23, 59)
-                : DateTime(2026, 1, 2, 23, 59),
-            endDate: utc
-                ? DateTime.utc(2026, 2, 3, 0, 1)
-                : DateTime(2026, 2, 3, 0, 1),
-          );
+    for (final utc in [false, true]) {
+      test('uses civil dates for a leap month with utc=$utc', () async {
+        respond({'items': []});
 
-          final request =
-              verify(
-                    () => client.get(parameter: captureAny(named: 'parameter')),
-                  ).captured.single
-                  as Requests;
-          expect(request.query, {
-            'start_date': '2026-01-02',
-            'end_date': '2026-02-03',
-          });
-        }
+        final data = await repository.getExpenses(
+          startDate: utc
+              ? DateTime.utc(2024, 2, 1, 23)
+              : DateTime(2024, 2, 1, 23),
+          endDate: utc
+              ? DateTime.utc(2024, 2, 29, 23)
+              : DateTime(2024, 2, 29, 23),
+        );
+
+        expect(request().query!['filter'], 'start_date = "2024-02-01"');
+        expect(data.startDate, DateTime(2024, 2));
+        expect(data.endDate, DateTime(2024, 2, 29));
+      });
+    }
+
+    test(
+      'defaults to the current civil month when both dates are absent',
+      () async {
+        respond({'items': []});
+        final now = DateTime.now();
+
+        final data = await repository.getExpenses();
+
+        expect(data.startDate, DateTime(now.year, now.month));
+        expect(data.endDate, DateTime(now.year, now.month + 1, 0));
+        expect(
+          request().query!['filter'],
+          contains(data.startDate.year.toString()),
+        );
       },
     );
 
-    test(
-      'requests category grouping with or without an explicit period',
-      () async {
-        for (final explicitPeriod in [false, true]) {
-          await repository.getExpenses(
-            startDate: explicitPeriod ? DateTime(2026, 10, 1) : null,
-            endDate: explicitPeriod ? DateTime(2026, 10, 31) : null,
-            groupBy: ExpenseMetricsGroupByEnum.category,
+    final invalidPeriods = [
+      (name: 'start only', start: DateTime(2026, 10), end: null),
+      (name: 'end only', start: null, end: DateTime(2026, 10, 31)),
+      (
+        name: 'partial start',
+        start: DateTime(2026, 10, 2),
+        end: DateTime(2026, 10, 31),
+      ),
+      (
+        name: 'partial end',
+        start: DateTime(2026, 10),
+        end: DateTime(2026, 10, 30),
+      ),
+      (
+        name: 'multiple months',
+        start: DateTime(2026, 10),
+        end: DateTime(2026, 11, 30),
+      ),
+      (name: 'reversed', start: DateTime(2026, 10), end: DateTime(2026, 9, 30)),
+    ];
+    for (final period in invalidPeriods) {
+      test(
+        'rejects ${period.name} without HTTP or silently changing the period',
+        () async {
+          final errors = await errorsOf(
+            repository.getExpenses(
+              startDate: period.start,
+              endDate: period.end,
+            ),
           );
 
-          final request =
-              verify(
-                    () => client.get(parameter: captureAny(named: 'parameter')),
-                  ).captured.single
-                  as Requests;
-          expect(request.query, {
-            if (explicitPeriod) 'start_date': '2026-10-01',
-            if (explicitPeriod) 'end_date': '2026-10-31',
-            'group_by': 'category',
-          });
-        }
-      },
-    );
-
-    test(
-      'sends an incomplete period without inventing the other date',
-      () async {
-        for (final startOnly in [true, false]) {
-          await repository.getExpenses(
-            startDate: startOnly ? DateTime(2026, 10, 1) : null,
-            endDate: startOnly ? null : DateTime(2026, 10, 31),
-          );
-
-          final request =
-              verify(
-                    () => client.get(parameter: captureAny(named: 'parameter')),
-                  ).captured.single
-                  as Requests;
-          expect(request.query, {
-            if (startOnly) 'start_date': '2026-10-01',
-            if (!startOnly) 'end_date': '2026-10-31',
-          });
-        }
-      },
-    );
+          expect(errors.errors.single.title, 'Período inválido');
+          expect(errors.errors.single.parameter, 'period');
+          verifyZeroInteractions(client);
+        },
+      );
+    }
   });
 
-  group('Metrics responses', () {
+  group('Server-calculated metrics', () {
+    test('preserves category totals, percentages and order without recomputing them', () async {
+      final data = await load(groupBy: .category);
+
+      expect(data.totalAmount, 389205);
+      expect(data.categories!.map((category) => category.category), [
+        'housing',
+        'future_category',
+      ]);
+      expect(data.categories!.first.totalAmount, 216000);
+      expect(data.categories!.first.percentage, 55.5);
+      expect(data.categories!.last.totalAmount, 7965);
+      expect(data.categories!.last.percentage, 2.05);
+      expect(() => data.categories!.clear(), throwsUnsupportedError);
+    });
+
+    for (final grouping in ExpenseMetricsGroupByEnum.values) {
+      test(
+        'returns an empty period for absent ${grouping.name} metrics',
+        () async {
+          respond({'items': []});
+
+          final data = await load(groupBy: grouping);
+
+          expect(data.totalAmount, 0);
+          expect(data.categories, isEmpty);
+          expect(data.startDate, DateTime(2026, 10));
+          expect(data.endDate, DateTime(2026, 10, 31));
+        },
+      );
+    }
+
     test(
-      'parses grouped metrics preserving categories and API order',
+      'returns zero with no grouping for an absent ungrouped period',
       () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => Responses(
-            status: 200,
+        respond({'items': []});
+
+        final data = await load();
+
+        expect(data.totalAmount, 0);
+        expect(data.categories, isNull);
+      },
+    );
+
+    test('preserves a server record with zero totals', () async {
+      respond({
+        'items': [
+          {...record, 'total_amount': '0', 'categories': []},
+        ],
+      });
+
+      final data = await load(groupBy: .category);
+
+      expect(data.totalAmount, 0);
+      expect(data.categories, isEmpty);
+      expect(data.id, 'metrics-id');
+    });
+
+    test(
+      'preserves integer cents larger than the JavaScript safe-integer limit',
+      () async {
+        respond({
+          'items': [
+            {...record, 'total_amount': '9007199254740993'},
+          ],
+        });
+
+        expect((await load()).totalAmount, 9007199254740993);
+      },
+    );
+
+    test('waits for the view response before returning', () async {
+      final pending = Completer<Responses>();
+      when(() => client.get(parameter: any(named: 'parameter')))
+          .thenAnswer((_) => pending.future);
+      var completed = false;
+      final operation = load().then((value) {
+        completed = true;
+        return value;
+      });
+
+      expect(completed, isFalse);
+      pending.complete(
+        const Responses(
+          status: 200,
+          body: {
+            'items': [record],
+          },
+        ),
+      );
+
+      expect((await operation).totalAmount, 389205);
+      expect(completed, isTrue);
+    });
+  });
+
+  group('Malformed responses', () {
+    final malformed = <String, Map<String, dynamic>>{
+      'missing items': {},
+      'null items': {'items': null},
+      'wrong envelope': {'data': record},
+      'invalid record': {
+        'items': [null],
+      },
+      'duplicate months': {
+        'items': [record, record],
+      },
+      'fractional amount': {
+        'items': [
+          {...record, 'total_amount': '3.50'},
+        ],
+      },
+      'numeric amount': {
+        'items': [
+          {...record, 'total_amount': 350},
+        ],
+      },
+      'invalid date': {
+        'items': [
+          {...record, 'start_date': 'invalid'},
+        ],
+      },
+      'different month': {
+        'items': [
+          {...record, 'start_date': '2026-09-01'},
+        ],
+      },
+      'different end': {
+        'items': [
+          {...record, 'end_date': '2026-10-30'},
+        ],
+      },
+      'missing grouping': {
+        'items': [
+          {...record, 'categories': null},
+        ],
+      },
+      'malformed category': {
+        'items': [
+          {
+            ...record,
+            'categories': [
+              {'category': 'food', 'total_amount': 'invalid', 'percentage': 1},
+            ],
+          },
+        ],
+      },
+    };
+    for (final scenario in malformed.entries) {
+      test(
+        'propagates ${scenario.key} instead of returning zero or a business failure',
+        () async {
+          respond(scenario.value);
+
+          await expectLater(
+            load(),
+            throwsA(anyOf(isA<TypeError>(), isA<FormatException>())),
+          );
+        },
+      );
+    }
+  });
+
+  group('Failure handling', () {
+    test(
+      'preserves PocketBase errors including pointers and parameters',
+      () async {
+        final failure = HttpResponseException.fromResponse(
+          const Responses(
+            status: 400,
             body: {
+              'code': 400,
+              'message': 'Filtro inválido',
               'data': {
-                ...resource,
-                'attributes': {
-                  ...attributes,
-                  'categories': [
-                    {
-                      'category': 'housing',
-                      'total_amount': '216000',
-                      'percentage': '55.50',
-                    },
-                    {
-                      'category': 'future_category',
-                      'total_amount': '7965',
-                      'percentage': '2.05',
-                    },
-                  ],
+                'filter': {
+                  'code': 'validation_invalid_filter',
+                  'message': 'Período inválido',
                 },
               },
             },
           ),
         );
+        when(() => client.get(parameter: any(named: 'parameter')))
+            .thenThrow(failure);
 
-        final data = await repository.getExpenses(groupBy: .category);
+        final errors = (await errorsOf(load())).errors;
+        final original = failure.errors.toEntity().errors;
 
-        expect(data.categories!.map((category) => category.category), [
-          'housing',
-          'future_category',
-        ]);
-        expect(data.categories!.last.percentage, 2.05);
-        expect(data.categories!.last.totalAmount, 7965);
-        expect(data.categories!.first.percentage, 55.50);
-        expect(data.categories!.first.totalAmount, 216000);
-        expect(() => data.categories!.clear(), throwsUnsupportedError);
+        expect(errors.length, original.length);
+        expect(errors.first.title, original.first.title);
+        expect(errors.first.pointer, original.first.pointer);
+        expect(errors.first.parameter, original.first.parameter);
+        expect(errors.first.code, original.first.code);
       },
     );
 
-    test('accepts zero totals with an empty grouping', () async {
-      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => Responses(
-          status: 200,
-          body: {
-            'data': {
-              ...resource,
-              'attributes': {
-                ...attributes,
-                'total_amount': '0',
-                'categories': [],
-              },
-            },
-          },
-        ),
-      );
-
-      final data = await repository.getExpenses(groupBy: .category);
-
-      expect(data.totalAmount, 0);
-      expect(data.categories, isEmpty);
-    });
-  });
-
-  group('Failure handling', () {
     test(
-      'preserves JSON:API validation errors and their query parameter',
+      'preserves legacy remote errors without rebuilding their metadata',
       () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => throw HttpResponseException.fromResponse(
-            Responses(
+        when(() => client.get(parameter: any(named: 'parameter'))).thenThrow(
+          HttpResponseException.fromResponse(
+            const Responses(
               status: 422,
               body: {
                 'errors': [
                   {
-                    'detail':
-                        'As datas inicial e final devem ser informadas juntas.',
-                    'title': 'Parâmetro inválido',
+                    'title': 'Período inválido',
                     'source': {
-                      'parameter': 'start_date',
                       'pointer': '/start_date',
+                      'parameter': 'start_date',
                     },
-                    'status': '422',
                   },
                   {'detail': 'Outro erro'},
                 ],
@@ -243,189 +393,71 @@ void main() {
           ),
         );
 
-        final errors = (await errorsOf(
-          repository.getExpenses(endDate: DateTime(2026, 10, 31)),
-        )).errors;
+        final errors = (await errorsOf(load())).errors;
 
         expect(errors, hasLength(2));
-        expect(errors.first.title, 'Parâmetro inválido');
-        expect(
-          errors.first.detail,
-          'As datas inicial e final devem ser informadas juntas.',
-        );
-        expect(errors.first.status, '422');
-        expect(errors.first.parameter, 'start_date');
         expect(errors.first.pointer, '/start_date');
+        expect(errors.first.parameter, 'start_date');
         expect(errors.last.detail, 'Outro erro');
       },
     );
 
-    test(
-      'propagates malformed success responses instead of business failures',
-      () async {
-        for (final body in <Map<String, dynamic>>[
-          {},
-          {'data': null},
-          {'data': []},
-          {'data': {}},
-          {
-            'data': {
-              ...resource,
-              'attributes': {...attributes, 'total_amount': '3.50'},
-            },
-          },
-          {
-            'data': {
-              ...resource,
-              'attributes': {...attributes, 'start_date': 'invalid'},
-            },
-          },
-          {
-            'data': {
-              ...resource,
-              'attributes': {
-                ...attributes,
-                'categories': [
-                  {
-                    'category': 'food',
-                    'total_amount': '100',
-                    'percentage': '100.00',
-                  },
-                  {
-                    'category': 'housing',
-                    'total_amount': 'invalid',
-                    'percentage': '0',
-                  },
-                ],
-              },
-            },
-          },
-        ]) {
-          when(() => client.get(parameter: any(named: 'parameter')))
-              .thenAnswer((_) async => Responses(status: 200, body: body));
-
-          await expectLater(
-            repository.getExpenses(),
-            throwsA(anyOf(isA<TypeError>(), isA<FormatException>())),
-          );
-        }
-      },
-    );
-
-    test(
-      'preserves transport errors and translates malformed errors',
-      () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => throw HttpResponseException.fromResponse(
-            Responses(
-              status: 503,
-              body: {
-                'errors': [
-                  {'title': 'Sem conexão', 'detail': 'Tente novamente.'},
-                ],
-              },
-            ),
+    for (final body in <Map<String, dynamic>>[
+      {},
+      {'errors': []},
+      {'errors': 'invalid'},
+    ]) {
+      test('uses a safe fallback for malformed HTTP errors: $body', () async {
+        when(() => client.get(parameter: any(named: 'parameter'))).thenThrow(
+          HttpResponseException.fromResponse(
+            Responses(status: 503, body: body),
           ),
         );
+
         expect(
-          (await errorsOf(repository.getExpenses())).errors.single.title,
-          'Sem conexão',
+          (await errorsOf(load())).errors.single.title,
+          'Erro desconhecido',
         );
+      });
+    }
 
-        for (final body in <Map<String, dynamic>>[
-          {},
-          {'errors': []},
-          {'errors': 'invalid'},
-        ]) {
-          when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-            (_) async => throw HttpResponseException.fromResponse(
-              Responses(status: 503, body: body),
-            ),
-          );
-          expect(
-            (await errorsOf(repository.getExpenses())).errors.single.title,
-            'Erro desconhecido',
-          );
-        }
-      },
-    );
-
-    test(
-      'propagates synchronous unexpected client exceptions unchanged',
-      () async {
-        final error = StateError('unexpected');
-        when(() => client.get(parameter: any(named: 'parameter')))
-            .thenThrow(error);
-
-        await expectLater(repository.getExpenses(), throwsA(same(error)));
-      },
-    );
-
-    test(
-      'propagates asynchronous unexpected client exceptions unchanged',
-      () async {
-        final error = StateError('offline');
-        when(() => client.get(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => throw error);
-
-        await expectLater(repository.getExpenses(), throwsA(same(error)));
-      },
-    );
-
-    for (final exception in <HttpClientException>[
+    for (final failure in <HttpClientException>[
       HttpTransportException(failure: HttpExceptionEnum.connection),
+      HttpTransportException(failure: HttpExceptionEnum.timeout),
+      HttpTransportException(failure: HttpExceptionEnum.cancelled),
       HttpInvalidResponseException(status: 200),
       HttpUnexpectedException(),
     ]) {
       test(
-        'translates ${exception.runtimeType} into a safe application failure',
+        'translates ${failure.runtimeType} ${failure is HttpTransportException ? failure.failure.name : ''} into MetricsException',
         () async {
           when(() => client.get(parameter: any(named: 'parameter')))
-              .thenAnswer((_) async => throw exception);
+              .thenThrow(failure);
+
           expect(
-            (await errorsOf(repository.getExpenses())).errors.single.title,
+            (await errorsOf(load())).errors.single.title,
             'Erro desconhecido',
           );
         },
       );
     }
-  });
 
-  group('Precision and completion', () {
-    test(
-      'preserves large integer cents without floating-point conversion',
-      () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => Responses(
-            status: 200,
-            body: {
-              'data': {
-                ...resource,
-                'attributes': {
-                  ...attributes,
-                  'total_amount': '9007199254740993',
-                },
-              },
-            },
-          ),
-        );
-        expect((await repository.getExpenses()).totalAmount, 9007199254740993);
-      },
-    );
+    for (final synchronous in [false, true]) {
+      test(
+        'propagates an unexpected failure with synchronous=$synchronous',
+        () async {
+          final failure = StateError('unexpected');
+          if (synchronous) {
+            when(() => client.get(parameter: any(named: 'parameter')))
+                .thenThrow(failure);
+          } else {
+            when(() => client.get(parameter: any(named: 'parameter')))
+                .thenAnswer((_) async => throw failure);
+          }
 
-    test('waits for HTTP completion before returning metrics', () async {
-      final pending = Completer<Responses>();
-      when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) => pending.future);
-      var completed = false;
-      final response = repository.getExpenses().then((value) {
-        completed = true;
-        return value;
-      });
-      expect(completed, isFalse);
-      pending.complete(const Responses(status: 200, body: {'data': resource}));
-      expect((await response).totalAmount, 389205);
-      expect(completed, isTrue);
-    });
+          await expectLater(load(), throwsA(same(failure)));
+        },
+      );
+    }
   });
 }

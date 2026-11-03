@@ -1,100 +1,59 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/metrics/infrastructure/responses/expense_category_metrics_response.dart';
 import 'package:cordato/features/metrics/infrastructure/responses/expense_metrics_response.dart';
+import 'package:cordato/features/metrics/infrastructure/responses/expense_category_metrics_response.dart';
 
 void main() {
-  late Map<String, dynamic> attributes;
-
-  setUp(() {
-    attributes = {
-      'total_amount': '389205',
-      'start_date': '2026-10-01',
-      'end_date': '2026-10-31',
-    };
-  });
-
-  group('Metrics conversion and optional grouping', () {
-    test(
-      'parses a JSON:API resource preserving integer cents and civil dates',
-      () {
-        final response = ExpenseMetricsResponse.fromJson({
-          'id': 'metrics-id',
-          'type': 'expense-metrics',
-          'attributes': attributes,
-        });
-        final entity = response.toEntity();
-
-        expect(entity.id, 'metrics-id');
-        expect(entity.totalAmount, 389205);
-        expect(entity.startDate, DateTime(2026, 10, 1));
-        expect(entity.endDate, DateTime(2026, 10, 31));
-        expect(entity.startDate.isUtc, isFalse);
-        expect(entity.endDate.isUtc, isFalse);
-        expect(entity.categories, isNull);
+  const record = {
+    'id': 'metrics-id',
+    'total_amount': '389205',
+    'end_date': '2026-10-31',
+    'start_date': '2026-10-01',
+    'categories': [
+      {'category': 'housing', 'total_amount': '216000', 'percentage': 55.5},
+      {
+        'category': 'future_category',
+        'total_amount': '7965',
+        'percentage': 2.05,
       },
-    );
+    ],
+  };
 
-    test('preserves explicit null grouping and zero totals', () {
-      attributes['total_amount'] = '0';
-      attributes['categories'] = null;
+  group('PocketBase view conversion', () {
+    test('parses a flat record preserving civil dates and server values', () {
+      final response = ExpenseMetricsResponse.fromJson(record);
+      final entity = response.toEntity();
+
+      expect(entity.id, 'metrics-id');
+      expect(entity.totalAmount, 389205);
+      expect(entity.startDate, DateTime(2026, 10));
+      expect(entity.endDate, DateTime(2026, 10, 31));
+      expect(entity.startDate.isUtc, isFalse);
+      expect(entity.endDate.isUtc, isFalse);
+      expect(entity.categories!.map((category) => category.category), [
+        'housing',
+        'future_category',
+      ]);
+      expect(entity.categories!.first.totalAmount, 216000);
+      expect(entity.categories!.first.percentage, 55.5);
+      expect(entity.categories!.last.totalAmount, 7965);
+      expect(entity.categories!.last.percentage, 2.05);
+      expect(() => response.categories!.clear(), throwsUnsupportedError);
+      expect(() => entity.categories!.clear(), throwsUnsupportedError);
+    });
+
+    test('accepts zero totals with an empty grouping', () {
       final entity = ExpenseMetricsResponse.fromJson({
-        'id': 'empty',
-        'attributes': attributes,
+        ...record,
+        'total_amount': '0',
+        'categories': [],
       }).toEntity();
 
       expect(entity.totalAmount, 0);
-      expect(entity.categories, isNull);
+      expect(entity.categories, isEmpty);
     });
 
-    test('distinguishes an empty grouping from an absent grouping', () {
-      attributes['categories'] = [];
-      final response = ExpenseMetricsResponse.fromJson({
-        'id': 'grouped',
-        'attributes': attributes,
-      });
-
-      expect(response.categories, isNotNull);
-      expect(response.toEntity().categories, isEmpty);
-    });
-
-    test(
-      'converts grouped metrics preserving category order and percentages',
-      () {
-        attributes['categories'] = [
-          {
-            'category': 'housing',
-            'total_amount': '216000',
-            'percentage': '55.50',
-          },
-          {
-            'category': 'future_category',
-            'total_amount': '7965',
-            'percentage': '2.05',
-          },
-        ];
-        final response = ExpenseMetricsResponse.fromJson({
-          'id': 'grouped',
-          'attributes': attributes,
-        });
-        final entity = response.toEntity();
-
-        expect(entity.categories!.map((category) => category.category), [
-          'housing',
-          'future_category',
-        ]);
-        expect(entity.categories!.first.totalAmount, 216000);
-        expect(entity.categories!.first.percentage, 55.50);
-        expect(entity.categories!.last.totalAmount, 7965);
-        expect(entity.categories!.last.percentage, 2.05);
-        expect(() => response.categories!.clear(), throwsUnsupportedError);
-        expect(() => entity.categories!.clear(), throwsUnsupportedError);
-      },
-    );
-  });
-
-  group('Immutability and malformed responses', () {
-    test('copies the supplied category list before conversion', () {
+    test('copies constructor categories before conversion', () {
       const category = ExpenseCategoryMetricsResponse(
         category: 'housing',
         totalAmount: 100,
@@ -104,49 +63,40 @@ void main() {
       final response = ExpenseMetricsResponse(
         id: 'snapshot',
         totalAmount: 100,
-        startDate: DateTime(2026, 10, 1),
+        startDate: DateTime(2026, 10),
         endDate: DateTime(2026, 10, 31),
         categories: categories,
       );
+
       categories.clear();
 
       expect(response.categories, [category]);
       expect(response.toEntity().categories!.single.category, 'housing');
     });
+  });
 
-    test('rejects malformed amounts and dates', () {
-      for (final invalid in [
-        {'total_amount': '3892.05'},
-        {'start_date': 'invalid'},
-        {'end_date': 'invalid'},
-      ]) {
+  group('Malformed records', () {
+    final malformed = <String, Map<String, dynamic>>{
+      'old envelope': {'id': 'legacy', 'attributes': record},
+      'null grouping': {...record, 'categories': null},
+      'fractional amount': {...record, 'total_amount': '3892.05'},
+      'numeric amount': {...record, 'total_amount': 389205},
+      'invalid start': {...record, 'start_date': 'invalid'},
+      'invalid end': {...record, 'end_date': 'invalid'},
+      'invalid category': {
+        ...record,
+        'categories': [
+          {'category': 'food', 'total_amount': 'invalid', 'percentage': 28.44},
+        ],
+      },
+    };
+    for (final scenario in malformed.entries) {
+      test('rejects ${scenario.key} without a business fallback', () {
         expect(
-          () => ExpenseMetricsResponse.fromJson({
-            'id': 'invalid',
-            'attributes': {...attributes, ...invalid},
-          }),
-          throwsFormatException,
+          () => ExpenseMetricsResponse.fromJson(scenario.value),
+          throwsA(anyOf(isA<TypeError>(), isA<FormatException>())),
         );
-      }
-    });
-
-    test('rejects the entire response when one category cannot be parsed', () {
-      attributes['categories'] = [
-        {
-          'category': 'housing',
-          'total_amount': '216000',
-          'percentage': '55.50',
-        },
-        {'category': 'food', 'total_amount': 'invalid', 'percentage': '28.44'},
-      ];
-
-      expect(
-        () => ExpenseMetricsResponse.fromJson({
-          'id': 'invalid-category',
-          'attributes': attributes,
-        }),
-        throwsFormatException,
-      );
-    });
+      });
+    }
   });
 }

@@ -8,8 +8,8 @@ final class const ExpenseCategoryMetricsResponse({
   factory ExpenseCategoryMetricsResponse.fromJson(Map<String, dynamic> json) =>
       ExpenseCategoryMetricsResponse(
         category: json['category'] as String,
+        percentage: (json['percentage'] as num).toDouble(),
         totalAmount: int.parse(json['total_amount'] as String),
-        percentage: double.parse(json['percentage'] as String),
       );
 }
 

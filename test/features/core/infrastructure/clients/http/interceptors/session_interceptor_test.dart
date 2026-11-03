@@ -83,12 +83,15 @@ void main() {
 
       await client.get(
         parameter: const Requests(
-          path: 'metrics/expenses',
-          query: {'group_by': 'category', 'start_date': '2026-10-01'},
+          path: 'collections/expense_monthly_metrics/records',
+          query: {'filter': 'start_date = "2026-10-01"'},
         ),
       );
 
-      expect(captured!.uri.path, '/api/metrics/expenses');
+      expect(
+        captured!.uri.path,
+        '/api/collections/expense_monthly_metrics/records',
+      );
       expect(captured!.headers['Authorization'], 'Bearer opaque-token');
       verify(() => storage.read(key: StorageKeyEnum.token.key)).called(1);
     });
@@ -146,6 +149,10 @@ void main() {
     test('does not leak token to unknown collection paths or absolute refresh URLs', () async {
       for (final path in [
         'collections/other/records',
+        'collections/expense_monthly_metrics/records-other',
+        'collections/expense_monthly_metrics/records/extra',
+        'https://example.com/api/collections/expense_monthly_metrics/records',
+        'https://external.example/api/collections/expense_monthly_metrics/records',
         'collections/expenses/records/',
         'collections/expenses/records-other',
         'collections/users/auth-refresh/extra',
@@ -196,6 +203,7 @@ void main() {
     test('does not authenticate absolute or unrelated metrics paths', () async {
       for (final path in [
         'metrics',
+        'metrics/expenses',
         'metrics/expenses/1',
         'metrics/expenses-other',
         'https://example.com/api/metrics/expenses',
@@ -216,7 +224,11 @@ void main() {
           .thenAnswer((_) async {});
 
       await expectLater(
-        client.get(parameter: const Requests(path: 'metrics/expenses')),
+        client.get(
+          parameter: const Requests(
+            path: 'collections/expense_monthly_metrics/records',
+          ),
+        ),
         throwsA(
           isA<HttpResponseException>().having(
             (error) => error.status,

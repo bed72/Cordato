@@ -56,12 +56,12 @@ void main() {
             'expenses',
             'users/10',
             'expenses/8',
-            'metrics/expenses',
             'collections/users/records',
             'collections/expenses/records',
             'collections/users/auth-refresh',
             'collections/users/records/user-1',
             'collections/expenses/records/expense-1',
+            'collections/expense_monthly_metrics/records',
           ]) {
             await client.get(parameter: Requests(path: path));
 

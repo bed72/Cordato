@@ -4,12 +4,15 @@ enum HttpPathEnum({
 }) {
   user(path: 'users', authenticated: true),
   expenses(path: 'expenses', authenticated: true),
-  expenseMetrics(path: 'metrics/expenses', authenticated: true),
+  signUp(path: 'collections/users/records', authenticated: false),
   userRecords(path: 'collections/users/records', authenticated: true),
   authRefresh(path: 'collections/users/auth-refresh', authenticated: true),
   expenseRecords(path: 'collections/expenses/records', authenticated: true),
   signIn(path: 'collections/users/auth-with-password', authenticated: false),
-  signUp(path: 'collections/users/records', authenticated: false),
+  expenseMetrics(
+    path: 'collections/expense_monthly_metrics/records',
+    authenticated: true,
+  ),
   resendEmailVerification(
     path: 'collections/users/request-verification',
     authenticated: false,

@@ -13,16 +13,15 @@ final class ExpenseMetricsResponse({
       : .unmodifiable(categories);
 
   factory ExpenseMetricsResponse.fromJson(Map<String, dynamic> json) {
-    final attributes = json['attributes'] as Map<String, dynamic>;
-    final categories = attributes['categories'] as List<dynamic>?;
+    final categories = json['categories'] as List<dynamic>;
 
     return ExpenseMetricsResponse(
       id: json['id'] as String,
-      totalAmount: int.parse(attributes['total_amount'] as String),
-      endDate: DateTime.parse(attributes['end_date'] as String),
-      startDate: DateTime.parse(attributes['start_date'] as String),
+      endDate: DateTime.parse(json['end_date'] as String),
+      totalAmount: int.parse(json['total_amount'] as String),
+      startDate: DateTime.parse(json['start_date'] as String),
       categories: categories
-          ?.map(
+          .map(
             (category) => ExpenseCategoryMetricsResponse.fromJson(
               category as Map<String, dynamic>,
             ),

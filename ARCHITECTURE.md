@@ -188,14 +188,15 @@ uma feature para contornar imports proibidos.
 
 O backend adotado está em `backend/`, com PocketBase 0.41.1 e APIs nativas.
 Schema e regras ficam em `pb_migrations/`; empacotamento em `Dockerfile`,
-`compose.yml` e `docker/`; testes em `tests/`. Não há hooks, worker ou runtime
+`compose.yml` e `docker/`. Não há suíte de testes do backend, hooks, worker ou runtime
 Node. Configuração operacional e evidências pertencem ao
 [README do backend](backend/README.md); suas regras de manutenção estão em
 [backend/AGENTS.md](backend/AGENTS.md).
 
-O escopo implementado é conta individual e CRUD de despesas próprias. Login
+O escopo implementado é conta individual, CRUD de despesas próprias e métricas
+mensais por proprietário em View Collection. Login
 exige e-mail verificado, exclusão da conta remove suas despesas e regras nativas
-protegem propriedade. Isso não implementa família, orçamento, agregações,
+protegem propriedade. Isso não implementa família, orçamento, agregações arbitrárias,
 insights ou endpoints customizados de sugestões. As sugestões do Flutter usam
 a listagem nativa filtrada do histórico pessoal.
 
@@ -203,13 +204,13 @@ a listagem nativa filtrada do histórico pessoal.
 
 | Aspecto | Flutter atual | PocketBase atual |
 | --- | --- | --- |
-| Transporte | Authentication, Session, User e Expense usam endpoints nativos PocketBase; Metrics mantém JSON:API. | API REST nativa de coleções, sem envelope JSON:API. |
+| Transporte | Authentication, Session, User, Expense e Metrics usam endpoints nativos PocketBase. | API REST nativa de coleções, sem envelope JSON:API. |
 | Autenticação | Sign-in persiste JWT e `record.id` nas chaves existentes; sign-out limpa storage local sem HTTP. | Autenticação nativa da coleção `users`; não há endpoint de logout ou revogação individual do JWT ao sair. |
 | Confirmação | Após cadastro, confirmação solicita automaticamente `request-verification`; callback recebe `token` e usa `confirm-verification`. Cooldown de 60 segundos no Bloc somente após sucesso. App Links/Universal Links declarados; associação pública e homologação pendentes. | Verificação nativa; migration incremental direciona verificação de `users` ao app. Templates administrativos permanecem no PocketBase. A criação do record não envia confirmação por si só. |
-| Erros e paginação | HTTP aceita erros JSON:API e PocketBase; Expense usa paginação nativa e erros 400 por campo. | Formatos nativos PocketBase; Metrics ainda exige adaptação. |
+| Erros e paginação | HTTP aceita erros JSON:API e PocketBase; Expense usa paginação nativa e erros 400 por campo; Metrics lê a lista nativa da view. | Formatos nativos PocketBase. |
 | Datas de despesas | Data civil escrita como meia-noite UTC e lida pelos componentes do dia, sem conversão de fuso. | `occurred_on` opcional como Date UTC, sem default. |
 | Categoria | Novas despesas recebem `other`; edição preserva a categoria retornada. Sem classificação automática. | Select opcional; vazio não significa `other`. |
-| Recursos derivados | Sugestões consultam o histórico por GET filtrado; Metrics mantém endpoint legado. | Sem endpoint de sugestões ou agregações nesta configuração. |
+| Recursos derivados | Sugestões consultam o histórico por GET filtrado; Metrics lê totais e percentuais mensais já calculados. | View `expense_monthly_metrics` agrupa despesas por proprietário/mês; sem endpoint customizado. |
 
 Centavos inteiros continuam obrigatórios. Expense utiliza a representação UTC
 como codificação da data civil: não chama `toUtc()` sobre a seleção local nem
@@ -220,7 +221,7 @@ nem fallback que invente data ou categoria para campos vazios do PocketBase.
 Trocar a URL não é migração. SDK/adapters, persistência de sessão, mapeamento de
 erros, verificação de e-mail, paginação e destino dos recursos ausentes precisam
 de decisão e implementação próprias. O aplicativo mantém `IHttpClient`/`HttpClient`
-com Dio, com adaptação de Authentication, Session, User, Expense e erros
+com Dio, com adaptação de Authentication, Session, User, Expense, Metrics e erros
 nativos; o SDK PocketBase não está integrado ao Flutter.
 
 A arquitetura de camadas Flutter permanece válida. As seções seguintes descrevem
@@ -634,12 +635,40 @@ Sem alteração no backend, deploy ou homologação real de regras e cascata.
 em `metrics/infrastructure/repositories/` recebe `IHttpClient` diretamente e
 absorve o data source remoto removido, sem storage ou operações de escrita.
 
-O repository consulta `metrics/expenses`, serializa datas civis sem conversão de
-fuso e envia somente os filtros fornecidos. Não inventa período, agrupamento,
-datas complementares ou validação remota. Ausência de filtros mantém query nula.
-O DTO permanece interno a infrastructure e devolve entidade com centavos inteiros,
-categorias imutáveis na ordem da API, categorias desconhecidas e distinção entre
-agrupamento ausente e vazio. Percentuais continuam `double`, pois não são dinheiro.
+O repository consulta `collections/expense_monthly_metrics/records` com filtro
+`start_date` por mês civil completo. `_isCompleteMonth` valida o período sem
+conversão de fuso: ambas as datas devem delimitar o mesmo mês; ambas ausentes
+selecionam o mês atual. Datas incompletas, intervalos parciais e múltiplos meses
+falham antes do HTTP com `MetricsException`, sem arredondar a seleção.
+
+A view é criada por migration aditiva, inclusive no bootstrap de bancos novos,
+sem reaplicar ou alterar a inicial em instalações existentes. Agrupa por `owner`
+e mês de `occurred_on`, somando `CAST(amount AS INTEGER)` no SQLite. Somas são
+expostas como texto decimal para não passar por float/JSON numérico no transporte.
+Categorias vêm em um array JSON com valores textuais em centavos e percentuais
+numéricos arredondados a duas casas, em ordem de valor decrescente e categoria
+como desempate. O id é o menor id das despesas do grupo e pode mudar ao excluir
+essa despesa. Campos e regras da view são inferidos/persistidos pelo PocketBase;
+`listRule` e `viewRule` exigem usuário verificado da coleção `users` e o próprio
+`owner`. Escritas ficam bloqueadas. Isso define autorização no servidor, não uma
+garantia implementada ou homologada pelo Flutter.
+
+O DTO interpreta records planos, sem JSON:API. O repository não soma despesas,
+não recalcula percentuais e não lê o proprietário do storage; Bearer pertence ao
+interceptor, restrito ao endpoint conhecido. Só uma resposta nativa com `items`
+vazio representa mês sem despesas, retornando total zero e categorias vazias
+quando agrupadas. Mais de um record ou período diferente do solicitado lança
+`FormatException`. Agrupamento omitido continua produzindo `categories: null` na
+entidade; agrupado preserva array imutável, ordem e categorias desconhecidas.
+Percentuais continuam `double`, pois não são dinheiro. A UI, os cards e a
+navegação para despesas filtradas por categoria/mês não são alterados.
+
+Não há migração ou classificação dos registros existentes: `category` vazio não
+vira `other`, e despesas sem data não pertencem a um mês. A view não é materializada
+nem emite realtime; recargas existentes atualizam os dados após mutações. A soma
+deve caber em INTEGER de 64 bits do SQLite; overflow causa falha, não conversão
+silenciosa para centavos em ponto flutuante. Regras, precisão e desempenho reais
+exigem homologação operacional autorizada antes de declarar a migração implantada.
 
 Respostas HTTP de erro viram `MetricsException`, preservando mensagens, ordem,
 pointer e parameter. Demais `HttpClientException` usam fallback seguro. Parsing
