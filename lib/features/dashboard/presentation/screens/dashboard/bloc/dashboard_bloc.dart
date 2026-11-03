@@ -6,14 +6,15 @@ import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
+import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
-import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
-import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
+import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_state.dart';
@@ -71,7 +72,7 @@ final class DashboardBloc({
 
     try {
       if (userOnly) {
-        final user = await _getUser();
+        final user = await _getUser(emit);
         if (!_active(emit)) return;
         emit(
           DashboardState(
@@ -86,7 +87,7 @@ final class DashboardBloc({
         );
         return;
       }
-      final (user, history) = await (_getUser(), _getHistory()).wait;
+      final (user, history) = await (_getUser(emit), _getHistory()).wait;
       if (!_active(emit)) return;
       final date = history?.items.firstOrNull?.occurredOn;
       final firstMonth = date == null ? null : DateTime(date.year, date.month);
@@ -131,8 +132,13 @@ final class DashboardBloc({
           phase: .failure,
           financialError: switch (error) {
             ErrorsEntity() => error,
+            UserException(:final errors) => errors,
             MetricsException(:final errors) => errors,
             ExpenseException(:final errors) => errors,
+            ParallelWaitError(
+              errors: (AsyncError(error: UserException(:final errors)), null),
+            ) =>
+              errors,
             ParallelWaitError(
               errors: (
                 AsyncError(error: MetricsException(:final errors)),
@@ -154,11 +160,14 @@ final class DashboardBloc({
     }
   }
 
-  Future<UserEntity?> _getUser() async {
+  Future<UserEntity> _getUser(Emitter<DashboardState> emit) async {
     try {
       return await _userRepository.getById();
-    } catch (_) {
-      return null;
+    } on UserException {
+      rethrow;
+    } catch (error, stackTrace) {
+      if (_active(emit)) addError(error, stackTrace);
+      rethrow;
     }
   }
 

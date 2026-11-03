@@ -534,6 +534,17 @@ ou bypasses de segurança no app.
 `IUserRepository` fica em `user/application/repositories/` e retorna diretamente
 `Future<UserEntity>` em `getById`/`update` e `Future<void>` em `delete`.
 `UserException`, em `application/exceptions/`, transporta os erros esperados.
+
+A Dashboard consulta o perfil por esse mesmo contrato, já integrado ao PocketBase.
+Falha do perfil, tanto na carga completa quanto na atualização ao voltar de User
+ou Settings, leva à tela de erro global, sem publicar conteúdo parcial ou assumir
+um usuário ausente. `UserException` preserva a mesma `ErrorsEntity`, inclusive
+vazia; falhas inesperadas usam fallback seguro e `addError`. Resultados de ciclos
+substituídos ou encerrados não alteram o estado nem reportam falhas tardias.
+Sucesso na atualização do perfil preserva os dados financeiros confirmados;
+retry após falha recarrega a Dashboard completa. Nome vazio continua exibindo
+`Trocado` somente na apresentação. Esta alteração não migra Metrics nem modifica
+o tratamento existente da consulta auxiliar do histórico de despesas.
 O repository concreto fica em `user/infrastructure/repositories/`, recebe
 `IHttpClient` e `IStorageClient` e absorve os antigos data sources local/remoto.
 

@@ -142,6 +142,12 @@ usa mais commands. Os testes de repository usam clients mockados, e os de
 Bloc/tela usam o contrato do repository mockado. O teste composto do módulo
 verifica os dois Blocs, edição e retorno com recarga do perfil.
 
+Na Dashboard, nome e avatar usam o mesmo contrato de User/PocketBase e são
+consultados novamente ao voltar de dados pessoais ou configurações. Falhas nessa
+consulta levam à tela de erro global, inclusive durante atualização; não são
+tratadas como ausência de usuário. Retry é manual e recarrega a Dashboard completa.
+Nome vazio continua exibindo `Trocado`. A integração financeira não muda nesta etapa.
+
 Metrics também usa contrato em application, `MetricsException` e repository em
 infrastructure chamando HTTP diretamente, sem Either ou data source. Preserva
 filtros opcionais, datas civis, centavos e categorias da API. `ExpenseMetricsBloc`
