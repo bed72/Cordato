@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
+import 'package:cordato/features/core/presentation/widgets/empty_state_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
@@ -37,7 +38,8 @@ final class _DashboardScreenState extends State<DashboardScreen>
             ? ErrorScreen(
                 actionLabel: 'Tentar novamente',
                 title: 'Não foi possível carregar sua Dashboard.',
-                description: 'Não conseguimos carregar suas informações agora.',
+                description:
+                    'Não conseguimos carregar suas informações agora...',
                 onAction: state.canRetry
                     ? () => bloc.add(DashboardRetryRequested())
                     : null,
@@ -50,34 +52,70 @@ final class _DashboardScreenState extends State<DashboardScreen>
                 body: SafeArea(
                   child: RefreshIndicator(
                     onRefresh: refreshDashboard,
-                    child: ListView(
-                      padding: const .only(top: 20.0, bottom: 96.0),
+                    child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        DashboardMonthSelectorWidget(
-                          selectedMonth: state.selectedMonth,
-                          formatter: widget.dateFormatter,
-                          isLoading: state.isLoading,
-                          showNavigation: state.canGoBack || state.canGoForward,
-                          onPreviousMonth: state.canGoBack && !state.isLoading
-                              ? () =>
-                                    bloc.add(DashboardPreviousMonthRequested())
-                              : null,
-                          onNextMonth: state.canGoForward && !state.isLoading
-                              ? () => bloc.add(DashboardNextMonthRequested())
-                              : null,
+                      slivers: [
+                        SliverPadding(
+                          padding: const .only(top: 20.0),
+                          sliver: SliverToBoxAdapter(
+                            child: DashboardMonthSelectorWidget(
+                              isLoading: state.isLoading,
+                              formatter: widget.dateFormatter,
+                              selectedMonth: state.selectedMonth,
+                              showNavigation:
+                                  state.canGoBack || state.canGoForward,
+                              onPreviousMonth:
+                                  state.canGoBack && !state.isLoading
+                                  ? () => bloc.add(
+                                      DashboardPreviousMonthRequested(),
+                                    )
+                                  : null,
+                              onNextMonth:
+                                  state.canGoForward && !state.isLoading
+                                  ? () =>
+                                        bloc.add(DashboardNextMonthRequested())
+                                  : null,
+                            ),
+                          ),
                         ),
-                        MetricsSectionWidget(
-                          key: ValueKey(('metrics', state.selectedMonth)),
-                          metrics: state.metrics,
-                          moneyFormatter: widget.moneyFormatter,
-                        ),
-                        ExpensesSectionWidget(
-                          limit: 6,
-                          page: state.expenses,
-                          dateFormatter: widget.dateFormatter,
-                          moneyFormatter: widget.moneyFormatter,
-                        ),
+                        if (state.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Padding(
+                              padding: const .only(bottom: 96.0),
+                              child: EmptyStateWidget(
+                                icon: Icons.receipt_long_outlined,
+                                title: state.hasNoExpenseHistory
+                                    ? 'Seu primeiro gasto começa aqui'
+                                    : 'Nenhum gasto neste mês',
+                                description: state.hasNoExpenseHistory
+                                    ? 'Registre uma despesa para começar...'
+                                    : 'Seus gastos do mês aparecerão aqui...',
+                              ),
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const .only(bottom: 96.0),
+                            sliver: SliverList.list(
+                              children: [
+                                MetricsSectionWidget(
+                                  key: ValueKey((
+                                    'metrics',
+                                    state.selectedMonth,
+                                  )),
+                                  metrics: state.metrics,
+                                  moneyFormatter: widget.moneyFormatter,
+                                ),
+                                ExpensesSectionWidget(
+                                  limit: 6,
+                                  page: state.expenses,
+                                  dateFormatter: widget.dateFormatter,
+                                  moneyFormatter: widget.moneyFormatter,
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ),

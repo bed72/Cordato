@@ -1,15 +1,19 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
-import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_event.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_state.dart';
-import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
+
+import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
 
 mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   late ExpensesBloc bloc;
@@ -54,9 +58,6 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     }
     return '${widget.dateFormatter.formatMonth(period.from)} de ${period.from.year}';
   }
-
-  String? get filterLabel =>
-      [categoryLabel, periodLabel].whereType<String>().join(' · ');
 
   @override
   void initState() {

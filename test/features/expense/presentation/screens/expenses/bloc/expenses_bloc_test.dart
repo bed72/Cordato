@@ -1,12 +1,16 @@
 import 'dart:async';
 
+import 'package:mocktail/mocktail.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
+
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
+
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_event.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_state.dart';
@@ -94,6 +98,53 @@ void main() {
           [first],
         ),
         isA<ExpensesDeleted>().having((s) => s.data.items, 'removed', isEmpty),
+      ],
+    );
+  });
+
+  group('Empty presentation after deletion', () {
+    final from = DateTime(2026, 9);
+    final to = DateTime(2026, 9, 30);
+    final pending = Completer<void>();
+    final entered = Completer<void>();
+
+    blocTest<ExpensesBloc, ExpensesState>(
+      'deleting the last matching expense confirms empty only after persistence',
+      build: () {
+        when(() => repository.delete(id: '1')).thenAnswer((_) {
+          entered.complete();
+          return pending.future;
+        });
+        return ExpensesBloc(repository: repository);
+      },
+      seed: () => ExpensesReady(
+        data: ExpensesData(
+          items: [first],
+          category: 'food',
+          from: from,
+          to: to,
+          hasLoaded: true,
+        ),
+      ),
+      act: (bloc) async {
+        bloc.add(const ExpensesDeleteRequestedEvent(id: '1'));
+        await entered.future;
+        expect(bloc.state.isEmpty, isFalse);
+        expect(bloc.state.data.items, [first]);
+        pending.complete();
+      },
+      expect: () => [
+        isA<ExpensesDeleting>().having(
+          (state) => state.isEmpty,
+          'empty',
+          false,
+        ),
+        isA<ExpensesDeleted>()
+            .having((state) => state.isEmpty, 'empty', true)
+            .having((state) => state.data.hasFilters, 'filtered', true)
+            .having((state) => state.data.category, 'category', 'food')
+            .having((state) => state.data.from, 'from', from)
+            .having((state) => state.data.to, 'to', to),
       ],
     );
   });

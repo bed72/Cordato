@@ -83,6 +83,7 @@ final class DashboardBloc({
             expenses: previous.expenses,
             firstMonth: previous.firstMonth,
             currentMonth: previous.currentMonth,
+            hasNoExpenseHistory: previous.hasNoExpenseHistory,
           ),
         );
         return;
@@ -102,8 +103,8 @@ final class DashboardBloc({
       final (metrics, expenses) = await (
         Future.sync(
           () => _metricsRepository.getExpenses(
-            startDate: month,
             endDate: end,
+            startDate: month,
             groupBy: .category,
           ),
         ),
@@ -114,13 +115,14 @@ final class DashboardBloc({
       if (!_active(emit)) return;
       emit(
         DashboardState(
-          currentMonth: previous.currentMonth,
-          selectedMonth: month,
-          phase: .ready,
-          firstMonth: firstMonth,
           user: user,
+          phase: .ready,
           metrics: metrics,
           expenses: expenses,
+          selectedMonth: month,
+          firstMonth: firstMonth,
+          currentMonth: previous.currentMonth,
+          hasNoExpenseHistory: history != null && history.items.isEmpty,
         ),
       );
     } catch (error) {

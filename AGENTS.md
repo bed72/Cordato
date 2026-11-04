@@ -26,6 +26,9 @@ representada como
 meia-noite UTC sem conversão de fuso; filtros finais incluem todo o dia escolhido.
 Sugestões consultam até 30 registros recentes e deduplicam descrições sem
 diferenciar maiúsculas/minúsculas, sem endpoint customizado ou classificação.
+Sugestões incluem a categoria tipada do registro mais recente para cada descrição;
+aceitar uma sugestão aplica essa categoria no formulário, inclusive `other`,
+preservando a data e o valor manual. A projeção consulta `id,description,amount,category`.
 Não há migração de registros existentes nem fallback para categoria/data vazias.
 Metrics consulta `collections/metrics/records`, uma view mensal
 somente leitura com isolamento por proprietário. Totais em centavos e percentuais

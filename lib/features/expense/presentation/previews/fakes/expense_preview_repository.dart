@@ -15,11 +15,16 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
     required String query,
   }) async =>
       [
-            ExpenseSuggestionEntity(id: 'market', description: 'Mercado'),
+            ExpenseSuggestionEntity(
+              id: 'market',
+              description: 'Mercado',
+              category: .food,
+            ),
             ExpenseSuggestionEntity(
               id: 'rent',
               cents: 160000,
               description: 'Aluguel',
+              category: .housing,
             ),
           ]
           .where(

@@ -8,6 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_event.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_state.dart';
@@ -21,6 +22,7 @@ void main() {
     id: 'rent',
     description: 'Aluguel',
     cents: 160000,
+    category: .housing,
   );
 
   setUp(() {
@@ -49,6 +51,10 @@ void main() {
         verifyNever(() => repository.suggestions(query: any(named: 'query')));
         async.elapse(const Duration(milliseconds: 1));
         expect((bloc.state as ExpenseSuggestionsSuccess).suggestions, [rent]);
+        expect(
+          (bloc.state as ExpenseSuggestionsSuccess).suggestions.single.category,
+          ExpenseCategoryEnum.housing,
+        );
         expect(
           () => (bloc.state as ExpenseSuggestionsSuccess).suggestions.clear(),
           throwsUnsupportedError,

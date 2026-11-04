@@ -38,10 +38,38 @@ Widget previewLoadingMonthlyDashboardScreen() => _screenPreview(loading: true);
 
 @CordatoPreview(
   group: 'Dashboard / Telas',
-  name: 'Mês vazio',
+  name: 'Primeiro gasto / Claro',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.light,
+)
+@CordatoPreview(
+  group: 'Dashboard / Telas',
+  name: 'Primeiro gasto / Escuro',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.dark,
+)
+Widget previewFirstExpenseDashboardScreen() => _screenPreview(empty: true);
+
+@CordatoPreview(
+  group: 'Dashboard / Telas',
+  name: 'Mês vazio com histórico',
   size: cordatoPhonePreviewSize,
 )
-Widget previewEmptyMonthlyDashboardScreen() => _screenPreview(empty: true);
+Widget previewEmptyMonthlyDashboardScreen() =>
+    _screenPreview(empty: true, hasHistory: true);
+
+@CordatoPreview(
+  group: 'Dashboard / Telas',
+  name: 'Primeiro gasto / Texto ampliado',
+  size: Size(320.0, 568.0),
+)
+Widget previewLargeTextEmptyDashboardScreen() => Builder(
+  builder: (context) => MediaQuery(
+    data: MediaQuery.of(context)
+        .copyWith(textScaler: const TextScaler.linear(2)),
+    child: _screenPreview(empty: true),
+  ),
+);
 
 @CordatoPreview(
   group: 'Dashboard / Telas',
@@ -74,6 +102,7 @@ Widget previewDashboardUserFallback() => _screenPreview(userFailure: true);
 
 Widget _screenPreview({
   bool empty = false,
+  bool hasHistory = false,
   bool loading = false,
   bool failure = false,
   bool userFailure = false,
@@ -92,7 +121,16 @@ Widget _screenPreview({
       expenseRepository: ExpensesListPreviewRepository(
         loading: loading,
         items: empty
-            ? []
+            ? [
+                if (hasHistory)
+                  ExpenseEntity(
+                    id: 'previous-month-expense',
+                    category: .food,
+                    description: 'Gasto do mês anterior',
+                    cents: .create(cents: 1500),
+                    occurredOn: DateTime(month.year, month.month - 1, 15),
+                  ),
+              ]
             : [
                 for (int index = 0; index < 6; index++)
                   ExpenseEntity(

@@ -10,8 +10,9 @@ final class DashboardState({
   final DateTime? firstMonth,
   final DateTime? _selectedMonth,
   final ExpensePageEntity? expenses,
-  final ExpenseMetricsEntity? metrics,
   final ErrorsEntity? financialError,
+  final ExpenseMetricsEntity? metrics,
+  final bool hasNoExpenseHistory = false,
   final DashboardPhaseEnum phase = .loading,
 }) {
   final DateTime _referenceDate = currentMonth ?? .now();
@@ -20,6 +21,10 @@ final class DashboardState({
   bool get canRefresh => phase == .ready;
   bool get isLoading => phase == .loading;
   bool get hasFinancialError => phase == .failure;
+  bool get isEmpty =>
+      phase == .ready &&
+      expenses?.items.isEmpty == true &&
+      metrics?.totalAmount == 0;
   DateTime get selectedMonth => _selectedMonth ?? currentMonth;
   DateTime get currentMonth =>
       DateTime(_referenceDate.year, _referenceDate.month);

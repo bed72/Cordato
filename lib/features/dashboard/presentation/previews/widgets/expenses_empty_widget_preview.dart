@@ -6,7 +6,7 @@ import 'package:cordato/features/dashboard/presentation/widgets/expenses/expense
 @CordatoPreview(
   group: 'Dashboard / Despesas',
   name: 'Estado vazio',
-  size: Size(390.0, 180.0),
+  size: cordatoPhonePreviewSize,
 )
 Widget previewExpensesEmptyWidget() =>
     const Scaffold(body: Center(child: ExpensesEmptyWidget()));

@@ -96,6 +96,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     if (!widget.enabled || _isRunning || isEditing) return;
     setState(() {
       _selectedSuggestion = suggestion;
+      category = suggestion.category;
       descriptionFailure = null;
       if (!hasManualAmount) {
         cents = suggestion.cents ?? 0;

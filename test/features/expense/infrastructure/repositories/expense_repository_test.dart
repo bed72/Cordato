@@ -541,15 +541,63 @@ void main() {
   });
 
   group('Suggestions', () {
+    test(
+      'invalid historical category propagates without a partial result',
+      () async {
+        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
+          (_) async => const Responses(
+            status: 200,
+            body: {
+              'items': [
+                {
+                  'id': 'market',
+                  'description': 'Mercado',
+                  'amount': 20000,
+                  'category': 'food',
+                },
+                {
+                  'id': 'invalid',
+                  'description': 'Outro registro',
+                  'amount': 100,
+                  'category': 'unknown',
+                },
+              ],
+            },
+          ),
+        );
+
+        await expectLater(
+          repository.suggestions(query: 'Mer'),
+          throwsStateError,
+        );
+        verifyZeroInteractions(storage);
+      },
+    );
+
     test('suggestions use filtered history and keep the most recent description ignoring case', () async {
       when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
         (_) async => const Responses(
           status: 200,
           body: {
             'items': [
-              {'id': 'rent', 'description': 'Aluguel', 'amount': 160000},
-              {'id': 'market', 'description': 'Mercado', 'amount': 20000},
-              {'id': 'old-rent', 'description': 'ALUGUEL', 'amount': 150000},
+              {
+                'id': 'rent',
+                'description': 'Aluguel',
+                'amount': 160000,
+                'category': 'housing',
+              },
+              {
+                'id': 'market',
+                'description': 'Mercado',
+                'amount': 20000,
+                'category': 'food',
+              },
+              {
+                'id': 'old-rent',
+                'description': 'ALUGUEL',
+                'amount': 150000,
+                'category': 'other',
+              },
             ],
           },
         ),
@@ -558,6 +606,10 @@ void main() {
       final result = await repository.suggestions(query: query);
       expect(result.map((item) => item.id), ['rent', 'market']);
       expect(result.map((item) => item.cents), [160000, 20000]);
+      expect(result.map((item) => item.category), [
+        ExpenseCategoryEnum.housing,
+        ExpenseCategoryEnum.food,
+      ]);
       expect(() => result.clear(), throwsUnsupportedError);
       final request =
           verify(() => client.get(parameter: captureAny(named: 'parameter')))
@@ -572,7 +624,7 @@ void main() {
         'filter':
             r'''description ~ " [Demo] Aluguél ' || amount > 0 \\ & ?/# "''',
         'skipTotal': true,
-        'fields': 'id,description,amount',
+        'fields': 'id,description,amount,category',
       });
       expect(request.body, isNull);
       expect(request.headers, isNull);

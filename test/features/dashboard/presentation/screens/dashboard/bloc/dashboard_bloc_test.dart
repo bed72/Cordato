@@ -228,6 +228,61 @@ void main() {
     );
   });
 
+  group('Empty dashboard context', () {
+    test(
+      'successful empty history enables the first-expense message',
+      () async {
+        when(history).thenAnswer((_) async => page([]));
+
+        final ready = bloc.stream.firstWhere((state) => state.phase == .ready);
+        bloc.add(DashboardOpened());
+        final state = await ready;
+
+        expect(state.isEmpty, isTrue);
+        expect(state.hasNoExpenseHistory, isTrue);
+      },
+    );
+
+    test('an empty month with history is not first use', () async {
+      final ready = bloc.stream.firstWhere((state) => state.phase == .ready);
+      bloc.add(DashboardOpened());
+      final state = await ready;
+
+      expect(state.isEmpty, isTrue);
+      expect(state.hasNoExpenseHistory, isFalse);
+      expect(state.firstMonth, DateTime(2024, 1));
+    });
+
+    test('failed history does not fabricate first use', () async {
+      when(history).thenThrow(ExpenseException(errors: .unknown()));
+
+      final ready = bloc.stream.firstWhere((state) => state.phase == .ready);
+      bloc.add(DashboardOpened());
+      final state = await ready;
+
+      expect(state.isEmpty, isTrue);
+      expect(state.hasNoExpenseHistory, isFalse);
+      expect(state.firstMonth, isNull);
+    });
+
+    test('profile refresh preserves confirmed empty history', () async {
+      when(history).thenAnswer((_) async => page([]));
+      final opened = bloc.stream.firstWhere((state) => state.phase == .ready);
+      bloc.add(DashboardOpened());
+      await opened;
+
+      final refreshed = bloc.stream.firstWhere(
+        (state) => state.phase == .ready,
+      );
+      bloc.add(DashboardUserRequested());
+      final state = await refreshed;
+
+      expect(state.isEmpty, isTrue);
+      expect(state.hasNoExpenseHistory, isTrue);
+      verify(history).called(1);
+    });
+  });
+
   group('Section and auxiliary failures', () {
     for (final errors in [
       const ErrorsEntity(errors: []),

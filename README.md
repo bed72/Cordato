@@ -192,6 +192,24 @@ consulta levam à tela de erro global, inclusive durante atualização; não sã
 tratadas como ausência de usuário. Retry é manual e recarrega a Dashboard completa.
 Nome vazio continua exibindo `Trocado`.
 
+Dashboard e listagem de despesas compartilham o `EmptyStateWidget` do core:
+ícone, título e descrição opcional centralizados, sem card ou seta, com visual
+discreto de selo. Textos curtos cabem em uma linha no tamanho padrão e podem
+quebrar com fonte ampliada. Dashboard vazia não exibe total zerado nem seções
+redundantes: distingue histórico confirmado vazio de um mês sem gastos; falha na
+consulta do histórico não vira primeiro uso. Na listagem, filtros sem resultados
+têm mensagem própria; excluir a última despesa mostra o mesmo componente somente
+após sucesso e sem páginas pendentes. Carregamento e falhas preservam seus estados.
+As telas mantêm cabeçalhos, navegação, rolagem e atualização por gesto, com o selo
+centralizado no espaço restante. Previews incluem temas claro/escuro, primeiro
+gasto, mês vazio, filtros sem resultados e texto ampliado.
+Verificação: `flutter pub get` concluído; `flutter analyze` sem issues;
+`flutter test test/architecture test/features/dashboard test/features/expense/presentation/screens/expenses`
+com 104 aprovados. A suíte completa teve 1036 aprovados e mantém as 5 falhas
+anteriores nas descrições de categorias de Expense. `dart run tool/widget_preview.dart`
+compilou e serviu o catálogo, encerrado por timeout de 60 segundos sem cliente
+conectado ou validação visual pelo agente. `git diff --check` passou.
+
 Metrics também usa contrato em application, `MetricsException` e repository em
 infrastructure chamando HTTP diretamente, sem Either ou data source. Consulta
 `collections/metrics/records` por mês civil completo. Sem datas,
@@ -264,7 +282,8 @@ selecionada ao repository na criação e na edição; infrastructure envia seu v
 no JSON nativo do PocketBase. Edição sem mudança de categoria omite esse campo,
 enquanto selecionar Outros envia `other` explicitamente. A entidade confirmada
 pela API continua sendo a fonte do resultado, sem atualização otimista.
-Sugestões ainda não preenchem categoria e permanecem fora desta integração.
+Selecionar uma sugestão do histórico preenche também sua categoria, inclusive
+Outros, substituindo a seleção anterior do formulário.
 
 Verificação da integração de categorias: `flutter pub get` concluído e
 `flutter analyze` sem issues. O lote `flutter test test/architecture
@@ -288,15 +307,24 @@ No novo gasto, Descrição oferece autocomplete do histórico pessoal com
 `RawAutocomplete` nativo e o mesmo `TextFieldWidget` do core. A busca começa em
 3 caracteres, após 300 ms;
 respostas antigas são ignoradas e falhas não bloqueiam cadastro manual. Selecionar
-preenche a descrição e o valor opcional; valores confirmados manualmente são
+preenche a descrição, a categoria e o valor opcional; valores confirmados manualmente são
 preservados, com ação explícita para usar o sugerido. A data não muda e selecionar
 não salva nem configura recorrência. Edição não consulta sugestões.
 A consulta usa GET com filtro por descrição, valores escapados e até 30 despesas
 ordenadas por data decrescente, criação e ID. Descrições repetidas, ignorando caixa,
-mantêm o valor da ocorrência mais recente retornada. Não há deduplicação global,
+mantêm o valor e a categoria da ocorrência mais recente retornada. A projeção
+consulta `id,description,amount,category`; categoria ausente, vazia ou inválida
+não vira Outros nem um resultado parcial. Não há deduplicação global,
 IA, previsão ou classificação automática. Sem histórico, a lista fica vazia.
 Não há migração de registros antigos, fallback para categoria/data vazias,
 alteração de schema, deploy ou homologação real nesta integração.
+
+Verificação da categoria nas sugestões: `flutter pub get` concluído e
+`flutter analyze` sem issues. O lote de arquitetura, domain/infrastructure de
+Expense e Blocs do formulário aprovou 271 testes. `flutter test` teve 1065 aprovados
+e as mesmas 5 falhas anteriores nas descrições de categorias. O catálogo de previews
+compilou e foi servido até o timeout de 45 segundos, sem cliente conectado ou
+inspeção visual pelo agente. `git diff --check` passou.
 
 Os testes de responses cobrem DTOs e exceções HTTP atuais, sem `Either` ou
 `response<T>`. Messaging expõe `register()` e `onRegistered` com stream de FIDs,

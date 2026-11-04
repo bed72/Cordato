@@ -21,7 +21,7 @@ Widget previewLoadingExpensesSectionWidget() => _sectionPreview();
 @CordatoPreview(
   group: 'Dashboard / Despesas',
   name: 'Seção vazia',
-  size: Size(390.0, 220.0),
+  size: Size(390.0, 420.0),
 )
 Widget previewEmptyExpensesSectionWidget() =>
     _sectionPreview(data: ExpensePageEntity(items: [], next: null, prev: null));

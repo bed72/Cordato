@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/empty_state_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
@@ -39,8 +40,8 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
       body: SafeArea(
         child: BlocConsumer<ExpensesBloc, ExpensesState>(
           bloc: bloc,
-          listener: (_, state) => handleState(state),
           builder: (_, _) => _buildContent(),
+          listener: (_, state) => handleState(state),
         ),
       ),
     );
@@ -133,8 +134,25 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
             );
           },
         ),
-        SliverToBoxAdapter(child: _buildFeedback()),
-        const SliverToBoxAdapter(child: SizedBox(height: 24.0)),
+        if (bloc.state.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: EmptyStateWidget(
+              icon: bloc.state.data.hasFilters
+                  ? Icons.search_off_outlined
+                  : Icons.receipt_long_outlined,
+              title: bloc.state.data.hasFilters
+                  ? 'Nenhuma despesa encontrada'
+                  : 'Nenhuma despesa por aqui',
+              description: bloc.state.data.hasFilters
+                  ? 'Experimente ajustar os filtros.'
+                  : 'Seus gastos aparecerão aqui.',
+            ),
+          )
+        else ...[
+          SliverToBoxAdapter(child: _buildFeedback()),
+          const SliverToBoxAdapter(child: SizedBox(height: 24.0)),
+        ],
       ],
     ),
   );
@@ -152,17 +170,6 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
         title: 'Não foi possível carregar as despesas.',
         description: 'Tente novamente para continuar.',
         onRetry: retry,
-      );
-    }
-
-    if (hasLoaded && expenses.isEmpty) {
-      return ExpensesFeedbackWidget(
-        title: 'Ainda sem despesas',
-        description: activeCategory != null
-            ? 'Não há despesas para $filterLabel.'
-            : periodLabel == null
-            ? 'Seus gastos cadastrados aparecerão aqui.'
-            : 'Não há despesas em $periodLabel.',
       );
     }
 

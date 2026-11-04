@@ -781,14 +781,16 @@ transporta os erros esperados. O repository concreto fica em
 ou dependência de outro contexto financeiro.
 
 Sugestões usam `suggestions({required String query})`, retornando uma lista imutável
-de `ExpenseSuggestionEntity` com ID, descrição e centavos opcionais positivos.
+de `ExpenseSuggestionEntity` com ID, descrição, categoria tipada obrigatória e
+centavos opcionais positivos.
 O adapter atual sempre preenche os centavos pelo record do histórico:
-`ExpenseSuggestionResponse` interpreta `id`, `description` e `amount` nativos.
+`ExpenseSuggestionResponse` interpreta `id`, `description`, `amount` e `category`
+nativos. Categoria é convertida por `ExpenseCategoryEnum.value`, sem fallback.
 O repository consulta `collections/expenses/records` com `description ~ <valor>`,
 serializando o valor com `jsonEncode` para impedir injeção de expressões.
-Usa `page: 1`, `perPage: 30`, `skipTotal: true`, projeção dos três campos e
+Usa `page: 1`, `perPage: 30`, `skipTotal: true`, projeção dos quatro campos e
 ordenação `-occurred_on,-created,-id`. Deduplica descrições sem diferenciar caixa,
-mantendo a primeira ocorrência e seu valor; não busca todo o histórico para
+mantendo a primeira ocorrência, seu valor e sua categoria; não busca todo o histórico para
 deduplicação global. Sem histórico, não há sugestões. Não há IA ou endpoint
 customizado. A autorização continua nas regras do backend. Parsing inválido
 propaga como nas demais operações, sem resultado parcial ou valor inventado.
@@ -808,6 +810,8 @@ duplicar bind ou owner. `ExpenseBloc` mantém o lifecycle anterior pela screen.
 Somente cadastro consulta sugestões. A origem manual/automática do valor e a
 seleção pertencem ao formulário: resposta recebida não preenche campos, seleção
 não salva, valores manuais não são sobrescritos e data civil é preservada.
+Aceitar uma sugestão aplica sua categoria no formulário, substituindo inclusive
+uma categoria manual anterior; receber a resposta sem selecionar não altera campos.
 
 O core oferece `AutocompleteTextFieldWidget<T>` sobre `RawAutocomplete`, compondo
 o `TextFieldWidget` existente com foco externo opcional. Não conhece Expense ou
@@ -922,6 +926,17 @@ Expense, sem Either. Uma falha no histórico continua sendo desconhecimento do
 limite inicial, não um histórico vazio confirmado. Falhas esperadas isoladas nas
 seções preservam a `ErrorsEntity` mesmo envolvidas em `ParallelWaitError`.
 Previews e testes consumidores usam entidades/resultados diretos.
+
+Os estados vazios de Dashboard e da listagem de Expense usam `EmptyStateWidget`
+do core, um componente puramente visual configurado por ícone, título e descrição
+opcional. Cada tela fornece o espaço restante com `SliverFillRemaining`, mantendo
+rolagem, refresh e expansão para textos ampliados. O componente não conhece Bloc,
+repositories, filtros, ações ou rotas; não possui controllers nem lifecycle próprio.
+Dashboard deriva `isEmpty` somente de fase pronta, lista vazia e total mensal zero;
+`hasNoExpenseHistory` só é verdadeiro após sucesso vazio do histórico e é preservado
+no refresh de perfil. Na listagem, `isEmpty` exige leitura concluída, ausência de
+itens e de continuação, em estado pronto ou exclusão confirmada; `hasFilters` apenas
+deriva a presença de filtros. Falhas e operações pendentes não viram estados vazios.
 
 Verificação da migração de Expense para PocketBase (03/11/2026):
 `flutter pub get` concluído; `flutter analyze` sem issues após corrigir a posição

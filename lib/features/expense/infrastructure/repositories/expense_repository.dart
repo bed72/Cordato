@@ -38,7 +38,7 @@ final class ExpenseRepository({
             'sort': '-occurred_on,-created,-id',
             'filter': 'description ~ ${_filterValue(query)}',
             'skipTotal': true,
-            'fields': 'id,description,amount',
+            'fields': 'id,description,amount,category',
           },
           path: HttpPathEnum.expenseRecords.path,
         ),

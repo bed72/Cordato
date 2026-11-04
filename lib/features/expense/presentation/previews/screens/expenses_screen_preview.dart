@@ -3,11 +3,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
+import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
-import 'package:cordato/features/core/presentation/previews/preview_resource_widget.dart';
 import 'package:cordato/features/expense/presentation/previews/fakes/expenses_list_preview_repository.dart';
 
 @CordatoPreview(
@@ -143,6 +143,34 @@ Widget previewFailureMonthlyExpensesScreen() => _screenPreview(failure: true);
   size: cordatoPhonePreviewSize,
 )
 Widget previewGeneralExpensesScreen() => _screenPreview(general: true);
+
+@CordatoPreview(
+  group: 'Expense / Listagem',
+  name: 'Sem despesas / Claro',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.light,
+)
+@CordatoPreview(
+  group: 'Expense / Listagem',
+  name: 'Sem despesas / Escuro',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.dark,
+)
+Widget previewEmptyGeneralExpensesScreen() =>
+    _screenPreview(general: true, empty: true);
+
+@CordatoPreview(
+  group: 'Expense / Listagem',
+  name: 'Filtros sem resultados / Texto ampliado',
+  size: Size(320.0, 568.0),
+)
+Widget previewLargeTextEmptyExpensesScreen() => Builder(
+  builder: (context) => MediaQuery(
+    data: MediaQuery.of(context)
+        .copyWith(textScaler: const TextScaler.linear(2)),
+    child: _screenPreview(category: 'food', empty: true),
+  ),
+);
 
 Widget _screenPreview({
   String? category,
