@@ -3,10 +3,10 @@ import 'package:cordato/features/welcome/presentation/widgets/welcome_typewriter
 import 'package:material_ui/material_ui.dart';
 
 const _supportingPhrases = [
+  'do seu jeito.',
   'no dia a dia.',
   'sem complicação.',
   'com mais clareza.',
-  'junto com quem importa.',
 ];
 
 final class const WelcomeSloganWidget({super.key}) extends StatelessWidget {

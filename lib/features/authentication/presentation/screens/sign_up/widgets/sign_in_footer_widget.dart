@@ -7,21 +7,24 @@ import 'package:cordato/features/core/presentation/widgets/buttons/link_button_w
 
 final class const SignInFooterWidget({super.key}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 6.0,
-    alignment: .center,
-    crossAxisAlignment: .center,
-    children: [
-      Text(
-        'Já possui conta?',
-        style: context.typography.bodySmall?.copyWith(
-          color: context.colors.onSurfaceVariant,
+  Widget build(BuildContext context) {
+    return Column(
+      spacing: 6.0,
+      mainAxisSize: .min,
+      crossAxisAlignment: .center,
+      children: [
+        Text(
+          'Já possui conta?',
+          textAlign: .center,
+          style: context.typography.bodySmall?.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
         ),
-      ),
-      LinkButtonWidget(
-        label: 'Entrar',
-        onTap: () => context.replace(RouteEnum.authenticationSignIn.path),
-      ),
-    ],
-  );
+        LinkButtonWidget(
+          label: 'Entrar',
+          onTap: () => context.replace(RouteEnum.authenticationSignIn.path),
+        ),
+      ],
+    );
+  }
 }

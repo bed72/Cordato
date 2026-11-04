@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_item_widget.dart';
@@ -17,9 +19,6 @@ final class const SettingsScreen({
   super.key,
   required final LogoutBloc Function() bloc,
   required final ValueChanged<BuildContext> onBackPressed,
-  final VoidCallback? onHelpPressed,
-  final VoidCallback? onTermsPressed,
-  final VoidCallback? onPrivacyPressed,
   final VoidCallback? onPersonalDataPressed,
 }) extends StatefulWidget {
   @override
@@ -71,18 +70,24 @@ final class _SettingsScreenState extends State<SettingsScreen>
                             children: [
                               MenuItemWidget(
                                 label: 'Termos de uso',
-                                onPressed: widget.onTermsPressed,
+                                onPressed: () => context.pushNamed(
+                                  RouteEnum.informationTerms.path,
+                                ),
                                 icon: Icons.receipt_long_outlined,
                               ),
                               MenuItemWidget(
                                 icon: Icons.verified_user_outlined,
-                                label: 'Políticas de privacidade',
-                                onPressed: widget.onPrivacyPressed,
+                                label: 'Política de Privacidade',
+                                onPressed: () => context.pushNamed(
+                                  RouteEnum.informationPrivacy.path,
+                                ),
                               ),
                               MenuItemWidget(
                                 label: 'Ajuda',
                                 icon: Icons.help_outline,
-                                onPressed: widget.onHelpPressed,
+                                onPressed: () => context.pushNamed(
+                                  RouteEnum.informationHelp.path,
+                                ),
                               ),
                             ],
                           ),

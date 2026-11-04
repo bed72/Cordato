@@ -68,6 +68,7 @@ final class _SignInScreenState extends State<SignInScreen>
                   isLoading: state.isSubmitting,
                   onPressed: state.canSubmit ? signIn : null,
                 ),
+                const SizedBox.shrink(),
                 const SignUpFooterWidget(),
               ],
             ),

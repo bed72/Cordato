@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/link_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
@@ -8,14 +10,6 @@ final class const WelcomeFooterWidget({
   super.key,
   required final ValueChanged<BuildContext> onContinueWithEmail,
 }) extends StatelessWidget {
-  void _showToast(
-    BuildContext context, {
-    required String title,
-    required String description,
-  }) {
-    context.showToast(variant: .info, title: title, description: description);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -48,11 +42,7 @@ final class const WelcomeFooterWidget({
             children: [
               LinkButtonWidget(
                 label: 'Termos de uso',
-                onTap: () => _showToast(
-                  context,
-                  title: 'Termos de uso',
-                  description: 'Em breve você poderá consultar nossos termos.',
-                ),
+                onTap: () => context.pushNamed(RouteEnum.informationTerms.path),
               ),
               Text(
                 'e',
@@ -62,11 +52,8 @@ final class const WelcomeFooterWidget({
               ),
               LinkButtonWidget(
                 label: 'Políticas de Privacidade',
-                onTap: () => _showToast(
-                  context,
-                  title: 'Políticas de Privacidade',
-                  description: 'Em breve você poderá consultar nossas políticas de privacidade.',
-                ),
+                onTap: () =>
+                    context.pushNamed(RouteEnum.informationPrivacy.path),
               ),
             ],
           ),

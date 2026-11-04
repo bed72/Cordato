@@ -8,6 +8,7 @@ import 'package:cordato/features/expense/expense_module.dart';
 import 'package:cordato/features/metrics/metrics_module.dart';
 import 'package:cordato/features/settings/settings_module.dart';
 import 'package:cordato/features/dashboard/dashboard_module.dart';
+import 'package:cordato/features/information/information_module.dart';
 import 'package:cordato/features/authentication/authentication_module.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
@@ -23,6 +24,7 @@ final appModule = createModule(
     ..module(welcomeModule)
     ..module(settingsModule)
     ..module(dashboardModule)
+    ..module(informationModule)
     ..module(authenticationModule)
     ..route(RouteEnum.app.path, child: (_, _) => const AppScreen()),
 );

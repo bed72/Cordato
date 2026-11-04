@@ -33,6 +33,22 @@ void main() {
       }
     });
 
+    test('information destinations remain public in the full application', () {
+      for (final destination in [
+        RouteEnum.informationTerms,
+        RouteEnum.informationPrivacy,
+        RouteEnum.informationHelp,
+      ]) {
+        final matches = boot.routes.match(Uri.parse(destination.path));
+
+        expect(destination.authenticated, isFalse);
+        expect(matches, hasLength(1));
+        expect(matches!.single.route.guards, isEmpty);
+        expect(matches.single.route.provide, isNull);
+        expect(matches.single.route.ownerTags, isEmpty);
+      }
+    });
+
     test(
       'dashboard resolves dependencies without visiting sibling routes',
       () async {

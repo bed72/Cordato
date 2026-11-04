@@ -13,9 +13,6 @@ final settingsModule = createModule(
         RouteEnum.app.path,
         child: (context, _) => SettingsScreen(
           bloc: inject<LogoutBloc>,
-          onHelpPressed: () {},
-          onTermsPressed: () {},
-          onPrivacyPressed: () {},
           onPersonalDataPressed: () => context.pushNamed(RouteEnum.user.path),
           onBackPressed: (context) => context.pop(),
         ),

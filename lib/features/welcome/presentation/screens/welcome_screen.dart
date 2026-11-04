@@ -24,6 +24,7 @@ class const WelcomeScreen({
                   children: [
                     const WelcomeIconWidget(),
                     const WelcomeSloganWidget(),
+                    const SizedBox(height: 32.0),
                     WelcomeFooterWidget(
                       onContinueWithEmail: onContinueWithEmail,
                     ),

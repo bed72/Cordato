@@ -1,6 +1,9 @@
 enum RouteEnum(final String path, {final bool authenticated = false}) {
   app('/'),
   welcome('/welcome'),
+  informationTerms('/information/terms'),
+  informationPrivacy('/information/privacy'),
+  informationHelp('/information/help'),
   user('/user', authenticated: true),
   expense('/expense', authenticated: true),
   expenses('/expenses', authenticated: true),

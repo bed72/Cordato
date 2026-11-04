@@ -55,6 +55,7 @@ nem declara equivalência com os recursos financeiros do backend anterior.
 | Family | Planejado: membros e leitura combinada autorizada. |
 | Dashboard | Composição de apresentação, não contexto de negócio. |
 | Root | Entrada e composição visual global, sem domínio próprio. |
+| Information | Termos, privacidade e ajuda públicos, exclusivamente de apresentação. |
 
 `identity` não será recriado para espelhar o backend antigo; `chat` está fora
 do escopo atual. Features visuais não precisam de camadas vazias.
@@ -166,6 +167,46 @@ O Bloc coordena operações e estados; o formulário possui entrada e validaçã
 a screen compõe e entrega efeitos ao usuário. Módulos fazem a ligação concreta.
 Não introduza BaseBloc, store global ou handlers genéricos para padronizar telas
 com semânticas diferentes.
+
+### Information: Conteúdo Público Local
+
+`information` é uma feature exclusivamente de apresentação, sem domain,
+application, infrastructure, Bloc ou operações de rede/storage. Seu módulo sem
+`path` registra as URLs completas `/information/terms`, `/information/privacy`
+e `/information/help`, públicas em `RouteEnum` e disponíveis sem sessão ou
+dependências de módulos irmãos.
+
+Welcome mantém o rodapé original e navega somente para termos e privacidade;
+Ajuda permanece acessível pelas Configurações, sem link na Welcome. Settings
+oferece os três destinos. A navegação usa as extensões de `BuildContext` nos
+widgets responsáveis. Somente os antigos callbacks de
+informações de Settings foram removidos; logout e demais contratos da tela
+permanecem preservados. Root não inclui essas páginas no conjunto protegido.
+
+O conteúdo editorial fica em
+`information/presentation/content/information_content.dart`, com textos puros,
+versão e data explícitas. Termos e privacidade compartilham composição de leitura
+com resumo e seções numeradas; Ajuda usa perguntas expansíveis. Cabeçalho, cards,
+cores, tipografia, ícones e botão de voltar reutilizam o core. A página possui
+rolagem, seleção de texto e largura máxima de leitura; não cria estado global.
+
+O resumo usa `InformationSummaryWidget`, específico da feature, com título acima
+do texto, largura integral, corpo legível e superfície/borda discretas do tema.
+Não reutiliza o card compacto de informação com ícone lateral, inadequado aos
+parágrafos longos dos documentos. Previews isolados cobrem os dois resumos em
+claro/escuro e privacidade em largura reduzida com texto ampliado.
+
+O canal de suporte e privacidade é exibido como texto selecionável. Solicitações
+de exclusão sem acesso ao app são orientadas por e-mail; não há formulário,
+envio automático ou implementação de exclusão nesta feature. A exclusão
+autenticada continua pertencendo a User. As páginas públicas Angular, seus links,
+o recurso web exigido pelo Google Play e qualquer apoio via Pix são entregas
+separadas. A UI local não comprova atendimento operacional, conformidade jurídica,
+publicação web ou homologação das regras do PocketBase.
+
+Testes verificam o catálogo público isolado e na composição global, a estrutura
+editorial e os limites arquiteturais sem montar UI. Previews manuais incluem
+temas claro/escuro, fonte ampliada e largura reduzida.
 
 ### Core E Dependências Entre Features
 
@@ -571,7 +612,7 @@ novo em Welcome/Sign-in abre Dashboard; perda/falha de observação em rota prot
 volta a Welcome. Cadastro, reenvio e callback públicos são preservados. Essa decisão
 visual não prova autorização remota e não limpa storage em falha de observação.
 
-`app_module.dart` ativa Session, Welcome, Authentication, Dashboard, Settings,
+`app_module.dart` ativa Session, Welcome, Information, Authentication, Dashboard, Settings,
 User e Expense, além das dependências de Metrics. Authentication e
 Expense têm um único módulo sem path por feature; seus binds são root-owned e
 as URLs completas permanecem inalteradas. User mantém seu módulo de dependências

@@ -114,6 +114,7 @@ dos próprios dados; família é uma lente autorizada de leitura, não dona do d
 | `family` | Planejado: organização de membros e leitura combinada. |
 | `dashboard` | Apresentação e composição, não um bounded context financeiro. |
 | `root` | Composição visual global e entrada do app. |
+| `information` | Termos, privacidade e ajuda públicos, com conteúdo local e sem camadas de dados. |
 
 Não crie `identity` para reproduzir o backend legado. `chat` está fora do escopo.
 O Kotlin legado é referência de domínio, não de estrutura Flutter.

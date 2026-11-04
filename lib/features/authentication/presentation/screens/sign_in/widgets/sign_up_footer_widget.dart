@@ -8,32 +8,40 @@ import 'package:cordato/features/core/presentation/widgets/buttons/link_button_w
 final class const SignUpFooterWidget({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Wrap(
+    return Column(
       spacing: 6.0,
-      alignment: .center,
-      crossAxisAlignment: .center,
+      mainAxisSize: .min,
+      crossAxisAlignment: .stretch,
       children: [
         Text(
           'Não tem conta?',
+          textAlign: .center,
           style: context.typography.bodySmall?.copyWith(
             color: context.colors.onSurfaceVariant,
           ),
         ),
-        LinkButtonWidget(
-          label: 'Crie uma',
-          onTap: () => context.replace(RouteEnum.authenticationSignUp.path),
-        ),
-        Text(
-          'ou',
-          style: context.typography.bodySmall?.copyWith(
-            color: context.colors.onSurfaceVariant,
-          ),
-        ),
-        LinkButtonWidget(
-          label: 'recupere sua senha',
-          onTap: () => context.pushNamed(
-            RouteEnum.authenticationPasswordRecovery.path,
-          ),
+        Wrap(
+          spacing: 6.0,
+          alignment: .center,
+          crossAxisAlignment: .center,
+          children: [
+            LinkButtonWidget(
+              label: 'Crie uma',
+              onTap: () => context.replace(RouteEnum.authenticationSignUp.path),
+            ),
+            Text(
+              'ou',
+              style: context.typography.bodySmall?.copyWith(
+                color: context.colors.onSurfaceVariant,
+              ),
+            ),
+            LinkButtonWidget(
+              label: 'recupere sua senha',
+              onTap: () => context.pushNamed(
+                RouteEnum.authenticationPasswordRecovery.path,
+              ),
+            ),
+          ],
         ),
       ],
     );

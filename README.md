@@ -71,6 +71,79 @@ Nome vazio é exibido como `Trocado`, sem gravar esse fallback. A edição exige
 A exclusão aguarda HTTP 204 e a limpeza local do storage; Session redireciona.
 A cascata das despesas está configurada no backend e requer homologação real.
 
+## Informações Públicas
+
+O módulo `information` oferece Termos de uso, Política de Privacidade e Ajuda
+como telas nativas com conteúdo local. A Welcome preserva seu rodapé original,
+com navegação somente nos links existentes de termos e privacidade, sem Ajuda.
+As Configurações oferecem os três acessos. Todas as rotas são públicas:
+`/information/terms`,
+`/information/privacy` e `/information/help`. Não há WebView, consulta remota,
+Bloc ou repository nesta feature. O contato selecionável de suporte e privacidade
+é `developer.bed@gmail.com`, sob responsabilidade de Gabriel Ramos.
+
+Termos e privacidade têm resumo, seções numeradas, versão e data; Ajuda agrupa
+perguntas sobre conta, despesas e exclusão. O conteúdo está em
+`lib/features/information/presentation/content/information_content.dart`.
+Alterações editoriais devem atualizar versão/data e manter consistência entre
+documentos, ajuda, comportamento real e futura versão web.
+
+Premissas informadas pelo responsável: Hostinger no Brasil, Resend para mensagens
+transacionais, sem backups próprios do banco, anúncios, analytics ou assinatura.
+O conteúdo distingue os resumos financeiros do próprio usuário de analytics de
+comportamento e não declara ausência de logs técnicos ou de retenção em terceiros.
+Conforme a [documentação do Resend](https://resend.com/security/gdpr), seus dados
+são armazenados nos EUA; mensagens/logs têm retenção de 30 dias nos planos Free,
+Pro e Scale e backups próprios de 7 dias. Configuração da conta, provedores de
+hospedagem e eventuais exceções precisam ser conferidos antes da publicação.
+
+Pendências de lançamento, não resolvidas pelas telas:
+
+- Revisar juridicamente os documentos e as bases legais, incluindo tratamento
+  de adolescentes e mecanismo aplicável à transferência internacional do Resend.
+  O DPA europeu do provedor não comprova, por si só, atendimento à LGPD/ANPD.
+- Confirmar faixas de público-alvo no Play Console, sem direcionamento a crianças;
+  isso não equivale a declarar automaticamente classificação indicativa ou idade mínima.
+- Auditar retenção de logs da hospedagem, atendimento de suporte e controles de
+  rastreamento de e-mails no Resend; a ausência de analytics no app não comprova
+  que rastreamento de aberturas/cliques esteja desativado no provedor.
+- Homologar exclusão de conta/despesas e definir o procedimento operacional de
+  verificação de identidade, prazos e atendimento das solicitações por e-mail.
+- Publicar as páginas Angular em outro projeto e cadastrar as URLs de privacidade
+  e do recurso de solicitação de exclusão no Play Console. Nenhuma URL foi inventada.
+- Preencher Segurança dos dados e a declaração de recursos financeiros de acordo
+  com a operação real. Textos nativos não comprovam aprovação pelo Google Play.
+
+Fontes oficiais consultadas em 04/11/2026:
+[Dados do usuário](https://support.google.com/googleplay/android-developer/answer/10144311?hl=pt-BR),
+[Exclusão de contas](https://support.google.com/googleplay/android-developer/answer/13327111?hl=pt-BR),
+[Recursos financeiros](https://support.google.com/googleplay/android-developer/answer/13849271?hl=pt-BR)
+e [DPA do Resend](https://resend.com/legal/dpa). Apoio voluntário via Pix fica
+fora desta entrega e exige avaliação própria antes de ser disponibilizado.
+
+Verificação local em 04/11/2026: `flutter pub get` concluído; `flutter analyze`
+sem problemas; `flutter test test/architecture test/features/information
+test/app_module_test.dart test/features/core/presentation/enums
+test/features/settings --reporter failures-only` com 48 testes aprovados.
+`flutter test --reporter failures-only` teve 1081 aprovados e as mesmas cinco
+falhas já documentadas na contagem de palavras das descrições de viagens,
+serviços, transporte, investimentos e assinaturas em
+`test/features/expense/presentation/extensions/expense_category_extension_test.dart`.
+Esses arquivos não foram alterados. `dart run tool/widget_preview.dart` compilou
+e serviu o catálogo incluindo Information, encerrando por timeout de 60 segundos
+sem cliente conectado ou inspeção visual. `git diff --check` passou. Não houve
+deploy, publicação web, homologação em dispositivo ou validação jurídica.
+
+Refinamento visual dos resumos: `InformationSummaryWidget` substitui o card
+compacto com ícone lateral por uma composição vertical de largura integral,
+tipografia de corpo, espaçamento maior e superfície/borda do tema. A Ajuda não
+repete links de Termos e Privacidade no rodapé; os acessos pela Welcome e pelas
+Configurações permanecem. `flutter pub get` e `flutter analyze` passaram; o mesmo
+lote focado acima teve 48 aprovados. Os previews isolados dos resumos compilaram
+e foram servidos até o timeout de 60 segundos, sem cliente conectado ou inspeção
+visual. A suíte completa não foi repetida neste refinamento; as cinco falhas
+anteriores de Expense permanecem fora do escopo.
+
 ## Estado Do Projeto
 
 **O checkout está em transição arquitetural. Testes de composição não substituem
