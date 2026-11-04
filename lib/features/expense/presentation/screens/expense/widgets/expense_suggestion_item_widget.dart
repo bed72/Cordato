@@ -1,12 +1,10 @@
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/icons/icon_interaction_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 
@@ -26,69 +24,67 @@ final class const ExpenseSuggestionItemWidget({
     return Semantics(
       selected: selected,
       button: true,
-      child: IconInteractionWidget(
-        child: BounceWidget.withoutOnPress(
-          child: Material(
-            color: Color.alphaBlend(
-              colors.primary.withValues(alpha: selected ? .1 : .05),
-              colors.surfaceContainerLow,
+      child: BounceWidget.withoutOnPress(
+        child: Material(
+          color: Color.alphaBlend(
+            colors.primary.withValues(alpha: selected ? .1 : .05),
+            colors.surfaceContainerLow,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: context.radius.cornerRadius300,
+            side: BorderSide(
+              color: selected
+                  ? colors.primary.withValues(alpha: .35)
+                  : colors.outlineVariant.withValues(alpha: .25),
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: context.radius.cornerRadius300,
-              side: BorderSide(
-                color: selected
-                    ? colors.primary.withValues(alpha: .35)
-                    : colors.outlineVariant.withValues(alpha: .25),
-              ),
-            ),
-            clipBehavior: .antiAlias,
-            child: InkWell(
-              onTap: onTap,
-              child: Padding(
-                padding: const .all(16.0),
-                child: Row(
-                  spacing: 12.0,
-                  children: [
-                    ExcludeSemantics(
-                      child: BackgroundIconWidget(
-                        iconSize: 26.0,
-                        iconColor: colors.primary,
-                        icon: sparkles,
-                        backgroundColor: colors.primary.withValues(alpha: .12),
-                      ),
+          ),
+          clipBehavior: .antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const .all(16.0),
+              child: Row(
+                spacing: 12.0,
+                children: [
+                  ExcludeSemantics(
+                    child: BackgroundIconWidget(
+                      iconSize: 26.0,
+                      iconColor: colors.primary,
+                      icon: Icons.auto_awesome_outlined,
+                      backgroundColor: colors.primary.withValues(alpha: .12),
                     ),
-                    Expanded(
-                      child: Column(
-                        spacing: 4.0,
-                        mainAxisSize: .min,
-                        crossAxisAlignment: .start,
-                        children: [
+                  ),
+                  Expanded(
+                    child: Column(
+                      spacing: 4.0,
+                      mainAxisSize: .min,
+                      crossAxisAlignment: .start,
+                      children: [
+                        Text(
+                          suggestion.description,
+                          style: context.typography.bodyMedium?.copyWith(
+                            fontWeight: .w600,
+                            color: colors.onSurface,
+                          ),
+                        ),
+                        if (amount != null)
                           Text(
-                            suggestion.description,
-                            style: context.typography.bodyMedium?.copyWith(
-                              fontWeight: .w600,
-                              color: colors.onSurface,
+                            moneyFormatter.formatCents(amount),
+                            style: context.typography.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
                             ),
                           ),
-                          if (amount != null)
-                            Text(
-                              moneyFormatter.formatCents(amount),
-                              style: context.typography.bodySmall?.copyWith(
-                                color: colors.onSurfaceVariant,
-                              ),
-                            ),
-                        ],
-                      ),
+                      ],
                     ),
-                    ExcludeSemantics(
-                      child: IconWidget(
-                        size: 24.0,
-                        icon: chevron_right,
-                        color: colors.onSurfaceVariant,
-                      ),
+                  ),
+                  ExcludeSemantics(
+                    child: IconWidget(
+                      size: 24.0,
+                      icon: Icons.chevron_right,
+                      color: colors.onSurfaceVariant,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

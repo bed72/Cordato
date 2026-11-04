@@ -259,14 +259,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_lucide_animated:
-    dependency: "direct main"
-    description:
-      name: flutter_lucide_animated
-      sha256: fa27f8289befe5a2028dc1aa2ec825a9db29d1c691650749a637291cfa92d6a4
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.4"
   flutter_modular:
     dependency: "direct main"
     description:
@@ -549,14 +541,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
-  path_parsing:
-    dependency: transitive
-    description:
-      name: path_parsing
-      sha256: "883402936929eac138ee0a45da5b0f2c80f89913e6dc3bf77eb65b84b409c6ca"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.0"
   path_provider:
     dependency: transitive
     description:
@@ -775,6 +759,14 @@ packages:
     description:
       name: talker
       sha256: "8ff6a942960ffdecc659dbf2ae339630ca0484ddc64345c89dd18a30e9d997bd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.2.0"
+  talker_bloc_logger:
+    dependency: "direct main"
+    description:
+      name: talker_bloc_logger
+      sha256: "5a80e841511291b674ff0b98e644fc50b3283098e442fac77ba3fc9a59464505"
       url: "https://pub.dev"
     source: hosted
     version: "5.2.0"

@@ -43,7 +43,8 @@ final class _ExpenseMetricsCarouselWidgetState
         final lowerHeight = layouts
             .map((layout) => layout.lowerHeight)
             .reduce(math.max);
-        final pageHeight = upperHeight + 12.0 + lowerHeight;
+        final pageHeight =
+            upperHeight + (lowerHeight > 0 ? 12.0 + lowerHeight : 0.0);
 
         return Column(
           spacing: 12.0,

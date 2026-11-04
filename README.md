@@ -207,6 +207,15 @@ da consulta mais recente. O módulo fornece instâncias por factory e os preview
 consumidores usam BlocBuilder. Dashboard mantém seu próprio Bloc sobre o contrato,
 sem migrar os demais contextos financeiros.
 
+A distribuição exibe todas as categorias com total positivo, inclusive quando
+existe somente uma. O carrossel agrupa até três por página sem descartar uma
+categoria restante; páginas únicas com um card não reservam uma linha inferior vazia.
+Verificação: `flutter pub get` concluído, `flutter analyze` sem issues e 186 testes
+de arquitetura, Metrics e Dashboard aprovados. A suíte completa mantém as 5 falhas
+nas descrições de categorias de Expense (1014 aprovados). O catálogo de previews
+compilou e foi servido, sem cliente conectado, até o timeout de 45 segundos;
+não houve validação visual. `git diff --check` passou.
+
 A inicial consolidada `backend/pb_migrations/1793491200_initial.js` cria a view
 diretamente como `metrics`, com as mesmas regras e consulta, em banco novo.
 Esta revisão não oferece atualização incremental de instalações existentes.
@@ -227,8 +236,9 @@ Expense também usa contrato em application, `ExpenseException` e repository em
 infrastructure com HTTP/storage diretos, sem Either ou data source. Usa CRUD nativo
 em `collections/expenses/records`, centavos inteiros positivos, datas civis e
 filtros/paginação PocketBase. Criação lê o ID atual do storage para `owner` e envia
-categoria `other`; atualização envia somente os campos fornecidos, sem trocar
-proprietário/categoria. A data escolhida é enviada como meia-noite UTC e lida como
+categoria selecionada, com `other` como padrão quando ausente; atualização envia
+somente os campos fornecidos, incluindo categoria, sem trocar proprietário.
+A data escolhida é enviada como meia-noite UTC e lida como
 data civil, sem conversão de fuso. Consulta,
 criação e atualização retornam entidades; exclusão retorna `Future<void>` e só
 conclui após HTTP 204. `AmountValueObject.create` retorna o valor diretamente e
@@ -249,12 +259,26 @@ com Outros no cadastro e com a categoria salva na edição. A bottom-sheet reuti
 o item de menu compartilhado com ícone, nome e descrição curta, ordenação alfabética
 e Outros no final. A seleção usa borda e fundo suave nas cores das métricas e só
 é aplicada pelo botão Confirmar fixo no rodapé; dispensar a folha não altera o
-formulário. Cadastro contínuo retorna a Outros. Nesta primeira etapa de UI e
-eventos do Bloc, a categoria selecionada ainda não é encaminhada ao repository:
-criação continua enviando `other` e edição não altera a categoria persistida.
-Sugestões ainda não preenchem categoria; essa ligação fica para a integração.
+formulário. Cadastro contínuo retorna a Outros. O Bloc encaminha a categoria
+selecionada ao repository na criação e na edição; infrastructure envia seu valor
+no JSON nativo do PocketBase. Edição sem mudança de categoria omite esse campo,
+enquanto selecionar Outros envia `other` explicitamente. A entidade confirmada
+pela API continua sendo a fonte do resultado, sem atualização otimista.
+Sugestões ainda não preenchem categoria e permanecem fora desta integração.
 
-Verificação desta etapa: `flutter pub get` concluído, `flutter analyze` sem issues,
+Verificação da integração de categorias: `flutter pub get` concluído e
+`flutter analyze` sem issues. O lote `flutter test test/architecture
+test/features/expense/infrastructure
+test/features/expense/presentation/screens/expense/bloc
+test/features/expense/application test/features/expense/expense_module_test.dart`
+aprovou 234 testes. `flutter test` aprovou 1009 testes e encontrou cinco falhas
+preexistentes na contagem de palavras das descrições de viagens, serviços,
+transporte, assinaturas e investimentos em `expense_category_extension_test.dart`;
+esses textos e testes não foram alterados nesta integração.
+`dart run tool/widget_preview.dart` compilou e iniciou o servidor web, mas atingiu
+o timeout de 120 segundos sem cliente conectado; não houve inspeção visual.
+
+Verificação da etapa anterior de UI: `flutter pub get` concluído, `flutter analyze` sem issues,
 `flutter test` com 977 testes aprovados e o lote `test/architecture` +
 `test/features/expense` com 309 aprovados. `dart run tool/widget_preview.dart`
 compilou e serviu o catálogo; a execução foi encerrada pelo timeout de 60 segundos,
@@ -389,12 +413,25 @@ Preserve um único proprietário de recursos: Sign-in recebe um Bloc externo;
 as telas ainda não migradas continuam criando/fechando sua factory. Use
 `PreviewResourceWidget` para um recurso externo ao lifecycle da tela.
 
-Os ícones explícitos usam `flutter_lucide_animated` pelo renderer compartilhado
-`IconWidget`. Animam na entrada, na troca do símbolo e ao pressionar, passar o
-mouse ou usar Enter/Espaço nos controles. As animações Lucide respeitam movimento
-reduzido e controles desabilitados, sem loops contínuos. Símbolos não disponíveis
-no pacote usam equivalentes do catálogo. O grupo `Core / Ícones animados` inclui
-um preview de interação, botão desabilitado e movimento reduzido.
+Os ícones explícitos usam os ícones padrão do Material pelo renderer estático
+`IconWidget`, sem biblioteca de ícones animados, controllers ou listeners de
+interação para animação. Cores do tema, tamanhos, semântica e estados desabilitados
+são preservados. O grupo `Core / Ícones` inclui um preview dos controles.
+Após a troca, pare e execute o app novamente; hot reload não substitui a mudança
+de dependência e do lifecycle do renderer. A melhoria de desempenho ainda precisa
+ser conferida em dispositivo, sem benchmark nesta alteração.
+
+Verificação dos ícones estáticos: `flutter pub get` concluído e `flutter analyze`
+sem issues. `flutter test --reporter failures-only` aprovou 1009 testes e manteve
+as cinco falhas de contagem de palavras das descrições de categorias já registradas
+acima. O lote `flutter test test/architecture
+test/features/metrics/presentation/extensions/expense_category_metrics_extension_test.dart
+test/features/core/presentation/widgets/toast/toast_icons_test.dart` aprovou 56
+testes; `flutter test
+test/features/expense/presentation/extensions/expense_category_extension_test.dart
+--name 'Expense category Material icons'` aprovou outros 19.
+`dart run tool/widget_preview.dart` compilou o catálogo; o servidor foi encerrado
+após a recompilação, sem cliente conectado ou inspeção visual.
 
 ### Modular V7 E Navegação
 
@@ -558,6 +595,15 @@ automático de requests ou guard Modular. Um 401 protegido remove
 somente o token enviado se ainda for o armazenado, preservando o ID.
 Sign-out aguarda a limpeza local de todo o storage seguro, sem HTTP.
 Confirmação de e-mail envia token por POST sem Bearer e não cria sessão.
+
+O `talker_bloc_logger` usa o Talker compartilhado por meio de `AppBlocObserver`,
+instalado no bootstrap somente em debug. Registra criação, fechamento, tipos de
+eventos e transições, sem imprimir os dados completos; erros inesperados mostram
+somente tipo e stack trace, omitindo mensagens potencialmente sensíveis.
+Verificação da configuração: `flutter pub get` concluído, `flutter analyze` sem
+issues e 20 testes focados de arquitetura/logger aprovados. A suíte completa teve
+1014 aprovados e 5 falhas fora deste escopo: descrições de categorias com 4 palavras,
+enquanto os testes exigem 5–6. `git diff --check` passou.
 
 O logger HTTP debug está configurado sem bodies/headers; não use credenciais reais
 em capturas compartilhadas. O logger não é instalado em release. Não adicione

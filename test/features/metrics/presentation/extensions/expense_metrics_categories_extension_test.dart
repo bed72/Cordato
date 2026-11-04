@@ -43,7 +43,7 @@ void main() {
 
   for (final count in [1, 2, 3, 4, 5, 6, 7, 8, 10, 18]) {
     test(
-      'groups $count categories into pages of two or three and hides a lone remainder',
+      'groups all $count categories into pages of up to three including a lone remainder',
       () {
         final categories = [
           for (int index = 0; index < count; index++)
@@ -54,14 +54,13 @@ void main() {
             ),
         ];
         final pages = categories.cardPages;
-        final visibleCount = count % 3 == 1 ? count - 1 : count;
 
-        expect(pages.length, (visibleCount / 3).ceil());
+        expect(pages.length, (count / 3).ceil());
         expect(
-          pages.every((page) => page.length == 2 || page.length == 3),
+          pages.every((page) => page.isNotEmpty && page.length <= 3),
           isTrue,
         );
-        expect(pages.expand((page) => page), categories.take(visibleCount));
+        expect(pages.expand((page) => page), categories);
         if (pages.length > 1) expect(pages[1].first, categories[3]);
       },
     );

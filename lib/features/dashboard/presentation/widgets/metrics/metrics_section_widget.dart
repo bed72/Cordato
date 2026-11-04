@@ -95,12 +95,6 @@ final class _MetricsSectionWidgetState extends State<MetricsSectionWidget> {
           (0, _) => _buildMessage(
             message: 'Nenhuma despesa registrada neste período.',
           ),
-          (_, [])
-              when metrics.categories?.any(
-                    (category) => category.totalAmount > 0,
-                  ) ??
-                  false =>
-            const SizedBox.shrink(),
           (_, []) => _buildMessage(
             message: 'A distribuição por categoria não está disponível.',
           ),

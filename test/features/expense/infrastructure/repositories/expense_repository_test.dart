@@ -173,6 +173,55 @@ void main() {
       },
     );
 
+    for (final category in ExpenseCategoryEnum.values) {
+      test('creates with the persisted ${category.value} category', () async {
+        when(() => client.post(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => single);
+
+        final expense = await repository.create(
+          cents: 1500,
+          description: ' Original ',
+          category: category,
+          occurredOn: DateTime(2026, 10, 5),
+        );
+
+        final request =
+            verify(() => client.post(parameter: captureAny(named: 'parameter')))
+                    .captured
+                    .single
+                as Requests;
+        expect(request.body, {
+          'owner': 'owner-id',
+          'amount': 1500,
+          'description': ' Original ',
+          'category': category.value,
+          'occurred_on': '2026-10-05 00:00:00.000Z',
+        });
+        expect(expense.category, ExpenseCategoryEnum.transport);
+      });
+
+      test(
+        'patches only the ${category.value} category without reading storage',
+        () async {
+          when(() => client.patch(parameter: any(named: 'parameter')))
+              .thenAnswer((_) async => single);
+
+          final expense = await repository.update(id: '8', category: category);
+
+          final request =
+              verify(
+                    () =>
+                        client.patch(parameter: captureAny(named: 'parameter')),
+                  ).captured.single
+                  as Requests;
+          expect(request.path, 'collections/expenses/records/8');
+          expect(request.body, {'category': category.value});
+          expect(expense.category, ExpenseCategoryEnum.transport);
+          verifyZeroInteractions(storage);
+        },
+      );
+    }
+
     test('uses the current civil date only when create has no date', () async {
       when(() => client.post(parameter: any(named: 'parameter')))
           .thenAnswer((_) async => single);
@@ -573,8 +622,16 @@ void main() {
           'getById' => repository.getById(id: '8'),
           'get' => repository.get(),
           'suggestions' => repository.suggestions(query: 'Mer'),
-          'create' => repository.create(cents: 0, description: ' Original '),
-          'update' => repository.update(id: '8', cents: 0),
+          'create' => repository.create(
+            cents: 0,
+            description: ' Original ',
+            category: .transport,
+          ),
+          'update' => repository.update(
+            id: '8',
+            cents: 0,
+            category: .transport,
+          ),
           _ => throw StateError(operation),
         };
       }
@@ -650,6 +707,10 @@ void main() {
                     'code': 'validation_length_out_of_range',
                     'message': 'Invalid description.',
                   },
+                  'category': {
+                    'code': 'validation_in_invalid',
+                    'message': 'Invalid category.',
+                  },
                 },
               },
             ),
@@ -659,10 +720,12 @@ void main() {
         expect(errors.map((error) => error.pointer), [
           '/amount',
           '/description',
+          '/category',
         ]);
         expect(errors.map((error) => error.parameter), [
           'amount',
           'description',
+          'category',
         ]);
         expect(errors.first.status, '400');
         expect(errors.first.detail, 'Invalid amount.');

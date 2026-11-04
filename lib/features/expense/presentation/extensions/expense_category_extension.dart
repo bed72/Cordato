@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
@@ -47,25 +46,25 @@ extension ExpenseCategoryExtension on ExpenseCategoryEnum {
     .other => 'Gastos que não se encaixam aqui',
   };
 
-  LucideAnimatedIconData get icon => switch (this) {
-    .pets => rabbit,
-    .housing => home,
-    .leisure => play,
-    .travel => airplane,
-    .health => heart,
-    .food => cooking_pot,
-    .insurance => shield_check,
-    .personalCare => sparkles,
-    .education => book_text,
-    .services => wrench,
-    .financing => hand_coins,
-    .taxes => file_check,
-    .shopping => cart,
-    .subscriptions => refresh_cw,
-    .investments => trending_up,
-    .transport => truck,
-    .giftsAndDonations => hand_heart,
-    .other => file_text,
+  IconData get icon => switch (this) {
+    .pets => Icons.pets_outlined,
+    .housing => Icons.home_outlined,
+    .leisure => Icons.play_circle_outline,
+    .travel => Icons.flight_outlined,
+    .health => Icons.favorite_border,
+    .food => Icons.restaurant_outlined,
+    .insurance => Icons.verified_user_outlined,
+    .personalCare => Icons.auto_awesome_outlined,
+    .education => Icons.menu_book_outlined,
+    .services => Icons.build_outlined,
+    .financing => Icons.payments_outlined,
+    .taxes => Icons.task_outlined,
+    .shopping => Icons.shopping_cart_outlined,
+    .subscriptions => Icons.refresh,
+    .investments => Icons.trending_up,
+    .transport => Icons.local_shipping_outlined,
+    .giftsAndDonations => Icons.volunteer_activism_outlined,
+    .other => Icons.receipt_long_outlined,
   };
 
   Color color(BuildContext context) => switch (this) {

@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget.dart';
@@ -59,7 +58,7 @@ final class _SettingsScreenState extends State<SettingsScreen>
                             children: [
                               MenuItemWidget(
                                 label: 'Dados pessoais',
-                                icon: user,
+                                icon: Icons.person_outline,
                                 onPressed: widget.onPersonalDataPressed,
                               ),
                             ],
@@ -73,16 +72,16 @@ final class _SettingsScreenState extends State<SettingsScreen>
                               MenuItemWidget(
                                 label: 'Termos de uso',
                                 onPressed: widget.onTermsPressed,
-                                icon: file_text,
+                                icon: Icons.receipt_long_outlined,
                               ),
                               MenuItemWidget(
-                                icon: shield_check,
+                                icon: Icons.verified_user_outlined,
                                 label: 'Políticas de privacidade',
                                 onPressed: widget.onPrivacyPressed,
                               ),
                               MenuItemWidget(
                                 label: 'Ajuda',
-                                icon: circle_help,
+                                icon: Icons.help_outline,
                                 onPressed: widget.onHelpPressed,
                               ),
                             ],

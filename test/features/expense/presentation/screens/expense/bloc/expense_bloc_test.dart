@@ -53,8 +53,17 @@ void main() {
     });
 
     blocTest<ExpenseBloc, ExpenseState>(
-      'accepts a category without changing the repository contract or API result',
-      build: () => ExpenseBloc(repository: repository),
+      'delegates the selected creation category and keeps the confirmed API result',
+      build: () {
+        when(
+          () => repository.create(
+            cents: 1234,
+            description: ' Original ',
+            category: .transport,
+          ),
+        ).thenAnswer((_) async => expense);
+        return ExpenseBloc(repository: repository);
+      },
       act: (bloc) => bloc.add(
         const ExpenseSubmittedEvent(
           cents: 1234,
@@ -71,14 +80,19 @@ void main() {
         ),
       ],
       verify: (_) => verify(
-        () => repository.create(cents: 1234, description: ' Original '),
+        () => repository.create(
+          cents: 1234,
+          description: ' Original ',
+          category: .transport,
+        ),
       ).called(1),
     );
 
     blocTest<ExpenseBloc, ExpenseState>(
-      'category-only edit leaves persistence unchanged in the UI-only stage',
+      'delegates a category-only edit and keeps the confirmed API result',
       build: () {
-        when(() => repository.update(id: '1')).thenAnswer((_) async => expense);
+        when(() => repository.update(id: '1', category: .transport))
+            .thenAnswer((_) async => expense);
         return ExpenseBloc(repository: repository);
       },
       seed: () => ExpenseReady(expense: expense),
@@ -90,7 +104,9 @@ void main() {
             .having((state) => state.isEditing, 'editing', true)
             .having((state) => state.expense, 'API entity', same(expense)),
       ],
-      verify: (_) => verify(() => repository.update(id: '1')).called(1),
+      verify: (_) =>
+          verify(() => repository.update(id: '1', category: .transport))
+              .called(1),
     );
 
     test('starts idle without a request', () async {
@@ -102,7 +118,7 @@ void main() {
     });
 
     blocTest<ExpenseBloc, ExpenseState>(
-      'delegates original creation input and blocks after success',
+      'defaults missing creation category to other and blocks after success',
       build: () => ExpenseBloc(repository: repository),
       act: (bloc) async {
         final done = bloc.stream.firstWhere((s) => s is ExpenseSuccess);
@@ -117,8 +133,27 @@ void main() {
             .having((s) => s.canSubmit, 'blocked', false),
       ],
       verify: (_) => verify(
-        () => repository.create(cents: 1234, description: ' Original '),
+        () => repository.create(
+          cents: 1234,
+          description: ' Original ',
+          category: .other,
+        ),
       ).called(1),
+    );
+
+    blocTest<ExpenseBloc, ExpenseState>(
+      'delegates an explicit edit back to other',
+      build: () {
+        when(() => repository.update(id: '1', category: .other))
+            .thenAnswer((_) async => expense);
+        return ExpenseBloc(repository: repository);
+      },
+      seed: () => ExpenseReady(expense: expense),
+      act: (bloc) =>
+          bloc.add(const ExpenseSubmittedEvent(id: '1', category: .other)),
+      expect: () => [isA<ExpenseSubmitting>(), isA<ExpenseSuccess>()],
+      verify: (_) =>
+          verify(() => repository.update(id: '1', category: .other)).called(1),
     );
 
     blocTest<ExpenseBloc, ExpenseState>(

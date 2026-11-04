@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
@@ -34,26 +34,26 @@ void main() {
     }
   });
 
-  group('Expense category animated icons', () {
+  group('Expense category Material icons', () {
     const icons = {
-      ExpenseCategoryEnum.pets: rabbit,
-      ExpenseCategoryEnum.housing: home,
-      ExpenseCategoryEnum.leisure: play,
-      ExpenseCategoryEnum.travel: airplane,
-      ExpenseCategoryEnum.health: heart,
-      ExpenseCategoryEnum.food: cooking_pot,
-      ExpenseCategoryEnum.insurance: shield_check,
-      ExpenseCategoryEnum.education: book_text,
-      ExpenseCategoryEnum.personalCare: sparkles,
-      ExpenseCategoryEnum.services: wrench,
-      ExpenseCategoryEnum.financing: hand_coins,
-      ExpenseCategoryEnum.taxes: file_check,
-      ExpenseCategoryEnum.shopping: cart,
-      ExpenseCategoryEnum.subscriptions: refresh_cw,
-      ExpenseCategoryEnum.investments: trending_up,
-      ExpenseCategoryEnum.transport: truck,
-      ExpenseCategoryEnum.giftsAndDonations: hand_heart,
-      ExpenseCategoryEnum.other: file_text,
+      ExpenseCategoryEnum.pets: Icons.pets_outlined,
+      ExpenseCategoryEnum.housing: Icons.home_outlined,
+      ExpenseCategoryEnum.leisure: Icons.play_circle_outline,
+      ExpenseCategoryEnum.travel: Icons.flight_outlined,
+      ExpenseCategoryEnum.health: Icons.favorite_border,
+      ExpenseCategoryEnum.food: Icons.restaurant_outlined,
+      ExpenseCategoryEnum.insurance: Icons.verified_user_outlined,
+      ExpenseCategoryEnum.education: Icons.menu_book_outlined,
+      ExpenseCategoryEnum.personalCare: Icons.auto_awesome_outlined,
+      ExpenseCategoryEnum.services: Icons.build_outlined,
+      ExpenseCategoryEnum.financing: Icons.payments_outlined,
+      ExpenseCategoryEnum.taxes: Icons.task_outlined,
+      ExpenseCategoryEnum.shopping: Icons.shopping_cart_outlined,
+      ExpenseCategoryEnum.subscriptions: Icons.refresh,
+      ExpenseCategoryEnum.investments: Icons.trending_up,
+      ExpenseCategoryEnum.transport: Icons.local_shipping_outlined,
+      ExpenseCategoryEnum.giftsAndDonations: Icons.volunteer_activism_outlined,
+      ExpenseCategoryEnum.other: Icons.receipt_long_outlined,
     };
 
     test('covers every expense category', () {
@@ -61,16 +61,11 @@ void main() {
     });
 
     for (final entry in icons.entries) {
-      test('maps ${entry.key.name} to an animated Lucide icon', () {
+      test('maps ${entry.key.name} to a static Material icon', () {
         final icon = entry.key.icon;
 
         expect(icon, same(entry.value));
-        expect(icon.elements, isNotEmpty);
-        expect(
-          icon.animation != null ||
-              icon.elements.any((element) => element.animation != null),
-          isTrue,
-        );
+        expect(icon.fontFamily, 'MaterialIcons');
       });
     }
   });

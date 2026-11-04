@@ -55,12 +55,14 @@ final class ExpenseBloc({required final IExpenseRepository repository})
     try {
       final expense = event.id == null
           ? await repository.create(
+              category: event.category ?? .other,
               cents: event.cents!,
               description: event.description!,
               occurredOn: event.occurredOn,
             )
           : await repository.update(
               id: event.id!,
+              category: event.category,
               cents: event.cents,
               description: event.description,
               occurredOn: event.occurredOn,

@@ -12,6 +12,7 @@ import 'package:cordato/features/core/infrastructure/clients/http/exceptions/htt
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
@@ -138,6 +139,7 @@ final class ExpenseRepository({
   @override
   Future<ExpenseEntity> update({
     required String id,
+    ExpenseCategoryEnum? category,
     int? cents,
     String? description,
     DateTime? occurredOn,
@@ -149,6 +151,7 @@ final class ExpenseRepository({
               '${HttpPathEnum.expenseRecords.path}/${Uri.encodeComponent(id)}',
           body: {
             'amount': ?cents,
+            'category': ?category?.value,
             'description': ?description,
             if (occurredOn != null) 'occurred_on': _dateValue(occurredOn),
           },
@@ -166,6 +169,7 @@ final class ExpenseRepository({
   Future<ExpenseEntity> create({
     required int cents,
     required String description,
+    ExpenseCategoryEnum category = .other,
     DateTime? occurredOn,
   }) async {
     try {
@@ -180,7 +184,7 @@ final class ExpenseRepository({
             'owner': owner,
             'amount': cents,
             'description': description,
-            'category': 'other',
+            'category': category.value,
             'occurred_on': _dateValue(occurredOn ?? .now()),
           },
         ),

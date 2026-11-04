@@ -9,7 +9,7 @@ extension ExpenseMetricsCategoriesExtension
         return amountOrder == 0 ? a.$1.compareTo(b.$1) : amountOrder;
       });
     return [
-      for (int start = 0; start + 1 < visible.length; start += 3)
+      for (int start = 0; start < visible.length; start += 3)
         [for (final entry in visible.skip(start).take(3)) entry.$2],
     ];
   }

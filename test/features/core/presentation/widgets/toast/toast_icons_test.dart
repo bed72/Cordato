@@ -1,28 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/toast/toast.dart';
 
 void main() {
-  group('Toast animated icons', () {
+  group('Toast Material icons', () {
     const icons = {
-      ToastVariant.info: circle_help,
-      ToastVariant.error: badge_alert,
-      ToastVariant.success: circle_check,
-      ToastVariant.warning: badge_alert,
+      ToastVariant.info: Icons.help_outline,
+      ToastVariant.error: Icons.warning_amber_rounded,
+      ToastVariant.success: Icons.check_circle_outline,
+      ToastVariant.warning: Icons.warning_amber_rounded,
     };
 
     for (final entry in icons.entries) {
-      test('maps ${entry.key.name} to an animated Lucide icon', () {
+      test('maps ${entry.key.name} to a static Material icon', () {
         final icon = getToastIcon(entry.key);
 
         expect(icon, same(entry.value));
-        expect(icon.elements, isNotEmpty);
-        expect(
-          icon.animation != null ||
-              icon.elements.any((element) => element.animation != null),
-          isTrue,
-        );
+        expect(icon.fontFamily, 'MaterialIcons');
       });
     }
   });

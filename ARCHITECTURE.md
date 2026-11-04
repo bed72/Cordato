@@ -820,10 +820,15 @@ descartados e trocas de controller/foco transferem listeners.
 GET/POST/PATCH/DELETE usam o endpoint relativo `collections/expenses/records`, ID
 codificado no caminho, JSON plano, descrição original e centavos inteiros.
 Criação lê `StorageKeyEnum.userId` a cada operação, aguarda o storage, rejeita ID
-nulo/vazio e envia `owner` original, `category: other`, valor, descrição e data.
+nulo/vazio e envia `owner` original, categoria selecionada, valor, descrição e data.
+O contrato recebe `ExpenseCategoryEnum`, com `.other` como padrão na criação;
+infrastructure serializa seu `value` no JSON do PocketBase. O Bloc encaminha a
+seleção do evento, usando `.other` na criação quando ausente, e preserva a entidade
+confirmada pela API, sem recategorização otimista.
 Não grava storage nem envia timestamps administrativos. Falhas do storage propagam
-sem HTTP ou sucesso. Atualização envia somente valor, descrição e data fornecidos,
-sem trocar proprietário/categoria ou normalizar o formulário. Criação preserva a
+sem HTTP ou sucesso. Atualização envia somente valor, descrição, categoria e data
+fornecidos, sem trocar proprietário ou normalizar o formulário. Categoria ausente
+é omitida do PATCH; `.other` explícito é enviado como `other`. Criação preserva a
 data civil fornecida e usa o dia atual somente quando ausente, mantendo o contrato
 existente. A codificação é `YYYY-MM-DD 00:00:00.000Z`, sem converter fuso. O DTO lê
 o record plano e devolve uma data civil local pelos componentes UTC retornados,
@@ -996,6 +1001,13 @@ tokens ou URLs assinadas em logs novos.
 
 ## Composição, Rotas E Bootstrap
 
+O bootstrap instala `AppBlocObserver`, baseado em `TalkerBlocObserver`, somente
+em debug e antes da criação dos Blocs. Ele reutiliza o Talker compartilhado do
+logger, registra criação, fechamento, tipos de eventos e transições, sem imprimir
+o conteúdo de eventos ou estados. Erros inesperados registram somente o tipo e
+stack trace, sem a mensagem potencialmente sensível. Não há logs de change
+duplicando transições nem instalação do observer em profile/release.
+
 Módulos usam `createModule` do Modular 7, pertencem à feature e registram
 interfaces para implementações. Authentication e Expense têm um módulo por
 feature sem path: repository, validators, factories e rotas no mesmo registro.
@@ -1105,14 +1117,12 @@ Dashboard, permissão Android e configuração iOS.
   Inter e localização pt-BR. Não duplique tokens ou extensões compartilhadas.
 - Reutilize botões, fields, BounceWidget, ImageWidget e ErrorScreen do core.
   Assets são centralizados em AssetEnum e declarados no pubspec.
-- Ícones explícitos usam `flutter_lucide_animated` e `LucideAnimatedIconData`,
-  renderizados somente pelo `IconWidget` do core. O renderer possui o controller
-  e anima uma vez na entrada e quando o símbolo muda, sem loops decorativos.
-  `IconInteractionWidget` delimita controles e sinaliza pressão, hover e
-  Enter/Espaço aos ícones descendentes sem disputar gestos ou atrasar callbacks.
-  Controles desabilitados, `MediaQuery.disableAnimations` e `TickerMode` inativo
-  impedem as animações Lucide. Lifecycle e descarte ficam nos mixins específicos.
-  Símbolos ausentes no catálogo usam equivalentes disponíveis no pacote.
+- Ícones explícitos usam `Icons` e `IconData` do Material, renderizados pelo
+  `IconWidget` estático do core. O renderer é StatelessWidget e preserva tamanho,
+  cores do tema e semântica, sem controllers ou callbacks pós-frame.
+  Não há dependência de biblioteca de ícones animados nem scopes/listeners de
+  pressão, hover ou teclado para disparar animações. O bounce compartilhado dos
+  botões permanece independente da renderização estática dos ícones.
 - Preserve rolagem, acessibilidade, texto ampliado e redução de movimento.
   Skeletons e imagens decorativas não duplicam mensagens semânticas.
 - Previews usam `@CordatoPreview`, wrappers reais de tema/localização/toast e

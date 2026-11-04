@@ -19,7 +19,10 @@ Sign-out é local: aguarda `IStorageClient.clear()`, sem endpoint HTTP ou revoga
 do JWT no servidor. Falhas do storage propagam e não confirmam sucesso.
 Expense usa `collections/expenses/records` para CRUD e sugestões por histórico,
 com JSON plano, paginação nativa e `owner` lido do storage somente na criação.
-Novas despesas enviam `category: other`. A data civil é representada como
+Novas despesas enviam a categoria selecionada pelo valor de `ExpenseCategoryEnum`,
+com `other` como padrão quando não informada. Atualizações enviam categoria somente
+quando fornecida, inclusive `other`, sem alterar o proprietário. A data civil é
+representada como
 meia-noite UTC sem conversão de fuso; filtros finais incluem todo o dia escolhido.
 Sugestões consultam até 30 registros recentes e deduplicam descrições sem
 diferenciar maiúsculas/minúsculas, sem endpoint customizado ou classificação.
@@ -296,11 +299,9 @@ Lógica visual pura de StatelessWidget pode usar mixin próprio com
   para símbolos não exportados. Remova imports não utilizados; não crie barrels.
 - Reutilize botões, fields, `BounceWidget`, animações e imagens do core antes
   de criar componentes. Botões compartilhados incorporam o bounce de pressão.
-- Ícones explícitos usam `LucideAnimatedIconData` de `flutter_lucide_animated`
-  e o `IconWidget` do core; não use `Icons`, `IconData` ou renderizadores diretos.
-  Controles com ícones usam `IconInteractionWidget` para animar toda a área
-  interativa sem interceptar a ação. Preserve movimento reduzido, estado
-  desabilitado e ownership local dos controllers; não use loops decorativos.
+- Ícones explícitos usam `Icons` e `IconData` do Material pelo `IconWidget`
+  estático do core. Não adicione bibliotecas, controllers, scopes ou listeners
+  para animar ícones. Preserve semântica, cores do tema e estado desabilitado.
 - Use `context.colors`, `context.typography` e `context.radius`; não duplique
   extensões ou tokens. Scaffold herda o tema; não fixe fundo sem necessidade.
 - Assets ficam em `AssetEnum` e `pubspec.yaml`; use `ImageWidget` para imagens.

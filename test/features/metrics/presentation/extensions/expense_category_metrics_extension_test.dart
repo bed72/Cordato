@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
@@ -53,29 +53,29 @@ void main() {
       );
 
       expect(category.label, 'future_category');
-      expect(category.icon, file_text);
+      expect(category.icon, Icons.receipt_long_outlined);
       expect(category.asset, AssetEnum.categoryOthers);
     });
 
     const icons = {
-      'pets': rabbit,
-      'housing': home,
-      'leisure': play,
-      'travel': airplane,
-      'health': heart,
-      'food': cooking_pot,
-      'insurance': shield_check,
-      'education': book_text,
-      'personal_care': sparkles,
-      'services': wrench,
-      'financing': hand_coins,
-      'taxes': file_check,
-      'shopping': cart,
-      'subscriptions': refresh_cw,
-      'investments': trending_up,
-      'transport': truck,
-      'gifts_and_donations': hand_heart,
-      'other': file_text,
+      'pets': Icons.pets_outlined,
+      'housing': Icons.home_outlined,
+      'leisure': Icons.play_circle_outline,
+      'travel': Icons.flight_outlined,
+      'health': Icons.favorite_border,
+      'food': Icons.restaurant_outlined,
+      'insurance': Icons.verified_user_outlined,
+      'education': Icons.menu_book_outlined,
+      'personal_care': Icons.auto_awesome_outlined,
+      'services': Icons.build_outlined,
+      'financing': Icons.payments_outlined,
+      'taxes': Icons.task_outlined,
+      'shopping': Icons.shopping_cart_outlined,
+      'subscriptions': Icons.refresh,
+      'investments': Icons.trending_up,
+      'transport': Icons.local_shipping_outlined,
+      'gifts_and_donations': Icons.volunteer_activism_outlined,
+      'other': Icons.receipt_long_outlined,
     };
     for (final entry in icons.entries) {
       test('uses the expense icon for ${entry.key}', () {

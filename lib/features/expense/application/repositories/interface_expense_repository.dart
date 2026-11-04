@@ -1,3 +1,5 @@
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
@@ -20,6 +22,7 @@ abstract interface class IExpenseRepository {
 
   Future<ExpenseEntity> update({
     required String id,
+    ExpenseCategoryEnum? category,
     int? cents,
     String? description,
     DateTime? occurredOn,
@@ -28,6 +31,7 @@ abstract interface class IExpenseRepository {
   Future<ExpenseEntity> create({
     required int cents,
     required String description,
+    ExpenseCategoryEnum category = .other,
     DateTime? occurredOn,
   });
 }

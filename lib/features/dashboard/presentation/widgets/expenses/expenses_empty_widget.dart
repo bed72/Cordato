@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
@@ -21,7 +20,7 @@ final class const ExpensesEmptyWidget({super.key}) extends StatelessWidget {
             ExcludeSemantics(
               child: BackgroundIconWidget(
                 iconSize: 20.0,
-                icon: file_text,
+                icon: Icons.receipt_long_outlined,
                 iconColor: context.colors.primary,
                 backgroundColor: context.colors.primary.withValues(alpha: 0.12),
               ),

@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/themes/color_theme.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
@@ -25,11 +24,11 @@ final class const ToastData({
   final ToastVariant variant = .info,
 }) {}
 
-LucideAnimatedIconData getToastIcon(ToastVariant variant) => switch (variant) {
-  .info => circle_help,
-  .error => badge_alert,
-  .success => circle_check,
-  .warning => badge_alert,
+IconData getToastIcon(ToastVariant variant) => switch (variant) {
+  .info => Icons.help_outline,
+  .error => Icons.warning_amber_rounded,
+  .success => Icons.check_circle_outline,
+  .warning => Icons.warning_amber_rounded,
 };
 
 String getToastAccessibilityLabel(ToastVariant variant) => switch (variant) {

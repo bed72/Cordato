@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
@@ -53,25 +52,25 @@ extension ExpenseCategoryMetricsExtension on ExpenseCategoryMetricsEntity {
     _ => category,
   };
 
-  LucideAnimatedIconData get icon => switch (category) {
-    'pets' => rabbit,
-    'housing' => home,
-    'leisure' => play,
-    'travel' => airplane,
-    'health' => heart,
-    'food' => cooking_pot,
-    'insurance' => shield_check,
-    'education' => book_text,
-    'services' => wrench,
-    'personal_care' => sparkles,
-    'financing' => hand_coins,
-    'taxes' => file_check,
-    'shopping' => cart,
-    'subscriptions' => refresh_cw,
-    'investments' => trending_up,
-    'transport' => truck,
-    'gifts_and_donations' => hand_heart,
-    _ => file_text,
+  IconData get icon => switch (category) {
+    'pets' => Icons.pets_outlined,
+    'housing' => Icons.home_outlined,
+    'leisure' => Icons.play_circle_outline,
+    'travel' => Icons.flight_outlined,
+    'health' => Icons.favorite_border,
+    'food' => Icons.restaurant_outlined,
+    'insurance' => Icons.verified_user_outlined,
+    'education' => Icons.menu_book_outlined,
+    'services' => Icons.build_outlined,
+    'personal_care' => Icons.auto_awesome_outlined,
+    'financing' => Icons.payments_outlined,
+    'taxes' => Icons.task_outlined,
+    'shopping' => Icons.shopping_cart_outlined,
+    'subscriptions' => Icons.refresh,
+    'investments' => Icons.trending_up,
+    'transport' => Icons.local_shipping_outlined,
+    'gifts_and_donations' => Icons.volunteer_activism_outlined,
+    _ => Icons.receipt_long_outlined,
   };
 
   AssetEnum get asset => switch (category) {

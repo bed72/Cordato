@@ -1,3 +1,5 @@
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
@@ -33,6 +35,7 @@ final class ExpensesPreviewRepository({required final ExpensePageEntity data})
   @override
   Future<ExpenseEntity> update({
     required String id,
+    ExpenseCategoryEnum? category,
     int? cents,
     String? description,
     DateTime? occurredOn,
@@ -42,6 +45,7 @@ final class ExpensesPreviewRepository({required final ExpensePageEntity data})
   Future<ExpenseEntity> create({
     required int cents,
     required String description,
+    ExpenseCategoryEnum category = .other,
     DateTime? occurredOn,
   }) async => throw ExpenseException(errors: .unknown());
 }

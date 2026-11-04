@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
@@ -55,7 +54,7 @@ final class _ExpenseCategoryPickerWidgetState
           width: .infinity,
           child: ElevatedButtonWidget(
             label: 'Confirmar',
-            onTap: () => context.pop(_selected),
+            onTap: () => Navigator.pop<ExpenseCategoryEnum>(context, _selected),
           ),
         ),
       ],

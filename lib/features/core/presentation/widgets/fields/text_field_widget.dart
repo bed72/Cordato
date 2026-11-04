@@ -1,5 +1,4 @@
 import 'package:flutter/services.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:cupertino_ui/cupertino_ui.dart';
 
@@ -15,7 +14,7 @@ class const TextFieldWidget({
   final String? failure,
   final String? initialValue,
   final FocusNode? focusNode,
-  final LucideAnimatedIconData? trailingIcon,
+  final IconData? trailingIcon,
   final TextInputType? keyboardType,
   final TextInputAction? inputAction,
   final Iterable<String>? autofillHints,
@@ -233,7 +232,7 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
     return Row(
       spacing: 6.0,
       children: [
-        IconWidget(icon: circle_help, color: failureColor, size: 16.0),
+        IconWidget(icon: Icons.help_outline, color: failureColor, size: 16.0),
         Expanded(
           child: Text(
             widget.failure!,

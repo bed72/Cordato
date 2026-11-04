@@ -1,9 +1,7 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/icons/icon_interaction_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 final class const MenuItemWidget({
@@ -19,7 +17,7 @@ final class const MenuItemWidget({
   final double spacing = 16.0,
   final bool showChevron = true,
   final double disabledOpacity = 1.0,
-  final LucideAnimatedIconData? icon,
+  final IconData? icon,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -35,12 +33,9 @@ final class const MenuItemWidget({
       button: true,
       enabled: onPressed != null,
       child: ExcludeSemantics(
-        child: IconInteractionWidget(
-          enabled: onPressed != null,
-          child: onPressed == null
-              ? content
-              : BounceWidget.withOnPress(onPress: onPressed, child: content),
-        ),
+        child: onPressed == null
+            ? content
+            : BounceWidget.withOnPress(onPress: onPressed, child: content),
       ),
     );
   }
@@ -127,7 +122,7 @@ final class const MenuItemWidget({
 
     return IconWidget(
       size: 24.0,
-      icon: chevron_right,
+      icon: Icons.chevron_right,
       color: context.colors.onSurfaceVariant,
     );
   }

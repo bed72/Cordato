@@ -39,24 +39,25 @@ final class const ExpenseMetricsGridWidget({
                 moneyFormatter: moneyFormatter,
               ),
             ),
-            SizedBox(
-              height: bottomHeight,
-              child: Row(
-                spacing: 12.0,
-                crossAxisAlignment: .stretch,
-                children: [
-                  for (final category in categories.skip(1))
-                    Expanded(
-                      child: ExpenseCategoryMetricsCardWidget(
-                        category: category,
-                        period: period,
-                        onExpensesChanged: onExpensesChanged,
-                        moneyFormatter: moneyFormatter,
+            if (categories.length > 1)
+              SizedBox(
+                height: bottomHeight,
+                child: Row(
+                  spacing: 12.0,
+                  crossAxisAlignment: .stretch,
+                  children: [
+                    for (final category in categories.skip(1))
+                      Expanded(
+                        child: ExpenseCategoryMetricsCardWidget(
+                          category: category,
+                          period: period,
+                          onExpensesChanged: onExpensesChanged,
+                          moneyFormatter: moneyFormatter,
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         );
       },
@@ -85,12 +86,12 @@ final class const ExpenseMetricsGridWidget({
         ),
     ];
     final topHeight = heights.first;
-    final bottomHeight = heights.skip(1).reduce(math.max);
+    final bottomHeight = heights.skip(1).fold(0.0, math.max);
 
     return (
       upperHeight: topHeight,
       lowerHeight: bottomHeight,
-      height: topHeight + 12.0 + bottomHeight,
+      height: topHeight + (categories.length > 1 ? 12.0 + bottomHeight : 0.0),
     );
   }
 }

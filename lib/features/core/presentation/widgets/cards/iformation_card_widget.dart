@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/cards/iformation_card_content_widget.dart';
@@ -7,7 +6,7 @@ import 'package:cordato/features/core/presentation/widgets/cards/iformation_card
 final class const IformationCardWidget({
   super.key,
   required final String title,
-  required final LucideAnimatedIconData icon,
+  required final IconData icon,
   required final Color iconColor,
   required final String description,
   required final Color iconBackgroundColor,

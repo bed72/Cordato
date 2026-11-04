@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
@@ -122,7 +121,7 @@ final class _UserScreenState extends State<UserScreen>
                   height: 64.0,
                   spacing: 12.0,
                   value: currentUser.displayName,
-                  icon: user,
+                  icon: Icons.person_outline,
                   onPressed: state.canEdit ? () => editName(currentUser) : null,
                 ),
                 MenuItemWidget(
@@ -132,7 +131,7 @@ final class _UserScreenState extends State<UserScreen>
                   value: currentUser.email,
                   showChevron: false,
                   disabledOpacity: 0.5,
-                  icon: mail_check,
+                  icon: Icons.mark_email_read_outlined,
                 ),
               ],
             ),

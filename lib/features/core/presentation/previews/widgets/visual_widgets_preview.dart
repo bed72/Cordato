@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
@@ -44,12 +43,12 @@ Widget previewIconWidgets() => _visualShell(
       spacing: 24.0,
       children: [
         IconWidget(
-          icon: circle_dollar_sign,
+          icon: Icons.paid_outlined,
           size: 32.0,
           color: Theme.of(context).colorScheme.primary,
         ),
         BackgroundIconWidget(
-          icon: file_text,
+          icon: Icons.receipt_long_outlined,
           iconColor: Theme.of(context).colorScheme.onPrimary,
           backgroundColor: Theme.of(context).colorScheme.primary,
         ),

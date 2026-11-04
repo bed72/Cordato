@@ -1,12 +1,12 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 class const BackgroundIconWidget({
   super.key,
-  required final LucideAnimatedIconData icon,
+  required final IconData icon,
   required final Color backgroundColor,
   final double? width,
   final double? height,
