@@ -8,16 +8,20 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
+
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_event.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_form_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_date_picker_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_category_picker_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/calculator/cents_calculator_widget.dart';
 
 mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
   final descriptionController = TextEditingController();
 
   int cents = 0;
+  ExpenseCategoryEnum category = .other;
   bool hasManualAmount = false;
   ExpenseSuggestionEntity? _selectedSuggestion;
 
@@ -43,6 +47,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     final initial = widget.initialExpense!;
     final hasChanges =
         cents != initial.cents.cents ||
+        category != initial.category ||
         descriptionController.text.trim() != initial.description.trim() ||
         !DateUtils.isSameDay(occurredOn, initial.occurredOn);
     final validation = widget.validator(
@@ -62,6 +67,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     super.initState();
     descriptionController.text = widget.initialExpense?.description ?? '';
     cents = widget.initialExpense?.cents.cents ?? 0;
+    category = widget.initialExpense?.category ?? .other;
     occurredOn =
         widget.initialExpense?.occurredOn ?? DateUtils.dateOnly(.now());
     descriptionController.addListener(_refreshSubmit);
@@ -143,6 +149,27 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     }
   }
 
+  Future<void> selectCategory() async {
+    if (!widget.enabled || _isRunning || _isPickerOpen) return;
+    _isPickerOpen = true;
+    FocusManager.instance.primaryFocus?.unfocus();
+    try {
+      final value = await showBottomSheetWidget<ExpenseCategoryEnum>(
+        context: context,
+        title: 'Categoria do gasto',
+        subtitle: 'Escolha onde esse gasto se encaixa.',
+        contentPadding: const .fromLTRB(16.0, 20.0, 16.0, 32.0),
+        child: ExpenseCategoryPickerWidget(value: category),
+      );
+      if (!mounted) return;
+      context.dismissKeyboard();
+      if (value == null || _isRunning) return;
+      setState(() => category = value);
+    } finally {
+      _isPickerOpen = false;
+    }
+  }
+
   Future<void> selectDate() async {
     if (!widget.enabled || _isRunning || _isPickerOpen) return;
     _isPickerOpen = true;
@@ -202,6 +229,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
         widget.expenseBloc.add(
           ExpenseSubmittedEvent(
             id: widget.id!,
+            category: category == initial.category ? null : category,
             cents: validCents == initial.cents.cents ? null : validCents,
             description: validDescription == initial.description.trim()
                 ? null
@@ -216,6 +244,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
       widget.expenseBloc.add(
         ExpenseSubmittedEvent(
           keepFormOpen: keepFormOpen,
+          category: category,
           cents: validCents,
           occurredOn: validDate,
           description: validDescription,
@@ -257,6 +286,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
 
     setState(() {
       cents = 0;
+      category = .other;
       hasManualAmount = false;
       _selectedSuggestion = null;
       dateFailure = null;

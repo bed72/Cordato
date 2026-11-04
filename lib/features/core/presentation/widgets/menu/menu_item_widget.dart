@@ -9,15 +9,17 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 final class const MenuItemWidget({
   super.key,
   required final String label,
+  final bool? selected,
   final String? value,
-  final LucideAnimatedIconData? icon,
   final Widget? leading,
   final Widget? trailing,
+  final String? description,
   final VoidCallback? onPressed,
   final double height = 56.0,
   final double spacing = 16.0,
   final bool showChevron = true,
   final double disabledOpacity = 1.0,
+  final LucideAnimatedIconData? icon,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -27,8 +29,9 @@ final class const MenuItemWidget({
     );
 
     return Semantics(
-      label: label,
+      label: description == null ? label : '$label, $description',
       value: value,
+      selected: selected,
       button: true,
       enabled: onPressed != null,
       child: ExcludeSemantics(
@@ -42,20 +45,23 @@ final class const MenuItemWidget({
     );
   }
 
-  SizedBox _buildContent(BuildContext context) {
-    return SizedBox(
-      height: height,
-      child: Row(
-        spacing: spacing,
-        children: [
-          ?_buildLeading(context),
-          _buildLabel(context),
-          ?_buildValue(context),
-          ?trailing,
-          ?_buildChevron(context),
-        ],
-      ),
+  Widget _buildContent(BuildContext context) {
+    final content = Row(
+      spacing: spacing,
+      children: [
+        ?_buildLeading(context),
+        _buildLabel(context),
+        ?_buildValue(context),
+        ?trailing,
+        ?_buildChevron(context),
+      ],
     );
+    return description == null
+        ? SizedBox(height: height, child: content)
+        : ConstrainedBox(
+            constraints: BoxConstraints(minHeight: height),
+            child: content,
+          );
   }
 
   Widget? _buildLeading(BuildContext context) {
@@ -79,7 +85,25 @@ final class const MenuItemWidget({
       ),
     );
 
-    return value == null ? Expanded(child: text) : text;
+    final content = description == null
+        ? text
+        : Column(
+            spacing: 4.0,
+            mainAxisSize: .min,
+            crossAxisAlignment: .start,
+            children: [
+              text,
+              Text(
+                description!,
+                maxLines: 1,
+                overflow: .ellipsis,
+                style: context.typography.bodySmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          );
+    return value == null ? Expanded(child: content) : content;
   }
 
   Expanded? _buildValue(BuildContext context) {
@@ -89,8 +113,8 @@ final class const MenuItemWidget({
       child: Text(
         value!,
         maxLines: 1,
-        overflow: .ellipsis,
         textAlign: .end,
+        overflow: .ellipsis,
         style: context.typography.bodyMedium?.copyWith(
           color: context.colors.onSurfaceVariant,
         ),

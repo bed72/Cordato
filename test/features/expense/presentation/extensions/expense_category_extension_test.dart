@@ -74,4 +74,56 @@ void main() {
       });
     }
   });
+
+  group('Category selection catalog', () {
+    test('includes each domain category exactly once with Others last', () {
+      final categories = ExpenseCategoryExtension.orderedValues;
+
+      expect(categories, hasLength(ExpenseCategoryEnum.values.length));
+      expect(categories.toSet(), ExpenseCategoryEnum.values.toSet());
+      expect(categories.last, ExpenseCategoryEnum.other);
+      expect(() => categories.add(.food), throwsUnsupportedError);
+    });
+
+    test('uses Portuguese alphabetical labels before Others', () {
+      expect(
+        ExpenseCategoryExtension.orderedValues.map(
+          (category) => category.label,
+        ),
+        [
+          'Alimentação',
+          'Animais de estimação',
+          'Assinaturas',
+          'Compras',
+          'Cuidados pessoais',
+          'Educação',
+          'Financiamentos',
+          'Impostos',
+          'Investimentos',
+          'Lazer',
+          'Moradia',
+          'Presentes e doações',
+          'Saúde',
+          'Seguros',
+          'Serviços',
+          'Transporte',
+          'Viagens',
+          'Outros',
+        ],
+      );
+    });
+
+    for (final category in ExpenseCategoryEnum.values) {
+      test('${category.value} has a description of five or six words', () {
+        final description = category.description;
+
+        expect(description, description.trim());
+        expect(description, isNot(contains('\n')));
+        expect(
+          description.split(RegExp(r'\s+')).length,
+          inInclusiveRange(5, 6),
+        );
+      });
+    }
+  });
 }

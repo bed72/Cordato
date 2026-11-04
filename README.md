@@ -244,6 +244,22 @@ rota; Dashboard e métricas recarregam ao retornar da listagem, mesmo sem altera
 Expense não depende mais de CommandIt. Dashboard consome resultados diretos de
 todos os contextos consultados.
 
+O formulário de despesa oferece um campo Categoria somente leitura, preenchido
+com Outros no cadastro e com a categoria salva na edição. A bottom-sheet reutiliza
+o item de menu compartilhado com ícone, nome e descrição curta, ordenação alfabética
+e Outros no final. A seleção usa borda e fundo suave nas cores das métricas e só
+é aplicada pelo botão Confirmar fixo no rodapé; dispensar a folha não altera o
+formulário. Cadastro contínuo retorna a Outros. Nesta primeira etapa de UI e
+eventos do Bloc, a categoria selecionada ainda não é encaminhada ao repository:
+criação continua enviando `other` e edição não altera a categoria persistida.
+Sugestões ainda não preenchem categoria; essa ligação fica para a integração.
+
+Verificação desta etapa: `flutter pub get` concluído, `flutter analyze` sem issues,
+`flutter test` com 977 testes aprovados e o lote `test/architecture` +
+`test/features/expense` com 309 aprovados. `dart run tool/widget_preview.dart`
+compilou e serviu o catálogo; a execução foi encerrada pelo timeout de 60 segundos,
+sem cliente conectado ou validação visual. `git diff --check` sem erros.
+
 No novo gasto, Descrição oferece autocomplete do histórico pessoal com
 `RawAutocomplete` nativo e o mesmo `TextFieldWidget` do core. A busca começa em
 3 caracteres, após 300 ms;

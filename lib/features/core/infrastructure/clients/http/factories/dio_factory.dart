@@ -25,6 +25,7 @@ final class DioFactory {
         TalkerDioLogger(
           talker: loggerClient,
           settings: TalkerDioLoggerSettings(
+            requestFilter: _canLog,
             printErrorData: kDebugMode,
             printRequestData: kDebugMode,
             printResponseData: kDebugMode,
@@ -33,7 +34,6 @@ final class DioFactory {
             printResponseHeaders: kDebugMode,
             printResponseMessage: kDebugMode,
             hiddenHeaders: const {'Authorization'},
-            requestFilter: _canLog,
             responseFilter: (response) => _canLog(response.requestOptions),
             errorFilter: (error) => _canLog(error.requestOptions),
           ),

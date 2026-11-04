@@ -1,11 +1,16 @@
 import 'dart:async';
 
+import 'package:mocktail/mocktail.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
+
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_event.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
@@ -35,6 +40,59 @@ void main() {
   });
 
   group('Initial state, creation and editing', () {
+    test('submission carries the selected category without normalization', () {
+      const event = ExpenseSubmittedEvent(
+        cents: 1234,
+        description: ' Original ',
+        category: .transport,
+      );
+
+      expect(event.category, same(ExpenseCategoryEnum.transport));
+      expect(event.description, ' Original ');
+      expect(submitted.category, isNull);
+    });
+
+    blocTest<ExpenseBloc, ExpenseState>(
+      'accepts a category without changing the repository contract or API result',
+      build: () => ExpenseBloc(repository: repository),
+      act: (bloc) => bloc.add(
+        const ExpenseSubmittedEvent(
+          cents: 1234,
+          description: ' Original ',
+          category: .transport,
+        ),
+      ),
+      expect: () => [
+        isA<ExpenseSubmitting>(),
+        isA<ExpenseSuccess>().having(
+          (state) => state.expense,
+          'confirmed API entity, not a locally recategorized entity',
+          same(expense),
+        ),
+      ],
+      verify: (_) => verify(
+        () => repository.create(cents: 1234, description: ' Original '),
+      ).called(1),
+    );
+
+    blocTest<ExpenseBloc, ExpenseState>(
+      'category-only edit leaves persistence unchanged in the UI-only stage',
+      build: () {
+        when(() => repository.update(id: '1')).thenAnswer((_) async => expense);
+        return ExpenseBloc(repository: repository);
+      },
+      seed: () => ExpenseReady(expense: expense),
+      act: (bloc) =>
+          bloc.add(const ExpenseSubmittedEvent(id: '1', category: .transport)),
+      expect: () => [
+        isA<ExpenseSubmitting>(),
+        isA<ExpenseSuccess>()
+            .having((state) => state.isEditing, 'editing', true)
+            .having((state) => state.expense, 'API entity', same(expense)),
+      ],
+      verify: (_) => verify(() => repository.update(id: '1')).called(1),
+    );
+
     test('starts idle without a request', () async {
       final bloc = ExpenseBloc(repository: repository);
       expect(bloc.state, isA<ExpenseInitial>());

@@ -21,6 +21,7 @@ import 'package:cordato/features/expense/presentation/screens/expense/bloc/expen
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/mixins/expense_form_widget_state_mixin.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/fields/expense_description_field_widget.dart';
+import 'package:cordato/features/expense/presentation/screens/expense/widgets/fields/expense_category_field_widget.dart';
 
 final class const ExpenseFormWidget({
   super.key,
@@ -110,6 +111,11 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
                       ),
                     ),
                   ),
+                ExpenseCategoryFieldWidget(
+                  value: category,
+                  enabled: widget.enabled && !isLoading,
+                  onTap: widget.enabled && !isLoading ? selectCategory : null,
+                ),
                 DateFieldWidget(
                   label: 'Data',
                   failure: dateFailure,

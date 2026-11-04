@@ -8,6 +8,7 @@ Future<T?> showBottomSheetWidget<T>({
   required Widget child,
   String? title,
   String? subtitle,
+  EdgeInsetsGeometry? contentPadding,
   bool enableDrag = true,
   double topMargin = 32.0,
   bool useSafeArea = true,
@@ -26,6 +27,7 @@ Future<T?> showBottomSheetWidget<T>({
     child: BottomSheetScaffoldWidget(
       title: title,
       subtitle: subtitle,
+      contentPadding: contentPadding,
       child: child,
     ),
   ),

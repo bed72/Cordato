@@ -5,6 +5,48 @@ import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 extension ExpenseCategoryExtension on ExpenseCategoryEnum {
+  static const orderedValues = <ExpenseCategoryEnum>[
+    .food,
+    .pets,
+    .subscriptions,
+    .shopping,
+    .personalCare,
+    .education,
+    .financing,
+    .taxes,
+    .investments,
+    .leisure,
+    .housing,
+    .giftsAndDonations,
+    .health,
+    .insurance,
+    .services,
+    .transport,
+    .travel,
+    .other,
+  ];
+
+  String get description => switch (this) {
+    .food => 'Mercado, restaurantes e refeições do dia',
+    .pets => 'Ração, veterinário e cuidados com animais',
+    .subscriptions => 'Streaming, aplicativos e outros',
+    .shopping => 'Roupas, eletrônicos e produtos em geral',
+    .personalCare => 'Beleza, higiene e cuidados com você',
+    .education => 'Cursos, livros e materiais de estudo',
+    .financing => 'Parcelas de imóveis, veículos e empréstimos',
+    .taxes => 'Tributos, taxas e outras obrigações fiscais',
+    .investments => 'Aportes, aplicações e reservas',
+    .leisure => 'Cinema, passeios e momentos de diversão',
+    .housing => 'Aluguel, condomínio e contas da casa',
+    .giftsAndDonations => 'Presentes, contribuições e apoio a causas',
+    .health => 'Consultas, exames e cuidados com saúde',
+    .insurance => 'Proteção de vida, bens e veículos',
+    .services => 'Reparos, manutenção e contratação',
+    .transport => 'Combustível, passagens e deslocamentos',
+    .travel => 'Passagens, hospedagens e viagens',
+    .other => 'Gastos que não se encaixam aqui',
+  };
+
   LucideAnimatedIconData get icon => switch (this) {
     .pets => rabbit,
     .housing => home,

@@ -8,43 +8,32 @@ import 'package:cordato/features/core/presentation/widgets/buttons/link_button_w
 final class const SignUpFooterWidget({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Wrap(
+      spacing: 6.0,
+      alignment: .center,
+      crossAxisAlignment: .center,
       children: [
-        Wrap(
-          spacing: 6.0,
-          alignment: .center,
-          crossAxisAlignment: .center,
-          children: [
-            Text(
-              'Não possui conta?',
-              style: context.typography.bodySmall?.copyWith(
-                color: context.colors.onSurfaceVariant,
-              ),
-            ),
-            LinkButtonWidget(
-              label: 'Crie agora.',
-              onTap: () => context.replace(RouteEnum.authenticationSignUp.path),
-            ),
-          ],
+        Text(
+          'Não tem conta?',
+          style: context.typography.bodySmall?.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
         ),
-        Wrap(
-          spacing: 6.0,
-          alignment: .center,
-          crossAxisAlignment: .center,
-          children: [
-            Text(
-              'Ou recupere sua',
-              style: context.typography.bodySmall?.copyWith(
-                color: context.colors.onSurfaceVariant,
-              ),
-            ),
-            LinkButtonWidget(
-              label: 'Conta',
-              onTap: () => context.pushNamed(
-                RouteEnum.authenticationPasswordRecovery.path,
-              ),
-            ),
-          ],
+        LinkButtonWidget(
+          label: 'Crie uma',
+          onTap: () => context.replace(RouteEnum.authenticationSignUp.path),
+        ),
+        Text(
+          'ou',
+          style: context.typography.bodySmall?.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
+        ),
+        LinkButtonWidget(
+          label: 'recupere sua senha',
+          onTap: () => context.pushNamed(
+            RouteEnum.authenticationPasswordRecovery.path,
+          ),
         ),
       ],
     );
