@@ -2,7 +2,9 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/validators/validation.dart';
+
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/form_sign_in_widget.dart';
+import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 
 mixin FormSignInWidgetStateMixin on State<FormSignInWidget> {
   String email = '';
@@ -17,16 +19,19 @@ mixin FormSignInWidgetStateMixin on State<FormSignInWidget> {
     final passwordMessages = <String>[];
 
     for (final error in errors) {
-      if ((error.status == '400' || error.status == '422') &&
-          error.detail != null) {
+      if (error.status == '400' || error.status == '422') {
         switch (error.pointer) {
           case '/identity':
           case '/data/attributes/email':
-            emailMessages.add(error.detail!);
+            emailMessages.add(
+              AuthenticationErrorMessageFormatter.signIn(error),
+            );
             continue;
           case '/data/attributes/password':
           case '/password':
-            passwordMessages.add(error.detail!);
+            passwordMessages.add(
+              AuthenticationErrorMessageFormatter.signIn(error),
+            );
             continue;
         }
       }

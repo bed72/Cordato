@@ -11,6 +11,7 @@ import 'package:cordato/features/user/presentation/screens/edit/edit_screen.dart
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_bloc.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_event.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.dart';
+import 'package:cordato/features/user/presentation/formatters/user_error_message_formatter.dart';
 
 mixin EditScreenStateMixin on State<EditScreen> {
   late EditBloc bloc;
@@ -69,7 +70,10 @@ mixin EditScreenStateMixin on State<EditScreen> {
             ? null
             : fieldErrors
                   .map(
-                    (error) => error.detail ?? error.title ?? 'Nome inválido.',
+                    (error) => UserErrorMessageFormatter.format(
+                      error,
+                      fallback: 'Confira o nome informado.',
+                    ),
                   )
                   .join('\n');
       });
@@ -79,11 +83,16 @@ mixin EditScreenStateMixin on State<EditScreen> {
       if (remaining.isNotEmpty) {
         context.showToast(
           variant: .error,
-          title: remaining.first.title ?? 'Erro ao atualizar nome',
+          title: 'Erro ao atualizar nome',
           description: remaining
               .map(
-                (error) => error.detail ?? 'Não foi possível atualizar o nome.',
+                (error) => UserErrorMessageFormatter.format(
+                  error,
+                  fallback:
+                      'Não foi possível atualizar o nome. Tente novamente.',
+                ),
               )
+              .toSet()
               .join('\n'),
         );
       } else if (errors.errors.isEmpty) {

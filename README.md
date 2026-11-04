@@ -71,6 +71,27 @@ Nome vazio é exibido como `Trocado`, sem gravar esse fallback. A edição exige
 A exclusão aguarda HTTP 204 e a limpeza local do storage; Session redireciona.
 A cascata das despesas está configurada no backend e requer homologação real.
 
+## Mensagens De Erro Na Interface
+
+Campos, toasts e telas de erro usam mensagens locais em português, sem expor
+títulos, descrições ou diagnósticos retornados pelo backend. A cobertura inclui
+entrada, cadastro, confirmação/reenvio e recuperação de senha, perfil/nome/avatar,
+despesas e logout. Dashboard e Metrics mantêm o feedback local que já utilizavam.
+Erros originais continuam preservados em infraestrutura, exceções e estados;
+formatadores puros da apresentação escolhem os textos por status, código, campo
+e operação, com fallback seguro para respostas desconhecidas. Navegação, API,
+ownership dos Blocs e comportamento de submissão não foram alterados.
+
+Verificação local: `flutter pub get` concluído; `flutter analyze` sem problemas.
+O lote de arquitetura, formatadores compartilhados, responses HTTP,
+Authentication, User, Settings, formatadores de Expense e telas lógicas de
+cadastro/listagem de despesas aprovou 516 testes unitários, sem montar UI.
+`flutter test --reporter failures-only` teve 1158 aprovados e as mesmas cinco
+falhas preexistentes nas descrições de categorias em
+`test/features/expense/presentation/extensions/expense_category_extension_test.dart`;
+esse arquivo e os textos correspondentes não foram alterados. `git diff --check`
+passou. Não houve homologação em dispositivo ou chamadas ao backend real.
+
 ## Informações Públicas
 
 O módulo `information` oferece Termos de uso, Política de Privacidade e Ajuda

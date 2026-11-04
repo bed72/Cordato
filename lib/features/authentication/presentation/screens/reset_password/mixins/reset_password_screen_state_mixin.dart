@@ -1,14 +1,17 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 
 import 'package:cordato/features/authentication/presentation/validators/password_confirmation_validation.dart';
 import 'package:cordato/features/authentication/presentation/screens/reset_password/reset_password_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/reset_password/bloc/reset_password_event.dart';
 import 'package:cordato/features/authentication/presentation/screens/reset_password/bloc/reset_password_state.dart';
+import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 
 mixin ResetPasswordScreenStateMixin on State<ResetPasswordScreen> {
   String? passwordFailure;
@@ -111,19 +114,30 @@ mixin ResetPasswordScreenStateMixin on State<ResetPasswordScreen> {
     if (state is! ResetPasswordFailure) return;
     final passwordErrors = <String>[];
     final confirmationErrors = <String>[];
-    var hasRemaining = state.errors.errors.isEmpty;
+    final remaining = <ErrorEntity>[];
     for (final error in state.errors.errors) {
-      if (error.status == '400' && error.detail != null) {
+      if (error.status == '400') {
         if (error.pointer == '/password') {
-          passwordErrors.add(error.detail!);
+          passwordErrors.add(
+            AuthenticationErrorMessageFormatter.format(
+              error,
+              fallback: 'Confira a senha informada.',
+            ),
+          );
           continue;
         }
         if (error.pointer == '/passwordConfirm') {
-          confirmationErrors.add(error.detail!);
+          confirmationErrors.add(
+            AuthenticationErrorMessageFormatter.format(
+              error,
+              fallback: 'Confira a confirmação da senha.',
+            ),
+          );
           continue;
         }
       }
-      hasRemaining = true;
+
+      remaining.add(error);
     }
     setState(() {
       passwordFailure = passwordErrors.isEmpty
@@ -133,11 +147,14 @@ mixin ResetPasswordScreenStateMixin on State<ResetPasswordScreen> {
           ? null
           : confirmationErrors.join('\n');
     });
-    if (hasRemaining) {
+    if (remaining.isNotEmpty || state.errors.errors.isEmpty) {
       context.showToast(
         variant: .error,
         title: 'Não foi possível redefinir a senha',
-        description: 'Verifique sua conexão e tente novamente.',
+        description: ErrorMessageFormatter.formatAll(
+          remaining,
+          fallback: 'Não foi possível redefinir a senha. Tente novamente.',
+        ),
       );
     }
   }

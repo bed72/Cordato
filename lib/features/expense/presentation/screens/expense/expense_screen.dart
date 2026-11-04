@@ -1,8 +1,9 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 
 import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
+import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
@@ -44,14 +45,10 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
           return ErrorScreen(
             appBar: const ExpenseAppBarWidget(),
             title: 'Não foi possível carregar a despesa.',
-            description: errors.errors.isEmpty
-                ? 'Tente novamente para carregar os dados.'
-                : errors.errors
-                      .map(
-                        (error) =>
-                            error.detail ?? error.title ?? 'Tente novamente.',
-                      )
-                      .join('\n'),
+            description: ErrorMessageFormatter.formatAll(
+              errors.errors,
+              fallback: 'Tente novamente para carregar os dados.',
+            ),
             actionLabel: 'Tentar novamente',
             onAction: loadExpense,
           );

@@ -2,14 +2,17 @@ import 'dart:math';
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
+
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
+
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
+import 'package:cordato/features/user/presentation/screens/user/user_screen.dart';
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_bloc.dart';
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_event.dart';
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_state.dart';
-import 'package:cordato/features/user/presentation/screens/user/user_screen.dart';
 
 mixin UserScreenStateMixin on State<UserScreen> {
   late UserBloc bloc;
@@ -94,16 +97,11 @@ mixin UserScreenStateMixin on State<UserScreen> {
       case UserDeleteFailure(:final errors):
         context.showToast(
           variant: .error,
-          title: errors.errors.firstOrNull?.title ?? 'Erro ao apagar conta',
-          description: errors.errors.isEmpty
-              ? 'Não foi possível apagar sua conta. Tente novamente.'
-              : errors.errors
-                    .map(
-                      (error) =>
-                          error.detail ??
-                          'Não foi possível apagar sua conta. Tente novamente.',
-                    )
-                    .join('\n'),
+          title: 'Erro ao apagar conta',
+          description: ErrorMessageFormatter.formatAll(
+            errors.errors,
+            fallback: 'Não foi possível apagar sua conta. Tente novamente.',
+          ),
         );
       default:
         break;
@@ -139,14 +137,8 @@ mixin UserScreenStateMixin on State<UserScreen> {
     loadUser();
   }
 
-  String error(ErrorsEntity errors) => errors.errors.isEmpty
-      ? 'Não foi possível processar a resposta.'
-      : errors.errors
-            .map(
-              (error) =>
-                  error.detail ??
-                  error.title ??
-                  'Não foi possível processar a resposta.',
-            )
-            .join('\n');
+  String error(ErrorsEntity errors) => ErrorMessageFormatter.formatAll(
+    errors.errors,
+    fallback: 'Não foi possível processar a solicitação. Tente novamente.',
+  );
 }

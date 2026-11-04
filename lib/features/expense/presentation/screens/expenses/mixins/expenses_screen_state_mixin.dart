@@ -3,6 +3,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
@@ -121,15 +122,11 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     } else if (state case ExpensesDeleteFailure(:final errors)) {
       context.showToast(
         variant: .error,
-        title: errors.errors.firstOrNull?.title ?? 'Erro ao excluir despesa',
-        description: errors.errors.isEmpty
-            ? 'Não foi possível excluir a despesa. Tente novamente.'
-            : errors.errors
-                  .map(
-                    (error) =>
-                        error.detail ?? error.title ?? 'Tente novamente.',
-                  )
-                  .join('\n'),
+        title: 'Erro ao excluir despesa',
+        description: ErrorMessageFormatter.formatAll(
+          errors.errors,
+          fallback: 'Não foi possível excluir a despesa. Tente novamente.',
+        ),
       );
     }
     if (!state.isBusy && state is! ExpensesFailure) {

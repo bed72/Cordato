@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_event.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_state.dart';
-
-import 'package:cordato/features/authentication/presentation/screens/resend_email/resend_email_screen.dart';
+import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 
 mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
   late ResendEmailBloc bloc;
@@ -61,12 +61,16 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
           when errors.errors.isNotEmpty) {
         context.showToast(
           variant: .error,
-          title: errors.errors.first.title ?? 'Erro ao reenviar e-mail',
+          title: 'Erro ao reenviar e-mail',
           description: errors.errors
               .map(
-                (error) =>
-                    error.detail ?? 'Não foi possível reenviar o e-mail.',
+                (error) => AuthenticationErrorMessageFormatter.format(
+                  error,
+                  fallback:
+                      'Não foi possível reenviar o e-mail. Tente novamente.',
+                ),
               )
+              .toSet()
               .join('\n'),
         );
 

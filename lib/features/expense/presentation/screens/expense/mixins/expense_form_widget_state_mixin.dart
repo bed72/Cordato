@@ -7,11 +7,12 @@ import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
 
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_event.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_state.dart';
+import 'package:cordato/features/expense/presentation/formatters/expense_error_message_formatter.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_form_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_date_picker_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_category_picker_widget.dart';
@@ -304,7 +305,10 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     final descriptionMessages = <String>[];
 
     for (final error in errors.errors) {
-      final message = error.detail ?? error.title ?? 'Valor inválido.';
+      final message = ExpenseErrorMessageFormatter.format(
+        error,
+        fallback: 'Confira os dados informados.',
+      );
       if (error.status != '422' && error.status != '400') {
         remaining.add(error);
         continue;
@@ -336,18 +340,23 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     if (remaining.isNotEmpty || errors.errors.isEmpty) {
       context.showToast(
         variant: .error,
-        title:
-            remaining.firstOrNull?.title ??
-            (isEditing ? 'Erro ao atualizar gasto' : 'Erro ao cadastrar gasto'),
+        title: isEditing
+            ? 'Erro ao atualizar gasto'
+            : 'Erro ao cadastrar gasto',
         description: remaining.isEmpty
             ? (isEditing
                   ? 'Não foi possível atualizar o gasto. Tente novamente.'
                   : 'Não foi possível cadastrar o gasto. Tente novamente.')
             : remaining
                   .map(
-                    (error) =>
-                        error.detail ?? error.title ?? 'Tente novamente.',
+                    (error) => ExpenseErrorMessageFormatter.format(
+                      error,
+                      fallback: isEditing
+                          ? 'Não foi possível atualizar o gasto. Tente novamente.'
+                          : 'Não foi possível cadastrar o gasto. Tente novamente.',
+                    ),
                   )
+                  .toSet()
                   .join('\n'),
       );
     }

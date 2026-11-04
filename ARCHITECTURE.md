@@ -168,6 +168,26 @@ a screen compõe e entrega efeitos ao usuário. Módulos fazem a ligação concr
 Não introduza BaseBloc, store global ou handlers genéricos para padronizar telas
 com semânticas diferentes.
 
+Mensagens de erro exibidas ao usuário são locais e em português. Screens e
+formulários não exibem diretamente `ErrorEntity.title` ou `detail`, mesmo quando
+o backend retorna uma mensagem em português. Infrastructure, exceções e Blocs
+continuam preservando os erros remotos e seus metadados; a conversão é apenas
+de apresentação, sem alterar `ErrorsEntity` ou modificar o protocolo HTTP.
+
+`core/presentation/formatters/error_message_formatter.dart` fornece textos
+compartilhados para status HTTP e fallback por operação, sem regras de negócio
+de uma feature. Authentication, User e Expense possuem formatadores próprios
+para erros de campos e contratos PocketBase/legados conhecidos. O sign-in trata
+falha de autenticação sem afirmar que uma sessão anterior expirou. Códigos ou
+campos desconhecidos não liberam texto remoto para a UI.
+
+O roteamento de erros para os campos continua no formulário, pelos status e
+pointers já reconhecidos, inclusive quando o detalhe remoto está ausente.
+Mensagens repetidas em feedback geral podem ser consolidadas sem alterar a
+coleção original. Testes unitários verificam o texto, os fallbacks, os metadados
+preservados e o contexto; um teste arquitetural impede leitura direta de títulos
+e detalhes remotos na apresentação. Dashboard e Metrics já usavam feedback local.
+
 ### Information: Conteúdo Público Local
 
 `information` é uma feature exclusivamente de apresentação, sem domain,

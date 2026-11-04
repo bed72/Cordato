@@ -2,7 +2,9 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/validators/validation.dart';
+
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/form_sign_up_widget.dart';
+import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 
 mixin FormSignUpWidgetStateMixin on State<FormSignUpWidget> {
   final emailController = TextEditingController();
@@ -20,21 +22,23 @@ mixin FormSignUpWidgetStateMixin on State<FormSignUpWidget> {
     final passwordMessages = <String>[];
 
     for (final error in errors) {
-      if (error.detail != null) {
-        if ((error.status == '400' && error.pointer == '/email') ||
-            ((error.status == '422' || error.status == '409') &&
-                error.pointer == '/data/attributes/email')) {
-          emailMessages.add(error.detail!);
-          continue;
-        }
-        if ((error.status == '400' &&
-                (error.pointer == '/password' ||
-                    error.pointer == '/passwordConfirm')) ||
-            (error.status == '422' &&
-                error.pointer == '/data/attributes/password')) {
-          passwordMessages.add(error.detail!);
-          continue;
-        }
+      final message = AuthenticationErrorMessageFormatter.format(
+        error,
+        fallback: 'Confira os dados informados.',
+      );
+      if ((error.status == '400' && error.pointer == '/email') ||
+          ((error.status == '422' || error.status == '409') &&
+              error.pointer == '/data/attributes/email')) {
+        emailMessages.add(message);
+        continue;
+      }
+      if ((error.status == '400' &&
+              (error.pointer == '/password' ||
+                  error.pointer == '/passwordConfirm')) ||
+          (error.status == '422' &&
+              error.pointer == '/data/attributes/password')) {
+        passwordMessages.add(message);
+        continue;
       }
       remaining.add(error);
     }

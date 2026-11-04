@@ -1,16 +1,17 @@
 import 'dart:async';
 
-import 'package:flutter_modular/flutter_modular.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+
+import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_event.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_state.dart';
-
-import 'package:cordato/features/authentication/presentation/screens/sign_up/sign_up_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/form_sign_up_widget.dart';
+import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 
 mixin SignUpScreenStateMixin on State<SignUpScreen> {
   late SignUpBloc bloc;
@@ -51,13 +52,16 @@ mixin SignUpScreenStateMixin on State<SignUpScreen> {
         if (remaining.isNotEmpty) {
           context.showToast(
             variant: .error,
-            title: remaining.first.title ?? 'Erro ao criar conta',
+            title: 'Erro ao criar conta',
             description: remaining
                 .map(
-                  (error) =>
-                      error.detail ??
-                      'Não foi possível criar sua conta. Tente novamente.',
+                  (error) => AuthenticationErrorMessageFormatter.format(
+                    error,
+                    fallback:
+                        'Não foi possível criar sua conta. Tente novamente.',
+                  ),
                 )
+                .toSet()
                 .join('\n'),
           );
         }

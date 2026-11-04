@@ -197,6 +197,12 @@ Dashboard, previews e testes próprios. Não restaurá-la a partir de specs hist
   Não introduza `catch` genérico no repository para mascarar erros inesperados.
 - Preserve ordem e metadados dos erros, incluindo `pointer` e `parameter`.
   Não converta exceções inesperadas ou falhas de storage em sucesso.
+- Não exiba `title` ou `detail` remotos diretamente em campos, toasts ou telas.
+  A apresentação usa mensagens locais em português, mapeadas por status, código,
+  campo e contexto da operação, com fallback seguro. `ErrorMessageFormatter`
+  contém somente mensagens compartilhadas; regras de campos pertencem aos
+  formatadores de cada feature. Preserve o `ErrorsEntity` original nos contratos
+  e estados. Testes de formatadores são unitários, sem montar UI.
 - Aguarde toda persistência exigida antes de concluir. Sign-in aguarda token e ID
   por `Future.wait`; isso não garante transação ou rollback entre as gravações.
 - Requests usa somente `path`, `body`, `query` e `headers`; endpoints relativos

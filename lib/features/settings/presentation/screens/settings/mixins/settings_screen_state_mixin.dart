@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_bloc.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_event.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_state.dart';
+import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
 
 import 'package:cordato/features/settings/presentation/screens/settings/settings_screen.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_bloc.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_event.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_state.dart';
 
 mixin SettingsScreenStateMixin on State<SettingsScreen> {
   late LogoutBloc bloc;
@@ -58,13 +59,11 @@ mixin SettingsScreenStateMixin on State<SettingsScreen> {
     if (state case LogoutFailure(:final errors) when errors.errors.isNotEmpty) {
       context.showToast(
         variant: .error,
-        title: errors.errors.first.title ?? 'Erro ao sair',
-        description: errors.errors
-            .map(
-              (error) =>
-                  error.detail ?? 'Não foi possível sair. Tente novamente.',
-            )
-            .join('\n'),
+        title: 'Erro ao sair',
+        description: ErrorMessageFormatter.formatAll(
+          errors.errors,
+          fallback: 'Não foi possível sair. Tente novamente.',
+        ),
       );
       return;
     }

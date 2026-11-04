@@ -1,12 +1,13 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+
+import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_event.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_state.dart';
-
-import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/form_sign_in_widget.dart';
+import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 
 mixin SignInScreenStateMixin on State<SignInScreen> {
   SignInBloc get bloc => widget.bloc;
@@ -22,12 +23,10 @@ mixin SignInScreenStateMixin on State<SignInScreen> {
       if (remaining.isNotEmpty) {
         context.showToast(
           variant: .error,
-          title: remaining.first.title ?? 'Erro ao entrar',
+          title: 'Erro ao entrar',
           description: remaining
-              .map(
-                (error) =>
-                    error.detail ?? 'Não foi possível entrar. Tente novamente.',
-              )
+              .map(AuthenticationErrorMessageFormatter.signIn)
+              .toSet()
               .join('\n'),
         );
       }

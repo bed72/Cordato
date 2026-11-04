@@ -2,7 +2,9 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 
+import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 import 'package:cordato/features/authentication/presentation/screens/password_recovery/password_recovery_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/password_recovery/bloc/password_recovery_event.dart';
 import 'package:cordato/features/authentication/presentation/screens/password_recovery/bloc/password_recovery_state.dart';
@@ -49,24 +51,29 @@ mixin PasswordRecoveryScreenStateMixin on State<PasswordRecoveryScreen> {
   void handleRecovery(PasswordRecoveryState state) {
     if (!mounted || state is! PasswordRecoveryFailure) return;
     final fieldErrors = state.errors.errors
-        .where(
-          (error) =>
-              error.status == '400' &&
-              error.pointer == '/email' &&
-              error.detail != null,
-        )
+        .where((error) => error.status == '400' && error.pointer == '/email')
         .toList();
     if (fieldErrors.isNotEmpty) {
       setState(
-        () =>
-            emailFailure = fieldErrors.map((error) => error.detail!).join('\n'),
+        () => emailFailure = fieldErrors
+            .map(
+              (error) => AuthenticationErrorMessageFormatter.format(
+                error,
+                fallback: 'Confira o e-mail informado.',
+              ),
+            )
+            .toSet()
+            .join('\n'),
       );
       if (fieldErrors.length == state.errors.errors.length) return;
     }
     context.showToast(
       variant: .error,
       title: 'Não foi possível enviar o e-mail',
-      description: 'Verifique sua conexão e tente novamente.',
+      description: ErrorMessageFormatter.formatAll(
+        state.errors.errors.where((error) => !fieldErrors.contains(error)),
+        fallback: 'Não foi possível enviar o e-mail. Tente novamente.',
+      ),
     );
   }
 }
