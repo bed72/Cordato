@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/animations/collapsible_header_transition.dart';
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 final class const CollapsibleHeaderDelegate({
   required final String title,
@@ -68,7 +69,7 @@ final class const CollapsibleHeaderDelegate({
 
     return ClipRect(
       child: Material(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: context.colors.surfaceContainerLowest,
         child: Stack(
           fit: .expand,
           children: [

@@ -1,8 +1,6 @@
 final class const CollapsibleHeaderTransition({
   required final double fraction,
 }) {
-  this : assert(fraction >= 0.0 && fraction <= 1.0);
-
   factory CollapsibleHeaderTransition.fromScroll({
     required double shrinkOffset,
     required double expandedExtent,
