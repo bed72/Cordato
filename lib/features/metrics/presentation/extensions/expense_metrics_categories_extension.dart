@@ -14,3 +14,9 @@ extension ExpenseMetricsCategoriesExtension
     ];
   }
 }
+
+extension ExpenseMetricsPagesExtension
+    on List<List<ExpenseCategoryMetricsEntity>> {
+  bool showsCategoryTipAt(int index) =>
+      length > 1 && index == length - 1 && this[index].length == 1;
+}

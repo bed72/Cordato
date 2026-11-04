@@ -1,7 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/headers/collapsible_header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/empty_state_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
@@ -12,7 +13,6 @@ import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expe
 import 'package:cordato/features/expense/presentation/screens/expenses/mixins/expenses_screen_state_mixin.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_item_widget.dart';
-import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_app_bar_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_filters_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_skeleton_widget.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expenses_feedback_widget.dart';
@@ -36,7 +36,6 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ExpensesAppBarWidget(onBackPressed: goBack),
       body: SafeArea(
         child: BlocConsumer<ExpensesBloc, ExpensesState>(
           bloc: bloc,
@@ -53,31 +52,20 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        SliverToBoxAdapter(
-          child: Column(
-            crossAxisAlignment: .stretch,
-            children: [
-              const Padding(
-                padding: .fromLTRB(16.0, 24.0, 16.0, 0.0),
-                child: HeaderWidget(
-                  title: 'Despesas',
-                  description: 'Acompanhe todas as suas despesas.',
-                ),
-              ),
-              if (activeCategory != null || activePeriod != null) ...[
-                const SizedBox(height: 12.0),
-                ExpensesFiltersWidget(
-                  periodLabel: periodLabel,
-                  categoryLabel: categoryLabel,
-                  onRemoveCategory: canRemoveFilters
-                      ? removeCategoryFilter
-                      : null,
-                  onRemovePeriod: canRemoveFilters ? removePeriodFilter : null,
-                ),
-              ],
-            ],
-          ),
+        CollapsibleHeaderWidget(
+          title: 'Despesas',
+          description: 'Acompanhe todas as suas despesas.',
+          leading: BackButtonWidget(onPress: goBack),
         ),
+        if (activeCategory != null || activePeriod != null)
+          SliverToBoxAdapter(
+            child: ExpensesFiltersWidget(
+              periodLabel: periodLabel,
+              categoryLabel: categoryLabel,
+              onRemoveCategory: canRemoveFilters ? removeCategoryFilter : null,
+              onRemovePeriod: canRemoveFilters ? removePeriodFilter : null,
+            ),
+          ),
         SliverList.builder(
           itemCount: expenses.length,
           itemBuilder: (_, index) {

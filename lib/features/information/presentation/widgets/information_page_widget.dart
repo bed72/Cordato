@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/headers/collapsible_header_widget.dart';
 
 final class const InformationPageWidget({
   super.key,
@@ -13,27 +13,32 @@ final class const InformationPageWidget({
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leadingWidth: 72.0,
-        leading: BackButtonWidget(onPress: () => context.pop()),
-      ),
       body: SafeArea(
         child: SelectionArea(
-          child: SingleChildScrollView(
-            padding: const .fromLTRB(16.0, 16.0, 16.0, 32.0),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 680.0),
-                child: Column(
-                  spacing: 24.0,
-                  crossAxisAlignment: .stretch,
-                  children: [
-                    HeaderWidget(title: title, description: description),
-                    ...children,
-                  ],
+          child: CustomScrollView(
+            slivers: [
+              CollapsibleHeaderWidget(
+                title: title,
+                description: description,
+                expandedContentMaxWidth: 680.0,
+                leading: BackButtonWidget(onPress: () => context.pop()),
+              ),
+              SliverPadding(
+                padding: const .fromLTRB(16.0, 8.0, 16.0, 32.0),
+                sliver: SliverToBoxAdapter(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 680.0),
+                      child: Column(
+                        spacing: 24.0,
+                        crossAxisAlignment: .stretch,
+                        children: children,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),

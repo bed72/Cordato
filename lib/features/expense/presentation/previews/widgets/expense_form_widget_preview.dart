@@ -46,6 +46,34 @@ Widget previewUpdateExpenseFormWidget() => _formPreview(editing: true);
 Widget previewLoadingExpenseFormWidget() =>
     _formPreview(editing: true, loading: true);
 
+@CordatoPreview(
+  group: 'Expense / Formulário',
+  name: 'Cadastro / Cabeçalho recolhível / Tela baixa',
+  size: Size(390.0, 420.0),
+)
+Widget previewScrollableCreationExpenseForm() => _formPreview();
+
+@CordatoPreview(
+  group: 'Expense / Formulário',
+  name: 'Edição / Cabeçalho recolhível / Escuro',
+  size: Size(390.0, 420.0),
+  brightness: Brightness.dark,
+)
+Widget previewScrollableEditExpenseForm() => _formPreview(editing: true);
+
+@CordatoPreview(
+  group: 'Expense / Formulário',
+  name: 'Cadastro / Texto ampliado',
+  size: Size(320.0, 844.0),
+)
+Widget previewLargeTextCreationExpenseForm() => Builder(
+  builder: (context) => MediaQuery(
+    data: MediaQuery.of(context)
+        .copyWith(textScaler: const TextScaler.linear(2.0)),
+    child: _formPreview(),
+  ),
+);
+
 Widget _formPreview({bool editing = false, bool loading = false}) {
   final expense = ExpenseEntity(
     id: 'preview-expense',
@@ -85,7 +113,7 @@ Widget _formPreview({bool editing = false, bool loading = false}) {
             ),
           );
           return Scaffold(
-            appBar: const ExpenseAppBarWidget(),
+            appBar: loading ? const ExpenseAppBarWidget() : null,
             body: SafeArea(
               child: loading ? ExpenseSkeletonWidget(child: form) : form,
             ),

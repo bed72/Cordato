@@ -4,16 +4,18 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/presentation/widgets/expense_metrics_grid_widget.dart';
+import 'package:cordato/features/metrics/presentation/extensions/expense_metrics_categories_extension.dart';
 import 'package:cordato/features/metrics/presentation/mixins/expense_metrics_carousel_widget_state_mixin.dart';
 
 final class const ExpenseMetricsCarouselWidget({
   super.key,
   required final IMoneyFormatter moneyFormatter,
   required final List<List<ExpenseCategoryMetricsEntity>> pages,
-  final ({DateTime from, DateTime to})? period,
   final VoidCallback? onExpensesChanged,
+  final ({DateTime from, DateTime to})? period,
 }) extends StatefulWidget {
   @override
   State<ExpenseMetricsCarouselWidget> createState() =>
@@ -29,11 +31,12 @@ final class _ExpenseMetricsCarouselWidgetState
       builder: (context, constraints) {
         configureViewport(constraints.maxWidth);
         final pageWidth = constraints.maxWidth - 40.0;
-        final layouts = widget.pages
+        final layouts = widget.pages.indexed
             .map(
-              (page) => ExpenseMetricsGridWidget(
-                categories: page,
+              (entry) => ExpenseMetricsGridWidget(
+                categories: entry.$2,
                 moneyFormatter: widget.moneyFormatter,
+                showCategoryTip: widget.pages.showsCategoryTipAt(entry.$1),
               ).buildLayout(context, pageWidth),
             )
             .toList();
@@ -53,19 +56,20 @@ final class _ExpenseMetricsCarouselWidgetState
               height: pageHeight,
               child: PageView.builder(
                 controller: pageController,
-                itemCount: widget.pages.length,
                 onPageChanged: onPageChanged,
+                itemCount: widget.pages.length,
                 itemBuilder: (_, index) => ExcludeSemantics(
                   excluding: index != currentPage,
                   child: Padding(
                     padding: const .symmetric(horizontal: 6.0),
                     child: ExpenseMetricsGridWidget(
+                      period: widget.period,
                       upperHeight: upperHeight,
                       lowerHeight: lowerHeight,
                       categories: widget.pages[index],
                       moneyFormatter: widget.moneyFormatter,
-                      period: widget.period,
                       onExpensesChanged: widget.onExpensesChanged,
+                      showCategoryTip: widget.pages.showsCategoryTipAt(index),
                     ),
                   ),
                 ),

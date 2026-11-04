@@ -11,6 +11,7 @@ import 'package:cordato/features/dashboard/presentation/widgets/dashboard_month_
 
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
+
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_bloc.dart';
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_event.dart';
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_state.dart';
@@ -136,7 +137,7 @@ Widget previewThreeMetricsCategories() =>
 
 @CordatoPreview(
   group: 'Metrics / Quantidades',
-  name: '4 categorias / Sobra de um oculta',
+  name: '4 categorias / Última página com dica',
   size: cordatoPhonePreviewSize,
 )
 Widget previewFourMetricsCategories() =>
@@ -160,7 +161,7 @@ Widget previewSixMetricsCategories() =>
 
 @CordatoPreview(
   group: 'Metrics / Quantidades',
-  name: '10 categorias / Três páginas e sobra oculta',
+  name: '10 categorias / Última página com dica',
   size: cordatoPhonePreviewSize,
 )
 Widget previewTenMetricsCategories() =>

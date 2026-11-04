@@ -172,6 +172,26 @@ Widget previewLargeTextEmptyExpensesScreen() => Builder(
   ),
 );
 
+@CordatoPreview(
+  group: 'Expense / Listagem',
+  name: 'Cabeçalho recolhível / Tela baixa',
+  size: Size(390.0, 420.0),
+  brightness: Brightness.dark,
+)
+Widget previewScrollableHeaderExpensesScreen() => _screenPreview();
+
+@CordatoPreview(
+  group: 'Expense / Listagem',
+  name: 'Cabeçalho recolhível / Movimento reduzido',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewReducedMotionExpensesScreen() => Builder(
+  builder: (context) => MediaQuery(
+    data: MediaQuery.of(context).copyWith(disableAnimations: true),
+    child: _screenPreview(general: true),
+  ),
+);
+
 Widget _screenPreview({
   String? category,
   ({DateTime from, DateTime to})? period,

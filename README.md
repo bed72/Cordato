@@ -71,6 +71,62 @@ Nome vazio é exibido como `Trocado`, sem gravar esse fallback. A edição exige
 A exclusão aguarda HTTP 204 e a limpeza local do storage; Session redireciona.
 A cascata das despesas está configurada no backend e requer homologação real.
 
+## Cabeçalho Recolhível — Piloto
+
+Novo/Editar gasto e a listagem de despesas possuem um título que acompanha a
+rolagem: sai da posição
+expandida, diminui e se alinha ao botão de voltar; a descrição desaparece
+gradualmente. Ele expande ao retornar perto do topo, não ao simplesmente inverter
+o gesto. Nos formulários, o botão de ação continua fixo e os fluxos de cadastro,
+cadastro contínuo,
+edição e retorno permanecem preservados. Quando o conteúdo cabe inteiro na tela,
+não é criada rolagem artificial apenas para animar o cabeçalho.
+
+O componente compartilhado `CollapsibleHeaderWidget` usa slivers nativos,
+tipografia do tema e dimensões medidas para fonte ampliada, sem pacote novo,
+Bloc de animação ou controller manual na produção. A redução de movimento é
+respeitada. Carregamento e erro de Expense mantêm a barra de voltar original.
+Termos, Política de Privacidade e Ajuda também usam o componente, para validar
+o movimento em páginas naturalmente longas. A seleção de texto e a coluna de
+leitura de até 680 pixels permanecem preservadas. As outras telas e o
+`HeaderWidget` comum ainda não adotam o piloto.
+
+Verificação: `flutter pub get` concluído, `flutter analyze` sem problemas e
+`flutter test test/architecture test/features/core/presentation/animations
+test/features/expense/presentation/screens/expense
+test/features/expense/presentation/screens/expenses
+test/features/expense/expense_module_test.dart test/app_module_test.dart
+--reporter failures-only` com 130 aprovados. A suíte completa teve 1208 aprovados
+e as mesmas cinco falhas preexistentes nas descrições de categorias de Expense.
+`dart run tool/widget_preview.dart` compilou e serviu o catálogo, encerrando por
+timeout de 60 segundos sem cliente conectado ou inspeção visual. Os previews
+incluem estados expandido/recolhido, temas claro/escuro, fonte ampliada, movimento
+reduzido e os formulários em tela baixa. `git diff --check` passou. A aprovação
+visual do piloto e a validação com teclado em dispositivo ainda estão pendentes.
+
+A listagem mantém filtros, agrupamentos, paginação, refresh por gesto,
+edição/exclusão e feedbacks anteriores. Os filtros rolam abaixo do cabeçalho;
+não são fixados no topo. Verificação desta aplicação: `flutter pub get`
+concluído, `flutter analyze` sem problemas e o lote focado de arquitetura,
+transição do core, Information, formulários/listagem de Expense, composição do
+módulo e composição global teve 143 aprovados. A suíte completa manteve 1208
+aprovados e as mesmas cinco falhas anteriores em categorias de Expense.
+`dart run tool/widget_preview.dart` compilou e serviu o catálogo até o timeout
+de 45 segundos, sem cliente conectado ou inspeção visual. `git diff --check`
+passou. Previews da listagem incluem tela baixa e movimento reduzido.
+
+Verificação após aplicar em Information: `flutter pub get` concluído,
+`flutter analyze` sem problemas e `flutter test test/architecture
+test/features/core/presentation/animations test/features/information
+test/features/expense/presentation/screens/expense
+test/features/expense/expense_module_test.dart test/app_module_test.dart
+--reporter failures-only` com 109 aprovados. A suíte completa manteve 1208
+aprovados e as mesmas cinco falhas anteriores em categorias de Expense.
+`dart run tool/widget_preview.dart` compilou e serviu os previews, encerrando
+por timeout de 45 segundos sem cliente conectado ou inspeção visual.
+`git diff --check` passou. O movimento pode ser conferido abrindo Termos ou
+Privacidade pela Welcome; a aprovação visual ainda está pendente.
+
 ## Mensagens De Erro Na Interface
 
 Campos, toasts e telas de erro usam mensagens locais em português, sem expor
@@ -322,6 +378,24 @@ sem migrar os demais contextos financeiros.
 A distribuição exibe todas as categorias com total positivo, inclusive quando
 existe somente uma. O carrossel agrupa até três por página sem descartar uma
 categoria restante; páginas únicas com um card não reservam uma linha inferior vazia.
+Quando a última página de um carrossel com várias páginas possui somente uma
+categoria (quatro, sete, dez categorias etc.), o espaço inferior recebe um card
+informativo neutro, sem imagem, valor ou ação de toque. Ele mostra o ícone de
+informação, o título “Entenda seus gastos” e “Toque em uma categoria para ver as
+despesas do período.” Não adiciona páginas ou categorias fictícias. Uma única
+categoria no total e páginas com dois ou três cards mantêm o layout anterior.
+O título tem no máximo uma linha e a descrição três no tamanho padrão; fonte
+ampliada permite mais linhas, com a altura considerada no cálculo do carrossel.
+
+Verificação da dica: `flutter pub get` concluído, `flutter analyze` sem problemas
+e `flutter test test/architecture test/features/metrics test/features/dashboard
+--reporter failures-only` com 226 aprovados. A suíte completa teve 1184 aprovados
+e as mesmas cinco falhas preexistentes nas descrições de categorias de Expense.
+`dart run tool/widget_preview.dart` compilou e serviu o catálogo com os novos
+previews, encerrando por timeout de 60 segundos sem cliente conectado ou inspeção
+visual. `git diff --check` passou. Não houve alteração de API, backend, agregações
+financeiras ou navegação das categorias.
+
 Verificação: `flutter pub get` concluído, `flutter analyze` sem issues e 186 testes
 de arquitetura, Metrics e Dashboard aprovados. A suíte completa mantém as 5 falhas
 nas descrições de categorias de Expense (1014 aprovados). O catálogo de previews

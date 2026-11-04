@@ -2,8 +2,8 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/information/presentation/screens/help/help_screen.dart';
-import 'package:cordato/features/information/presentation/screens/privacy/privacy_screen.dart';
 import 'package:cordato/features/information/presentation/screens/terms/terms_screen.dart';
+import 'package:cordato/features/information/presentation/screens/privacy/privacy_screen.dart';
 
 @CordatoPreview(
   group: 'Informações / Telas',
@@ -63,3 +63,30 @@ Widget previewPrivacyLargeTextScreen() => MediaQuery(
   size: Size(320.0, 568.0),
 )
 Widget previewHelpNarrowScreen() => const HelpScreen();
+
+@CordatoPreview(
+  group: 'Informações / Telas',
+  name: 'Ajuda / Cabeçalho recolhível / Tela baixa',
+  size: Size(390.0, 400.0),
+  brightness: Brightness.dark,
+)
+Widget previewHelpScrollableHeaderScreen() => const HelpScreen();
+
+@CordatoPreview(
+  group: 'Informações / Telas',
+  name: 'Privacidade / Cabeçalho recolhível / Tela larga',
+  size: Size(1024.0, 768.0),
+)
+Widget previewPrivacyWideHeaderScreen() => const PrivacyScreen();
+
+@CordatoPreview(
+  group: 'Informações / Telas',
+  name: 'Termos / Movimento reduzido',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewTermsReducedMotionScreen() => Builder(
+  builder: (context) => MediaQuery(
+    data: MediaQuery.of(context).copyWith(disableAnimations: true),
+    child: const TermsScreen(),
+  ),
+);

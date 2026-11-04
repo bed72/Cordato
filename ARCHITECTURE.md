@@ -209,6 +209,10 @@ versão e data explícitas. Termos e privacidade compartilham composição de le
 com resumo e seções numeradas; Ajuda usa perguntas expansíveis. Cabeçalho, cards,
 cores, tipografia, ícones e botão de voltar reutilizam o core. A página possui
 rolagem, seleção de texto e largura máxima de leitura; não cria estado global.
+`InformationPageWidget` compartilha o cabeçalho recolhível do core nas três telas,
+em uma única CustomScrollView. A seleção de texto permanece disponível e o
+cabeçalho expandido acompanha a coluna de leitura de até 680 pixels em telas
+largas; recolhido, o título se alinha ao voltar da barra superior.
 
 O resumo usa `InformationSummaryWidget`, específico da feature, com título acima
 do texto, largura integral, corpo legível e superfície/borda discretas do tema.
@@ -811,6 +815,29 @@ própria coordenação pelo contrato: preserva o erro esperado de Metrics quando
 leitura paralela o envolve em `ParallelWaitError`, sem adicionar um Bloc
 intermediário à Dashboard.
 
+A distribuição visual mantém até três categorias com total positivo por página,
+em ordem estável de valor decrescente. `ExpenseMetricsPagesExtension` decide,
+sem depender de Flutter, se a última página de um conjunto com múltiplas páginas
+tem uma categoria isolada. Somente nesse caso, `ExpenseMetricsGridWidget`
+preenche a linha inferior com `ExpenseMetricsTipCardWidget`. A dica não integra
+a coleção de categorias, não altera a paginação ou os indicadores e não existe
+em uma distribuição com apenas uma categoria, nem em páginas com dois ou três
+cards financeiros.
+
+O card informativo é puramente visual, sem imagem, valores ou ação de toque.
+Preserva raio, borda, espaçamento e posição do ícone/título dos cards de categoria,
+com ícone estático de informação do core e cores neutras do tema. O título ocupa
+até uma linha e a descrição até três no tamanho padrão; fonte ampliada remove
+esses limites. Sua altura é medida antes de calcular a altura compartilhada das
+páginas, para acomodar o texto sem recorte. Semântica permanece informativa, não
+de botão, e páginas inativas continuam excluídas da leitura acessível.
+
+Testes unitários da regra cobrem quantidades de zero a dezoito categorias,
+filtros de totais não positivos, transições de quantidade e preservação dos dados
+e da paginação. Previews manuais incluem o card isolado, as últimas páginas de
+quatro, sete e dez categorias, temas claro/escuro e largura reduzida com fonte
+ampliada; não há testes de UI nesta mudança.
+
 ### Remoção De Insight
 
 A feature Insight foi removida: domínio, contrato, repository, Bloc, módulo,
@@ -1207,6 +1234,62 @@ Dashboard, permissão Android e configuração iOS.
   dono externo; telas ainda não migradas continuam donas de sua factory. Recursos
   externos usam um único dono, como PreviewResourceWidget. `.widget_preview/` é local.
 - Código novo não recebe comentários; decisões são registradas em Markdown.
+
+### Cabeçalho Recolhível: Expense E Information
+
+`CollapsibleHeaderWidget`, em `core/presentation/widgets/headers/`, é um sliver
+opt-in baseado em `SliverPersistentHeader` fixado no topo. Seu delegate mantém
+um único título, interpola tipografia/posição conforme o deslocamento e oculta
+gradualmente a descrição. A expansão depende de retornar à região inicial da
+rolagem, não de inverter o sentido do gesto. `HeaderWidget` e as telas fora de
+Expense/Information permanecem inalterados.
+
+O componente recebe o widget de navegação da feature, sem conhecer Modular,
+Bloc, repositories ou resultados de operações. Não cria ScrollController,
+AnimationController ou estado global. A matemática de progresso fica em
+`CollapsibleHeaderTransition`, Dart puro em `core/presentation/animations/`, com
+limites para overscroll e movimento reduzido. A preferência `disableAnimations`
+seleciona os extremos da interpolação, sem animações intermediárias de título
+ou opacidade. A rolagem nativa continua funcionando.
+
+As extensões expandida e recolhida consideram largura disponível, tipografia,
+direção do texto e TextScaler. Fontes grandes podem aumentar a altura da barra
+compacta em vez de truncar o título. TextPainters temporários são descartados.
+O título mantém uma única semântica de cabeçalho; a descrição deixa a árvore
+semântica ao desaparecer. O fundo opaco acompanha o tema do Scaffold.
+`expandedContentMaxWidth` limita opcionalmente a largura de título/descrição
+expandidos, mantendo o alinhamento com uma coluna de leitura sem deslocar o
+botão de voltar. O título recolhido usa a largura da barra superior.
+
+Em Novo/Editar gasto, `ExpenseFormWidget` usa uma única
+`CustomScrollView` com o cabeçalho e os campos em slivers. O botão de cadastrar,
+cadastro contínuo ou atualizar continua fixo fora da rolagem. Campos, validação,
+controllers de entrada, sugestões, Blocs e seus proprietários permanecem os
+mesmos. O botão de voltar entrega o mesmo resultado que a barra anterior e o
+PopScope da screen continua tratando o retorno do sistema. Durante carregamento
+ou falha de consulta, a barra original fica fora do skeleton/feedback para
+preservar o voltar. Arrastar mantém a dispensa de teclado já existente.
+
+`ExpensesScreen` também usa o cabeçalho como primeiro sliver da listagem, sem
+AppBar separado. Mantém seu ScrollController e listener de paginação, o
+RefreshIndicator com rolagem sempre disponível, a remoção de filtros com retorno
+ao topo, os agrupamentos por data, as ações de edição/exclusão e os estados de
+carregamento, falha e vazio. Os chips de filtro permanecem abaixo do cabeçalho
+e rolam com os itens; somente o cabeçalho é fixado. Seu voltar continua usando
+o mesmo handler local, sem callbacks novos nos argumentos da rota.
+
+Não se adiciona espaço artificial para forçar o recolhimento. Se os campos e o
+cabeçalho cabem na tela, o título permanece expandido; a progressão está limitada
+à rolagem efetivamente disponível. Termos, Privacidade e Ajuda também adotam o
+componente pelo `InformationPageWidget`, permitindo validar o movimento com
+conteúdo naturalmente longo. A seleção de texto, a largura máxima de leitura,
+o acesso público e o comportamento dos accordions permanecem preservados.
+Testes unitários cobrem progresso, reversão, opacidade, mudança de extensões e
+movimento reduzido, sem montar UI. Previews manuais incluem os extremos, temas,
+fonte ampliada, largura reduzida, formulários em tela baixa, carregamento e
+Information em telas baixas/largas e com movimento reduzido.
+Validação visual em dispositivo, teclado real e aprovação do movimento continuam
+necessárias antes de expandir o padrão a outras telas.
 
 ## Arquitetura Dos Testes
 

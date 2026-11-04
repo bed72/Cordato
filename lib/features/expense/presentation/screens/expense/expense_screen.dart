@@ -60,7 +60,9 @@ final class _ExpenseScreenState extends State<ExpenseScreen>
             if (!didPop) context.pop(savedExpense);
           },
           child: Scaffold(
-            appBar: ExpenseAppBarWidget(result: savedExpense),
+            appBar: widget.id != null && state.expense?.id != widget.id
+                ? const ExpenseAppBarWidget()
+                : null,
             body: SafeArea(
               child: widget.id == null
                   ? _buildForm()
