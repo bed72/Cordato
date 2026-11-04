@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget.dart';
@@ -59,7 +59,7 @@ final class _SettingsScreenState extends State<SettingsScreen>
                             children: [
                               MenuItemWidget(
                                 label: 'Dados pessoais',
-                                icon: lucide.user,
+                                icon: user,
                                 onPressed: widget.onPersonalDataPressed,
                               ),
                             ],
@@ -73,16 +73,16 @@ final class _SettingsScreenState extends State<SettingsScreen>
                               MenuItemWidget(
                                 label: 'Termos de uso',
                                 onPressed: widget.onTermsPressed,
-                                icon: lucide.file_text,
+                                icon: file_text,
                               ),
                               MenuItemWidget(
-                                icon: lucide.shield_check,
+                                icon: shield_check,
                                 label: 'Políticas de privacidade',
                                 onPressed: widget.onPrivacyPressed,
                               ),
                               MenuItemWidget(
                                 label: 'Ajuda',
-                                icon: lucide.circle_help,
+                                icon: circle_help,
                                 onPressed: widget.onHelpPressed,
                               ),
                             ],

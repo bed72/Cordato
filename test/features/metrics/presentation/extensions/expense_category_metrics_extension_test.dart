@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
@@ -53,29 +53,29 @@ void main() {
       );
 
       expect(category.label, 'future_category');
-      expect(category.icon, lucide.file_text);
+      expect(category.icon, file_text);
       expect(category.asset, AssetEnum.categoryOthers);
     });
 
     const icons = {
-      'pets': lucide.rabbit,
-      'housing': lucide.home,
-      'leisure': lucide.play,
-      'travel': lucide.airplane,
-      'health': lucide.heart,
-      'food': lucide.cooking_pot,
-      'insurance': lucide.shield_check,
-      'education': lucide.book_text,
-      'personal_care': lucide.sparkles,
-      'services': lucide.wrench,
-      'financing': lucide.hand_coins,
-      'taxes': lucide.file_check,
-      'shopping': lucide.cart,
-      'subscriptions': lucide.refresh_cw,
-      'investments': lucide.trending_up,
-      'transport': lucide.truck,
-      'gifts_and_donations': lucide.hand_heart,
-      'other': lucide.file_text,
+      'pets': rabbit,
+      'housing': home,
+      'leisure': play,
+      'travel': airplane,
+      'health': heart,
+      'food': cooking_pot,
+      'insurance': shield_check,
+      'education': book_text,
+      'personal_care': sparkles,
+      'services': wrench,
+      'financing': hand_coins,
+      'taxes': file_check,
+      'shopping': cart,
+      'subscriptions': refresh_cw,
+      'investments': trending_up,
+      'transport': truck,
+      'gifts_and_donations': hand_heart,
+      'other': file_text,
     };
     for (final entry in icons.entries) {
       test('uses the expense icon for ${entry.key}', () {

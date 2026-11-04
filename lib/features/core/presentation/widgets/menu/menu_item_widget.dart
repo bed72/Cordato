@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
@@ -10,7 +10,7 @@ final class const MenuItemWidget({
   super.key,
   required final String label,
   final String? value,
-  final lucide.LucideAnimatedIconData? icon,
+  final LucideAnimatedIconData? icon,
   final Widget? leading,
   final Widget? trailing,
   final VoidCallback? onPressed,
@@ -103,7 +103,7 @@ final class const MenuItemWidget({
 
     return IconWidget(
       size: 24.0,
-      icon: lucide.chevron_right,
+      icon: chevron_right,
       color: context.colors.onSurfaceVariant,
     );
   }

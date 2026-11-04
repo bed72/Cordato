@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
@@ -9,7 +9,7 @@ import 'package:cordato/features/core/presentation/widgets/icons/icon_interactio
 
 final class const IconButtonWidget({
   super.key,
-  required final lucide.LucideAnimatedIconData icon,
+  required final LucideAnimatedIconData icon,
   required final VoidCallback? onPress,
   required final Color backgroundColor,
   final double? width,

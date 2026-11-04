@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 
@@ -22,7 +22,7 @@ final class const MenuButtonDashboardWidget({super.key})
         width: 48.0,
         height: 48.0,
         iconSize: 26.0,
-        icon: lucide.menu,
+        icon: menu,
         onPress: () => _openSettings(context),
         iconColor: context.colors.onSurface,
         borderRadius: context.radius.cornerRadius100,

@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 
@@ -28,7 +28,7 @@ final class const ActionButtonDashboardWidget({super.key})
           shape: RoundedRectangleBorder(
             borderRadius: context.radius.cornerRadius100,
           ),
-          child: const IconWidget(size: 20.0, icon: lucide.file_text),
+          child: const IconWidget(size: 20.0, icon: file_text),
         ),
       ),
     );

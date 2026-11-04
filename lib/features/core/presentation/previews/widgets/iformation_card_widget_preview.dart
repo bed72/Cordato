@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
@@ -25,7 +25,7 @@ Widget previewIformationCardWidget() => Scaffold(
         builder: (context) => IformationCardWidget(
           title: 'Mais valor registrado',
           description: 'De 1 a 8, você registrou 35% mais valor que nos mesmos dias do mês passado.',
-          icon: lucide.trending_up,
+          icon: trending_up,
           iconColor: context.colors.primary,
           iconBackgroundColor: context.colors.primary.withValues(alpha: 0.12),
         ),

@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
@@ -76,7 +76,7 @@ Widget previewIconAndBackButtonWidgets() => _buttonShell(
       spacing: 20.0,
       children: [
         IconButtonWidget(
-          icon: lucide.settings,
+          icon: settings,
           onPress: () {},
           iconColor: Theme.of(context).colorScheme.onPrimary,
           backgroundColor: Theme.of(context).colorScheme.primary,

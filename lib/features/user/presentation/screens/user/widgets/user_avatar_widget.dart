@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
@@ -48,7 +48,7 @@ final class const UserAvatarWidget({
                     height: 36.0,
                     iconSize: 20.0,
                     onPress: onPressed,
-                    icon: lucide.refresh_cw,
+                    icon: refresh_cw,
                     borderRadius: buttonRadius,
                     iconColor: context.colors.onPrimary,
                     backgroundColor: context.colors.primary,

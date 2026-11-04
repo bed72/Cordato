@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
@@ -100,16 +100,18 @@ final class _UserScreenState extends State<UserScreen>
     },
   );
 
-  SingleChildScrollView _buildUser(UserEntity user, UserState state) =>
+  SingleChildScrollView _buildUser(UserEntity currentUser, UserState state) =>
       SingleChildScrollView(
         child: Column(
           crossAxisAlignment: .stretch,
           children: [
             Center(
               child: UserAvatarWidget(
-                name: user.displayName,
-                seed: avatarSeed(user),
-                onPressed: state.canEdit ? () => generateAvatar(user) : null,
+                name: currentUser.displayName,
+                seed: avatarSeed(currentUser),
+                onPressed: state.canEdit
+                    ? () => generateAvatar(currentUser)
+                    : null,
               ),
             ),
             const SizedBox(height: 16.0),
@@ -119,18 +121,18 @@ final class _UserScreenState extends State<UserScreen>
                   label: 'Nome',
                   height: 64.0,
                   spacing: 12.0,
-                  value: user.displayName,
-                  icon: lucide.user,
-                  onPressed: state.canEdit ? () => editName(user) : null,
+                  value: currentUser.displayName,
+                  icon: user,
+                  onPressed: state.canEdit ? () => editName(currentUser) : null,
                 ),
                 MenuItemWidget(
                   height: 64.0,
                   spacing: 12.0,
                   label: 'E-mail',
-                  value: user.email,
+                  value: currentUser.email,
                   showChevron: false,
                   disabledOpacity: 0.5,
-                  icon: lucide.mail_check,
+                  icon: mail_check,
                 ),
               ],
             ),

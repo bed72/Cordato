@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
@@ -60,7 +60,7 @@ final class const ExpensesFiltersWidget({
       materialTapTargetSize: .padded,
       deleteButtonTooltipMessage: removalLabel,
       disabledColor: context.colors.surfaceContainerHighest,
-      deleteIcon: const IconWidget(icon: lucide.x, size: 18.0),
+      deleteIcon: const IconWidget(icon: x, size: 18.0),
       backgroundColor: context.colors.primary.withValues(alpha: 0.15),
       shape: RoundedRectangleBorder(
         borderRadius: context.radius.cornerRadius050,

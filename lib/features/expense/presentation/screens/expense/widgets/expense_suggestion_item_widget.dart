@@ -1,6 +1,6 @@
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
@@ -53,7 +53,7 @@ final class const ExpenseSuggestionItemWidget({
                       child: BackgroundIconWidget(
                         iconSize: 26.0,
                         iconColor: colors.primary,
-                        icon: lucide.sparkles,
+                        icon: sparkles,
                         backgroundColor: colors.primary.withValues(alpha: .12),
                       ),
                     ),
@@ -83,7 +83,7 @@ final class const ExpenseSuggestionItemWidget({
                     ExcludeSemantics(
                       child: IconWidget(
                         size: 24.0,
-                        icon: lucide.chevron_right,
+                        icon: chevron_right,
                         color: colors.onSurfaceVariant,
                       ),
                     ),

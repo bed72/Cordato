@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_lucide_animated/flutter_lucide_animated.dart' as lucide;
+import 'package:flutter_lucide_animated/flutter_lucide_animated.dart';
 
 import 'package:cordato/features/core/presentation/widgets/toast/toast.dart';
 
 void main() {
   group('Toast animated icons', () {
     const icons = {
-      ToastVariant.info: lucide.circle_help,
-      ToastVariant.error: lucide.badge_alert,
-      ToastVariant.success: lucide.circle_check,
-      ToastVariant.warning: lucide.badge_alert,
+      ToastVariant.info: circle_help,
+      ToastVariant.error: badge_alert,
+      ToastVariant.success: circle_check,
+      ToastVariant.warning: badge_alert,
     };
 
     for (final entry in icons.entries) {
