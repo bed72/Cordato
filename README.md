@@ -71,6 +71,27 @@ Nome vazio é exibido como `Trocado`, sem gravar esse fallback. A edição exige
 A exclusão aguarda HTTP 204 e a limpeza local do storage; Session redireciona.
 A cascata das despesas está configurada no backend e requer homologação real.
 
+### Alterar senha
+
+Dados pessoais oferece **Alterar senha**, com senha atual, nova senha e
+confirmação. Cadastro, login, recuperação e troca compartilham a regra de
+**6–16 caracteres**, com minúscula ASCII, maiúscula ASCII e número ASCII.
+A entrada é preservada, inclusive espaços; a contagem usa code points Unicode.
+A nova senha não pode ser igual à atual e a confirmação precisa coincidir.
+
+A alteração usa PATCH nativo autenticado de `users`. Após sucesso, a sessão local
+é encerrada e o app abre o login com “Senha alterada. Entre novamente”. Se a
+limpeza local falhar, **Tentar novamente** repete somente o logout, sem reenviar
+a alteração. Senhas não são armazenadas nos estados nem impressas nos logs HTTP.
+Não inclui mudança no backend, deploy ou homologação em dispositivo.
+
+Verificação após desfazer os ajustes de teclado/rolagem: `flutter analyze` sem
+problemas; 634 testes focados aprovados.
+A suíte completa teve 1277 aprovados e as cinco falhas já registradas nas descrições
+de categorias de Expense. O catálogo de previews compilou/serviu sem cliente
+conectado; revisão visual, teclado e fluxo real em dispositivo continuam pendentes.
+Detalhes em [verification.md](openspec/changes/add-authenticated-password-change/verification.md).
+
 ## Cabeçalho Recolhível — Piloto
 
 Novo/Editar gasto e a listagem de despesas possuem um título que acompanha a

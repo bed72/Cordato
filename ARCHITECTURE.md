@@ -552,6 +552,50 @@ destinos nativos em `_superusers`. Android declara o caminho exato e o gerador A
 a rota. Publicação das associações, deploy, entrega SMTP e abertura em dispositivo
 são etapas operacionais separadas; não existe fallback web.
 
+### Troca Autenticada De Senha E Política Compartilhada
+
+`PasswordValidation` exige 6–16 code points Unicode, ao menos uma minúscula ASCII,
+uma maiúscula ASCII e um número ASCII. Não remove espaços nem normaliza entradas.
+Cadastro, sign-in, recuperação e troca compartilham o mesmo validator. A senha
+atual da troca exige apenas preenchimento, pois sua validade pertence ao servidor.
+`ChangePasswordValidation` rejeita nova senha exatamente igual à atual; confirmação
+usa o validator já compartilhado com recuperação. Erros ficam nos respectivos
+campos, sem mensagens remotas expostas.
+
+Dados pessoais somente navega para `/authentication/change-password`, protegida
+no catálogo de rotas. Authentication possui tela, mixin, formatter e
+`ChangePasswordBloc`, registrado exclusivamente no `provide` via `addBloc`.
+Tela e previews recebem instâncias com proprietário externo. User mantém seus
+Blocs e seu lifecycle anteriores, sem importar apresentação de Authentication.
+
+`IAuthenticationRepository.changePassword(oldPassword:, password:,
+passwordConfirm:) -> Future<void>` lê o ID atual no storage e usa PATCH nativo de
+`collections/users/records/{id}`, com os três campos em JSON plano e sucesso HTTP
+200. Não grava credenciais, não reautentica e não limpa storage nesse método.
+Erros remotos preservam `ErrorsEntity`; falhas inesperadas/storage propagam.
+
+O Bloc descarta submissões concorrentes com `droppable` compartilhado entre
+eventos e, após confirmar a alteração, emite SigningOut e aguarda `signOut()`.
+Os controllers são limpos ao confirmar o PATCH. Falha de limpeza fica em estado
+distinto e permite somente repetir `signOut`, nunca o PATCH. Fechamento suprime
+publicações tardias, sem cancelar HTTP ou prometer rollback. Sucesso navega para
+sign-in removendo o fluxo anterior e mostra “Senha alterada. Entre novamente”.
+
+A composição root possui uma instância local de `SessionRedirectDeferral`,
+exposta por `SessionRedirectScopeWidget` do core. A tela retém uma liberação
+idempotente somente durante a operação; redirecionamentos ficam adiados apenas
+na rota retida, inclusive se o token desaparecer antes de `clear()` concluir.
+Falha de PATCH, sucesso da navegação e dispose liberam a retenção e reavaliam a
+sessão atual. A liberação não reutiliza uma observação ainda autenticada para
+redirecionar sign-in a Dashboard; novas observações continuam com a regra normal.
+`SessionRoutePolicy` mantém a decisão de redirecionamento pura e
+testada, preservando outros logouts. Não há store global, dependência entre
+Authentication e Session ou outro proprietário de SessionBloc.
+
+O filtro comum do logger omite request, response e error quando o body contém
+`oldPassword`, `password` ou `passwordConfirm`. Filtros de reset/token e ocultação
+de Authorization permanecem. PATCH comum de perfil não é excluído pelo endpoint.
+
 ### Logout Em Settings
 
 Authentication continua dona da limpeza local de sessão pelo contrato

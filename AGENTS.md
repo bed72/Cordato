@@ -60,6 +60,25 @@ nem nos logs. O logger omite operações de reset e URLs com token. Sucesso e er
 400 em `/token` voltam ao sign-in com toast; falhas de rede e de campos preservam
 a tela. Os novos Blocs de recuperação pertencem exclusivamente ao `provide` das
 rotas; screens e previews recebem instâncias com proprietário externo explícito.
+Senha usa regra única no app: 6–16 code points Unicode, com minúscula ASCII,
+maiúscula ASCII e número ASCII, sem trim/normalização; espaços contam no limite.
+Cadastro, sign-in, recuperação e troca usam `PasswordValidation` compartilhado.
+Dados pessoais abre `/authentication/change-password`, rota autenticada com
+`ChangePasswordBloc` pertencente exclusivamente ao `provide`. Authentication possui
+o fluxo e o contrato `changePassword(oldPassword:, password:, passwordConfirm:)`;
+User somente navega, sem importar sua apresentação. Senha atual é obrigatória,
+mas não passa pela política de criação. Nova senha deve diferir exatamente da
+atual; confirmação deve coincidir. PATCH nativo de users envia somente os três
+campos, lê ID do storage, exige HTTP 200 e não faz logout internamente.
+Após confirmação remota, o Bloc aguarda `signOut`; falha de limpeza permite
+somente retry de logout, nunca novo PATCH. Controllers são limpos após o PATCH.
+Sucesso leva ao sign-in com “Senha alterada. Entre novamente”. A composição root
+possui `SessionRedirectDeferral`, não global, exposto por inherited widget do core:
+a tela adia redirecionamentos somente da própria rota enquanto a operação está
+pendente e libera ao falhar o PATCH, concluir a navegação ou ser descartada.
+Authentication e Session continuam sem importar uma à outra. O logger omite
+request/response/error de payloads com `oldPassword`, `password` ou
+`passwordConfirm`, além dos filtros existentes de reset/token.
 Descrições JSON:API e token opaco neste
 documento referem-se aos fluxos Flutter não migrados, não a requisitos para recriar a API antiga
 no PocketBase. Não trate troca de `BASE_URL` como integração. Diferenças e lacunas
