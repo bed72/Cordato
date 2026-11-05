@@ -106,8 +106,30 @@ topo; a busca usa `popUntil` sobre os estados reais da pilha, sem depender de
 nomes de `Page` que o Modular não fornece. Navegação concreta continua no mixin
 do AppWidget, por extensões de BuildContext.
 
-RemoteViews e WidgetKit exibem mês por extenso, total mensal e **+ Adicionar**,
-seguindo o tema do sistema. Android desabilita o deeplink automático apenas para
+RemoteViews e WidgetKit exibem mês por extenso iniciado em maiúscula, total mensal
+em bold e **+ Nova despesa** em botão retangular com raio 14, cores primária/sobre
+primária e texto centralizado, seguindo o DS e o tema do sistema. A altura do
+botão é adaptada ao espaço nativo. O grupo fica centralizado verticalmente.
+WidgetKit oferece famílias pequena e média; RemoteViews
+adapta cada instância às dimensões fornecidas pelo launcher, com resumo e ação
+lado a lado em formatos largos e composição vertical nos quadrados/altos.
+Android solicita redimensionamento até 56dp de altura e possui composição
+compacta baixa, com espaçamentos reduzidos e moeda mantida junto ao número.
+Com menos de 96dp de altura, a composição é horizontal; se também houver menos
+de 300dp de largura, a ação usa somente **+**, preservando o rótulo acessível.
+O padding horizontal fica em 16dp mesmo no formato de uma linha, com fonte
+monetária preferencial/máxima de 15 na variante estreita com **+** e 16 na larga;
+o padding vertical é ajustado separadamente. Composições verticais usam fonte
+preferencial 19, limitada a 21; a horizontal regular mantém 22, limitada a 26.
+WidgetKit seleciona a composição por `widgetFamily` e renova a identidade visual
+ao trocar a família; a geometria serve somente à largura útil do texto. O valor
+parte de 17 no pequeno e 20 no médio, limitado a 19/24 antes do ajuste de largura.
+O intervalo entre resumo e ação no pequeno é de 10 pontos.
+`WidgetRenderedActionView` adapta o botão pelo `widgetRenderingMode`: full color
+usa as cores do DS, accented/vibrant usam texto primário do sistema sobre fundo
+a 16% de opacidade para impedir branco opaco sobre branco opaco em Liquid Glass.
+`WidgetColorMode` mantém essa decisão pura e coberta por testes nativos.
+Android desabilita o deeplink automático apenas para
 a action do plugin, preservando verificação e recuperação. A extensão iOS é
 incorporada pelo Runner em Debug, Release e Profile.
 
@@ -142,13 +164,23 @@ inteiros. Android usa SharedPreferences do plugin; iOS usa o App Group
 ou descrições. Os renderizadores nativos só exibem total quando a chave mensal
 coincide com o mês corrente; ausência, JSON inválido ou mês diferente mostra
 **Abra para atualizar**, nunca zero inventado ou o valor anterior rotulado como
-atual. Dinheiro usa BigDecimal/Decimal, sem conversão monetária para double.
+atual. Dinheiro usa BigDecimal no Android e magnitude inteira no Swift, inclusive
+para Int64.min, sem conversão monetária para double. `WidgetMoney` formata todo o
+valor em BRL; `WidgetDimensions` seleciona a composição e calcula a largura útil;
+`WidgetAmountLayout` decide separação da moeda e tamanho da fonte a partir de
+medidas de texto feitas por Paint/UIFont. Nenhum dígito é abreviado ou substituído
+por reticências. A fonte pode diminuir além dos limites anteriores para valores
+extremos; a descrição de acessibilidade preserva o valor completo.
 
 A virada do mês usa uma entrada futura da timeline no iOS e alarme não exato
 com eventos de data/fuso no Android. O agendamento é local e sujeito ao SO;
 nenhum deles faz consultas remotas. AddExpenseWidgetProvider separa leitura,
 formatação, RemoteViews e agendamento. AddExpenseProvider fica em arquivo próprio
 e separa leitura, formatação e timeline, sem misturar o layout SwiftUI.
+As políticas nativas puras são executadas por JUnit e XCTest sem UI, através de
+`tool/test_home_widget_native.dart`; os testes Swift compilam o arquivo de
+produção em macOS, sem depender do Runner ou de um simulador. Isso não substitui
+a compilação iOS nem a conferência visual do WidgetKit/launcher.
 
 ## Estrutura E Responsabilidades
 

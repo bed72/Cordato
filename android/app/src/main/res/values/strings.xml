@@ -1,8 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="confirm_email_scheme">https</string>
-    <string name="confirm_email_host">app.cordato.cloud</string>
-    <string name="confirm_email_path">/authentication/confirm-email</string>
-    <string name="reset_password_path">/authentication/reset-password</string>
-    <string name="app_name">Cordato</string>
+    <string name="label_app_name" translatable="false">Cordato</string>
 </resources>

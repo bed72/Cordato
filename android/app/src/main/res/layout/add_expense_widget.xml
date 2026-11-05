@@ -1,60 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<LinearLayout xmlns:tools="http://schemas.android.com/tools"
+<LinearLayout
     android:id="@+id/add_expense_widget"
     android:padding="16dp"
     android:orientation="vertical"
-    android:gravity="top"
+    android:gravity="center_vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:contentDescription="@string/add_expense_widget_action"
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:background="@drawable/add_expense_widget_background" >
+    android:background="@drawable/add_expense_widget_background"
+    android:contentDescription="@string/cd_home_widget_add_expense">
 
-    <TextView
-        android:id="@+id/widget_month"
-        android:textSize="13sp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:importantForAccessibility="no"
-        android:textColor="@color/widget_text_muted" />
+    <include layout="@layout/add_expense_widget_summary" />
 
-    <TextView
-        android:id="@+id/widget_total"
-        android:maxLines="1"
-        tools:targetApi="26"
-        android:textSize="16sp"
-        android:visibility="gone"
-        android:layout_height="26dp"
-        android:layout_marginTop="4dp"
-        android:autoSizeTextType="uniform"
-        android:autoSizeMinTextSize="10sp"
-        android:autoSizeMaxTextSize="16sp"
-        android:layout_width="match_parent"
-        android:autoSizeStepGranularity="1sp"
-        android:importantForAccessibility="no"
-        android:textColor="@color/widget_text" />
-
-    <TextView
-        android:id="@+id/widget_update_hint"
-        android:maxLines="2"
-        android:textSize="13sp"
-        android:layout_marginTop="4dp"
-        android:text="@string/widget_update_hint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:importantForAccessibility="no"
-        android:textColor="@color/widget_text" />
-
-    <TextView
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_weight="1"
-        android:layout_height="0dp"
+    <include
+        layout="@layout/add_expense_widget_action"
         android:layout_marginTop="8dp"
-        android:gravity="bottom|start"
         android:layout_width="match_parent"
-        android:importantForAccessibility="no"
-        android:text="@string/widget_add_action"
-        android:textColor="@color/widget_accent" />
+        android:layout_height="wrap_content" />
+
 </LinearLayout>

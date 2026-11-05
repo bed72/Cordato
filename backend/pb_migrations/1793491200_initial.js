@@ -26,10 +26,10 @@ migrate((app) => {
     if (!users) users = new Collection({ type: "auth", name: "users" })
 
     const settings = app.settings().clone()
-    settings.meta.appName = "Trocado"
+    settings.meta.appName = "Cordato"
     settings.meta.appURL = publicURL
     settings.meta.accentColor = "#237A4B"
-    settings.meta.senderName = "Trocado"
+    settings.meta.senderName = "Cordato"
     settings.meta.senderAddress = "contato@cordato.cloud"
     settings.smtp.enabled = true
     settings.smtp.host = "smtp.resend.com"
@@ -115,10 +115,10 @@ migrate((app) => {
         const resetPasswordURL = collection === users
             ? "https://app.cordato.cloud/authentication/reset-password?token={TOKEN}"
             : "{APP_URL}/_/#/auth/confirm-password-reset/{TOKEN}"
-        collection.verificationTemplate = actionTemplate("Confirme seu e-mail", "Confirme seu endereço de e-mail para acessar sua conta Trocado.", "Confirmar e-mail", verificationURL)
+        collection.verificationTemplate = actionTemplate("Confirme seu e-mail", "Confirme seu endereço de e-mail para acessar sua conta Cordato.", "Confirmar e-mail", verificationURL)
         collection.resetPasswordTemplate = actionTemplate("Redefina sua senha", "Recebemos uma solicitação para redefinir sua senha.", "Redefinir senha", resetPasswordURL)
-        collection.confirmEmailChangeTemplate = actionTemplate("Confirme seu novo e-mail", "Confirme a alteração do endereço de e-mail da sua conta Trocado.", "Confirmar novo e-mail", "{APP_URL}/_/#/auth/confirm-email-change/{TOKEN}")
-        collection.otp.emailTemplate = emailTemplate("Seu código de acesso", '<p>Use este código para continuar seu acesso ao Trocado:</p><p style="padding:16px;text-align:center;font-size:22px;letter-spacing:4px;color:#237A4B;"><strong>{OTP}</strong></p><p>Não compartilhe este código.</p>')
+        collection.confirmEmailChangeTemplate = actionTemplate("Confirme seu novo e-mail", "Confirme a alteração do endereço de e-mail da sua conta Cordato.", "Confirmar novo e-mail", "{APP_URL}/_/#/auth/confirm-email-change/{TOKEN}")
+        collection.otp.emailTemplate = emailTemplate("Seu código de acesso", '<p>Use este código para continuar seu acesso ao Cordato:</p><p style="padding:16px;text-align:center;font-size:22px;letter-spacing:4px;color:#237A4B;"><strong>{OTP}</strong></p><p>Não compartilhe este código.</p>')
         collection.authAlert.emailTemplate = emailTemplate("Novo acesso à sua conta", '<p>Identificamos um acesso à sua conta de um novo local:</p><p style="white-space:pre-wrap;overflow-wrap:anywhere;">{ALERT_INFO}</p><p>Se não reconhece este acesso, altere sua senha.</p>')
     }
     const admin = new Record(superusers)
@@ -241,7 +241,7 @@ migrate((app) => {
     function emailTemplate(title, content) {
         return {
             subject: title + " — {APP_NAME}",
-            body: '<div lang="pt-BR" style="padding:24px 12px;background:#f5f7f6;color:#24332c;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;"><div style="max-width:560px;margin:auto;padding:24px;background:white;border:1px solid #dfe8e2;border-radius:12px;"><p style="color:#237A4B;font-size:28px;font-weight:bold;">{APP_NAME}</p><h1 style="font-size:24px;">' + title + '</h1><p>Olá!</p>' + content + '<p style="margin-top:24px;">Equipe Trocado</p></div></div>',
+            body: '<div lang="pt-BR" style="padding:24px 12px;background:#f5f7f6;color:#24332c;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;"><div style="max-width:560px;margin:auto;padding:24px;background:white;border:1px solid #dfe8e2;border-radius:12px;"><p style="color:#237A4B;font-size:28px;font-weight:bold;">{APP_NAME}</p><h1 style="font-size:24px;">' + title + '</h1><p>Olá!</p>' + content + '<p style="margin-top:24px;">Equipe Cordato</p></div></div>',
         }
     }
     function actionTemplate(title, message, label, url) {

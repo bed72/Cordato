@@ -30,11 +30,18 @@ void main() {
     ).readAsStringSync();
     final ios = File('ios/AddExpenseWidget/AddExpenseProvider.swift')
         .readAsStringSync();
+    final androidMoney = File(
+      'android/app/src/main/kotlin/com/bed/cordato/WidgetPresentation.kt',
+    ).readAsStringSync();
+    final iosMoney = File('ios/AddExpenseWidget/WidgetPresentation.swift')
+        .readAsStringSync();
 
-    expect(ios, contains('Decimal(cents) / 100'));
+    expect(iosMoney, contains('cents.magnitude / 100'));
+    expect(iosMoney, contains('cents.magnitude % 100'));
+    expect(iosMoney, isNot(contains('Double(cents)')));
     expect(ios, contains('entry(at: nextMonth)'));
     expect(android, contains('nextMonthStartMillis()'));
-    expect(android, contains('BigDecimal.valueOf(cents, 2)'));
+    expect(androidMoney, contains('BigDecimal.valueOf(cents, 2)'));
     expect(ios, contains('summary.month == monthKey(for: date)'));
     expect(android, contains('snapshot.optString("month") != monthKey'));
   });
@@ -69,6 +76,43 @@ void main() {
     );
   });
 
+  test('Android supports resizing and refreshes each widget when its options change', () {
+    final configuration = File(
+      'android/app/src/main/res/xml/add_expense_widget_info.xml',
+    ).readAsStringSync();
+    final provider = File(
+      'android/app/src/main/kotlin/com/bed/cordato/AddExpenseWidgetProvider.kt',
+    ).readAsStringSync();
+
+    expect(configuration, contains('android:resizeMode="horizontal|vertical"'));
+    expect(configuration, contains('android:minResizeWidth="150dp"'));
+    expect(configuration, contains('android:minResizeHeight="56dp"'));
+    expect(provider, contains('override fun onAppWidgetOptionsChanged('));
+    expect(
+      provider,
+      contains('onUpdate(context, appWidgetManager, intArrayOf(appWidgetId))'),
+    );
+    expect(
+      provider,
+      contains('appWidgetManager.getAppWidgetOptions(widgetId)'),
+    );
+    expect(provider, contains('AppWidgetManager.OPTION_APPWIDGET_SIZES'));
+  });
+
+  test('native month formatters preserve Brazilian capitalization', () {
+    final android = File(
+      'android/app/src/main/kotlin/com/bed/cordato/AddExpenseWidgetProvider.kt',
+    ).readAsStringSync();
+    final ios = File('ios/AddExpenseWidget/AddExpenseProvider.swift')
+        .readAsStringSync();
+
+    expect(
+      android,
+      contains('replaceFirstChar { it.titlecase(brazilianLocale) }'),
+    );
+    expect(ios, contains('capitalized(with: brazilianLocale)'));
+  });
+
   test(
     'Android widget launches do not replace the Flutter route via deep linking',
     () {
@@ -94,10 +138,22 @@ void main() {
     final extension = File('ios/AddExpenseWidget/Info.plist')
         .readAsStringSync();
     final runner = File('ios/Runner/Info.plist').readAsStringSync();
+    final widget = File('ios/AddExpenseWidget/AddExpenseWidget.swift')
+        .readAsStringSync();
 
     expect(runner, contains('<string>cordato</string>'));
     expect(project, contains('name = "Embed App Extensions";'));
     expect(extension, contains('com.apple.widgetkit-extension'));
+    expect(
+      widget,
+      contains('.supportedFamilies([.systemSmall, .systemMedium])'),
+    );
+    expect(project, contains('path = WidgetPresentation.swift;'));
+    expect(project, contains('path = WidgetSummaryView.swift;'));
+    expect(project, contains('path = WidgetActionView.swift;'));
+    expect(project, contains('path = WidgetRenderedActionView.swift;'));
+    expect(widget, contains('@Environment(\\.widgetFamily)'));
+    expect(widget, contains('family == .systemMedium ? .medium : .small'));
     expect(
       project,
       contains('productType = "com.apple.product-type.app-extension";'),

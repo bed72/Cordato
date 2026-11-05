@@ -39,6 +39,7 @@ val missingReleaseSigningValues = listOfNotNull(
 
 dependencies {
     implementation("androidx.core:core-splashscreen:1.2.0")
+    testImplementation("junit:junit:4.13.2")
 }
 
 android {

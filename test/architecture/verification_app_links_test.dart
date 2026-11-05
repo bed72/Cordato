@@ -15,24 +15,31 @@ void main() {
   test('Android verifies the HTTPS verification route', () {
     final manifest = File('android/app/src/main/AndroidManifest.xml')
         .readAsStringSync();
-    final resources = File('android/app/src/main/res/values/strings.xml')
-        .readAsStringSync();
+    final resources = File(
+      'android/app/src/main/res/values/strings_authentication.xml',
+    ).readAsStringSync();
 
     expect(manifest, contains('android:autoVerify="true"'));
-    for (final name in ['scheme', 'host', 'path']) {
-      expect(manifest, contains('@string/confirm_email_$name'));
+    for (final name in ['link_scheme', 'link_host', 'confirm_email_path']) {
+      expect(manifest, contains('@string/config_authentication_$name'));
     }
     expect(
       resources,
-      contains('<string name="confirm_email_scheme">https</string>'),
+      contains(
+        '<string name="config_authentication_link_scheme" translatable="false">https</string>',
+      ),
     );
     expect(
       resources,
-      contains('<string name="confirm_email_host">$host</string>'),
+      contains(
+        '<string name="config_authentication_link_host" translatable="false">$host</string>',
+      ),
     );
     expect(
       resources,
-      contains('<string name="confirm_email_path">$path</string>'),
+      contains(
+        '<string name="config_authentication_confirm_email_path" translatable="false">$path</string>',
+      ),
     );
   });
 
@@ -81,13 +88,19 @@ void main() {
   test('Android verifies the exact HTTPS password reset route', () {
     final manifest = File('android/app/src/main/AndroidManifest.xml')
         .readAsStringSync();
-    final resources = File('android/app/src/main/res/values/strings.xml')
-        .readAsStringSync();
-    expect(manifest, contains('android:path="@string/reset_password_path"'));
+    final resources = File(
+      'android/app/src/main/res/values/strings_authentication.xml',
+    ).readAsStringSync();
+    expect(
+      manifest,
+      contains(
+        'android:path="@string/config_authentication_reset_password_path"',
+      ),
+    );
     expect(
       resources,
       contains(
-        '<string name="reset_password_path">${RouteEnum.authenticationResetPassword.path}</string>',
+        '<string name="config_authentication_reset_password_path" translatable="false">${RouteEnum.authenticationResetPassword.path}</string>',
       ),
     );
   });

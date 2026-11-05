@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="label_home_widget_name">Adicionar despesa</string>
+    <string name="label_home_widget_description">Veja os gastos do mês e adicione uma nova despesa.</string>
+    <string name="label_home_widget_expenses_month">Gastos de %1$s</string>
+
+    <string name="action_home_widget_add_expense">+ Nova despesa</string>
+    <string name="action_home_widget_add_expense_compact" translatable="false">+</string>
+
+    <string name="cd_home_widget_add_expense">Adicionar despesa</string>
+    <string name="cd_home_widget_monthly_summary">%1$s, %2$s. Adicionar despesa no Cordato</string>
+
+    <string name="msg_home_widget_update_required">Abra para atualizar</string>
+</resources>

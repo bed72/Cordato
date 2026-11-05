@@ -35,18 +35,18 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="@string/confirm_email_scheme"
-                    android:host="@string/confirm_email_host"
-                    android:path="@string/confirm_email_path" />
+                <data android:scheme="@string/config_authentication_link_scheme"
+                    android:host="@string/config_authentication_link_host"
+                    android:path="@string/config_authentication_confirm_email_path" />
             </intent-filter>
 
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="@string/confirm_email_scheme"
-                    android:host="@string/confirm_email_host"
-                    android:path="@string/reset_password_path" />
+                <data android:scheme="@string/config_authentication_link_scheme"
+                    android:host="@string/config_authentication_link_host"
+                    android:path="@string/config_authentication_reset_password_path" />
             </intent-filter>
 
         </activity>
@@ -54,7 +54,7 @@
         <receiver
             android:exported="false"
             android:name=".AddExpenseWidgetProvider"
-            android:label="@string/add_expense_widget_action" >
+            android:label="@string/label_home_widget_name" >
 
             <intent-filter>
                 <action android:name="android.intent.action.TIME_SET" />

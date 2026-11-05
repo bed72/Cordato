@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_add_action">+ Adicionar</string>
-    <string name="widget_update_hint">Abra para atualizar</string>
-    <string name="widget_content_description">%1$s, %2$s. Adicionar despesa no Cordato</string>
-    <string name="add_expense_widget_action">Adicionar despesa</string>
-    <string name="add_expense_widget_description">Veja os gastos do mês e adicione uma nova despesa.</string>
     <color name="widget_background">#F6FBF4</color>
     <color name="widget_text">#181D19</color>
     <color name="widget_text_muted">#414942</color>
     <color name="widget_accent">#2B6A46</color>
+    <color name="widget_action_background">#2B6A46</color>
+    <color name="widget_text_on_action">#FFFFFF</color>
     <color name="widget_border">#C0C9C0</color>
 </resources>

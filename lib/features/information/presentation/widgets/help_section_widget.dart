@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_section_widget.dart';
@@ -21,12 +20,10 @@ final class const HelpSectionWidget({
             ExpansionTile(
               shape: const Border(),
               collapsedShape: const Border(),
+              iconColor: context.colors.onSurfaceVariant,
+              collapsedIconColor: context.colors.onSurfaceVariant,
               childrenPadding: const .fromLTRB(16.0, 0.0, 16.0, 16.0),
               tilePadding: const .symmetric(horizontal: 16.0, vertical: 4.0),
-              trailing: IconWidget(
-                icon: Icons.expand_more,
-                color: context.colors.onSurfaceVariant,
-              ),
               title: Text(
                 item.question,
                 style: context.typography.bodyMedium?.copyWith(

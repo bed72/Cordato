@@ -31,11 +31,59 @@ The build fails during `preReleaseBuild` when a value is missing or the
 keystore path does not exist. This prevents release artifacts from falling back
 to debug signing.
 
+## String Resource Naming
+
+Use `<type>_<context>_<description>` in English `snake_case`. Keep strings in
+`res/values/strings_<context>.xml`; `strings.xml` is reserved for the `app` context.
+Group entries by type inside each file, separated by blank lines. Do not mix
+strings with colors, styles or other resource types.
+
+| Prefix | Purpose | Example |
+| --- | --- | --- |
+| `failure_` | Validation failures | `failure_authentication_invalid_email` |
+| `success_` | Successful operation feedback | `success_authentication_email_sent` |
+| `label_` | UI names, titles, labels and descriptions | `label_home_widget_name` |
+| `action_` | Buttons and other action text | `action_home_widget_add_expense` |
+| `cd_` | Accessibility descriptions | `cd_home_widget_monthly_summary` |
+| `msg_` | General messages, hints, toasts and snackbars | `msg_home_widget_update_required` |
+| `config_` | Technical configuration, not user-facing text | `config_authentication_link_host` |
+
+Current contexts are `app`, `authentication`, `common` and `home_widget`. Use
+`common` only for truly shared text, not as a catch-all. Keep authentication URL
+components together, with `translatable="false"`; the same applies to invariant
+brand names, currency symbols and symbol-only actions. Preserve numbered format
+arguments such as `%1$s` and `%2$s` when renaming or translating resources.
+Accessibility descriptions have their own `cd_` resources rather than borrowing
+a UI label. New prefixes or contexts require updating this convention and its
+architecture tests; do not create empty files or placeholder strings for unused
+message types. Resources in localized `values-*` directories retain the same
+names and context filenames as their default counterparts.
+
+`test/architecture/android_string_resources_test.dart` checks naming, context
+separation, duplicate declarations, non-translatable technical values and native
+references. App-link contract tests also verify the exact paths and host.
+
+Verification after the resource reorganization: `flutter pub get` succeeded,
+`flutter analyze` reported no issues, `flutter test --reporter failures-only`
+passed all 1401 tests, and `flutter build apk --debug` succeeded. The previously
+documented `home_widget` Kotlin-plugin warning remains non-blocking.
+
 ## Build And Verify
 
 The home-screen widget is registered as `.AddExpenseWidgetProvider`, with a 2×2
 RemoteViews layout showing the current month, last synchronized monthly total,
-and **+ Adicionar**. There are no background HTTP requests. A local inexact alarm
+and **+ Nova despesa**. The action uses the app's primary/on-primary colors,
+centered text and 14dp corners rather than a capsule. Resizing is enabled on both
+axes, down to a requested height of 56dp, subject to the launcher's grid. Short
+widgets use tighter spacing; wide widgets place the action beside the summary.
+Below 96dp tall, the layout is horizontal with inline currency; below 300dp wide
+as well, the action displays **+** while retaining its accessible description.
+Horizontal padding stays at 16dp even in a single row; vertical padding alone
+shrinks to 4dp. Narrow single-row money beside **+** starts at 15; wide single-row
+money retains 16. Vertical layouts use 19, capped at 21 for accessibility, while
+regular horizontal layouts retain 22, capped at 26. Money can shrink further to
+keep all digits inside the padded summary rather than pressing against the edges.
+There are no background HTTP requests. A local inexact alarm
 and date/time-zone broadcasts re-render month changes, subject to OS scheduling.
 Install a fresh
 build and add **Adicionar despesa** from the launcher's widget picker. Its single
@@ -52,6 +100,21 @@ the summary, and month rollover showing **Abra para atualizar** until a new sync
 `AddExpenseWidgetProvider` separates lifecycle, JSON parsing, BRL formatting,
 RemoteViews composition and alarm management; formatting keeps cents as integers
 and uses BigDecimal rather than floating-point money.
+Amounts remain complete, including cents. Paint measures available text width;
+the currency moves to its own line when needed, except in short narrow widgets.
+The numeric font then scales to fit without abbreviation or ellipsis. Extreme
+values may require small text; accessibility retains the full amount.
+
+Run native formatting and dimension-policy tests from the repository root:
+
+```bash
+dart run tool/test_home_widget_native.dart android
+```
+
+JUnit tests compile the production Kotlin policy without mounting UI. They cover
+zero, signed cents, 15-million boundaries, Long limits, short/wide/tall dimensions
+and measured-width font adaptation. Manually check rendering with long amounts,
+large accessibility text and the stale-summary hint before distribution.
 
 The default production API is `https://app.cordato.cloud/api/`, matching the
 release launch configuration. To explicitly pin it when building an APK:

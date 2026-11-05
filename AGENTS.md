@@ -314,6 +314,15 @@ Lógica visual pura de StatelessWidget pode usar mixin próprio com
 
 ## Dart, Imports E Componentes
 
+Strings nativas Android usam `<tipo>_<contexto>_<descricao>` em `snake_case`
+inglês, separadas em `res/values/strings_<contexto>.xml`; `strings.xml` pertence
+ao contexto `app`. Os prefixos são `failure_`, `success_`, `label_`, `action_`,
+`cd_`, `msg_` e `config_`, conforme `android/README.md`. Não misture strings com
+cores e estilos; agrupe tipos por linhas em branco, sem comentários no código.
+Configurações técnicas usam `translatable="false"`. Renomeações atualizam XML,
+Kotlin e testes de referências/app links na mesma mudança, preservando URLs e
+placeholders posicionais.
+
 ### Legibilidade E Coesão
 
 - Use nomes que expressem o significado do dado ou da operação. É proibido nomear
@@ -457,6 +466,12 @@ unitários de Bloc, validação, formatação, contratos, infraestrutura e arqui
   parametrizadas e precisam de nomes que identifiquem cada cenário.
 - Testes de tempo/debounce de lógica usam `fake_async`, sem `WidgetTester`
   nem montagem de widgets. Crie e descarte recursos na zona de tempo do cenário.
+- Políticas puras dos widgets nativos usam JUnit em `android/app/src/test/` e
+  XCTest em `test/native/ios/`, compilando os arquivos de produção sem UI.
+  Execute `dart run tool/test_home_widget_native.dart`, com argumento opcional
+  `android` ou `ios`. Swift exige macOS/Xcode; isso não substitui build iOS ou
+  conferência manual de tamanhos, valores longos e acessibilidade. Não execute
+  instâncias concorrentes de `dart run`, pois os build hooks compartilham arquivos.
 - Mocks/fakes/adapters públicos ficam em arquivos próprios sob
   `test/support/<feature>/mocks/` ou `fakes/`, nunca dentro de `*_test.dart` ou `lib/`.
 - Reutilize um double por contrato; instâncias, stubs e fixtures de cenário são

@@ -28,14 +28,55 @@ visual em Android com gestos/três botões e iPhone permanece pendente.
 ## Widget da tela inicial
 
 Android e iOS possuem um widget pequeno com o mês atual por extenso, o total gasto
-nesse mês e a ação **+ Adicionar**. Toda a área continua clicável. O visual nativo
-não repete o nome Cordato dentro do widget: mês e valor ficam no topo, com a ação
-na parte inferior. As cores acompanham o tema do sistema.
+nesse mês e a ação **+ Nova despesa**. O botão segue o DS: retangular com raio 14,
+fundo primário, texto sobre primário e conteúdo centralizado. Sua altura é
+adaptada ao espaço nativo; toda a área do widget continua clicável.
+O mês começa com maiúscula, o valor tem peso bold e o conteúdo fica agrupado no
+centro vertical, sem separar o resumo da ação nas extremidades. As cores
+acompanham o tema do sistema. iOS oferece famílias pequena e média, com composição
+vertical e horizontal, respectivamente. Android permite
+redimensionamento nos dois eixos, com limites solicitados ao launcher. A partir
+de 300dp de largura, quando mais largo que alto, o resumo e a ação ficam lado a
+lado; formatos quadrados ou altos preservam a composição vertical agrupada.
+Android solicita altura mínima de redimensionamento de 56dp para permitir uma
+linha da grade. Abaixo de 150dp,
+usa espaçamentos e botão menores e exibe apenas o mês no título; o launcher
+continua decidindo os tamanhos finais segundo sua grade.
+Na composição de uma linha (menos de 96dp), resumo e ação ficam lado a lado e a
+moeda permanece junto ao número. Se a largura também for menor que 300dp, a ação
+mostra somente **+**, mantendo “Adicionar despesa” na descrição acessível.
+O padding horizontal permanece em 16dp, inclusive no formato baixo; somente o
+vertical diminui para caber em uma linha, sem encostar o resumo ou a ação nas
+bordas. Na variante estreita com botão **+**, a fonte parte de 15; o formato baixo largo
+preserva 16. Nas composições verticais, a fonte parte de 19 e tem limite de
+acessibilidade de 21, sem mudar o formato horizontal regular.
 Adicione **Adicionar despesa** pela galeria de widgets
 do celular após instalar uma nova compilação; hot reload não instala o componente.
-O valor usa fonte de até 16, em uma linha, com redução automática conforme o
-espaço disponível; “Abra para atualizar” mantém sua tipografia menor e até duas
-linhas. No Android, o autoajuste nativo requer Android 8/API 26 ou posterior.
+No iOS pequeno o valor parte de 17, com limite de acessibilidade de 19; no médio
+parte de 20, limitado a 24. A composição segue explicitamente `widgetFamily`,
+não uma inferência pela largura, e sua identidade muda com a família para refazer
+o layout ao alternar tamanhos. O espaço entre resumo e botão no pequeno é de 10
+pontos, sem mudar a altura da ação. No Android, o formato horizontal regular
+mantém fonte bold de 22, limitada a 26. A largura real do texto é medida antes da
+renderização. Se necessário, **R$** passa para uma linha própria e somente o
+número é reduzido até caber, sem abreviações, reticências ou perda de centavos.
+No compacto baixo do Android, moeda e número ficam juntos com ajuste de fonte
+para preservar a altura. Valores extremos podem exigir fonte pequena; o valor
+completo também fica na descrição de acessibilidade. “Abra para atualizar”
+mantém sua tipografia menor e até duas linhas.
+
+No iOS, o modo full color preserva as cores do DS. Nos modos accented/vibrant
+(incluindo aparência tingida/transparente), o botão usa fundo com opacidade de
+16% e texto na cor primária do sistema: o WidgetKit pode tingir ambos de branco,
+mas a diferença de opacidade mantém o rótulo visível. O raio continua em 14.
+Após instalar a compilação nativa, confira a troca de pequeno para médio.
+O usuário confirmou que adicionar diretamente o médio pela galeria funciona no
+simulador. O atalho retangular de redimensionamento continua pendente nessa
+instância: os logs registram ambas as famílias no catálogo, mas a ação
+`change-widget-size-medium` termina com `endingGridSizeClass: small`, sem pedido
+de timeline média. A causa da transição não foi resolvida; não é falta de um
+layout médio. Use a galeria para adicionar o tamanho desejado enquanto isso.
+Hot reload não atualiza a extensão ou seu catálogo.
 
 O toque abre Dashboard → Nova despesa. Se necessário, o app solicita login antes
 de continuar. Uma criação já aberta é preservada, sem duplicar o formulário ou
@@ -69,12 +110,36 @@ A conferência manual deve cobrir app encerrado/aberto, com e sem sessão, login
 seguido do formulário, toques repetidos com entrada não salva, edição já aberta,
 voltar/salvar para Dashboard e temas claro/escuro nas duas plataformas.
 Confira também total do mês atual com a Dashboard em um mês passado, zero real,
-falha de sincronização, limpeza no logout e virada do mês.
+falha de sincronização, limpeza no logout e virada do mês. Para o layout agrupado,
+confira formatos compacto, baixo, largo e alto no Android, famílias pequena e
+média no iOS, alternância entre famílias, aparência full color/tingida/transparente,
+valores longos, fonte ampliada e o estado **Abra para atualizar**.
+
+Testes unitários nativos executam a lógica de produção de formatação e adaptação,
+sem montar widgets: `dart run tool/test_home_widget_native.dart` executa JUnit
+no Android e XCTest no macOS com o mesmo arquivo Swift usado pela extensão iOS.
+Use o argumento `android` ou `ios` para executar somente uma plataforma. Android
+exige JDK 21 e SDK configurados; os testes Swift exigem macOS com Xcode. Não
+execute duas instâncias de `dart run` simultaneamente: os build hooks do projeto
+compartilham artefatos nativos. Os testes cobrem zero, centavos, negativos,
+fronteiras de 15 milhões, limites Int64/Long, composição por tamanho e ajuste
+de fonte. A renderização real continua exigindo conferência manual.
 
 Verificação da implementação: `flutter pub get` concluído, `flutter analyze`
-sem problemas e `flutter test --reporter failures-only` com 1396 testes aprovados.
+sem problemas e `flutter test --reporter failures-only` com 1401 testes aprovados.
+`dart run tool/test_home_widget_native.dart` passou com 36 testes JUnit e 26
+testes XCTest. O runner foi ajustado para carregar o framework e o overlay Swift
+do XCTest fornecidos pelo Xcode; a tentativa inicial sem esses caminhos falhou.
 Builds debug Android e iOS Simulator passaram; a extensão está presente no bundle
 iOS. A validação visual e de toques em aparelho/simulador permanece pendente.
+Após o último ajuste fino de fontes e espaçamento, `flutter pub get`,
+`flutter analyze`, `flutter test test/architecture --reporter failures-only`
+(34 testes), `dart run tool/test_home_widget_native.dart` (36 JUnit + 26 XCTest),
+`flutter build apk --debug` e
+`flutter build ios --simulator --debug --no-codesign` passaram. A suíte Flutter
+completa não foi repetida nessa rodada focada. O atalho de troca de tamanho
+do SpringBoard permanece sem correção confirmada; adicionar o médio pela
+galeria foi confirmado pelo usuário.
 Android habilita Kotlin integrado do AGP e acesso nativo nas JVMs do wrapper e
 do daemon. O Flutter 3.47.9 ainda emite um aviso sobre KGP no `home_widget` 0.10.0
 por detectar a declaração por regex, mesmo no ramo condicional desativado.

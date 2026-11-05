@@ -4,7 +4,7 @@ import WidgetKit
 struct AddExpenseEntry: TimelineEntry {
     let date: Date
     let month: String
-    let amount: String?
+    let money: WidgetMoney?
 }
 
 private struct MonthlySummary: Decodable {
@@ -41,9 +41,9 @@ struct AddExpenseProvider: TimelineProvider {
     private func entry(at date: Date) -> AddExpenseEntry {
         let month = monthTitle(for: date)
         let summary = readSummary(for: date)
-        let amount = summary.flatMap { formatAmount(cents: $0.cents) }
+        let money = summary.map { WidgetMoney(cents: $0.cents) }
 
-        return AddExpenseEntry(date: date, month: month, amount: amount)
+        return AddExpenseEntry(date: date, month: month, money: money)
     }
 
     private func readSummary(for date: Date) -> MonthlySummary? {
@@ -78,15 +78,5 @@ struct AddExpenseProvider: TimelineProvider {
         formatter.dateFormat = "yyyy-MM"
 
         return formatter.string(from: date)
-    }
-
-    private func formatAmount(cents: Int64) -> String? {
-        let currency = NumberFormatter()
-        currency.locale = brazilianLocale
-        currency.currencyCode = "BRL"
-        currency.numberStyle = .currency
-        let amount = NSDecimalNumber(decimal: Decimal(cents) / 100)
-
-        return currency.string(from: amount)
     }
 }

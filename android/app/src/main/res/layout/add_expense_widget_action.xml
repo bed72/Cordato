@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:maxLines="1"
+    android:textSize="15sp"
+    android:textStyle="bold"
+    android:gravity="center"
+    android:minHeight="44dp"
+    android:text="@string/action_home_widget_add_expense"
+    android:id="@+id/widget_action"
+    android:paddingHorizontal="10dp"
+    android:includeFontPadding="false"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:importantForAccessibility="no"
+    android:textColor="@color/widget_text_on_action"
+    android:background="@drawable/add_expense_widget_action_background" />

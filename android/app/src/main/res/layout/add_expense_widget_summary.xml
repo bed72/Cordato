@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <TextView
+        android:id="@+id/widget_month"
+        android:maxLines="1"
+        android:textSize="12sp"
+        android:layout_height="16dp"
+        android:gravity="center_vertical"
+        android:includeFontPadding="false"
+        android:layout_width="match_parent"
+        android:importantForAccessibility="no"
+        android:textColor="@color/widget_text_muted" />
+
+    <TextView
+        android:id="@+id/widget_currency"
+        android:textSize="12sp"
+        android:visibility="gone"
+        android:text="@string/label_common_currency_brl"
+        android:layout_height="16dp"
+        android:includeFontPadding="false"
+        android:layout_width="match_parent"
+        android:textColor="@color/widget_text"
+        android:importantForAccessibility="no" />
+
+    <TextView
+        android:id="@+id/widget_total"
+        android:maxLines="1"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        android:layout_height="32dp"
+        android:gravity="center_vertical"
+        android:includeFontPadding="false"
+        android:layout_width="match_parent"
+        android:textColor="@color/widget_text"
+        android:importantForAccessibility="no" />
+
+    <TextView
+        android:id="@+id/widget_update_hint"
+        android:maxLines="2"
+        android:textSize="13sp"
+        android:text="@string/msg_home_widget_update_required"
+        android:includeFontPadding="false"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/widget_text"
+        android:importantForAccessibility="no" />
+</LinearLayout>

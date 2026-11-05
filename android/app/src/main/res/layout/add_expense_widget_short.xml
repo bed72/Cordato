@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    android:id="@+id/add_expense_widget"
+    android:padding="8dp"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:contentDescription="@string/cd_home_widget_add_expense"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="@drawable/add_expense_widget_background" >
+
+    <include layout="@layout/add_expense_widget_summary" />
+
+    <include
+        layout="@layout/add_expense_widget_action"
+        android:layout_marginTop="4dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+</LinearLayout>
