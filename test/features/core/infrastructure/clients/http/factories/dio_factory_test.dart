@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:talker_dio_logger/talker_dio_logger.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
@@ -48,6 +49,94 @@ void main() {
       });
 
       tearDown(() => dio.close(force: true));
+
+      test(
+        'authenticates the native password PATCH with the existing interceptor',
+        () async {
+          await client.patch(
+            parameter: const Requests(
+              path: 'collections/users/records/user-1',
+              body: {
+                'oldPassword': 'OldPass1',
+                'password': 'NewPass1',
+                'passwordConfirm': 'NewPass1',
+              },
+            ),
+          );
+          expect(captured!.uri.path, '/api/collections/users/records/user-1');
+          expect(captured!.headers['Authorization'], 'Bearer opaque-token');
+        },
+      );
+
+      group('Sensitive operation logging', () {
+        for (final key in ['oldPassword', 'password', 'passwordConfirm']) {
+          test('omits $key from all HTTP log channels', () {
+            final settings = dio.interceptors
+                .whereType<TalkerDioLogger>()
+                .single
+                .settings;
+            final options = RequestOptions(
+              path: '/api/collections/users/records/user-1',
+              method: 'PATCH',
+              data: {key: 'fixture-private'},
+            );
+            expect(settings.requestFilter!(options), isFalse);
+            expect(
+              settings.responseFilter!(Response(requestOptions: options)),
+              isFalse,
+            );
+            expect(
+              settings.errorFilter!(DioException(requestOptions: options)),
+              isFalse,
+            );
+            expect(settings.hiddenHeaders, contains('Authorization'));
+          });
+        }
+
+        for (final path in [
+          '/api/collections/users/request-password-reset',
+          '/api/collections/users/confirm-password-reset',
+          '/api/other?token=fixture',
+        ]) {
+          test('preserves exclusion of $path', () {
+            final settings = dio.interceptors
+                .whereType<TalkerDioLogger>()
+                .single
+                .settings;
+            final options = RequestOptions(path: path);
+            expect(settings.requestFilter!(options), isFalse);
+            expect(
+              settings.responseFilter!(Response(requestOptions: options)),
+              isFalse,
+            );
+            expect(
+              settings.errorFilter!(DioException(requestOptions: options)),
+              isFalse,
+            );
+          });
+        }
+
+        test('does not exclude ordinary profile updates', () {
+          final settings = dio.interceptors
+              .whereType<TalkerDioLogger>()
+              .single
+              .settings;
+          final options = RequestOptions(
+            path: '/api/collections/users/records/user-1',
+            method: 'PATCH',
+            data: {'name': 'Pessoa', 'avatar': 'seed'},
+          );
+          expect(settings.requestFilter!(options), isTrue);
+          expect(
+            settings.responseFilter!(Response(requestOptions: options)),
+            isTrue,
+          );
+          expect(
+            settings.errorFilter!(DioException(requestOptions: options)),
+            isTrue,
+          );
+        });
+      });
 
       test(
         'password reset endpoints stay public even with a stored session',

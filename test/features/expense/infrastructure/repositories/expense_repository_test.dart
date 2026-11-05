@@ -78,10 +78,10 @@ void main() {
           .thenAnswer((_) => pending.future);
       when(() => client.post(parameter: any(named: 'parameter')))
           .thenAnswer((_) async => single);
-      final result = repository.create(cents: 100, description: 'Game');
+      final creation = repository.create(cents: 100, description: 'Game');
       verifyZeroInteractions(client);
       pending.complete(' owner-id ');
-      await result;
+      await creation;
       final request =
           verify(() => client.post(parameter: captureAny(named: 'parameter')))
                   .captured
@@ -603,14 +603,14 @@ void main() {
         ),
       );
       const query = r" [Demo] Aluguél ' || amount > 0 \ & ?/# ";
-      final result = await repository.suggestions(query: query);
-      expect(result.map((item) => item.id), ['rent', 'market']);
-      expect(result.map((item) => item.cents), [160000, 20000]);
-      expect(result.map((item) => item.category), [
+      final suggestions = await repository.suggestions(query: query);
+      expect(suggestions.map((item) => item.id), ['rent', 'market']);
+      expect(suggestions.map((item) => item.cents), [160000, 20000]);
+      expect(suggestions.map((item) => item.category), [
         ExpenseCategoryEnum.housing,
         ExpenseCategoryEnum.food,
       ]);
-      expect(() => result.clear(), throwsUnsupportedError);
+      expect(() => suggestions.clear(), throwsUnsupportedError);
       final request =
           verify(() => client.get(parameter: captureAny(named: 'parameter')))
                   .captured
@@ -840,7 +840,7 @@ void main() {
         final pending = Completer<Responses>();
         stub(() => pending.future);
         var complete = false;
-        final result = execute().then((value) {
+        final pendingOperation = execute().then((value) {
           complete = true;
           return value;
         });
@@ -852,7 +852,7 @@ void main() {
               ? const Responses(status: 204, body: {})
               : single,
         );
-        await result;
+        await pendingOperation;
         expect(complete, isTrue);
       });
 
@@ -922,14 +922,14 @@ void main() {
                 : large,
           ),
         );
-        final result = await execute();
-        if (result is List<ExpenseSuggestionEntity>) {
-          expect(result.single.cents, 9007199254740991);
+        final confirmedExpenses = await execute();
+        if (confirmedExpenses is List<ExpenseSuggestionEntity>) {
+          expect(confirmedExpenses.single.cents, 9007199254740991);
           return;
         }
-        final expense = result is ExpenseEntity
-            ? result
-            : (result as ExpensePageEntity).items.single;
+        final expense = confirmedExpenses is ExpenseEntity
+            ? confirmedExpenses
+            : (confirmedExpenses as ExpensePageEntity).items.single;
         expect(expense.cents.cents, 9007199254740991);
       });
     }

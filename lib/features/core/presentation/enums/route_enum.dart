@@ -15,6 +15,10 @@ enum RouteEnum(final String path, {final bool authenticated = false}) {
   authenticationConfirm('/authentication/confirm'),
   authenticationConfirmEmail('/authentication/confirm-email'),
   authenticationPasswordRecovery('/authentication/password-recovery'),
+  authenticationChangePassword(
+    '/authentication/change-password',
+    authenticated: true,
+  ),
   authenticationResetPassword('/authentication/reset-password');
 
   static Set<String> authenticatedPaths() => values

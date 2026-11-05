@@ -2,8 +2,8 @@ import 'dart:math' as math;
 
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_modular/flutter_modular.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
@@ -15,19 +15,19 @@ import 'package:cordato/features/core/presentation/widgets/icons/background_icon
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/presentation/extensions/expense_category_metrics_extension.dart';
 
-final class const ExpenseCategoryMetricsCardWidget({
+final class const ExpenseCategoryCardWidget({
   super.key,
-  required final IMoneyFormatter moneyFormatter,
+  required final IMoneyFormatter formatter,
   required final ExpenseCategoryMetricsEntity category,
-  final ({DateTime from, DateTime to})? period,
   final VoidCallback? onExpensesChanged,
+  final ({DateTime from, DateTime to})? period,
+  final bool compact = false,
   final bool highlighted = false,
   final bool illustrated = false,
-  final bool compact = false,
 }) extends StatelessWidget {
-  double get illustrationSize => category.category == 'housing' ? 240.0 : 220.0;
+  double get illustrationSize => 160.0;
 
-  double get illustrationHeight => compact ? 60.0 : 180.0;
+  double get illustrationHeight => compact ? 0.0 : 180.0;
 
   Future<void> _openExpenses(BuildContext context) async {
     final range = period;
@@ -45,7 +45,7 @@ final class const ExpenseCategoryMetricsCardWidget({
         ? null
         : () => _openExpenses(context);
     final color = category.color(context);
-    final amount = moneyFormatter.formatCents(category.totalAmount);
+    final amount = formatter.formatCents(category.totalAmount);
     final percentage = _buildPercentageLabel(percentage: category.percentage);
 
     final card = Semantics(
@@ -67,9 +67,26 @@ final class const ExpenseCategoryMetricsCardWidget({
         ),
         child: ClipRRect(
           borderRadius: context.radius.cornerRadius300 - .circular(1.0),
-          child: Column(
-            crossAxisAlignment: .start,
+          child: Stack(
+            fit: .expand,
             children: [
+              if (highlighted || illustrated)
+                Positioned(
+                  right: -32.0,
+                  bottom: -32.0,
+                  width: illustrationSize,
+                  height: illustrationSize,
+                  child: Skeleton.ignore(
+                    child: ImageWidget(
+                      fit: .contain,
+                      alt: category.asset.alt,
+                      width: illustrationSize,
+                      height: illustrationSize,
+                      source: category.asset.source,
+                      fallback: AssetEnum.categoryOthers.source,
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const .all(16.0),
                 child: Column(
@@ -112,7 +129,12 @@ final class const ExpenseCategoryMetricsCardWidget({
                       ],
                     ),
                     const SizedBox(height: 12.0),
-                    Text(category.label, style: context.typography.titleSmall),
+                    Text(
+                      category.label,
+                      maxLines: 1,
+                      overflow: .ellipsis,
+                      style: context.typography.titleSmall,
+                    ),
                     const SizedBox(height: 8.0),
                     Text(
                       amount,
@@ -131,36 +153,6 @@ final class const ExpenseCategoryMetricsCardWidget({
                   ],
                 ),
               ),
-              if (highlighted || illustrated) ...[
-                const Spacer(),
-                Align(
-                  alignment: .bottomRight,
-                  child: SizedBox(
-                    width: illustrationSize,
-                    height: illustrationHeight,
-                    child: OverflowBox(
-                      minWidth: illustrationSize,
-                      maxWidth: illustrationSize,
-                      minHeight: illustrationSize,
-                      maxHeight: illustrationSize,
-                      alignment: .bottomRight,
-                      child: Transform.translate(
-                        offset: Offset(46.0, compact ? 64.0 : 48.0),
-                        child: Skeleton.ignore(
-                          child: ImageWidget(
-                            fit: .contain,
-                            alt: category.asset.alt,
-                            width: illustrationSize,
-                            height: illustrationSize,
-                            source: category.asset.source,
-                            fallback: AssetEnum.categoryOthers.source,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -199,7 +191,7 @@ final class const ExpenseCategoryMetricsCardWidget({
             style: context.typography.labelSmall,
             width: math.max(1.0, contentWidth - 64.0),
           ) +
-          8.0,
+          24.0,
     );
 
     return 34.0 +
@@ -210,6 +202,7 @@ final class const ExpenseCategoryMetricsCardWidget({
           width: contentWidth,
           text: category.label,
           style: context.typography.titleSmall,
+          maxLines: 1,
         ) +
         8.0 +
         _buildTextHeight(
@@ -236,11 +229,13 @@ final class const ExpenseCategoryMetricsCardWidget({
     required String text,
     required double width,
     required TextStyle? style,
+    int? maxLines,
   }) {
     final painter = TextPainter(
       text: TextSpan(text: text, style: style),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
+      maxLines: maxLines,
     )..layout(maxWidth: width);
 
     final height = painter.height;

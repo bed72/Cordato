@@ -6,7 +6,7 @@ import 'package:cordato/features/core/presentation/formatters/interface_money_fo
 
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/presentation/widgets/expense_metrics_tip_card_widget.dart';
-import 'package:cordato/features/metrics/presentation/widgets/expense_category_metrics_card_widget.dart';
+import 'package:cordato/features/metrics/presentation/widgets/expense_category_card_widget.dart';
 
 final class const ExpenseMetricsGridWidget({
   super.key,
@@ -35,12 +35,12 @@ final class const ExpenseMetricsGridWidget({
           children: [
             SizedBox(
               height: topHeight,
-              child: ExpenseCategoryMetricsCardWidget(
+              child: ExpenseCategoryCardWidget(
                 compact: true,
                 period: period,
                 highlighted: true,
                 category: categories.first,
-                moneyFormatter: moneyFormatter,
+                formatter: moneyFormatter,
                 onExpensesChanged: onExpensesChanged,
               ),
             ),
@@ -53,10 +53,10 @@ final class const ExpenseMetricsGridWidget({
                   children: [
                     for (final category in categories.skip(1))
                       Expanded(
-                        child: ExpenseCategoryMetricsCardWidget(
+                        child: ExpenseCategoryCardWidget(
                           period: period,
                           category: category,
-                          moneyFormatter: moneyFormatter,
+                          formatter: moneyFormatter,
                           onExpensesChanged: onExpensesChanged,
                         ),
                       ),
@@ -80,11 +80,11 @@ final class const ExpenseMetricsGridWidget({
   ) {
     final heights = [
       for (final (index, category) in categories.indexed)
-        ExpenseCategoryMetricsCardWidget(
+        ExpenseCategoryCardWidget(
           compact: true,
           category: category,
           highlighted: index == 0,
-          moneyFormatter: moneyFormatter,
+          formatter: moneyFormatter,
         ).buildHeightFor(
           context: context,
           category: category,

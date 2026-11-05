@@ -29,6 +29,7 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
     if (oldWidget.bloc == widget.bloc && oldWidget.email == widget.email) {
       return;
     }
+
     unawaited(bloc.close());
     bloc = widget.bloc();
     bloc.add(ResendEmailStartedEvent(email: widget.email));
@@ -41,52 +42,60 @@ mixin ResendEmailVerificationScreenStateMixin on State<ResendEmailScreen> {
   }
 
   void resend() {
-    if (!canResend) return;
+    if (!canResend) {
+      return;
+    }
+
     bloc.add(ResendEmailSubmittedEvent(email: widget.email));
   }
 
   void handleResend(ResendEmailState state) {
-    if (!mounted || bloc.isClosed) return;
-
-    if (state is ResendEmailFailure) {
-      if (state.isInitialRequest) {
-        context.showToast(
-          variant: .error,
-          title: 'Conta criada',
-          description: 'Não foi possível enviar o e-mail de verificação. Toque em Reenviar para tentar novamente.',
-        );
-        return;
-      }
-      if (state case ResendEmailFailure(:final errors)
-          when errors.errors.isNotEmpty) {
-        context.showToast(
-          variant: .error,
-          title: 'Erro ao reenviar e-mail',
-          description: errors.errors
-              .map(
-                (error) => AuthenticationErrorMessageFormatter.format(
-                  error,
-                  fallback:
-                      'Não foi possível reenviar o e-mail. Tente novamente.',
-                ),
-              )
-              .toSet()
-              .join('\n'),
-        );
-
-        return;
-      }
-
-      context.showToast(
-        variant: .error,
-        title: 'Erro ao reenviar e-mail',
-        description: 'Não foi possível reenviar o e-mail. Tente novamente.',
-      );
-    } else if (state is ResendEmailSuccess) {
-      context.showToast(
-        title: state.isInitialRequest ? 'E-mail enviado' : 'E-mail reenviado',
-        description: 'Confira sua caixa de entrada para confirmar seu e-mail.',
-      );
+    if (!mounted || bloc.isClosed) {
+      return;
     }
+
+    switch (state) {
+      case ResendEmailFailure(isInitialRequest: true):
+        _showInitialDeliveryFailure();
+      case ResendEmailFailure():
+        _showResendFailure(state);
+      case ResendEmailSuccess():
+        _showDeliverySuccess(state);
+      default:
+        break;
+    }
+  }
+
+  void _showInitialDeliveryFailure() {
+    context.showToast(
+      variant: .error,
+      title: 'Conta criada',
+      description: 'Não foi possível enviar o e-mail de verificação. Toque em Reenviar para tentar novamente.',
+    );
+  }
+
+  void _showResendFailure(ResendEmailFailure failure) {
+    const fallback = 'Não foi possível reenviar o e-mail. Tente novamente.';
+    final messages = failure.errors.errors
+        .map(
+          (error) => AuthenticationErrorMessageFormatter.format(
+            error,
+            fallback: fallback,
+          ),
+        )
+        .toSet();
+
+    context.showToast(
+      variant: .error,
+      title: 'Erro ao reenviar e-mail',
+      description: messages.isEmpty ? fallback : messages.join('\n'),
+    );
+  }
+
+  void _showDeliverySuccess(ResendEmailSuccess success) {
+    context.showToast(
+      title: success.isInitialRequest ? 'E-mail enviado' : 'E-mail reenviado',
+      description: 'Confira sua caixa de entrada para confirmar seu e-mail.',
+    );
   }
 }

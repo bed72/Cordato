@@ -64,13 +64,13 @@ void main() {
       when(() => storage.read(key: StorageKeyEnum.token.key))
           .thenAnswer((_) => pending.future);
       var finished = false;
-      final result = repository.loadSession().then((value) {
+      final sessionLoad = repository.loadSession().then((value) {
         finished = true;
         return value;
       });
       expect(finished, isFalse);
       pending.complete('opaque-token');
-      expect(await result, isTrue);
+      expect(await sessionLoad, isTrue);
     });
 
     test('posts auth-refresh without body or headers and awaits both persisted values', () async {
@@ -386,14 +386,14 @@ void main() {
         when(() => storage.watch(key: StorageKeyEnum.token.key))
             .thenAnswer((_) => changes.stream);
         final failure = StateError('watch unavailable');
-        final result = expectLater(
+        final streamExpectation = expectLater(
           repository.sessionChanges,
           emitsInOrder([emitsError(same(failure)), true, emitsDone]),
         );
         changes.addError(failure);
         changes.add('token');
         await changes.close();
-        await result;
+        await streamExpectation;
       },
     );
 

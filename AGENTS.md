@@ -314,6 +314,33 @@ Lógica visual pura de StatelessWidget pode usar mixin próprio com
 
 ## Dart, Imports E Componentes
 
+### Legibilidade E Coesão
+
+- Use nomes que expressem o significado do dado ou da operação. É proibido nomear
+  variáveis, parâmetros, campos ou getters como `result`, inclusive em testes,
+  previews e ferramentas. Prefira nomes como `passwordCheck`, `createdExpense`
+  ou `confirmedDate`; não substitua por outro nome genérico sem significado.
+- Métodos devem ter uma responsabilidade identificável. Separe validação,
+  atualização de erros de campo, envio de eventos, feedback e navegação quando
+  estiverem misturados em um handler extenso. O método coordenador deve deixar
+  explícita a sequência da operação, sem esconder efeitos em getters.
+- Separe etapas lógicas por linhas em branco. Use blocos com chaves em `if`,
+  `else` e laços; não comprima guarda e ação na mesma linha.
+- Prefira guard clauses para pré-condições e `switch` com pattern matching para
+  estados ou alternativas mutuamente exclusivas. Evite cascatas de `if/else`
+  e ternários aninhados; um `if` simples ou ternário simples continua permitido.
+- Formatação e classificação de erros remotos pertencem a formatters puros da
+  feature, com testes unitários, não a handlers de tela ou callbacks de build.
+- Estados visuais alternativos não devem formar árvores de ternários. Use seleção
+  explícita por estado e extraia blocos visuais substanciais em widgets públicos
+  em arquivos próprios, preservando ownership, foco, controllers e acessibilidade.
+- Não crie services, stores, flags espelhadas, hierarquias de mixins ou helpers
+  genéricos apenas para reduzir linhas. Extrações precisam reduzir acoplamento
+  ou nomear uma responsabilidade real, mantendo o comportamento e seus testes.
+- Estas regras valem para todo o projeto. Ao alterar um fluxo, revise também seus
+  consumidores; não mova complexidade para outro arquivo nem enfraqueça testes
+  para apenas aparentar conformidade.
+
 - SDK Dart `^3.13.2`; use primary constructors em declarações novas elegíveis.
   Campos induzidos imutáveis têm tipo explícito e `final`; preserve `const`.
 - Parâmetros usados só para inicialização não induzem campos. Construtores com

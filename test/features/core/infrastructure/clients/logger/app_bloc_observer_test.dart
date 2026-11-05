@@ -7,6 +7,8 @@ import 'package:cordato/features/authentication/presentation/screens/sign_in/blo
 import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_state.dart';
 import 'package:cordato/features/core/infrastructure/clients/logger/app_bloc_observer.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/authentication/presentation/screens/change_password/bloc/change_password_bloc.dart';
+import 'package:cordato/features/authentication/presentation/screens/change_password/bloc/change_password_event.dart';
 
 import '../../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
@@ -27,6 +29,25 @@ void main() {
   });
 
   group('Debug Bloc logs', () {
+    test('does not log password change credentials', () async {
+      final change = ChangePasswordBloc(
+        repository: AuthenticationRepositoryMock(),
+      );
+      addTearDown(change.close);
+      observer.onEvent(
+        change,
+        const ChangePasswordSubmitted(
+          oldPassword: 'fixture-old-private',
+          password: 'fixture-new-private',
+          passwordConfirm: 'fixture-confirm-private',
+        ),
+      );
+      final message = talker.history.single.generateTextMessage();
+      expect(message, contains('ChangePasswordSubmitted'));
+      expect(message, isNot(contains('fixture-old-private')));
+      expect(message, isNot(contains('fixture-new-private')));
+      expect(message, isNot(contains('fixture-confirm-private')));
+    });
     test('logs creation and closing to the supplied Talker', () {
       observer.onCreate(bloc);
       observer.onClose(bloc);

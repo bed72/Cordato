@@ -23,6 +23,40 @@ final class AuthenticationRepository({
   }
 
   @override
+  Future<void> changePassword({
+    required String password,
+    required String oldPassword,
+    required String passwordConfirm,
+  }) async {
+    final id = await _storageClient.read(key: StorageKeyEnum.userId.key);
+
+    if (id == null || id.trim().isEmpty) {
+      throw AuthenticationException(errors: .unknown());
+    }
+
+    try {
+      final response = await _httpClient.patch(
+        parameter: Requests(
+          path: '${HttpPathEnum.userRecords.path}/${Uri.encodeComponent(id)}',
+          body: {
+            'password': password,
+            'oldPassword': oldPassword,
+            'passwordConfirm': passwordConfirm,
+          },
+        ),
+      );
+
+      if (response.status != 200) {
+        throw AuthenticationException(errors: .unknown());
+      }
+    } on HttpResponseException catch (exception) {
+      throw AuthenticationException(errors: exception.errors.toEntity());
+    } on HttpClientException {
+      throw AuthenticationException(errors: .unknown());
+    }
+  }
+
+  @override
   Future<void> requestPasswordReset({required String email}) async {
     try {
       final response = await _httpClient.post(

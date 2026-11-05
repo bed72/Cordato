@@ -26,6 +26,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   String? get activeCategory => bloc.state.data.category;
   ({DateTime from, DateTime to})? get activePeriod {
     final data = bloc.state.data;
+
     return data.from != null && data.to != null
         ? (from: data.from!, to: data.to!)
         : null;
@@ -49,7 +50,11 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
             activeCategory;
   String? get periodLabel {
     final period = activePeriod;
-    if (period == null) return null;
+
+    if (period == null) {
+      return null;
+    }
+
     final lastDay = DateTime(period.from.year, period.from.month + 1, 0);
     if (period.from.day != 1 ||
         period.to.year != lastDay.year ||
@@ -113,28 +118,49 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   }
 
   void handleState(ExpensesState state) {
-    if (state case ExpensesDeleted()) {
-      context.showToast(
-        variant: .success,
-        title: 'Despesa excluída',
-        description: 'A despesa foi removida com sucesso.',
-      );
-    } else if (state case ExpensesDeleteFailure(:final errors)) {
-      context.showToast(
-        variant: .error,
-        title: 'Erro ao excluir despesa',
-        description: ErrorMessageFormatter.formatAll(
-          errors.errors,
-          fallback: 'Não foi possível excluir a despesa. Tente novamente.',
-        ),
-      );
+    switch (state) {
+      case ExpensesDeleted():
+        _showDeletionSuccess();
+      case ExpensesDeleteFailure():
+        _showDeletionFailure(state);
+      default:
+        break;
     }
-    if (!state.isBusy && state is! ExpensesFailure) {
-      final owner = bloc;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && bloc == owner) loadNearEnd();
-      });
+
+    if (state.isBusy || state is ExpensesFailure) {
+      return;
     }
+
+    _schedulePagination();
+  }
+
+  void _showDeletionSuccess() {
+    context.showToast(
+      variant: .success,
+      title: 'Despesa excluída',
+      description: 'A despesa foi removida com sucesso.',
+    );
+  }
+
+  void _showDeletionFailure(ExpensesDeleteFailure failure) {
+    context.showToast(
+      variant: .error,
+      title: 'Erro ao excluir despesa',
+      description: ErrorMessageFormatter.formatAll(
+        failure.errors.errors,
+        fallback: 'Não foi possível excluir a despesa. Tente novamente.',
+      ),
+    );
+  }
+
+  void _schedulePagination() {
+    final owner = bloc;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && bloc == owner) {
+        loadNearEnd();
+      }
+    });
   }
 
   void loadNearEnd() {
@@ -151,7 +177,10 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   }
 
   Future<void> refreshExpenses() async {
-    if (!canRemoveFilters) return;
+    if (!canRemoveFilters) {
+      return;
+    }
+
     final owner = bloc;
     final completion = owner.stream.firstWhere((state) => !state.isLoading);
     owner.add(
@@ -169,31 +198,39 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   }
 
   void removeCategoryFilter() {
-    if (canRemoveFilters) {
-      _resetScroll();
-      bloc.add(
-        ExpensesRequestedEvent(from: activePeriod?.from, to: activePeriod?.to),
-      );
+    if (!canRemoveFilters) {
+      return;
     }
+
+    _resetScroll();
+    bloc.add(
+      ExpensesRequestedEvent(from: activePeriod?.from, to: activePeriod?.to),
+    );
   }
 
   void removePeriodFilter() {
-    if (canRemoveFilters) {
-      _resetScroll();
-      bloc.add(ExpensesRequestedEvent(category: activeCategory));
+    if (!canRemoveFilters) {
+      return;
     }
+
+    _resetScroll();
+    bloc.add(ExpensesRequestedEvent(category: activeCategory));
   }
 
   void retry() {
     if (bloc.state case ExpensesFailure(refresh: false)) {
       bloc.add(const ExpensesNextPageRequestedEvent());
-    } else {
-      refreshExpenses();
+      return;
     }
+
+    refreshExpenses();
   }
 
   Future<void> editExpense(String id) async {
-    if (!canRemoveFilters) return;
+    if (!canRemoveFilters) {
+      return;
+    }
+
     final owner = bloc;
     final data = owner.state.data;
     setState(() => isEditingExpense = true);
@@ -210,14 +247,19 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       }
       owner.add(ExpensesUpdatedEvent(expense: updated));
     } finally {
-      if (mounted && bloc == owner) setState(() => isEditingExpense = false);
+      if (mounted && bloc == owner) {
+        setState(() => isEditingExpense = false);
+      }
     }
   }
 
   void goBack() => context.pop();
 
   Future<void> confirmDeleteExpense(String id) async {
-    if (!canRemoveFilters) return;
+    if (!canRemoveFilters) {
+      return;
+    }
+
     final owner = bloc;
     final data = owner.state.data;
     bool confirmed = false;
@@ -235,7 +277,9 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       }
       owner.add(ExpensesDeleteRequestedEvent(id: id));
     } finally {
-      if (mounted && bloc == owner) setState(() => pendingDeleteId = null);
+      if (mounted && bloc == owner) {
+        setState(() => pendingDeleteId = null);
+      }
     }
   }
 

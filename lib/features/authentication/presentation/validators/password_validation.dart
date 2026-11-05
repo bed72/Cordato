@@ -5,13 +5,15 @@ final class PasswordValidation implements Validation<String> {
 
   static final _digit = RegExp(r'[0-9]');
   static final _uppercase = RegExp(r'[A-Z]');
+  static final _lowercase = RegExp(r'[a-z]');
 
   @override
   ValidationResult<String> call(String value) {
     if (value.isEmpty) return const Invalid('Senha obrigatória');
 
-    if (value.length < 6 || value.length > 12) {
-      return const Invalid('A senha deve ter entre 6 e 12 caracteres');
+    final length = value.runes.length;
+    if (length < 6 || length > 16) {
+      return const Invalid('A senha deve ter entre 6 e 16 caracteres');
     }
 
     if (!_uppercase.hasMatch(value)) {
@@ -20,6 +22,10 @@ final class PasswordValidation implements Validation<String> {
 
     if (!_digit.hasMatch(value)) {
       return const Invalid('A senha deve conter um número');
+    }
+
+    if (!_lowercase.hasMatch(value)) {
+      return const Invalid('A senha deve conter uma letra minúscula');
     }
 
     return Valid(value);

@@ -23,7 +23,11 @@ void main() {
     test('preserves $cents positive cents without conversion', () {
       expect(
         validator(cents),
-        isA<Valid<int>>().having((result) => result.value, 'value', cents),
+        isA<Valid<int>>().having(
+          (validCents) => validCents.value,
+          'value',
+          cents,
+        ),
       );
     });
   }

@@ -4,17 +4,23 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/core/presentation/navigation/session_redirect_deferral.dart';
 import 'package:cordato/features/root/presentation/widgets/app_widget.dart';
+import 'package:cordato/features/root/presentation/navigation/session_route_policy.dart';
 import 'package:cordato/features/session/presentation/bloc/session_bloc.dart';
 import 'package:cordato/features/session/presentation/bloc/session_event.dart';
 import 'package:cordato/features/session/presentation/bloc/session_state.dart';
 
 mixin AppWidgetStateMixin on State<AppWidget> {
   late SessionBloc bloc;
+  late final SessionRedirectDeferral sessionRedirectDeferral;
 
   @override
   void initState() {
     super.initState();
+    sessionRedirectDeferral = SessionRedirectDeferral(
+      onReleased: () => handleSession(bloc.state, afterDeferral: true),
+    );
     bloc = widget.bloc();
     bloc.add(const SessionStartedEvent());
     _scheduleInitialRoute();
@@ -64,7 +70,7 @@ mixin AppWidgetStateMixin on State<AppWidget> {
     WidgetsBinding.instance.ensureVisualUpdate();
   }
 
-  void handleSession(SessionState state) {
+  void handleSession(SessionState state, {bool afterDeferral = false}) {
     final owner = bloc;
     final key = widget.navigatorKey;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -79,21 +85,13 @@ mixin AppWidgetStateMixin on State<AppWidget> {
       final target = key.currentContext;
       if (target == null) return;
       final path = target.routeState(listen: false).uri.path;
-      final protected = RouteEnum.authenticatedPaths().contains(path);
-      final splash = path == RouteEnum.app.path;
-
-      switch (state) {
-        case SessionInitial() || SessionLoading():
-          if (protected) target.navigate(RouteEnum.app.path);
-        case SessionAuthenticated():
-          if (splash ||
-              path == RouteEnum.welcome.path ||
-              path == RouteEnum.authenticationSignIn.path) {
-            target.navigate(RouteEnum.dashboard.path);
-          }
-        case SessionUnauthenticated() || SessionFailure():
-          if (splash || protected) target.navigate(RouteEnum.welcome.path);
-      }
+      final redirect = SessionRoutePolicy.redirect(
+        state: state,
+        path: path,
+        deferred: sessionRedirectDeferral.isDeferredFor(path),
+        afterDeferral: afterDeferral,
+      );
+      if (redirect != null) target.navigate(redirect);
     });
     WidgetsBinding.instance.ensureVisualUpdate();
   }

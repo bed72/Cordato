@@ -45,7 +45,7 @@ final class const ExpenseMetricsTipCardWidget({super.key})
                 backgroundColor: color.withValues(alpha: 0.12),
               ),
             ),
-            const SizedBox(height: 12.0),
+            const SizedBox(height: 20.0),
             Text(
               _title,
               maxLines: largerText ? null : 1,
@@ -74,7 +74,7 @@ final class const ExpenseMetricsTipCardWidget({super.key})
 
     return 34.0 +
         40.0 +
-        12.0 +
+        20.0 +
         _textHeight(
           context: context,
           text: _title,

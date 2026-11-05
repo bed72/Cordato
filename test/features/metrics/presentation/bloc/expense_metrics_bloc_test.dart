@@ -161,15 +161,19 @@ void main() {
         when(() => repository.getExpenses()).thenAnswer((_) async => metrics);
         final bloc = ExpenseMetricsBloc(repository: repository);
         addTearDown(bloc.close);
-        var result = bloc.stream.firstWhere((s) => s is ExpenseMetricsSuccess);
+        final firstLoad = bloc.stream.firstWhere(
+          (s) => s is ExpenseMetricsSuccess,
+        );
         bloc.add(const ExpenseMetricsRequestedEvent());
-        await result;
+        await firstLoad;
         when(
           () => repository.getExpenses(),
         ).thenThrow(MetricsException(errors: const ErrorsEntity(errors: [])));
-        result = bloc.stream.firstWhere((s) => s is ExpenseMetricsFailure);
+        final failedRefresh = bloc.stream.firstWhere(
+          (s) => s is ExpenseMetricsFailure,
+        );
         bloc.add(const ExpenseMetricsRequestedEvent());
-        await result;
+        await failedRefresh;
         expect(bloc.state.metrics, isNull);
         final empty = ExpenseMetricsEntity(
           id: 'empty',
@@ -179,9 +183,11 @@ void main() {
           categories: null,
         );
         when(() => repository.getExpenses()).thenAnswer((_) async => empty);
-        result = bloc.stream.firstWhere((s) => s is ExpenseMetricsSuccess);
+        final retriedLoad = bloc.stream.firstWhere(
+          (s) => s is ExpenseMetricsSuccess,
+        );
         bloc.add(const ExpenseMetricsRequestedEvent());
-        await result;
+        await retriedLoad;
         expect(bloc.state.metrics, same(empty));
         expect(bloc.state.metrics!.totalAmount, 0);
         expect(bloc.state.metrics!.categories, isNull);

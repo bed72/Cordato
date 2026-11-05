@@ -19,12 +19,12 @@ void main() {
       'insurance': 'Seguros',
       'transport': 'Transporte',
       'education': 'Educação',
-      'financing': 'Financiamentos',
+      'financing': 'Crédito',
       'investments': 'Investimentos',
       'subscriptions': 'Assinaturas',
-      'pets': 'Animais de estimação',
-      'personal_care': 'Cuidados pessoais',
-      'gifts_and_donations': 'Presentes e doações',
+      'pets': 'Pets',
+      'personal_care': 'Cuidados',
+      'gifts_and_donations': 'Presentes',
       'other': 'Outros',
     };
 
@@ -41,7 +41,13 @@ void main() {
           category.asset.source,
           'assets/images/categories/${entry.key == 'other' ? 'others' : entry.key}.webp',
         );
-        expect(category.asset.alt, entry.value);
+        expect(category.asset.alt, switch (entry.key) {
+          'financing' => 'Financiamentos',
+          'pets' => 'Animais de estimação',
+          'personal_care' => 'Cuidados pessoais',
+          'gifts_and_donations' => 'Presentes e doações',
+          _ => entry.value,
+        });
       });
     }
 

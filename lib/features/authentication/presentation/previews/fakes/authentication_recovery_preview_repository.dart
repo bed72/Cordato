@@ -1,8 +1,14 @@
+import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+
 import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
+import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 
-final class const AuthenticationRecoveryPreviewRepository()
-    implements IAuthenticationRepository {
+final class const AuthenticationRecoveryPreviewRepository({
+  final ErrorsEntity? changeErrors,
+  final Future<void>? changeOperation,
+  final bool failSignOut = false,
+}) implements IAuthenticationRepository {
   @override
   Future<void> requestPasswordReset({required String email}) async {}
 
@@ -14,7 +20,21 @@ final class const AuthenticationRecoveryPreviewRepository()
   }) async {}
 
   @override
-  Future<void> signOut() async {}
+  Future<void> signOut() async {
+    if (failSignOut) throw StateError('Preview: limpeza indisponível');
+  }
+
+  @override
+  Future<void> changePassword({
+    required String password,
+    required String oldPassword,
+    required String passwordConfirm,
+  }) async {
+    await changeOperation;
+    if (changeErrors case final errors?) {
+      throw AuthenticationException(errors: errors);
+    }
+  }
 
   @override
   Future<void> resendEmail({required String email}) async =>

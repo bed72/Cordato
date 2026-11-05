@@ -44,7 +44,10 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
         (isEditing && widget.initialExpense == null)) {
       return false;
     }
-    if (!isEditing) return true;
+    if (!isEditing) {
+      return true;
+    }
+
     final initial = widget.initialExpense!;
     final hasChanges =
         cents != initial.cents.cents ||
@@ -82,40 +85,56 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
   }
 
   void _refreshSubmit() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void onDescriptionChanged(String value) {
     setState(() {
       descriptionFailure = null;
-      if (_selectedSuggestion != null && !hasManualAmount) cents = 0;
+      if (_selectedSuggestion != null && !hasManualAmount) {
+        cents = 0;
+      }
+
       _selectedSuggestion = null;
     });
   }
 
   void selectSuggestion(ExpenseSuggestionEntity suggestion) {
-    if (!widget.enabled || _isRunning || isEditing) return;
+    if (!widget.enabled || _isRunning || isEditing) {
+      return;
+    }
+
     setState(() {
       _selectedSuggestion = suggestion;
       category = suggestion.category;
       descriptionFailure = null;
       if (!hasManualAmount) {
         cents = suggestion.cents ?? 0;
-        if (suggestion.cents != null) centsFailure = null;
+        if (suggestion.cents != null) {
+          centsFailure = null;
+        }
       }
     });
-    if (cents == 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) selectAmount();
-      });
-    } else {
+    if (cents != 0) {
       context.dismissKeyboard();
+      return;
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        selectAmount();
+      }
+    });
   }
 
   void applySuggestedAmount() {
     final amount = _selectedSuggestion?.cents;
-    if (amount == null || !widget.enabled || _isRunning) return;
+    if (amount == null || !widget.enabled || _isRunning) {
+      return;
+    }
+
     setState(() {
       cents = amount;
       centsFailure = null;
@@ -124,12 +143,15 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
   }
 
   Future<void> selectAmount() async {
-    if (!widget.enabled || _isRunning || _isPickerOpen) return;
+    if (!widget.enabled || _isRunning || _isPickerOpen) {
+      return;
+    }
+
     _isPickerOpen = true;
     FocusManager.instance.primaryFocus?.unfocus();
 
     try {
-      final value = await showBottomSheetWidget<int>(
+      final selectedCents = await showBottomSheetWidget<int>(
         context: context,
         title: 'Valor do gasto',
         child: CentsCalculatorWidget(
@@ -138,11 +160,18 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
         ),
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       context.dismissKeyboard();
-      if (value == null || _isRunning) return;
+
+      if (selectedCents == null || _isRunning) {
+        return;
+      }
+
       setState(() {
-        cents = value;
+        cents = selectedCents;
         hasManualAmount = true;
         centsFailure = null;
       });
@@ -152,42 +181,64 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
   }
 
   Future<void> selectCategory() async {
-    if (!widget.enabled || _isRunning || _isPickerOpen) return;
+    if (!widget.enabled || _isRunning || _isPickerOpen) {
+      return;
+    }
+
     _isPickerOpen = true;
     FocusManager.instance.primaryFocus?.unfocus();
+
     try {
-      final value = await showBottomSheetWidget<ExpenseCategoryEnum>(
+      final selectedCategory = await showBottomSheetWidget<ExpenseCategoryEnum>(
         context: context,
         title: 'Categoria do gasto',
         subtitle: 'Escolha onde esse gasto se encaixa.',
         contentPadding: const .fromLTRB(16.0, 20.0, 16.0, 32.0),
         child: ExpenseCategoryPickerWidget(value: category),
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       context.dismissKeyboard();
-      if (value == null || _isRunning) return;
-      setState(() => category = value);
+
+      if (selectedCategory == null || _isRunning) {
+        return;
+      }
+
+      setState(() => category = selectedCategory);
     } finally {
       _isPickerOpen = false;
     }
   }
 
   Future<void> selectDate() async {
-    if (!widget.enabled || _isRunning || _isPickerOpen) return;
+    if (!widget.enabled || _isRunning || _isPickerOpen) {
+      return;
+    }
+
     _isPickerOpen = true;
     FocusManager.instance.primaryFocus?.unfocus();
+
     try {
-      final date = await showBottomSheetWidget<DateTime>(
+      final selectedDate = await showBottomSheetWidget<DateTime>(
         context: context,
         title: 'Data do gasto',
         child: ExpenseDatePickerWidget(date: occurredOn),
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       context.dismissKeyboard();
-      if (date == null || _isRunning) return;
+
+      if (selectedDate == null || _isRunning) {
+        return;
+      }
+
       setState(() {
-        occurredOn = date;
+        occurredOn = selectedDate;
         dateFailure = null;
       });
     } finally {
@@ -198,8 +249,12 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
   void submitAndContinue() => submit(keepFormOpen: true);
 
   void submit({bool keepFormOpen = false}) {
-    if (!mounted || !canSubmit || _isRunning || _isPickerOpen) return;
+    if (!mounted || !canSubmit || _isRunning || _isPickerOpen) {
+      return;
+    }
+
     context.dismissKeyboard();
+
     final validation = widget.validator(
       cents: cents,
       occurredOn: occurredOn,
@@ -227,22 +282,14 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
       occurredOn: Valid(value: final DateTime validDate),
     )) {
       if (isEditing) {
-        final initial = widget.initialExpense!;
-        widget.expenseBloc.add(
-          ExpenseSubmittedEvent(
-            id: widget.id!,
-            category: category == initial.category ? null : category,
-            cents: validCents == initial.cents.cents ? null : validCents,
-            description: validDescription == initial.description.trim()
-                ? null
-                : validDescription,
-            occurredOn: DateUtils.isSameDay(validDate, initial.occurredOn)
-                ? null
-                : validDate,
-          ),
+        _submitUpdate(
+          validCents: validCents,
+          validDescription: validDescription,
+          validDate: validDate,
         );
         return;
       }
+
       widget.expenseBloc.add(
         ExpenseSubmittedEvent(
           keepFormOpen: keepFormOpen,
@@ -255,31 +302,61 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     }
   }
 
+  void _submitUpdate({
+    required int validCents,
+    required String validDescription,
+    required DateTime validDate,
+  }) {
+    final initial = widget.initialExpense!;
+
+    widget.expenseBloc.add(
+      ExpenseSubmittedEvent(
+        id: widget.id!,
+        category: category == initial.category ? null : category,
+        cents: validCents == initial.cents.cents ? null : validCents,
+        description: validDescription == initial.description.trim()
+            ? null
+            : validDescription,
+        occurredOn: DateUtils.isSameDay(validDate, initial.occurredOn)
+            ? null
+            : validDate,
+      ),
+    );
+  }
+
   void handleState(ExpenseState state) {
-    if (!mounted || !widget.enabled) return;
-    if (state case ExpenseSubmissionFailure(:final errors)) {
-      _showErrors(errors);
-    } else if (state case ExpenseSuccess(
-      :final expense,
-      :final isEditing,
-      :final keepFormOpen,
-    )) {
-      context.showToast(
-        variant: .success,
-        title: isEditing ? 'Gasto atualizado' : 'Gasto cadastrado',
-        description: isEditing
-            ? 'Seu gasto foi atualizado com sucesso.'
-            : 'Seu gasto foi cadastrado com sucesso.',
-      );
-      if (isEditing) {
-        context.pop(expense);
-      } else if (keepFormOpen) {
+    if (!mounted || !widget.enabled) {
+      return;
+    }
+
+    switch (state) {
+      case ExpenseSubmissionFailure(:final errors):
+        _showErrors(errors);
+      case ExpenseSuccess():
+        _completeSubmission(state);
+      default:
+        break;
+    }
+  }
+
+  void _completeSubmission(ExpenseSuccess success) {
+    context.showToast(
+      variant: .success,
+      title: success.isEditing ? 'Gasto atualizado' : 'Gasto cadastrado',
+      description: success.isEditing
+          ? 'Seu gasto foi atualizado com sucesso.'
+          : 'Seu gasto foi cadastrado com sucesso.',
+    );
+
+    switch (success) {
+      case ExpenseSuccess(isEditing: true):
+        context.pop(success.expense);
+      case ExpenseSuccess(keepFormOpen: true):
         _resetForm();
-      } else if (widget.returnToPrevious) {
-        context.pop(expense);
-      } else {
+      case ExpenseSuccess() when widget.returnToPrevious:
+        context.pop(success.expense);
+      default:
         context.navigate(RouteEnum.dashboard.path);
-      }
     }
   }
 
@@ -299,65 +376,24 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
   }
 
   void _showErrors(ErrorsEntity errors) {
-    final dateMessages = <String>[];
-    final amountMessages = <String>[];
-    final remaining = <ErrorEntity>[];
-    final descriptionMessages = <String>[];
-
-    for (final error in errors.errors) {
-      final message = ExpenseErrorMessageFormatter.format(
-        error,
-        fallback: 'Confira os dados informados.',
-      );
-      if (error.status != '422' && error.status != '400') {
-        remaining.add(error);
-        continue;
-      }
-
-      switch (error.pointer) {
-        case '/data/attributes/amount':
-        case '/amount':
-          amountMessages.add(message);
-        case '/data/attributes/description':
-        case '/description':
-          descriptionMessages.add(message);
-        case '/data/attributes/occurred_on':
-        case '/occurred_on':
-          dateMessages.add(message);
-        default:
-          remaining.add(error);
-      }
-    }
+    final fields = ExpenseErrorMessageFormatter.fields(
+      errors,
+      isEditing: isEditing,
+    );
 
     setState(() {
-      dateFailure = dateMessages.isEmpty ? null : dateMessages.join('\n');
-      centsFailure = amountMessages.isEmpty ? null : amountMessages.join('\n');
-      descriptionFailure = descriptionMessages.isEmpty
-          ? null
-          : descriptionMessages.join('\n');
+      dateFailure = fields.date;
+      centsFailure = fields.cents;
+      descriptionFailure = fields.description;
     });
 
-    if (remaining.isNotEmpty || errors.errors.isEmpty) {
+    if (fields.toast case final message?) {
       context.showToast(
         variant: .error,
         title: isEditing
             ? 'Erro ao atualizar gasto'
             : 'Erro ao cadastrar gasto',
-        description: remaining.isEmpty
-            ? (isEditing
-                  ? 'Não foi possível atualizar o gasto. Tente novamente.'
-                  : 'Não foi possível cadastrar o gasto. Tente novamente.')
-            : remaining
-                  .map(
-                    (error) => ExpenseErrorMessageFormatter.format(
-                      error,
-                      fallback: isEditing
-                          ? 'Não foi possível atualizar o gasto. Tente novamente.'
-                          : 'Não foi possível cadastrar o gasto. Tente novamente.',
-                    ),
-                  )
-                  .toSet()
-                  .join('\n'),
+        description: message,
       );
     }
   }

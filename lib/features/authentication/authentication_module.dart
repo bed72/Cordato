@@ -17,6 +17,8 @@ import 'package:cordato/features/authentication/presentation/screens/resend_emai
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/reset_password/reset_password_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/reset_password/bloc/reset_password_bloc.dart';
+import 'package:cordato/features/authentication/presentation/screens/change_password/change_password_screen.dart';
+import 'package:cordato/features/authentication/presentation/screens/change_password/bloc/change_password_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/password_recovery/password_recovery_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/password_recovery/bloc/password_recovery_bloc.dart';
 
@@ -60,8 +62,17 @@ final authenticationModule = createModule(
       provide: (scope) =>
           scope.addBloc<PasswordRecoveryBloc>(PasswordRecoveryBloc.new),
       child: (context, _) => PasswordRecoveryScreen(
-        bloc: context.read<PasswordRecoveryBloc>(),
         validation: inject<EmailValidation>(),
+        bloc: context.read<PasswordRecoveryBloc>(),
+      ),
+    )
+    ..route(
+      RouteEnum.authenticationChangePassword.path,
+      provide: (scope) =>
+          scope.addBloc<ChangePasswordBloc>(ChangePasswordBloc.new),
+      child: (context, _) => ChangePasswordScreen(
+        validation: inject<PasswordValidation>(),
+        bloc: context.read<ChangePasswordBloc>(),
       ),
     )
     ..route(

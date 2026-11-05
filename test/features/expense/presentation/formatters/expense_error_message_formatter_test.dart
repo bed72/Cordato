@@ -6,6 +6,98 @@ import 'package:cordato/features/expense/presentation/formatters/expense_error_m
 void main() {
   const fallback = 'Não foi possível salvar a despesa.';
 
+  group('Expense form error classification', () {
+    for (final source in [
+      (status: '400', prefix: ''),
+      (status: '422', prefix: '/data/attributes'),
+    ]) {
+      test('${source.status} maps all form fields and preserves order', () {
+        final errors = ErrorsEntity(
+          errors: [
+            ErrorEntity(
+              status: source.status,
+              pointer: '${source.prefix}/amount',
+              code: 'validation_required',
+            ),
+            ErrorEntity(
+              status: source.status,
+              pointer: '${source.prefix}/description',
+              code: 'validation_required',
+            ),
+            ErrorEntity(
+              status: source.status,
+              pointer: '${source.prefix}/description',
+              code: 'validation_length',
+            ),
+            ErrorEntity(
+              status: source.status,
+              pointer: '${source.prefix}/occurred_on',
+            ),
+          ],
+        );
+
+        final fields = ExpenseErrorMessageFormatter.fields(
+          errors,
+          isEditing: false,
+        );
+
+        expect(fields.cents, 'Informe um valor maior que zero.');
+        expect(
+          fields.description,
+          'Informe uma descrição.\nA descrição deve ter entre 2 e 128 caracteres.',
+        );
+        expect(fields.date, 'Informe uma data válida.');
+        expect(fields.toast, isNull);
+      });
+    }
+
+    for (final operation in [
+      (
+        isEditing: false,
+        message: 'Não foi possível cadastrar o gasto. Tente novamente.',
+      ),
+      (
+        isEditing: true,
+        message: 'Não foi possível atualizar o gasto. Tente novamente.',
+      ),
+    ]) {
+      test('empty errors use fallback for editing=${operation.isEditing}', () {
+        final fields = ExpenseErrorMessageFormatter.fields(
+          const ErrorsEntity(errors: []),
+          isEditing: operation.isEditing,
+        );
+
+        expect(fields.cents, isNull);
+        expect(fields.description, isNull);
+        expect(fields.date, isNull);
+        expect(fields.toast, operation.message);
+      });
+    }
+
+    test('non-field errors use safe deduplicated toast messages', () {
+      const errors = ErrorsEntity(
+        errors: [
+          ErrorEntity(status: '403', pointer: '/amount', detail: 'secret'),
+          ErrorEntity(status: '403', pointer: '/amount', detail: 'secret'),
+          ErrorEntity(
+            status: '400',
+            pointer: '/description',
+            code: 'validation_required',
+          ),
+        ],
+      );
+
+      final fields = ExpenseErrorMessageFormatter.fields(
+        errors,
+        isEditing: false,
+      );
+
+      expect(fields.cents, isNull);
+      expect(fields.description, 'Informe uma descrição.');
+      expect(fields.toast, 'Você não tem permissão para realizar esta ação.');
+    });
+  });
+
   group('Expense field messages', () {
     const scenarios = [
       (

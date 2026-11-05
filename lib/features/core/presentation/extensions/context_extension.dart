@@ -10,6 +10,7 @@ extension BuildContextCommonExtension on BuildContext {
   double get width => MediaQuery.of(this).size.width;
   double get height => MediaQuery.of(this).size.height;
   double get bottom => View.of(this).viewInsets.bottom;
+  bool get isKeyboardVisible => MediaQuery.viewInsetsOf(this).bottom > 0;
 
   bool get isDark => Theme.of(this).brightness == .dark;
 

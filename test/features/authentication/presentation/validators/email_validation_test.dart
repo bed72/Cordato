@@ -11,7 +11,7 @@ void main() {
       expect(
         validate(value),
         isA<Invalid<String>>().having(
-          (result) => result.message,
+          (emailCheck) => emailCheck.message,
           'message',
           'E-mail obrigatório',
         ),
@@ -30,7 +30,7 @@ void main() {
       expect(
         validate(value),
         isA<Invalid<String>>().having(
-          (result) => result.message,
+          (emailCheck) => emailCheck.message,
           'message',
           'E-mail inválido',
         ),
@@ -42,7 +42,7 @@ void main() {
     expect(
       validate('  Person+tag@Example.com  '),
       isA<Valid<String>>().having(
-        (result) => result.value,
+        (emailCheck) => emailCheck.value,
         'value',
         'Person+tag@Example.com',
       ),

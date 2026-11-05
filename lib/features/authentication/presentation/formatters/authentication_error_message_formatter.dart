@@ -26,7 +26,7 @@ abstract final class AuthenticationErrorMessageFormatter {
           }
           if (error.code == 'validation_length_out_of_range' ||
               error.code == 'validation_length') {
-            return 'A senha deve ter entre 6 e 12 caracteres.';
+            return 'A senha deve ter entre 6 e 16 caracteres.';
           }
           return field == '/passwordConfirm'
               ? 'Confira a confirmação da senha.'

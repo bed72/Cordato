@@ -24,7 +24,7 @@ void main() {
     expect(
       validation(password: ' NewPass1 ', confirmation: ' NewPass1 '),
       isA<Valid<String>>().having(
-        (result) => result.value,
+        (confirmationCheck) => confirmationCheck.value,
         'value',
         ' NewPass1 ',
       ),

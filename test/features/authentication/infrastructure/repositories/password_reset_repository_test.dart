@@ -84,11 +84,11 @@ void main() {
               return pending.future;
             });
         var completed = false;
-        final result = execute().then((_) => completed = true);
+        final pendingOperation = execute().then((_) => completed = true);
         await started.future;
         expect(completed, isFalse);
         pending.complete(const Responses(status: 204, body: {}));
-        await result;
+        await pendingOperation;
         expect(completed, isTrue);
         verifyZeroInteractions(storage);
       });

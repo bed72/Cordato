@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
@@ -37,7 +38,6 @@ final class _SignInScreenState extends State<SignInScreen>
           child: Padding(
             padding: const .fromLTRB(16.0, 0.0, 16.0, 24.0),
             child: Column(
-              spacing: 16.0,
               crossAxisAlignment: .stretch,
               children: [
                 Expanded(
@@ -64,12 +64,27 @@ final class _SignInScreenState extends State<SignInScreen>
                     ),
                   ),
                 ),
-                ButtonSignInWidget(
-                  isLoading: state.isSubmitting,
-                  onPressed: state.canSubmit ? signIn : null,
+                Padding(
+                  padding: const .only(top: 16.0),
+                  child: ButtonSignInWidget(
+                    isLoading: state.isSubmitting,
+                    onPressed: state.canSubmit ? signIn : null,
+                  ),
                 ),
-                const SizedBox.shrink(),
-                const SignUpFooterWidget(),
+                AnimatedSize(
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  alignment: .topCenter,
+                  child: Visibility(
+                    visible: !context.isKeyboardVisible,
+                    child: const Padding(
+                      padding: .only(top: 32.0),
+                      child: SignUpFooterWidget(),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

@@ -1,17 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 
 import 'package:cordato/features/authentication/presentation/validators/password_confirmation_validation.dart';
 import 'package:cordato/features/authentication/presentation/screens/reset_password/reset_password_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/reset_password/bloc/reset_password_event.dart';
 import 'package:cordato/features/authentication/presentation/screens/reset_password/bloc/reset_password_state.dart';
-import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
+import 'package:cordato/features/authentication/presentation/formatters/reset_password_error_message_formatter.dart';
 
 mixin ResetPasswordScreenStateMixin on State<ResetPasswordScreen> {
   String? passwordFailure;
@@ -57,20 +55,32 @@ mixin ResetPasswordScreenStateMixin on State<ResetPasswordScreen> {
   }
 
   void onPasswordChanged(String _) {
-    if (passwordFailure != null) setState(() => passwordFailure = null);
+    if (passwordFailure == null) {
+      return;
+    }
+
+    setState(() => passwordFailure = null);
   }
 
   void onConfirmationChanged(String _) {
-    if (confirmationFailure != null) setState(() => confirmationFailure = null);
+    if (confirmationFailure == null) {
+      return;
+    }
+
+    setState(() => confirmationFailure = null);
   }
 
   void submit() {
-    if (!widget.bloc.state.canSubmit) return;
+    if (!widget.bloc.state.canSubmit) {
+      return;
+    }
+
     final password = widget.validation(passwordController.text);
     final confirmation = const PasswordConfirmationValidation()(
       password: passwordController.text,
       confirmation: confirmationController.text,
     );
+
     setState(() {
       passwordFailure = switch (password) {
         Invalid(:final message) => message,
@@ -81,80 +91,77 @@ mixin ResetPasswordScreenStateMixin on State<ResetPasswordScreen> {
         Valid() => null,
       };
     });
-    if (password case Valid(:final value)) {
-      if (confirmation case Valid(value: final confirmed)) {
-        context.dismissKeyboard();
-        widget.bloc.add(
-          ResetPasswordSubmitted(
-            token: widget.token ?? '',
-            password: value,
-            passwordConfirm: confirmed,
-          ),
-        );
-      }
+
+    if ((password, confirmation) case (
+      Valid(value: final newPassword),
+      Valid(value: final confirmedPassword),
+    )) {
+      context.dismissKeyboard();
+
+      widget.bloc.add(
+        ResetPasswordSubmitted(
+          token: widget.token ?? '',
+          password: newPassword,
+          passwordConfirm: confirmedPassword,
+        ),
+      );
     }
   }
 
   void handleReset(ResetPasswordState state) {
-    if (!mounted) return;
-    if (state is ResetPasswordSuccess || state is ResetPasswordInvalid) {
-      context.dismissKeyboard();
-      context.showToast(
-        variant: state is ResetPasswordSuccess ? .success : .error,
-        title: state is ResetPasswordSuccess
-            ? 'Senha redefinida com sucesso'
-            : 'Link inválido ou expirado',
-        description: state is ResetPasswordSuccess
-            ? 'Entre com sua nova senha.'
-            : 'Solicite um novo link de recuperação.',
-      );
-      goToSignIn();
+    if (!mounted) {
       return;
     }
-    if (state is! ResetPasswordFailure) return;
-    final passwordErrors = <String>[];
-    final confirmationErrors = <String>[];
-    final remaining = <ErrorEntity>[];
-    for (final error in state.errors.errors) {
-      if (error.status == '400') {
-        if (error.pointer == '/password') {
-          passwordErrors.add(
-            AuthenticationErrorMessageFormatter.format(
-              error,
-              fallback: 'Confira a senha informada.',
-            ),
-          );
-          continue;
-        }
-        if (error.pointer == '/passwordConfirm') {
-          confirmationErrors.add(
-            AuthenticationErrorMessageFormatter.format(
-              error,
-              fallback: 'Confira a confirmação da senha.',
-            ),
-          );
-          continue;
-        }
-      }
 
-      remaining.add(error);
+    switch (state) {
+      case ResetPasswordSuccess():
+        _completeReset();
+      case ResetPasswordInvalid():
+        _showInvalidLink();
+      case ResetPasswordFailure():
+        _showResetFailure(state);
+      default:
+        break;
     }
+  }
+
+  void _completeReset() {
+    context
+      ..dismissKeyboard()
+      ..showToast(
+        variant: .success,
+        title: 'Senha redefinida com sucesso',
+        description: 'Entre com sua nova senha.',
+      );
+
+    goToSignIn();
+  }
+
+  void _showInvalidLink() {
+    context
+      ..dismissKeyboard()
+      ..showToast(
+        variant: .error,
+        title: 'Link inválido ou expirado',
+        description: 'Solicite um novo link de recuperação.',
+      );
+
+    goToSignIn();
+  }
+
+  void _showResetFailure(ResetPasswordFailure failure) {
+    final fields = ResetPasswordErrorMessageFormatter.fields(failure.errors);
+
     setState(() {
-      passwordFailure = passwordErrors.isEmpty
-          ? null
-          : passwordErrors.join('\n');
-      confirmationFailure = confirmationErrors.isEmpty
-          ? null
-          : confirmationErrors.join('\n');
+      passwordFailure = fields.password;
+      confirmationFailure = fields.confirmation;
     });
-    if (remaining.isNotEmpty || state.errors.errors.isEmpty) {
+
+    if (fields.toast case final message?) {
       context.showToast(
         variant: .error,
         title: 'Não foi possível redefinir a senha',
-        description: ErrorMessageFormatter.formatAll(
-          remaining,
-          fallback: 'Não foi possível redefinir a senha. Tente novamente.',
-        ),
+        description: message,
       );
     }
   }

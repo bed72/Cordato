@@ -57,14 +57,14 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
       listener: (_, state) => handleState(state),
       builder: (_, state) => _buildContent(
         isLoading: state.isSubmitting,
-        result: isEditing ? null : state.expense,
+        createdExpense: isEditing ? null : state.expense,
       ),
     );
   }
 
   Padding _buildContent({
     bool isLoading = false,
-    ExpenseEntity? result,
+    ExpenseEntity? createdExpense,
   }) => Padding(
     padding: const .only(bottom: 24.0),
     child: Column(
@@ -78,7 +78,9 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
                 CollapsibleHeaderWidget(
                   title: _title,
                   description: _description,
-                  leading: BackButtonWidget(onPress: () => context.pop(result)),
+                  leading: BackButtonWidget(
+                    onPress: () => context.pop(createdExpense),
+                  ),
                 )
               else
                 SliverToBoxAdapter(

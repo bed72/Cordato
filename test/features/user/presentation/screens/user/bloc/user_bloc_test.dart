@@ -210,7 +210,8 @@ void main() {
           expected == null ? isA<ErrorsEntity>() : same(expected),
         ),
       };
-      Object? result() => event is UserDeleteRequestedEvent ? null : saved;
+      Object? confirmedUser() =>
+          event is UserDeleteRequestedEvent ? null : saved;
 
       for (final rejected in [errors, const ErrorsEntity(errors: [])]) {
         blocTest<UserBloc, UserState>(
@@ -245,7 +246,7 @@ void main() {
           var attempts = 0;
           stub(() async {
             if (++attempts == 1) throw UserException(errors: errors);
-            return result();
+            return confirmedUser();
           });
           return UserBloc(repository: repository);
         },
@@ -293,7 +294,7 @@ void main() {
           await Future<void>.delayed(Duration.zero);
           expect(bloc.state.isBusy, isTrue);
           final finished = bloc.stream.firstWhere((state) => !state.isBusy);
-          pending.complete(result());
+          pending.complete(confirmedUser());
           await finished;
           await Future<void>.delayed(Duration.zero);
           verify(request).called(1);
@@ -327,7 +328,7 @@ void main() {
             final closing = bloc.close();
             switch (outcome) {
               case 'success':
-                pending.complete(result());
+                pending.complete(confirmedUser());
               case 'expected':
                 pending.completeError(UserException(errors: errors));
               default:

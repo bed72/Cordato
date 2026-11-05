@@ -4,9 +4,10 @@ import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 
-final class const ExpenseAppBarWidget({super.key, final ExpenseEntity? result})
-    extends StatelessWidget
-    implements PreferredSizeWidget {
+final class const ExpenseAppBarWidget({
+  super.key,
+  final ExpenseEntity? createdExpense,
+}) extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
@@ -15,7 +16,7 @@ final class const ExpenseAppBarWidget({super.key, final ExpenseEntity? result})
     leadingWidth: 72.0,
     leading: Padding(
       padding: const EdgeInsets.only(left: 16.0),
-      child: BackButtonWidget(onPress: () => context.pop(result)),
+      child: BackButtonWidget(onPress: () => context.pop(createdExpense)),
     ),
   );
 }

@@ -171,10 +171,10 @@ void main() {
         final pending = Completer<String?>();
         when(() => storage.read(key: StorageKeyEnum.userId.key))
             .thenAnswer((_) => pending.future);
-        final result = execute();
+        final pendingOperation = execute();
         verifyZeroInteractions(http);
         pending.complete(id);
-        await result;
+        await pendingOperation;
         verify(request).called(1);
       });
 
@@ -309,7 +309,7 @@ void main() {
           return cleared.future;
         });
         var completed = false;
-        final result = repository.delete().then((_) {
+        final deletion = repository.delete().then((_) {
           completed = true;
         });
         verifyNever(() => storage.clear());
@@ -317,7 +317,7 @@ void main() {
         await clearing.future;
         expect(completed, isFalse);
         cleared.complete();
-        await result;
+        await deletion;
         expect(completed, isTrue);
         final request =
             verify(() => http.delete(parameter: captureAny(named: 'parameter')))

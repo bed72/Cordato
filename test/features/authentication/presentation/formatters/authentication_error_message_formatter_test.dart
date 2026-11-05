@@ -36,12 +36,12 @@ void main() {
       (
         pointer: '/password',
         code: 'validation_length',
-        message: 'A senha deve ter entre 6 e 12 caracteres.',
+        message: 'A senha deve ter entre 6 e 16 caracteres.',
       ),
       (
         pointer: '/password',
         code: 'validation_length_out_of_range',
-        message: 'A senha deve ter entre 6 e 12 caracteres.',
+        message: 'A senha deve ter entre 6 e 16 caracteres.',
       ),
       (
         pointer: '/password',

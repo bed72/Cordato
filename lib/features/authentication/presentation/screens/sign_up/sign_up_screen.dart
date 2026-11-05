@@ -11,6 +11,7 @@ import 'package:cordato/features/authentication/presentation/screens/sign_up/mix
 
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/form_sign_up_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/sign_in_footer_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/button_sign_up_widget.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/widgets/app_bar_sign_up_widget.dart';
@@ -38,7 +39,6 @@ final class _SignUpScreenState extends State<SignUpScreen>
           child: Padding(
             padding: const .fromLTRB(16.0, 0.0, 16.0, 24.0),
             child: Column(
-              spacing: 16.0,
               crossAxisAlignment: .stretch,
               children: [
                 Expanded(
@@ -65,12 +65,27 @@ final class _SignUpScreenState extends State<SignUpScreen>
                     ),
                   ),
                 ),
-                ButtonSignUpWidget(
-                  isLoading: state.isSubmitting,
-                  onPressed: state.canSubmit ? signUp : null,
+                Padding(
+                  padding: const .only(top: 16.0),
+                  child: ButtonSignUpWidget(
+                    isLoading: state.isSubmitting,
+                    onPressed: state.canSubmit ? signUp : null,
+                  ),
                 ),
-                const SizedBox.shrink(),
-                const SignInFooterWidget(),
+                AnimatedSize(
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  alignment: .topCenter,
+                  child: Visibility(
+                    visible: !context.isKeyboardVisible,
+                    child: const Padding(
+                      padding: .only(top: 32.0),
+                      child: SignInFooterWidget(),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

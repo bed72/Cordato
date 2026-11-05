@@ -3,6 +3,12 @@ import 'package:cordato/features/authentication/domain/enums/email_status_enum.d
 abstract interface class IAuthenticationRepository {
   Future<void> signOut();
 
+  Future<void> changePassword({
+    required String password,
+    required String oldPassword,
+    required String passwordConfirm,
+  });
+
   Future<void> resendEmail({required String email});
 
   Future<void> requestPasswordReset({required String email});

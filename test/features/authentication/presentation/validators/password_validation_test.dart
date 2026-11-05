@@ -10,7 +10,7 @@ void main() {
     expect(
       validate(''),
       isA<Invalid<String>>().having(
-        (result) => result.message,
+        (passwordCheck) => passwordCheck.message,
         'message',
         'Senha obrigatória',
       ),
@@ -18,13 +18,13 @@ void main() {
   });
 
   test('rejects passwords outside the supported length', () {
-    for (final value in ['Abc1x', 'Abc1234567890']) {
+    for (final value in ['Abc1x', 'Abc12345678901234']) {
       expect(
         validate(value),
         isA<Invalid<String>>().having(
-          (result) => result.message,
+          (passwordCheck) => passwordCheck.message,
           'message',
-          'A senha deve ter entre 6 e 12 caracteres',
+          'A senha deve ter entre 6 e 16 caracteres',
         ),
       );
     }
@@ -34,7 +34,7 @@ void main() {
     expect(
       validate('abc123'),
       isA<Invalid<String>>().having(
-        (result) => result.message,
+        (passwordCheck) => passwordCheck.message,
         'message',
         'A senha deve conter uma letra maiúscula',
       ),
@@ -45,7 +45,7 @@ void main() {
     expect(
       validate('Abcdef'),
       isA<Invalid<String>>().having(
-        (result) => result.message,
+        (passwordCheck) => passwordCheck.message,
         'message',
         'A senha deve conter um número',
       ),
@@ -53,11 +53,70 @@ void main() {
   });
 
   test('preserves valid passwords including boundary lengths and spaces', () {
-    for (final value in ['Abc123', 'Abc123456789', ' Abc123 ']) {
+    for (final value in [
+      'Abc123',
+      'Abc123456789',
+      'Abc1234567890',
+      'Abc1234567890123',
+      ' Abc123 ',
+    ]) {
       expect(
         validate(value),
-        isA<Valid<String>>().having((result) => result.value, 'value', value),
+        isA<Valid<String>>().having(
+          (passwordCheck) => passwordCheck.value,
+          'value',
+          value,
+        ),
       );
     }
+  });
+
+  for (final value in ['ABC123', 'ÁBC123']) {
+    test('requires ASCII lowercase for $value', () {
+      expect(
+        validate(value),
+        isA<Invalid<String>>().having(
+          (passwordCheck) => passwordCheck.message,
+          'message',
+          'A senha deve conter uma letra minúscula',
+        ),
+      );
+    });
+  }
+
+  test('accented uppercase does not replace ASCII uppercase', () {
+    expect(
+      validate('Ábc123'),
+      isA<Invalid<String>>().having(
+        (passwordCheck) => passwordCheck.message,
+        'message',
+        'A senha deve conter uma letra maiúscula',
+      ),
+    );
+  });
+
+  test('non-ASCII digits do not replace ASCII digits', () {
+    expect(
+      validate('Abc١٢٣'),
+      isA<Invalid<String>>().having(
+        (passwordCheck) => passwordCheck.message,
+        'message',
+        'A senha deve conter um número',
+      ),
+    );
+  });
+
+  test('counts Unicode code points rather than UTF-16 units', () {
+    final accepted = 'Ab1${List.filled(13, '😀').join()}';
+    final rejected = '$accepted😀';
+    expect(
+      validate(accepted),
+      isA<Valid<String>>().having(
+        (passwordCheck) => passwordCheck.value,
+        'value',
+        accepted,
+      ),
+    );
+    expect(validate(rejected), isA<Invalid<String>>());
   });
 }

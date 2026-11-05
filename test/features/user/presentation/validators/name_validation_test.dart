@@ -19,7 +19,7 @@ void main() {
         expect(
           validation(name),
           isA<Valid<String>>().having(
-            (result) => result.value,
+            (validName) => validName.value,
             'value',
             name.trim(),
           ),

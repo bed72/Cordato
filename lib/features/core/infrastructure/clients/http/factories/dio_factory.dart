@@ -44,6 +44,12 @@ final class DioFactory {
   }
 
   static bool _canLog(RequestOptions options) =>
+      !(options.data is Map &&
+          const [
+            'oldPassword',
+            'password',
+            'passwordConfirm',
+          ].any((key) => (options.data as Map).containsKey(key))) &&
       !options.uri.pathSegments.any(
         (segment) =>
             segment == 'request-password-reset' ||
