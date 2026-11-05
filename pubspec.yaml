@@ -35,6 +35,7 @@ dependencies:
 
   dio: ^5.11.1
   intl: ^0.20.3
+  home_widget: ^0.10.0
   flutter_modular: ^7.1.1
   flutter_secure_storage: ^11.2.0
 

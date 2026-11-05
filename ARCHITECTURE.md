@@ -74,6 +74,34 @@ Invariantes financeiras:
 As garantias de autorização pertencem ao serviço responsável e exigem testes
 no backend; o aplicativo não as prova por ocultar ações na interface.
 
+## Atalho de cadastro pela tela inicial do celular
+
+Root possui a assinatura de lançamentos do widget, o intent pendente em memória
+e a coordenação com Session. `IHomeWidgetClient` é um contrato puro em
+`core/application/clients/`; o adapter em infrastructure encapsula `home_widget`
+e não chama APIs em plataformas sem suporte. Presentation não importa o plugin.
+A assinatura é cancelada no descarte ou na troca do client; consultas iniciais
+de um client substituído não podem publicar um intent.
+
+A URI permitida é somente `cordato://widget/add-expense?homeWidget=true`, sem
+outros parâmetros. Não transporta credenciais nem dados de despesas. O fluxo
+aguarda Session e o adiamento de redirecionamentos; ausência confirmada abre
+sign-in, autenticação consome o intent e abre a criação sobre Dashboard. Falha
+de sessão mantém a política de erro existente, sem assumir ausência confirmada.
+
+`HomeWidgetExpenseNavigation` preserva a rota de criação existente por seus
+argumentos, inclusive quando está abaixo de outra rota, e não confunde edição
+por ID com criação. A leitura de `routeState` do Modular reflete a base, não o
+topo; a busca usa `popUntil` sobre os estados reais da pilha, sem depender de
+nomes de `Page` que o Modular não fornece. Navegação concreta continua no mixin
+do AppWidget, por extensões de BuildContext.
+
+RemoteViews e WidgetKit renderizam somente conteúdo estático seguindo o tema
+do sistema. Não há sincronização financeira, App Group, repository, endpoint ou
+Bloc adicional. Android desabilita o deeplink automático apenas para a action do
+plugin, preservando os links de verificação e recuperação. A extensão iOS é
+incorporada pelo Runner em Debug, Release e Profile.
+
 ## Estrutura E Responsabilidades
 
 O repositório contém duas unidades independentes: `lib/` e `test/` para o

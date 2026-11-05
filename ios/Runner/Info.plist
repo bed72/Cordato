@@ -26,6 +26,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>trocado</string>
+				<string>cordato</string>
 			</array>
 		</dict>
 	</array>

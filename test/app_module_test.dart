@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/app_module.dart';
+import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
@@ -31,6 +33,13 @@ void main() {
           reason: route.path,
         );
       }
+    });
+
+    test('home widget client resolves before any feature route is visited', () {
+      final client = boot.injector.get<IHomeWidgetClient>();
+
+      expect(client, isA<HomeWidgetClient>());
+      expect(boot.injector.get<IHomeWidgetClient>(), same(client));
     });
 
     test('information destinations remain public in the full application', () {

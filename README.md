@@ -25,6 +25,35 @@ Verificação: `flutter pub get` concluído, `flutter analyze` sem problemas e
 `flutter test --reporter failures-only` com 1292 testes aprovados. A conferência
 visual em Android com gestos/três botões e iPhone permanece pendente.
 
+## Widget da tela inicial
+
+Android e iOS possuem um widget pequeno com uma única ação: **Adicionar despesa**.
+O visual nativo acompanha o tema do sistema. Adicione-o pela galeria de widgets do
+celular após instalar uma nova compilação; hot reload não instala o componente.
+
+O toque abre Dashboard → Nova despesa. Se necessário, o app solicita login antes
+de continuar. Uma criação já aberta é preservada, sem duplicar o formulário ou
+apagar a entrada. Edição não é confundida com criação. O widget não exibe dados
+financeiros, não compartilha credenciais e não executa cadastros em background.
+
+A integração usa `home_widget`, RemoteViews no Android e uma extensão WidgetKit
+SwiftUI no iOS. O target `AddExpenseWidget` é dependência do Runner e é incorporado
+nas três configurações de build. Para distribuir no iOS, configure a mesma equipe
+de assinatura para Runner e AddExpenseWidget e um provisioning profile para
+`com.bed.cordato.AddExpenseWidget`. Não é necessário App Group: não há dados
+compartilhados com a extensão.
+
+A conferência manual deve cobrir app encerrado/aberto, com e sem sessão, login
+seguido do formulário, toques repetidos com entrada não salva, edição já aberta,
+voltar/salvar para Dashboard e temas claro/escuro nas duas plataformas.
+
+Verificação da implementação: `flutter pub get` concluído, `flutter analyze`
+sem problemas e `flutter test --reporter failures-only` com 1342 testes aprovados.
+Builds debug Android e iOS Simulator passaram; a extensão está presente no bundle
+iOS. A validação visual e de toques em aparelho/simulador permanece pendente.
+O build Android emite aviso de compatibilidade futura do Kotlin Gradle Plugin
+usado por `home_widget` 0.10.0, sem bloquear a compilação atual.
+
 ## Arquitetura
 
 Authentication/Sign-in é a referência obrigatória para desenvolvimento e testes:

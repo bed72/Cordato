@@ -51,6 +51,19 @@
 
         </activity>
 
+        <receiver
+            android:exported="false"
+            android:name=".AddExpenseWidgetProvider"
+            android:label="@string/add_expense_widget_action" >
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/add_expense_widget_info" />
+        </receiver>
+
         <meta-data
             android:value="2"
             android:name="flutterEmbedding" />

@@ -23,8 +23,8 @@ class const WelcomeScreen({
                   mainAxisAlignment: .end,
                   children: [
                     const WelcomeIconWidget(),
-                    const WelcomeSloganWidget(),
                     const SizedBox(height: 32.0),
+                    const WelcomeSloganWidget(),
                     WelcomeFooterWidget(
                       onContinueWithEmail: onContinueWithEmail,
                     ),

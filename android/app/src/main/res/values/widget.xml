@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="add_expense_widget_action">Adicionar despesa</string>
+    <string name="add_expense_widget_description">Abra o cadastro de uma nova despesa no Cordato.</string>
+    <color name="widget_background">#F6FBF4</color>
+    <color name="widget_text">#181D19</color>
+    <color name="widget_text_muted">#414942</color>
+    <color name="widget_accent">#2B6A46</color>
+    <color name="widget_border">#C0C9C0</color>
+</resources>

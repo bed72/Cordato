@@ -10,6 +10,8 @@ import 'package:cordato/features/core/presentation/formatters/interface_money_fo
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/factories/dio_factory.dart';
+import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
+import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 
 const _baseUrl = String.fromEnvironment(
   'BASE_URL',
@@ -29,5 +31,6 @@ final coreModule = createModule(
     ..addLazySingleton<IHttpClient>(HttpClient.new)
     ..addLazySingleton<IStorageClient>(StorageClient.new)
     ..addLazySingleton<IMoneyFormatter>(MoneyFormatter.new)
-    ..addLazySingleton<IDateFormatter>(() => DateFormatter()),
+    ..addLazySingleton<IDateFormatter>(() => DateFormatter())
+    ..addLazySingleton<IHomeWidgetClient>(HomeWidgetClient.new),
 );

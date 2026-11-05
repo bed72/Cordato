@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/session/presentation/bloc/session_bloc.dart';
 import 'package:cordato/features/session/presentation/bloc/session_state.dart';
@@ -10,11 +10,13 @@ import 'package:cordato/features/root/presentation/mixins/app_widget_state_mixin
 import 'package:cordato/features/core/presentation/themes/themes.dart';
 import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/session_redirect_scope_widget.dart';
+import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 
 class const AppWidget({
   super.key,
   required final SessionBloc Function() bloc,
   required final GlobalKey<NavigatorState> navigatorKey,
+  required final IHomeWidgetClient homeWidgetClient,
 }) extends StatefulWidget {
   @override
   State<AppWidget> createState() => _AppWidgetState();

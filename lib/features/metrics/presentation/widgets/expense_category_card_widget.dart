@@ -77,13 +77,16 @@ final class const ExpenseCategoryCardWidget({
                   width: illustrationSize,
                   height: illustrationSize,
                   child: Skeleton.ignore(
-                    child: ImageWidget(
-                      fit: .contain,
-                      alt: category.asset.alt,
-                      width: illustrationSize,
-                      height: illustrationSize,
-                      source: category.asset.source,
-                      fallback: AssetEnum.categoryOthers.source,
+                    child: Opacity(
+                      opacity: .4,
+                      child: ImageWidget(
+                        fit: .contain,
+                        alt: category.asset.alt,
+                        width: illustrationSize,
+                        height: illustrationSize,
+                        source: category.asset.source,
+                        fallback: AssetEnum.categoryOthers.source,
+                      ),
                     ),
                   ),
                 ),

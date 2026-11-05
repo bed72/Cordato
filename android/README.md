@@ -33,6 +33,17 @@ to debug signing.
 
 ## Build And Verify
 
+The home-screen widget is registered as `.AddExpenseWidgetProvider`, with a 2×2
+static RemoteViews layout and no periodic background updates. Install a fresh
+build and add **Adicionar despesa** from the launcher's widget picker. Its single
+tap action is delivered through `home_widget`, not Flutter's automatic deep-link
+handler. `MainActivity` disables automatic deep linking only for that plugin
+action; verification and password-reset app links keep their existing handling.
+
+Before release, manually verify cold/warm launches, logged-out continuation after
+sign-in, creation form deduplication with unsaved input, editing versus creation,
+return to Dashboard after saving/back, and system light/dark themes.
+
 The default production API is `https://app.cordato.cloud/api/`, matching the
 release launch configuration. To explicitly pin it when building an APK:
 

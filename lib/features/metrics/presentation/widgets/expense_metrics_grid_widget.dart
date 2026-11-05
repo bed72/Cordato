@@ -57,6 +57,7 @@ final class const ExpenseMetricsGridWidget({
                           period: period,
                           category: category,
                           formatter: moneyFormatter,
+                          illustrated: categories.length == 2,
                           onExpensesChanged: onExpensesChanged,
                         ),
                       ),

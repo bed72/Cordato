@@ -366,6 +366,14 @@ Lógica visual pura de StatelessWidget pode usar mixin próprio com
 
 ## Módulos E Rotas
 
+O widget externo de cadastro usa `home_widget` por `IHomeWidgetClient`, contrato
+em `core/application/clients/`, com adapter em infrastructure. Root possui a
+assinatura e o intent pendente; aguarda Session antes de abrir Dashboard → Nova
+despesa. Não importe o plugin na apresentação, não compartilhe JWT com o widget
+e não faça cadastro em background. Preserve criações abertas sem confundir edição
+por ID. No Modular 7, `routeState` representa a base e `Page.name` não identifica
+as rotas empilhadas; use os estados reais de `popUntil` na coordenação do atalho.
+
 Use a API funcional `createModule` do `flutter_modular` 7. Registre contratos
 apontando para implementações. Para estado de página novo ou explicitamente
 migrado, prefira `provide: (scope) => scope.addBloc<MyBloc>(MyBloc.new)` com
