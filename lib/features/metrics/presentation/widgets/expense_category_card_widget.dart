@@ -146,13 +146,6 @@ final class const ExpenseCategoryCardWidget({
                         highlighted: highlighted,
                       ),
                     ),
-                    const SizedBox(height: 8.0),
-                    Text(
-                      '$percentage do total',
-                      style: context.typography.bodySmall?.copyWith(
-                        color: context.colors.onSurfaceVariant,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -212,13 +205,6 @@ final class const ExpenseCategoryCardWidget({
           context: context,
           text: formatter.formatCents(category.totalAmount),
           style: buildAmountStyle(context: context, highlighted: highlighted),
-          width: contentWidth,
-        ) +
-        8.0 +
-        _buildTextHeight(
-          context: context,
-          text: '$percentage do total',
-          style: context.typography.bodySmall,
           width: contentWidth,
         ) +
         (highlighted || illustrated ? illustrationHeight : 0.0);
