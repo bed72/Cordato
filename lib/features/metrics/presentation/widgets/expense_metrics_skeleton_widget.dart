@@ -6,8 +6,10 @@ import 'package:cordato/features/core/presentation/formatters/money_formatter.da
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/presentation/widgets/expense_metrics_grid_widget.dart';
 
-final class const ExpenseMetricsSkeletonWidget({super.key})
-    extends StatelessWidget {
+final class const ExpenseMetricsSkeletonWidget({
+  super.key,
+  final bool showTotal = true,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
@@ -19,7 +21,8 @@ final class const ExpenseMetricsSkeletonWidget({super.key})
             spacing: 16.0,
             crossAxisAlignment: .start,
             children: [
-              Text('R\$ 0.000,00', style: context.typography.headlineMedium),
+              if (showTotal)
+                Text('R\$ 0.000,00', style: context.typography.headlineMedium),
               ExpenseMetricsGridWidget(
                 moneyFormatter: MoneyFormatter(),
                 categories: const [

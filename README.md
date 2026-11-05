@@ -5,6 +5,26 @@ Aplicativo Flutter de finanças pessoais e familiares.
 > Cada pessoa é dona dos próprios dados. A família é uma lente de leitura,
 > nunca dona do dinheiro ou autorizada a escrever nos dados de outro membro.
 
+## Verificação atual
+
+As cinco falhas de contagem de palavras nas descrições de categorias de Expense
+foram corrigidas, preservando a regra de cinco ou seis palavras. `flutter pub get`
+e `flutter analyze` concluíram sem problemas; `flutter test --reporter failures-only`
+passou com 1292 testes. Menções a essas falhas nas verificações abaixo são históricas.
+
+## Barra inferior do sistema
+
+A barra de navegação do Android é transparente, sem divisor ou fundo de contraste
+solicitado pelo app. Dashboard, Despesas e páginas de informação permitem rolagem
+por trás da barra e do indicador de início do iOS, com espaçamento final baseado
+na área segura. Formulários, ações fixas e modais preservam suas áreas seguras;
+a configuração da status bar superior não mudou. O app usa o edge-to-edge padrão
+do Flutter para o target Android atual.
+
+Verificação: `flutter pub get` concluído, `flutter analyze` sem problemas e
+`flutter test --reporter failures-only` com 1292 testes aprovados. A conferência
+visual em Android com gestos/três botões e iPhone permanece pendente.
+
 ## Arquitetura
 
 Authentication/Sign-in é a referência obrigatória para desenvolvimento e testes:
@@ -362,6 +382,21 @@ consultados novamente ao voltar de dados pessoais ou configurações. Falhas nes
 consulta levam à tela de erro global, inclusive durante atualização; não são
 tratadas como ausência de usuário. Retry é manual e recarrega a Dashboard completa.
 Nome vazio continua exibindo `Trocado`.
+
+O total de gastos da Dashboard conta de zero até o valor confirmado em 700 ms
+a cada carga ou atualização de métricas, inclusive troca de mês e retorno de
+despesas. Rebuilds sem novos dados não reiniciam a animação. Durante a consulta,
+o total anterior permanece visível; sem valor anterior, aparece `—`, nunca um
+zero confirmado. Somente os cards usam skeleton. Movimento reduzido mostra o
+total diretamente, e leitores de tela recebem o valor final, sem anunciar cada
+passo. A animação usa centavos inteiros e não recalcula agregações financeiras.
+Verificação: `flutter pub get` concluído, `flutter analyze` sem issues e
+`flutter test --reporter failures-only` com 1292 aprovados. O catálogo existente
+`Dashboard / Total animado` cobre atualização, mesmo total, troca de mês e
+movimento reduzido para conferência manual. `dart run tool/widget_preview.dart`
+compilou e serviu o catálogo, mas registrou `Null check operator used on a null
+value` e encerrou por timeout de 60 segundos, sem cliente conectado; a animação
+não foi validada visualmente pelo agente.
 
 Dashboard e listagem de despesas compartilham o `EmptyStateWidget` do core:
 ícone, título e descrição opcional centralizados, sem card ou seta, com visual

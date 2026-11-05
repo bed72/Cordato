@@ -37,6 +37,7 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: BlocConsumer<ExpensesBloc, ExpensesState>(
           bloc: bloc,
           builder: (_, _) => _buildContent(),
@@ -125,21 +126,28 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
         if (bloc.state.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
-            child: EmptyStateWidget(
-              icon: bloc.state.data.hasFilters
-                  ? Icons.search_off_outlined
-                  : Icons.receipt_long_outlined,
-              title: bloc.state.data.hasFilters
-                  ? 'Nenhuma despesa encontrada'
-                  : 'Nenhuma despesa por aqui',
-              description: bloc.state.data.hasFilters
-                  ? 'Experimente ajustar os filtros.'
-                  : 'Seus gastos aparecerão aqui.',
+            child: Padding(
+              padding: .only(bottom: MediaQuery.paddingOf(context).bottom),
+              child: EmptyStateWidget(
+                icon: bloc.state.data.hasFilters
+                    ? Icons.search_off_outlined
+                    : Icons.receipt_long_outlined,
+                title: bloc.state.data.hasFilters
+                    ? 'Nenhuma despesa encontrada'
+                    : 'Nenhuma despesa por aqui',
+                description: bloc.state.data.hasFilters
+                    ? 'Experimente ajustar os filtros.'
+                    : 'Seus gastos aparecerão aqui.',
+              ),
             ),
           )
         else ...[
           SliverToBoxAdapter(child: _buildFeedback()),
-          const SliverToBoxAdapter(child: SizedBox(height: 24.0)),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 24.0 + MediaQuery.paddingOf(context).bottom,
+            ),
+          ),
         ],
       ],
     ),

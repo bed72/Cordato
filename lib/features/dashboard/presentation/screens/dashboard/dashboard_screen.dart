@@ -50,6 +50,7 @@ final class _DashboardScreenState extends State<DashboardScreen>
                   isLoading: state.isLoading,
                 ),
                 body: SafeArea(
+                  bottom: false,
                   child: RefreshIndicator(
                     onRefresh: refreshDashboard,
                     child: CustomScrollView(
@@ -82,7 +83,10 @@ final class _DashboardScreenState extends State<DashboardScreen>
                           SliverFillRemaining(
                             hasScrollBody: false,
                             child: Padding(
-                              padding: const .only(bottom: 96.0),
+                              padding: .only(
+                                bottom:
+                                    96.0 + MediaQuery.paddingOf(context).bottom,
+                              ),
                               child: EmptyStateWidget(
                                 icon: Icons.receipt_long_outlined,
                                 title: state.hasNoExpenseHistory
@@ -96,7 +100,10 @@ final class _DashboardScreenState extends State<DashboardScreen>
                           )
                         else
                           SliverPadding(
-                            padding: const .only(bottom: 96.0),
+                            padding: .only(
+                              bottom:
+                                  96.0 + MediaQuery.paddingOf(context).bottom,
+                            ),
                             sliver: SliverList.list(
                               children: [
                                 MetricsSectionWidget(

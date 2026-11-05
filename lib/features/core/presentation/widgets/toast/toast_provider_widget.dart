@@ -50,7 +50,7 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
         final background = toast == null
             ? context.colors.surface
             : getToastPalette(context, toast.variant).background;
-        final navigationBarBackground = context.colors.surfaceDim;
+        final navigationBarBackground = Theme.of(context).scaffoldBackgroundColor;
         final iconBrightness = background.computeLuminance() > .5
             ? Brightness.dark
             : Brightness.light;
@@ -69,7 +69,8 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: iconBrightness,
             systemNavigationBarContrastEnforced: false,
-            systemNavigationBarColor: navigationBarBackground,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarDividerColor: Colors.transparent,
             statusBarBrightness: iconBrightness == .dark ? .light : .dark,
             systemNavigationBarIconBrightness: navigationBarIconBrightness,
           ),

@@ -14,6 +14,7 @@ final class const InformationPageWidget({
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: SelectionArea(
           child: CustomScrollView(
             slivers: [
@@ -24,7 +25,12 @@ final class const InformationPageWidget({
                 leading: BackButtonWidget(onPress: () => context.pop()),
               ),
               SliverPadding(
-                padding: const .fromLTRB(16.0, 8.0, 16.0, 32.0),
+                padding: .fromLTRB(
+                  16.0,
+                  8.0,
+                  16.0,
+                  32.0 + MediaQuery.paddingOf(context).bottom,
+                ),
                 sliver: SliverToBoxAdapter(
                   child: Center(
                     child: ConstrainedBox(
