@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
@@ -16,8 +18,10 @@ import 'package:cordato/features/metrics/infrastructure/responses/expense_metric
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
-final class MetricsRepository({required final IHttpClient _httpClient})
-    implements IMetricsRepository {
+final class MetricsRepository({
+  required final IHttpClient _httpClient,
+  required final IHomeWidgetClient _homeWidgetClient,
+}) implements IMetricsRepository {
   @override
   Future<ExpenseMetricsEntity> getExpenses({
     DateTime? endDate,
@@ -28,6 +32,7 @@ final class MetricsRepository({required final IHttpClient _httpClient})
     final start = startDate ?? DateTime(now.year, now.month);
     final first = DateTime(start.year, start.month);
     final last = DateTime(start.year, start.month + 1, 0);
+    final isCurrentMonth = first.year == now.year && first.month == now.month;
 
     if (!_isCompleteMonth(startDate: startDate, endDate: endDate)) {
       throw MetricsException(
@@ -42,6 +47,10 @@ final class MetricsRepository({required final IHttpClient _httpClient})
         ),
       );
     }
+
+    final widgetRevision = isCurrentMonth
+        ? _homeWidgetClient.beginMonthlyRead()
+        : null;
 
     try {
       final response = await _httpClient.get(
@@ -58,6 +67,14 @@ final class MetricsRepository({required final IHttpClient _httpClient})
 
       final items = response.body['items'] as List;
       if (items.isEmpty) {
+        if (widgetRevision != null) {
+          await _homeWidgetClient.publishMonthlyTotal(
+            cents: 0,
+            month: first,
+            revision: widgetRevision,
+          );
+        }
+
         return ExpenseMetricsEntity(
           endDate: last,
           totalAmount: 0,
@@ -74,6 +91,14 @@ final class MetricsRepository({required final IHttpClient _httpClient})
 
       if (metrics.startDate != first || metrics.endDate != last) {
         throw const FormatException('Período das métricas inválido');
+      }
+
+      if (widgetRevision != null) {
+        await _homeWidgetClient.publishMonthlyTotal(
+          month: first,
+          revision: widgetRevision,
+          cents: metrics.totalAmount,
+        );
       }
 
       return ExpenseMetricsEntity(
@@ -96,8 +121,8 @@ final class MetricsRepository({required final IHttpClient _httpClient})
 
     final last = DateTime(startDate.year, startDate.month + 1, 0);
     return startDate.day == 1 &&
+        endDate.day == last.day &&
         endDate.year == last.year &&
-        endDate.month == last.month &&
-        endDate.day == last.day;
+        endDate.month == last.month;
   }
 }

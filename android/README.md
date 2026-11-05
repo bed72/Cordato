@@ -34,7 +34,10 @@ to debug signing.
 ## Build And Verify
 
 The home-screen widget is registered as `.AddExpenseWidgetProvider`, with a 2×2
-static RemoteViews layout and no periodic background updates. Install a fresh
+RemoteViews layout showing the current month, last synchronized monthly total,
+and **+ Adicionar**. There are no background HTTP requests. A local inexact alarm
+and date/time-zone broadcasts re-render month changes, subject to OS scheduling.
+Install a fresh
 build and add **Adicionar despesa** from the launcher's widget picker. Its single
 tap action is delivered through `home_widget`, not Flutter's automatic deep-link
 handler. `MainActivity` disables automatic deep linking only for that plugin
@@ -43,6 +46,12 @@ action; verification and password-reset app links keep their existing handling.
 Before release, manually verify cold/warm launches, logged-out continuation after
 sign-in, creation form deduplication with unsaved input, editing versus creation,
 return to Dashboard after saving/back, and system light/dark themes.
+Also verify current-month totals while Dashboard uses a historical filter, a
+successful empty month, network failures retaining cached totals, logout clearing
+the summary, and month rollover showing **Abra para atualizar** until a new sync.
+`AddExpenseWidgetProvider` separates lifecycle, JSON parsing, BRL formatting,
+RemoteViews composition and alarm management; formatting keeps cents as integers
+and uses BigDecimal rather than floating-point money.
 
 The default production API is `https://app.cordato.cloud/api/`, matching the
 release launch configuration. To explicitly pin it when building an APK:
@@ -57,6 +66,49 @@ Android builds require JDK 21. Confirm that Flutter and Gradle are using it:
 flutter doctor -v
 ./gradlew -version
 ```
+
+If Gradle cannot start the Flutter subprocess and the stack trace reports
+`Failed to exec spawn helper`, check whether Android Studio or its bundled JDK
+was updated while a Gradle daemon was running. Restart the daemons from the
+repository root, then retry the build:
+
+```bash
+./android/gradlew -p android --stop
+flutter build apk --debug
+```
+
+Use `flutter doctor -v` to identify Flutter's actual Java executable; it may use
+Android Studio's bundled JDK even when `java -version` in the terminal uses
+another JDK. This failure was reproduced with a daemon older than its updated
+`jspawnhelper` and resolved by restarting the daemons. Disabling the daemon is
+not required. Native-access and Kotlin-plugin warnings are separate from this
+process-start failure.
+
+### Native Access And Built-In Kotlin
+
+The Unix and Windows Gradle wrapper scripts are versioned and set
+`--enable-native-access=ALL-UNNAMED` for the launcher JVM. `org.gradle.jvmargs`
+sets it for the daemon as well; setting only the daemon flag leaves the launcher
+warning on newer JDKs. This grants Gradle's required native access rather than
+suppressing warnings or changing the machine-wide JDK configuration.
+
+`android.builtInKotlin=true` enables AGP's built-in Kotlin. The app does not apply
+external KGP, and `home_widget` 0.10.0 supports this flag without modifying the
+pub cache. `android.newDsl=false` remains for existing DSL compatibility.
+
+Flutter 3.47.9 scans dependency build scripts using regex and still warns about
+`home_widget` because the inactive conditional branch contains `apply plugin:
+'kotlin-android'`. Runtime inspection confirmed that neither `kotlin-android`
+nor `org.jetbrains.kotlin.android` is applied to that subproject with built-in
+Kotlin enabled. Eliminating that remaining false positive requires an upstream
+tooling/package fix; do not hide it by disabling dependency validation or editing
+the pub cache.
+
+Messages about engine flags passed via Intent are emitted by Flutter's Android
+embedding during CLI debug launches. Impeller, viewport and VM Service messages
+are normal debug diagnostics, not application build failures.
+
+### Distribution Artifacts
 
 Build an Android App Bundle for distribution:
 

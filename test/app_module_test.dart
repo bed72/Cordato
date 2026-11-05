@@ -2,12 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/app_module.dart';
+
+import 'package:cordato/features/root/presentation/bloc/home_widget_sync_bloc.dart';
+import 'package:cordato/features/root/presentation/bloc/home_widget_launch_bloc.dart';
+
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
-import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_form_validator.dart';
@@ -35,12 +41,35 @@ void main() {
       }
     });
 
+    test('widget launch observation resolves factory-owned Blocs without visiting routes', () async {
+      final first = boot.injector.get<HomeWidgetLaunchBloc>();
+      final second = boot.injector.get<HomeWidgetLaunchBloc>();
+
+      expect(identical(first, second), isFalse);
+
+      await first.close();
+      await second.close();
+    });
+
     test('home widget client resolves before any feature route is visited', () {
       final client = boot.injector.get<IHomeWidgetClient>();
 
       expect(client, isA<HomeWidgetClient>());
       expect(boot.injector.get<IHomeWidgetClient>(), same(client));
     });
+
+    test(
+      'widget synchronization resolves without visiting sibling routes',
+      () async {
+        final first = boot.injector.get<HomeWidgetSyncBloc>();
+        final second = boot.injector.get<HomeWidgetSyncBloc>();
+
+        expect(identical(first, second), isFalse);
+
+        await first.close();
+        await second.close();
+      },
+    );
 
     test('information destinations remain public in the full application', () {
       for (final destination in [

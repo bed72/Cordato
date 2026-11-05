@@ -1,6 +1,7 @@
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
@@ -13,6 +14,7 @@ import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expe
 
 import '../../support/core/mocks/http_client_mock.dart';
 import '../../support/core/mocks/storage_client_mock.dart';
+import '../../support/core/mocks/home_widget_client_mock.dart';
 
 void main() {
   setUpAll(() => registerFallbackValue(const Requests(path: '')));
@@ -33,6 +35,7 @@ void main() {
             register: (context) {
               context.addInstance<IHttpClient>(http);
               context.addInstance<IStorageClient>(StorageClientMock());
+              context.addInstance<IHomeWidgetClient>(HomeWidgetClientMock());
               context.module(expenseModule);
             },
           ),

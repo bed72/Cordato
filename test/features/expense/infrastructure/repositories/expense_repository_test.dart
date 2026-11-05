@@ -19,6 +19,7 @@ import 'package:cordato/features/expense/infrastructure/repositories/expense_rep
 
 import '../../../../support/core/mocks/http_client_mock.dart';
 import '../../../../support/core/mocks/storage_client_mock.dart';
+import '../../../../support/core/mocks/home_widget_client_mock.dart';
 
 void main() {
   const attributes = {
@@ -40,6 +41,7 @@ void main() {
   late HttpClientMock client;
   late StorageClientMock storage;
   late IExpenseRepository repository;
+  late HomeWidgetClientMock homeWidgetClient;
 
   setUpAll(() => registerFallbackValue(const Requests(path: '')));
   setUp(() {
@@ -47,7 +49,12 @@ void main() {
     storage = StorageClientMock();
     when(() => storage.read(key: StorageKeyEnum.userId.key))
         .thenAnswer((_) async => 'owner-id');
-    repository = ExpenseRepository(httpClient: client, storageClient: storage);
+    homeWidgetClient = HomeWidgetClientMock();
+    repository = ExpenseRepository(
+      httpClient: client,
+      storageClient: storage,
+      homeWidgetClient: homeWidgetClient,
+    );
   });
 
   Future<ErrorsEntity> errorsOf(Future<Object?> operation) async {
@@ -60,6 +67,45 @@ void main() {
   }
 
   group('Individual records and mutations', () {
+    for (final operation in ['create', 'update', 'delete']) {
+      test('$operation requests a widget refresh only after success', () async {
+        when(() => client.post(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => single);
+        when(() => client.patch(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => single);
+        when(() => client.delete(parameter: any(named: 'parameter')))
+            .thenAnswer((_) async => const Responses(status: 204, body: {}));
+
+        await switch (operation) {
+          'create' => repository.create(cents: 1500, description: 'Mercado'),
+          'update' => repository.update(id: '8', cents: 1500),
+          _ => repository.delete(id: '8'),
+        };
+
+        verify(homeWidgetClient.requestMonthlyRefresh).called(1);
+      });
+    }
+
+    test('reading a record does not request synchronization', () async {
+      when(() => client.get(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => single);
+
+      await repository.getById(id: '8');
+
+      verifyNever(homeWidgetClient.requestMonthlyRefresh);
+    });
+
+    test('failed deletion does not request synchronization', () async {
+      when(() => client.delete(parameter: any(named: 'parameter')))
+          .thenAnswer((_) async => const Responses(status: 200, body: {}));
+
+      await expectLater(
+        repository.delete(id: '8'),
+        throwsA(isA<ExpenseException>()),
+      );
+
+      verifyNever(homeWidgetClient.requestMonthlyRefresh);
+    });
     for (final owner in [null, '', '   ']) {
       test('rejects missing owner "$owner" before HTTP', () async {
         when(() => storage.read(key: StorageKeyEnum.userId.key))

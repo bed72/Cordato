@@ -12,6 +12,7 @@ import 'package:cordato/features/core/infrastructure/clients/http/exceptions/htt
 import 'package:cordato/features/core/infrastructure/clients/http/interceptors/session_interceptor.dart';
 
 import '../../../../../../support/core/mocks/storage_client_mock.dart';
+import '../../../../../../support/core/mocks/home_widget_client_mock.dart';
 
 void main() {
   late HttpClient client;
@@ -88,10 +89,7 @@ void main() {
         ),
       );
 
-      expect(
-        captured!.uri.path,
-        '/api/collections/metrics/records',
-      );
+      expect(captured!.uri.path, '/api/collections/metrics/records');
       expect(captured!.headers['Authorization'], 'Bearer opaque-token');
       verify(() => storage.read(key: StorageKeyEnum.token.key)).called(1);
     });
@@ -225,9 +223,7 @@ void main() {
 
       await expectLater(
         client.get(
-          parameter: const Requests(
-            path: 'collections/metrics/records',
-          ),
+          parameter: const Requests(path: 'collections/metrics/records'),
         ),
         throwsA(
           isA<HttpResponseException>().having(
@@ -310,6 +306,7 @@ void main() {
       final repository = ExpenseRepository(
         httpClient: client,
         storageClient: storage,
+        homeWidgetClient: HomeWidgetClientMock(),
       );
 
       await repository.delete(id: '1');
@@ -328,6 +325,7 @@ void main() {
       await ExpenseRepository(
         httpClient: client,
         storageClient: storage,
+        homeWidgetClient: HomeWidgetClientMock(),
       ).delete(id: 'a/b?c#d');
 
       expect(captured!.uri.pathSegments.last, 'a/b?c#d');

@@ -4,6 +4,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/root/presentation/bloc/home_widget_sync_bloc.dart';
+import 'package:cordato/features/root/presentation/bloc/home_widget_sync_event.dart';
+import 'package:cordato/features/root/presentation/bloc/home_widget_launch_bloc.dart';
+import 'package:cordato/features/root/presentation/bloc/home_widget_launch_event.dart';
+import 'package:cordato/features/root/presentation/bloc/home_widget_launch_state.dart';
 import 'package:cordato/features/core/presentation/navigation/session_redirect_deferral.dart';
 
 import 'package:cordato/features/root/presentation/widgets/app_widget.dart';
@@ -16,10 +21,12 @@ import 'package:cordato/features/session/presentation/bloc/session_event.dart';
 import 'package:cordato/features/session/presentation/bloc/session_state.dart';
 
 mixin AppWidgetStateMixin on State<AppWidget> {
-  late SessionBloc bloc;
-  late final SessionRedirectDeferral sessionRedirectDeferral;
-  StreamSubscription<Uri?>? _homeWidgetLaunches;
   bool _pendingExpenseLaunch = false;
+
+  late SessionBloc bloc;
+  late HomeWidgetLaunchBloc homeWidgetLaunchBloc;
+  late HomeWidgetSyncBloc homeWidgetSyncBloc;
+  late final SessionRedirectDeferral sessionRedirectDeferral;
 
   @override
   void initState() {
@@ -28,22 +35,32 @@ mixin AppWidgetStateMixin on State<AppWidget> {
       onReleased: () => handleSession(bloc.state, afterDeferral: true),
     );
 
-    bloc = widget.bloc();
+    bloc = widget.sessionBloc();
+    homeWidgetLaunchBloc = widget.homeWidgetLaunchBloc();
+    homeWidgetSyncBloc = widget.homeWidgetSyncBloc();
+    homeWidgetLaunchBloc.add(const HomeWidgetLaunchStartedEvent());
+    homeWidgetSyncBloc.add(const HomeWidgetSyncStartedEvent());
     bloc.add(const SessionStartedEvent());
-    _listenToHomeWidget();
     _scheduleInitialRoute();
   }
 
   @override
   void didUpdateWidget(covariant AppWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.homeWidgetClient != widget.homeWidgetClient) {
-      unawaited(_homeWidgetLaunches?.cancel());
-      _listenToHomeWidget();
+    if (oldWidget.homeWidgetLaunchBloc != widget.homeWidgetLaunchBloc) {
+      unawaited(homeWidgetLaunchBloc.close());
+      homeWidgetLaunchBloc = widget.homeWidgetLaunchBloc();
+      homeWidgetLaunchBloc.add(const HomeWidgetLaunchStartedEvent());
     }
-    if (oldWidget.bloc != widget.bloc) {
+    if (oldWidget.homeWidgetSyncBloc != widget.homeWidgetSyncBloc) {
+      unawaited(homeWidgetSyncBloc.close());
+      homeWidgetSyncBloc = widget.homeWidgetSyncBloc();
+      homeWidgetSyncBloc.add(const HomeWidgetSyncStartedEvent());
+      handleSessionChange(bloc.state);
+    }
+    if (oldWidget.sessionBloc != widget.sessionBloc) {
       unawaited(bloc.close());
-      bloc = widget.bloc();
+      bloc = widget.sessionBloc();
       bloc.add(const SessionStartedEvent());
       handleSession(bloc.state);
     } else if (oldWidget.navigatorKey != widget.navigatorKey) {
@@ -53,43 +70,30 @@ mixin AppWidgetStateMixin on State<AppWidget> {
 
   @override
   void dispose() {
-    unawaited(_homeWidgetLaunches?.cancel());
+    unawaited(homeWidgetLaunchBloc.close());
+    unawaited(homeWidgetSyncBloc.close());
     unawaited(bloc.close());
     super.dispose();
   }
 
-  void _listenToHomeWidget() {
-    _homeWidgetLaunches = widget.homeWidgetClient.launches.listen(
-      _receiveHomeWidgetLaunch,
-      onError: _reportHomeWidgetError,
-    );
-    unawaited(_readInitialHomeWidgetLaunch());
-  }
-
-  Future<void> _readInitialHomeWidgetLaunch() async {
-    final client = widget.homeWidgetClient;
-    try {
-      final uri = await client.initialLaunch();
-      if (mounted && identical(client, widget.homeWidgetClient)) {
-        _receiveHomeWidgetLaunch(uri);
-      }
-    } catch (error, stackTrace) {
-      _reportHomeWidgetError(error, stackTrace);
+  void handleSessionChange(SessionState state) {
+    switch (state) {
+      case SessionAuthenticated():
+        homeWidgetSyncBloc.add(
+          const HomeWidgetSessionChangedEvent(authenticated: true),
+        );
+      case SessionUnauthenticated():
+        homeWidgetSyncBloc.add(
+          const HomeWidgetSessionChangedEvent(authenticated: false),
+        );
+      case SessionInitial() || SessionLoading() || SessionFailure():
+        break;
     }
+    handleSession(state);
   }
 
-  void _reportHomeWidgetError(Object error, StackTrace stackTrace) {
-    FlutterError.reportError(
-      FlutterErrorDetails(
-        exception: error,
-        stack: stackTrace,
-        library: 'home screen widget',
-      ),
-    );
-  }
-
-  void _receiveHomeWidgetLaunch(Uri? uri) {
-    if (!mounted || !HomeWidgetLaunchPolicy.accepts(uri)) {
+  void handleHomeWidgetLaunch(HomeWidgetLaunchState state) {
+    if (state is! HomeWidgetLaunchRequested) {
       return;
     }
 
@@ -106,14 +110,14 @@ mixin AppWidgetStateMixin on State<AppWidget> {
     );
 
     switch (action) {
-      case HomeWidgetLaunchAction.wait:
+      case .wait:
         return false;
-      case HomeWidgetLaunchAction.signIn:
+      case .signIn:
         if (path != RouteEnum.authenticationSignIn.path) {
           target.navigate(RouteEnum.authenticationSignIn.path);
         }
         return true;
-      case HomeWidgetLaunchAction.openExpense:
+      case .openExpense:
         _pendingExpenseLaunch = false;
         _openExpenseFromHomeWidget(target);
         return true;
@@ -122,8 +126,8 @@ mixin AppWidgetStateMixin on State<AppWidget> {
 
   void _openExpenseFromHomeWidget(BuildContext target) {
     HomeWidgetExpenseNavigation.open(
-      baseRoute: target.routeState(listen: false),
       popUntil: target.popUntil,
+      baseRoute: target.routeState(listen: false),
       showDashboard: () => target.navigate(RouteEnum.dashboard.path),
       pushExpense: () =>
           unawaited(target.pushNamed<void>(RouteEnum.expense.path)),

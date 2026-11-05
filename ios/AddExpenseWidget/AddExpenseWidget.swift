@@ -1,25 +1,8 @@
 import SwiftUI
 import WidgetKit
 
-struct AddExpenseEntry: TimelineEntry {
-    let date: Date
-}
-
-struct AddExpenseProvider: TimelineProvider {
-    func placeholder(in context: Context) -> AddExpenseEntry {
-        AddExpenseEntry(date: Date())
-    }
-
-    func getSnapshot(in context: Context, completion: @escaping (AddExpenseEntry) -> Void) {
-        completion(AddExpenseEntry(date: Date()))
-    }
-
-    func getTimeline(in context: Context, completion: @escaping (Timeline<AddExpenseEntry>) -> Void) {
-        completion(Timeline(entries: [AddExpenseEntry(date: Date())], policy: .never))
-    }
-}
-
 struct AddExpenseWidgetView: View {
+    let entry: AddExpenseEntry
     @Environment(\.colorScheme) private var colorScheme
 
     private var background: Color {
@@ -48,23 +31,23 @@ struct AddExpenseWidgetView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Cordato")
-                .font(.caption)
+            Text(entry.month)
+                .font(.subheadline)
                 .foregroundStyle(textMuted)
+            Text(entry.amount ?? "Abra para atualizar")
+                .font(entry.amount == nil ? .subheadline : .system(size: 16, weight: .semibold))
+                .minimumScaleFactor(0.55)
+                .lineLimit(entry.amount == nil ? 2 : 1)
             Spacer(minLength: 0)
-            Image(systemName: "plus")
-                .font(.system(size: 30, weight: .medium))
+            Text("+ Adicionar")
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(accent)
-                .accessibilityHidden(true)
-            Text("Adicionar despesa")
-                .font(.headline)
                 .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .foregroundStyle(text)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Adicionar despesa no Cordato")
+        .accessibilityLabel("\(entry.month), \(entry.amount ?? "Abra para atualizar"). Adicionar despesa no Cordato")
         .widgetURL(URL(string: "cordato://widget/add-expense?homeWidget=true"))
     }
 
@@ -82,8 +65,8 @@ struct AddExpenseWidget: Widget {
     let kind = "AddExpenseWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: AddExpenseProvider()) { _ in
-            AddExpenseWidgetView()
+        StaticConfiguration(kind: kind, provider: AddExpenseProvider()) { entry in
+            AddExpenseWidgetView(entry: entry)
         }
         .configurationDisplayName("Adicionar despesa")
         .description("Abra o cadastro de uma nova despesa no Cordato.")

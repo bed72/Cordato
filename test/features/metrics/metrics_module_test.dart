@@ -1,4 +1,5 @@
 import 'package:mocktail/mocktail.dart';
+import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -13,6 +14,7 @@ import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_state
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
 import '../../support/core/mocks/http_client_mock.dart';
+import '../../support/core/mocks/home_widget_client_mock.dart';
 
 void main() {
   setUpAll(() => registerFallbackValue(const Requests(path: '')));
@@ -42,6 +44,7 @@ void main() {
       createModule(
         register: (context) {
           context.addInstance<IHttpClient>(http);
+          context.addInstance<IHomeWidgetClient>(HomeWidgetClientMock());
           context.module(metricsModule);
         },
       ),

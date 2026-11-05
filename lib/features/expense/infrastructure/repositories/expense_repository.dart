@@ -1,18 +1,20 @@
 import 'dart:convert';
 
+import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
+import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
 import 'package:cordato/features/core/infrastructure/serializers/civil_date_serializer.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
 import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
@@ -24,6 +26,7 @@ import 'package:cordato/features/expense/infrastructure/responses/expense_sugges
 final class ExpenseRepository({
   required final IHttpClient _httpClient,
   required final IStorageClient _storageClient,
+  required final IHomeWidgetClient _homeWidgetClient,
 }) implements IExpenseRepository {
   @override
   Future<List<ExpenseSuggestionEntity>> suggestions({
@@ -35,10 +38,10 @@ final class ExpenseRepository({
           query: {
             'page': 1,
             'perPage': 30,
-            'sort': '-occurred_on,-created,-id',
-            'filter': 'description ~ ${_filterValue(query)}',
             'skipTotal': true,
+            'sort': '-occurred_on,-created,-id',
             'fields': 'id,description,amount,category',
+            'filter': 'description ~ ${_filter(query)}',
           },
           path: HttpPathEnum.expenseRecords.path,
         ),
@@ -90,6 +93,7 @@ final class ExpenseRepository({
       );
 
       if (response.status != 204) throw ExpenseException(errors: .unknown());
+      _homeWidgetClient.requestMonthlyRefresh();
     } on HttpResponseException catch (exception) {
       throw ExpenseException(errors: exception.errors.toEntity());
     } on HttpClientException {
@@ -125,9 +129,9 @@ final class ExpenseRepository({
       final page = ExpensePageResponse.fromJson(response.body);
 
       return ExpensePageEntity(
-        items: page.items.map((item) => item.toEntity()).toList(),
         next: _continuation(page.next, query),
         prev: _continuation(page.prev, query),
+        items: page.items.map((item) => item.toEntity()).toList(),
       );
     } on HttpResponseException catch (exception) {
       throw ExpenseException(errors: exception.errors.toEntity());
@@ -153,11 +157,15 @@ final class ExpenseRepository({
             'amount': ?cents,
             'category': ?category?.value,
             'description': ?description,
-            if (occurredOn != null) 'occurred_on': _dateValue(occurredOn),
+            if (occurredOn != null) 'occurred_on': _date(occurredOn),
           },
         ),
       );
-      return ExpenseResponse.fromJson(response.body).toEntity();
+
+      final updated = ExpenseResponse.fromJson(response.body).toEntity();
+      _homeWidgetClient.requestMonthlyRefresh();
+
+      return updated;
     } on HttpResponseException catch (exception) {
       throw ExpenseException(errors: exception.errors.toEntity());
     } on HttpClientException {
@@ -174,9 +182,11 @@ final class ExpenseRepository({
   }) async {
     try {
       final owner = await _storageClient.read(key: StorageKeyEnum.userId.key);
+
       if (owner == null || owner.trim().isEmpty) {
         throw ExpenseException(errors: .unknown());
       }
+
       final response = await _httpClient.post(
         parameter: Requests(
           path: HttpPathEnum.expenseRecords.path,
@@ -185,11 +195,15 @@ final class ExpenseRepository({
             'amount': cents,
             'description': description,
             'category': category.value,
-            'occurred_on': _dateValue(occurredOn ?? .now()),
+            'occurred_on': _date(occurredOn ?? .now()),
           },
         ),
       );
-      return ExpenseResponse.fromJson(response.body).toEntity();
+
+      final created = ExpenseResponse.fromJson(response.body).toEntity();
+      _homeWidgetClient.requestMonthlyRefresh();
+
+      return created;
     } on HttpResponseException catch (exception) {
       throw ExpenseException(errors: exception.errors.toEntity());
     } on HttpClientException {
@@ -221,24 +235,24 @@ final class ExpenseRepository({
         }
       }
     }
+
     query['perPage'] = pageSize;
     query['sort'] = sort ?? query['sort'] ?? '-occurred_on,-id';
     if (category != null || from != null || to != null) {
       query['filter'] = [
-        if (category != null) 'category = ${_filterValue(category)}',
-        if (from != null) 'occurred_on >= ${_filterValue(_dateValue(from))}',
+        if (category != null) 'category = ${_filter(category)}',
+        if (from != null) 'occurred_on >= ${_filter(_date(from))}',
         if (to != null)
-          'occurred_on < ${_filterValue(_dateValue(DateTime.utc(to.year, to.month, to.day + 1)))}',
+          'occurred_on < ${_filter(_date(DateTime.utc(to.year, to.month, to.day + 1)))}',
       ].join(' && ');
     }
 
     return query;
   }
 
-  String _dateValue(DateTime date) =>
-      '${formatDateSerializer(date)} 00:00:00.000Z';
+  String _date(DateTime date) => '${formatDateSerializer(date)} 00:00:00.000Z';
 
-  String _filterValue(String value) => jsonEncode(value);
+  String _filter(String value) => jsonEncode(value);
 
   String? _continuation(String? link, Map<String, dynamic> query) {
     if (link == null) return null;

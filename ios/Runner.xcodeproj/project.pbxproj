@@ -5,6 +5,9 @@
 	};
 	objectVersion = 54;
 	objects = {
+		C0DA70000000000000000014 = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AddExpenseWidget.entitlements; sourceTree = "<group>"; };
+		C0DA70000000000000000012 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddExpenseProvider.swift; sourceTree = "<group>"; };
+		C0DA70000000000000000013 = {isa = PBXBuildFile; fileRef = C0DA70000000000000000012; };
 		C0DA70000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddExpenseWidget.swift; sourceTree = "<group>"; };
 		C0DA70000000000000000002 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C0DA70000000000000000003 = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AddExpenseWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -12,11 +15,11 @@
 		C0DA70000000000000000005 = {isa = PBXBuildFile; fileRef = C0DA70000000000000000003; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C0DA70000000000000000006 = {
 			isa = PBXGroup;
-			children = (C0DA70000000000000000001, C0DA70000000000000000002, );
+			children = (C0DA70000000000000000001, C0DA70000000000000000002, C0DA70000000000000000012, C0DA70000000000000000014, );
 			path = AddExpenseWidget;
 			sourceTree = "<group>";
 		};
-		C0DA70000000000000000007 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C0DA70000000000000000004, ); runOnlyForDeploymentPostprocessing = 0; };
+		C0DA70000000000000000007 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C0DA70000000000000000004, C0DA70000000000000000013, ); runOnlyForDeploymentPostprocessing = 0; };
 		C0DA70000000000000000008 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		C0DA70000000000000000009 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		C0DA7000000000000000000A = {
@@ -57,6 +60,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 9740EEB31CF90195004384FC;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AddExpenseWidget/AddExpenseWidget.entitlements;
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
@@ -78,6 +82,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 9740EEB31CF90195004384FC;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AddExpenseWidget/AddExpenseWidget.entitlements;
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
@@ -98,6 +103,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 9740EEB31CF90195004384FC;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AddExpenseWidget/AddExpenseWidget.entitlements;
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";

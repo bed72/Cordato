@@ -76,12 +76,22 @@ no backend; o aplicativo não as prova por ocultar ações na interface.
 
 ## Atalho de cadastro pela tela inicial do celular
 
-Root possui a assinatura de lançamentos do widget, o intent pendente em memória
-e a coordenação com Session. `IHomeWidgetClient` é um contrato puro em
-`core/application/clients/`; o adapter em infrastructure encapsula `home_widget`
-e não chama APIs em plataformas sem suporte. Presentation não importa o plugin.
-A assinatura é cancelada no descarte ou na troca do client; consultas iniciais
-de um client substituído não podem publicar um intent.
+Root possui a observação de lançamentos do widget e a coordenação com Session.
+`AppWidget` recebe somente factories de Blocs, além da chave de navegação: não
+recebe client, consulta URI nativa nem assina streams de infraestrutura.
+`HomeWidgetLaunchBloc` consome `IHomeWidgetLaunchRepository`; o adapter valida a
+URI em infrastructure e entrega somente a decisão inicial e sinais de abertura.
+A apresentação observa estados de solicitação e mantém o intent de navegação
+pendente até ser possível executá-lo. O lifecycle nativo de `emit.onEach` cancela
+a assinatura ao fechar o Bloc; uma leitura inicial tardia não duplica um sinal
+já observado nem publica após o fechamento.
+
+`IHomeWidgetClient` é um contrato puro em `core/application/clients/`; seu adapter
+encapsula `home_widget` e não chama APIs em plataformas sem suporte. Esse contrato
+é consumido por infrastructure/composição, nunca diretamente por widgets, mixins
+de tela ou Blocs. Mover uma interface para application não permite pular o
+repository. Testes arquiteturais proíbem imports de `application/clients/` pela
+apresentação, assim como os demais adapters.
 
 A URI permitida é somente `cordato://widget/add-expense?homeWidget=true`, sem
 outros parâmetros. Não transporta credenciais nem dados de despesas. O fluxo
@@ -96,11 +106,49 @@ topo; a busca usa `popUntil` sobre os estados reais da pilha, sem depender de
 nomes de `Page` que o Modular não fornece. Navegação concreta continua no mixin
 do AppWidget, por extensões de BuildContext.
 
-RemoteViews e WidgetKit renderizam somente conteúdo estático seguindo o tema
-do sistema. Não há sincronização financeira, App Group, repository, endpoint ou
-Bloc adicional. Android desabilita o deeplink automático apenas para a action do
-plugin, preservando os links de verificação e recuperação. A extensão iOS é
+RemoteViews e WidgetKit exibem mês por extenso, total mensal e **+ Adicionar**,
+seguindo o tema do sistema. Android desabilita o deeplink automático apenas para
+a action do plugin, preservando verificação e recuperação. A extensão iOS é
 incorporada pelo Runner em Debug, Release e Profile.
+
+`HomeWidgetSyncBloc` tem proprietário único no AppWidget, assim como Session,
+com factory estável em rootModule e fechamento/troca pelo mixin. Consome apenas
+`IHomeWidgetSyncRepository`; o adapter de Root compõe `IMetricsRepository` e
+`IHomeWidgetClient`. O próprio Bloc observa os pedidos de atualização através
+do repository, em handler contínuo separado dos eventos de sincronização, para
+que uma atualização restartable não cancele a observação. AppWidget não conhece
+esses streams. `HomeWidgetLaunchBloc` também possui factory estável e um único
+proprietário no AppWidget. Ausência confirmada de sessão limpa o resumo. Falha da
+validação de sessão não é tratada como logout. Não há credenciais nos eventos,
+estados ou dados compartilhados. Requests do widget são restartable: uma mutação
+mais recente substitui a sincronização pendente, e logout impede publicação tardia.
+
+Metrics publica no client somente respostas válidas do mês civil atual, incluindo
+zero para uma lista vazia bem-sucedida. Consultas históricas não alteram o resumo;
+nenhum cálculo monetário é refeito no Flutter. Expense solicita uma atualização
+pela capacidade compartilhada do client somente após create/update/delete
+bem-sucedidos, sem importar Metrics nem Root. Root recebe esse sinal e consulta
+o mês atual, independentemente dos filtros da Dashboard.
+
+O client usa revisões para descartar leituras anteriores a outra consulta, mutação
+ou logout. Gravações nativas são serializadas: a limpeza segue uma publicação já
+iniciada. Erros esperados do plugin são reportados sem transformar uma operação
+financeira confirmada em falha; erros de HTTP/parsing das métricas não publicam zero.
+Esses efeitos auxiliares não tornam HTTP, sessão e persistência nativa atômicos.
+
+O snapshot é um JSON único `monthly_summary` com `month` em yyyy-MM e `cents`
+inteiros. Android usa SharedPreferences do plugin; iOS usa o App Group
+`group.com.bed.cordato` nos dois targets. Não são compartilhados JWT, proprietário
+ou descrições. Os renderizadores nativos só exibem total quando a chave mensal
+coincide com o mês corrente; ausência, JSON inválido ou mês diferente mostra
+**Abra para atualizar**, nunca zero inventado ou o valor anterior rotulado como
+atual. Dinheiro usa BigDecimal/Decimal, sem conversão monetária para double.
+
+A virada do mês usa uma entrada futura da timeline no iOS e alarme não exato
+com eventos de data/fuso no Android. O agendamento é local e sujeito ao SO;
+nenhum deles faz consultas remotas. AddExpenseWidgetProvider separa leitura,
+formatação, RemoteViews e agendamento. AddExpenseProvider fica em arquivo próprio
+e separa leitura, formatação e timeline, sem misturar o layout SwiftUI.
 
 ## Estrutura E Responsabilidades
 

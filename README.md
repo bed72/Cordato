@@ -27,32 +27,65 @@ visual em Android com gestos/três botões e iPhone permanece pendente.
 
 ## Widget da tela inicial
 
-Android e iOS possuem um widget pequeno com uma única ação: **Adicionar despesa**.
-O visual nativo acompanha o tema do sistema. Adicione-o pela galeria de widgets do
-celular após instalar uma nova compilação; hot reload não instala o componente.
+Android e iOS possuem um widget pequeno com o mês atual por extenso, o total gasto
+nesse mês e a ação **+ Adicionar**. Toda a área continua clicável. O visual nativo
+não repete o nome Cordato dentro do widget: mês e valor ficam no topo, com a ação
+na parte inferior. As cores acompanham o tema do sistema.
+Adicione **Adicionar despesa** pela galeria de widgets
+do celular após instalar uma nova compilação; hot reload não instala o componente.
+O valor usa fonte de até 16, em uma linha, com redução automática conforme o
+espaço disponível; “Abra para atualizar” mantém sua tipografia menor e até duas
+linhas. No Android, o autoajuste nativo requer Android 8/API 26 ou posterior.
 
 O toque abre Dashboard → Nova despesa. Se necessário, o app solicita login antes
 de continuar. Uma criação já aberta é preservada, sem duplicar o formulário ou
-apagar a entrada. Edição não é confundida com criação. O widget não exibe dados
-financeiros, não compartilha credenciais e não executa cadastros em background.
+apagar a entrada. Edição não é confundida com criação. O total é o último valor
+mensal sincronizado do PocketBase, nunca o acumulado de todos os meses ou o filtro
+histórico da Dashboard. Autenticação, consulta de métricas do mês atual e mutações
+bem-sucedidas de despesas atualizam o resumo. Falhas mantêm o último valor válido;
+somente uma consulta vazia bem-sucedida representa R$ 0,00.
+
+Sem resumo do mês atual, o valor é substituído por **Abra para atualizar**. Ao sair
+da conta, o resumo é removido. O widget não compartilha credenciais nem executa
+cadastros ou consultas HTTP em background. A virada do mês é renderizada localmente
+por timeline no iOS e alarme não exato/eventos de data no Android, sujeitos ao
+agendamento do sistema operacional.
 
 A integração usa `home_widget`, RemoteViews no Android e uma extensão WidgetKit
 SwiftUI no iOS. O target `AddExpenseWidget` é dependência do Runner e é incorporado
 nas três configurações de build. Para distribuir no iOS, configure a mesma equipe
 de assinatura para Runner e AddExpenseWidget e um provisioning profile para
-`com.bed.cordato.AddExpenseWidget`. Não é necessário App Group: não há dados
-compartilhados com a extensão.
+`com.bed.cordato.AddExpenseWidget`. Habilite também o App Group
+`group.com.bed.cordato` nos dois App IDs/perfis de assinatura no Apple Developer.
+Os entitlements estão configurados nos targets; o registro do grupo e a emissão
+dos perfis precisam ser feitos na conta Apple. Somente mês e centavos inteiros
+são compartilhados com a extensão, em uma única chave JSON `monthly_summary`.
+
+AppWidget recebe factories de SessionBloc, HomeWidgetLaunchBloc e
+HomeWidgetSyncBloc, sem clients diretos. Os Blocs possuem as observações por
+contratos de repository; o widget mantém somente composição e navegação.
 
 A conferência manual deve cobrir app encerrado/aberto, com e sem sessão, login
 seguido do formulário, toques repetidos com entrada não salva, edição já aberta,
 voltar/salvar para Dashboard e temas claro/escuro nas duas plataformas.
+Confira também total do mês atual com a Dashboard em um mês passado, zero real,
+falha de sincronização, limpeza no logout e virada do mês.
 
 Verificação da implementação: `flutter pub get` concluído, `flutter analyze`
-sem problemas e `flutter test --reporter failures-only` com 1342 testes aprovados.
+sem problemas e `flutter test --reporter failures-only` com 1396 testes aprovados.
 Builds debug Android e iOS Simulator passaram; a extensão está presente no bundle
 iOS. A validação visual e de toques em aparelho/simulador permanece pendente.
-O build Android emite aviso de compatibilidade futura do Kotlin Gradle Plugin
-usado por `home_widget` 0.10.0, sem bloquear a compilação atual.
+Android habilita Kotlin integrado do AGP e acesso nativo nas JVMs do wrapper e
+do daemon. O Flutter 3.47.9 ainda emite um aviso sobre KGP no `home_widget` 0.10.0
+por detectar a declaração por regex, mesmo no ramo condicional desativado.
+A inspeção dos plugins em runtime confirmou KGP externo ausente; o aviso restante
+é um falso positivo do tooling, sem bloqueio de compilação. Não foi alterado o
+cache do pub nem desabilitada a validação de dependências.
+A falha Android ao iniciar o subprocesso Flutter foi diagnosticada pelo stack
+trace como falha de `spawn helper`, com um daemon anterior à atualização do JDK
+embutido no Android Studio. Após `./android/gradlew -p android --stop`,
+`flutter build apk --debug` passou duas vezes, inclusive reutilizando o daemon,
+sem precisar desabilitá-lo ou alterar permanentemente o JDK do Flutter.
 
 ## Arquitetura
 

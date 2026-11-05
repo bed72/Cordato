@@ -18,6 +18,7 @@ import 'package:cordato/features/metrics/application/exceptions/metrics_exceptio
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
 import '../../../../support/core/mocks/http_client_mock.dart';
+import '../../../../support/core/mocks/home_widget_client_mock.dart';
 
 void main() {
   const record = {
@@ -36,6 +37,7 @@ void main() {
     ],
   };
   late HttpClientMock client;
+  late HomeWidgetClientMock homeWidgetClient;
   late IMetricsRepository repository;
 
   void respond(Map<String, dynamic> body) {
@@ -65,16 +67,119 @@ void main() {
     }
   }
 
-  setUpAll(() => registerFallbackValue(const Requests(path: '')));
+  setUpAll(() {
+    registerFallbackValue(const Requests(path: ''));
+    registerFallbackValue(DateTime(2026));
+  });
   setUp(() {
     client = HttpClientMock();
-    repository = MetricsRepository(httpClient: client);
+    homeWidgetClient = HomeWidgetClientMock();
+    when(() => homeWidgetClient.beginMonthlyRead()).thenReturn(1);
+    when(
+      () => homeWidgetClient.publishMonthlyTotal(
+        revision: any(named: 'revision'),
+        month: any(named: 'month'),
+        cents: any(named: 'cents'),
+      ),
+    ).thenAnswer((_) async {});
+    repository = MetricsRepository(
+      httpClient: client,
+      homeWidgetClient: homeWidgetClient,
+    );
     respond({
       'items': [record],
     });
   });
 
   group('Monthly view requests', () {
+    test('publishes the current month total returned by PocketBase', () async {
+      final now = DateTime.now();
+      final first = DateTime(now.year, now.month);
+      final last = DateTime(now.year, now.month + 1, 0);
+      respond({
+        'items': [
+          {
+            ...record,
+            'start_date': first.toIso8601String().split('T').first,
+            'end_date': last.toIso8601String().split('T').first,
+          },
+        ],
+      });
+
+      final metrics = await repository.getExpenses();
+
+      expect(metrics.totalAmount, 389205);
+      verify(
+        () => homeWidgetClient.publishMonthlyTotal(
+          revision: 1,
+          month: first,
+          cents: 389205,
+        ),
+      ).called(1);
+    });
+
+    test('historical months never replace the widget total', () async {
+      final now = DateTime.now();
+      final first = DateTime(now.year, now.month - 1);
+      final last = DateTime(first.year, first.month + 1, 0);
+      respond({
+        'items': [
+          {
+            ...record,
+            'start_date': first.toIso8601String().split('T').first,
+            'end_date': last.toIso8601String().split('T').first,
+          },
+        ],
+      });
+
+      await repository.getExpenses(startDate: first, endDate: last);
+
+      verifyNever(homeWidgetClient.beginMonthlyRead);
+      verifyNever(
+        () => homeWidgetClient.publishMonthlyTotal(
+          revision: any(named: 'revision'),
+          month: any(named: 'month'),
+          cents: any(named: 'cents'),
+        ),
+      );
+    });
+
+    test('publishes zero only for a successful empty current month', () async {
+      final now = DateTime.now();
+      final first = DateTime(now.year, now.month);
+      respond({'items': []});
+
+      await repository.getExpenses();
+
+      verify(
+        () => homeWidgetClient.publishMonthlyTotal(
+          revision: 1,
+          month: first,
+          cents: 0,
+        ),
+      ).called(1);
+    });
+
+    test('invalid responses never overwrite the widget with zero', () async {
+      respond({
+        'items': [
+          {...record, 'total_amount': 'invalid'},
+        ],
+      });
+
+      await expectLater(
+        repository.getExpenses(),
+        throwsA(isA<FormatException>()),
+      );
+
+      verifyNever(
+        () => homeWidgetClient.publishMonthlyTotal(
+          revision: any(named: 'revision'),
+          month: any(named: 'month'),
+          cents: any(named: 'cents'),
+        ),
+      );
+    });
     test(
       'reads the native view without client-side aggregation or owner filters',
       () async {

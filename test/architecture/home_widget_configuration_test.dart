@@ -2,9 +2,43 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/root/presentation/navigation/home_widget_launch_policy.dart';
+import 'package:cordato/features/root/infrastructure/serializers/home_widget_launch_serializer.dart';
 
 void main() {
+  test('iOS shares only the monthly cache through the same App Group in both targets', () {
+    for (final path in [
+      'ios/Runner/Runner.entitlements',
+      'ios/AddExpenseWidget/AddExpenseWidget.entitlements',
+    ]) {
+      final entitlements = File(path).readAsStringSync();
+      expect(entitlements, contains('com.apple.security.application-groups'));
+      expect(entitlements, contains('group.com.bed.cordato'));
+    }
+    final project = File('ios/Runner.xcodeproj/project.pbxproj')
+        .readAsStringSync();
+    expect(
+      'CODE_SIGN_ENTITLEMENTS = AddExpenseWidget/AddExpenseWidget.entitlements;'
+          .allMatches(project),
+      hasLength(3),
+    );
+    expect(project, contains('path = AddExpenseProvider.swift;'));
+  });
+
+  test('native monthly renderers reject mismatched months and retain integer precision', () {
+    final android = File(
+      'android/app/src/main/kotlin/com/bed/cordato/AddExpenseWidgetProvider.kt',
+    ).readAsStringSync();
+    final ios = File('ios/AddExpenseWidget/AddExpenseProvider.swift')
+        .readAsStringSync();
+
+    expect(ios, contains('Decimal(cents) / 100'));
+    expect(ios, contains('entry(at: nextMonth)'));
+    expect(android, contains('nextMonthStartMillis()'));
+    expect(android, contains('BigDecimal.valueOf(cents, 2)'));
+    expect(ios, contains('summary.month == monthKey(for: date)'));
+    expect(android, contains('snapshot.optString("month") != monthKey'));
+  });
+
   test('both native widgets launch the exact supported action', () {
     for (final path in [
       'android/app/src/main/kotlin/com/bed/cordato/AddExpenseWidgetProvider.kt',
@@ -15,7 +49,7 @@ void main() {
           .firstMatch(source)!
           .group(0)!;
 
-      expect(HomeWidgetLaunchPolicy.accepts(Uri.parse(address)), isTrue);
+      expect(isHomeWidgetExpenseLaunch(Uri.parse(address)), isTrue);
     }
   });
 
@@ -26,13 +60,13 @@ void main() {
       'android/app/src/main/res/xml/add_expense_widget_info.xml',
     ).readAsStringSync();
 
+    expect(provider, contains('android:updatePeriodMillis="0"'));
+    expect(provider, contains('android:widgetCategory="home_screen"'));
     expect(manifest, contains('android:name=".AddExpenseWidgetProvider"'));
     expect(
       manifest,
       contains('android:resource="@xml/add_expense_widget_info"'),
     );
-    expect(provider, contains('android:updatePeriodMillis="0"'));
-    expect(provider, contains('android:widgetCategory="home_screen"'));
   });
 
   test(
@@ -42,6 +76,8 @@ void main() {
         'android/app/src/main/kotlin/com/bed/cordato/MainActivity.kt',
       ).readAsStringSync();
 
+      expect(activity, contains('setIntent(intent)'));
+      expect(activity, contains('super.shouldHandleDeeplinking()'));
       expect(activity, contains('override fun shouldHandleDeeplinking()'));
       expect(
         activity,
@@ -49,8 +85,6 @@ void main() {
           'intent?.action != HomeWidgetLaunchIntent.HOME_WIDGET_LAUNCH_ACTION',
         ),
       );
-      expect(activity, contains('super.shouldHandleDeeplinking()'));
-      expect(activity, contains('setIntent(intent)'));
     },
   );
 
@@ -61,7 +95,9 @@ void main() {
         .readAsStringSync();
     final runner = File('ios/Runner/Info.plist').readAsStringSync();
 
+    expect(runner, contains('<string>cordato</string>'));
     expect(project, contains('name = "Embed App Extensions";'));
+    expect(extension, contains('com.apple.widgetkit-extension'));
     expect(
       project,
       contains('productType = "com.apple.product-type.app-extension";'),
@@ -70,7 +106,5 @@ void main() {
       project,
       contains('PRODUCT_BUNDLE_IDENTIFIER = com.bed.cordato.AddExpenseWidget;'),
     );
-    expect(extension, contains('com.apple.widgetkit-extension'));
-    expect(runner, contains('<string>cordato</string>'));
   });
 }

@@ -367,12 +367,30 @@ Lógica visual pura de StatelessWidget pode usar mixin próprio com
 ## Módulos E Rotas
 
 O widget externo de cadastro usa `home_widget` por `IHomeWidgetClient`, contrato
-em `core/application/clients/`, com adapter em infrastructure. Root possui a
-assinatura e o intent pendente; aguarda Session antes de abrir Dashboard → Nova
-despesa. Não importe o plugin na apresentação, não compartilhe JWT com o widget
+em `core/application/clients/`, com adapter em infrastructure. Esse client não
+entra em widgets/mixins/Blocs: Root usa `HomeWidgetLaunchBloc` →
+`IHomeWidgetLaunchRepository` para leitura inicial e observação de lançamentos;
+o repository filtra URIs nativas antes de expor sinais à apresentação. AppWidget
+recebe factories de Blocs, nunca o client nem streams nativos. Root possui o
+intent pendente e aguarda Session antes de abrir Dashboard → Nova despesa.
+Não importe o plugin na apresentação, não compartilhe JWT com o widget
 e não faça cadastro em background. Preserve criações abertas sem confundir edição
 por ID. No Modular 7, `routeState` representa a base e `Page.name` não identifica
 as rotas empilhadas; use os estados reais de `popUntil` na coordenação do atalho.
+
+O resumo mensal do widget usa somente o total do mês atual retornado por Metrics,
+nunca somas locais ou filtros históricos da Dashboard. Expense sinaliza mutações
+confirmadas pelo client compartilhado, sem importar Metrics/Root. Root compõe os
+contratos em `HomeWidgetSyncRepository` e possui um único `HomeWidgetSyncBloc`
+sob ownership do AppWidget. Não o registre como singleton nem o recrie em rebuild.
+O próprio Bloc observa pedidos de atualização pelo repository com `emit.onEach`,
+em handler contínuo distinto dos eventos restartable; não assine esse stream no
+widget. Launch e Sync usam o lifecycle nativo para cancelar suas observações.
+Preserve revisões e serialização de publicações/limpeza no client para bloquear
+respostas antigas após mutação/logout. Snapshot nativo contém somente mês e
+centavos, sem credenciais; mês incompatível mostra “Abra para atualizar”. iOS usa
+o App Group `group.com.bed.cordato` nos dois targets. Não faça HTTP no widget nativo
+nem converta dinheiro para double ao formatá-lo.
 
 Use a API funcional `createModule` do `flutter_modular` 7. Registre contratos
 apontando para implementações. Para estado de página novo ou explicitamente

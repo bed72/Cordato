@@ -137,7 +137,7 @@ void main() {
           for (final match in _importPattern.allMatches(source)) {
             final targetContext = match.group(1)!;
             final targetPath = match.group(2)!;
-            final isApplicationContract =
+            final isFeatureRepositoryContract =
                 (targetContext == 'authentication' ||
                     targetContext == 'session' ||
                     targetContext == 'user' ||
@@ -145,7 +145,16 @@ void main() {
                     targetContext == 'metrics') &&
                 targetPath ==
                     'application/repositories/interface_${targetContext}_repository.dart';
+            final isRootWidgetContract =
+                targetContext == 'root' &&
+                {
+                  'application/repositories/interface_home_widget_sync_repository.dart',
+                  'application/repositories/interface_home_widget_launch_repository.dart',
+                }.contains(targetPath);
+            final isApplicationContract =
+                isFeatureRepositoryContract || isRootWidgetContract;
             final isOuterAdapter =
+                targetPath.startsWith('application/clients/') ||
                 targetPath.startsWith('application/repositories/') ||
                 targetPath.startsWith('data/') ||
                 targetPath.startsWith('infrastructure/');
