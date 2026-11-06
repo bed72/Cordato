@@ -43,12 +43,12 @@ dependencies:
   flutter_bloc: ^9.1.1
   bloc_concurrency: ^0.3.0
 
-  material_ui: ^1.8.0
-  cupertino_ui: ^1.1.4
+  material_ui: ^1.10.0
+  cupertino_ui: ^1.1.6
   skeletonizer: ^3.0.0
   flutter_boring_avatars: ^2.1.0
   flutter_staggered_grid_view: ^0.7.0
-  syncfusion_flutter_datepicker: ^35.1.41
+  syncfusion_flutter_datepicker: ^35.1.43
 
   talker: ^5.2.0
   talker_logger: ^5.2.0
