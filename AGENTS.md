@@ -594,6 +594,16 @@ Verificação focada: `flutter test test/architecture` e testes da feature afeta
 Registre os comandos executados, os resultados e os bloqueios anteriores à tarefa.
 Mudança exclusivamente documental não exige executar o app ou a suíte Flutter.
 
+O release Android no GitHub usa `.github/workflows/android-release.yml`, manual
+e restrito à `main`, sem publicação no Play ou commits de versão. A versão visível
+vem do `pubspec.yaml`; `tool/android_release_version.sh` define o código por
+`GITHUB_RUN_NUMBER + 5`, com testes unitários em `test/architecture/`.
+Reexecuções mantêm o código; novos códigos exigem novo dispatch. Não alterar o
+offset ou recriar o workflow sem considerar o maior código já usado no Play.
+Secrets pertencem ao environment `android-release`, nunca ao código ou aos
+artefatos. Mudanças no workflow exigem `actionlint`, no script `shellcheck`, além
+das verificações Flutter aplicáveis. Setup e limites estão em `android/README.md`.
+
 ## Revisão E Pendências
 
 Mudanças estruturais atualizam `ARCHITECTURE.md`; convenções e testes atualizam

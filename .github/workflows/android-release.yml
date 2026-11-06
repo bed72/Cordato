@@ -1,0 +1,130 @@
+name: Android release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: android-release
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Obter código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Definir versão do artefato
+        id: version
+        run: bash tool/android_release_version.sh >> "$GITHUB_OUTPUT"
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
+        with:
+          packages: 'platform-tools platforms;android-37 build-tools;37.0.0'
+          log-accepted-android-sdk-licenses: false
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+
+      - name: Instalar dependências
+        run: flutter pub get --enforce-lockfile
+
+      - name: Analisar código
+        run: flutter analyze
+
+      - name: Executar testes
+        run: flutter test --reporter failures-only
+
+      - name: Preparar chave de upload
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          for name in ANDROID_RELEASE_KEYSTORE_BASE64 ANDROID_RELEASE_STORE_PASSWORD ANDROID_RELEASE_KEY_ALIAS ANDROID_RELEASE_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              printf '::error::Secret obrigatório ausente: %s\n' "$name"
+              exit 1
+            fi
+          done
+
+          umask 077
+          printf '%s' "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/cordato-release.jks"
+          keytool -list \
+            -keystore "$RUNNER_TEMP/cordato-release.jks" \
+            -storepass:env ANDROID_RELEASE_STORE_PASSWORD \
+            -alias "$ANDROID_RELEASE_KEY_ALIAS" > /dev/null
+
+      - name: Gerar AAB assinado
+        env:
+          BUILD_NAME: ${{ steps.version.outputs.build_name }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+          ANDROID_RELEASE_STORE_FILE: ${{ runner.temp }}/cordato-release.jks
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          flutter build appbundle --release \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER" \
+            --dart-define=BASE_URL=https://app.cordato.cloud
+
+      - name: Verificar assinatura do AAB
+        run: |
+          bundle=build/app/outputs/bundle/release/app-release.aab
+          unzip -Z1 "$bundle" > "$RUNNER_TEMP/cordato-bundle-entries.txt"
+          grep -Eq '^META-INF/[^/]+\.(RSA|DSA|EC)$' "$RUNNER_TEMP/cordato-bundle-entries.txt"
+          jarsigner -verify "$bundle"
+
+      - name: Disponibilizar AAB
+        id: artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: cordato-${{ steps.version.outputs.build_name }}-${{ steps.version.outputs.build_number }}-attempt-${{ github.run_attempt }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Registrar resumo
+        env:
+          BUILD_NAME: ${{ steps.version.outputs.build_name }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+        run: |
+          {
+            printf '## Android %s (%s)\n\n' "$BUILD_NAME" "$BUILD_NUMBER"
+            printf 'Commit: %s\n\n' "$GITHUB_SHA"
+            printf '[Baixar AAB assinado](%s)\n\n' "$ARTIFACT_URL"
+            printf 'Sem publicação no Google Play. O pubspec.yaml não foi alterado.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remover chave temporária
+        if: always()
+        run: rm -f "$RUNNER_TEMP/cordato-release.jks"

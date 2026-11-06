@@ -865,6 +865,21 @@ As descrições dos fluxos Flutter acima não comprovam suporte pelo novo backen
 
 ## Desenvolvimento
 
+### Build Android assinado no GitHub
+
+O workflow manual [Android release](.github/workflows/android-release.yml) gera
+um AAB assinado da `main`, após análise e testes, sem publicar no Google Play.
+Lê a versão visível do `pubspec.yaml` e substitui somente o código do build por
+`GITHUB_RUN_NUMBER + 5`: a primeira execução gera `1.0.0 (6)`, acima do build
+`1.0.0 (5)` em teste interno. Alterar a versão para `1.0.1` ou `1.1.0` não reinicia
+o contador nem exige commits automáticos do CI.
+
+Configuração dos quatro secrets de upload no environment `android-release`,
+download do artefato, reexecuções e limites do contador estão no
+[guia Android](android/README.md#github-actions-aab-assinado-sob-demanda).
+
+### Verificação local
+
 Na raiz do projeto:
 
 ```bash

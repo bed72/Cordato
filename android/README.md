@@ -117,11 +117,11 @@ zero, signed cents, 15-million boundaries, Long limits, short/wide/tall dimensio
 and measured-width font adaptation. Manually check rendering with long amounts,
 large accessibility text and the stale-summary hint before distribution.
 
-The default production API is `https://app.cordato.cloud/api/`, matching the
-release launch configuration. To explicitly pin it when building an APK:
+The default production PocketBase root is `https://app.cordato.cloud`, without
+`/api/`; the SDK adds that path. To explicitly pin it when building an APK:
 
 ```bash
-flutter build apk --release --dart-define=BASE_URL=https://app.cordato.cloud/api/
+flutter build apk --release --dart-define=BASE_URL=https://app.cordato.cloud
 ```
 
 Android builds require JDK 21. Confirm that Flutter and Gradle are using it:
@@ -174,20 +174,22 @@ are normal debug diagnostics, not application build failures.
 
 ### Distribution Artifacts
 
-Build the 1.0.0 (5) Android App Bundle for internal testing, explicitly using
-the PocketBase API validated by the local release login:
+The version currently in Google Play internal testing is **1.0.0 (5)**. For a
+local build of the next Android App Bundle, use a higher version code and the
+current PocketBase root:
 
 ```bash
 flutter build appbundle --release \
   --build-name=1.0.0 \
-  --build-number=5 \
-  --dart-define=BASE_URL=https://pocketbase.cordato.cloud/api/
+  --build-number=6 \
+  --dart-define=BASE_URL=https://app.cordato.cloud
 ```
 
-Use a higher build number for subsequent uploads. After publishing to internal
-testing, install or update through the tester's Google Play link, confirm that
-version code 5 is installed, and verify sign-in and the native widget. Local
-release success does not by itself validate the artifact distributed by Play.
+Use a higher build number for subsequent uploads, coordinating local codes with
+the workflow below. After uploading manually to internal testing, install or
+update through the tester's Google Play link, confirm the expected version code,
+and verify sign-in and the native widget. Local release success does not by
+itself validate the artifact distributed by Play.
 
 The artifact is `build/app/outputs/bundle/release/app-release.aab`. To build an
 APK instead, run `flutter build apk --release`; the artifact is
@@ -217,6 +219,103 @@ grep -F 'android.permission.INTERNET' \
 
 The exact merged-manifest directory is Android Gradle Plugin-version specific;
 use the generated `build/app/intermediates/` path if this location changes.
+
+### GitHub Actions: AAB assinado sob demanda
+
+O workflow [Android release](../.github/workflows/android-release.yml) roda
+somente por `workflow_dispatch`, na branch `main`. Não publica no Google Play,
+não cria releases/tags/commits e não altera o `pubspec.yaml`. O token do workflow
+tem somente `contents: read`; o checkout não persiste suas credenciais Git.
+
+#### Configuração única
+
+1. Criar o environment **android-release** em Settings → Environments do
+   repositório e restringir deployments à branch `main`. Configurar aprovação
+   manual se disponível no plano do GitHub.
+2. Cadastrar os quatro environment secrets abaixo. Usar a **mesma chave de upload
+   aceita pelo app existente** no Google Play, não uma chave debug ou uma nova
+   chave gerada apenas para o CI. Com Play App Signing, a chave de upload pode ser
+   diferente da chave com que o Google assina o aplicativo distribuído.
+
+| Secret | Conteúdo |
+| --- | --- |
+| `ANDROID_RELEASE_KEYSTORE_BASE64` | Arquivo de keystore existente codificado em base64. |
+| `ANDROID_RELEASE_STORE_PASSWORD` | Senha do keystore. |
+| `ANDROID_RELEASE_KEY_ALIAS` | Alias da chave de upload. |
+| `ANDROID_RELEASE_KEY_PASSWORD` | Senha da chave. |
+
+No macOS, é possível copiar a codificação diretamente para o clipboard, sem
+imprimi-la no terminal, e colá-la no secret:
+
+```bash
+base64 -i /caminho/seguro/cordato-release.jks | pbcopy
+```
+
+Base64 não é criptografia: não salvar esse conteúdo em arquivos versionados,
+logs, issues ou mensagens. Limpar o clipboard depois de cadastrar o secret.
+Não é necessário cadastrar conta de serviço Google, JSON ou credenciais do Play.
+
+#### Execução e download
+
+Depois que o workflow estiver na `main`, abrir Actions → **Android release** →
+**Run workflow**, selecionar `main` e executar. Outras branches são ignoradas.
+O job usa Ubuntu 24.04, Java 21, Android SDK 37 e Flutter **3.47.9 stable**.
+Instala dependências com o lockfile obrigatório, executa `flutter analyze` e a
+suíte Flutter unitária completa antes de acessar os secrets de assinatura.
+
+O Gradle recebe os valores de assinatura por variáveis de ambiente, usando sua
+validação existente sem fallback para debug. O keystore fica em `runner.temp`,
+com permissões restritas, e um passo `always()` remove o arquivo após o job.
+Não se deve habilitar debug de shell ou adicionar dumps do ambiente aos passos.
+
+Após o build com `BASE_URL=https://app.cordato.cloud`, o workflow verifica a
+presença da assinatura e executa `jarsigner -verify`. O único arquivo enviado é
+`build/app/outputs/bundle/release/app-release.aab`, em um artefato
+`cordato-<versão>-<código>-attempt-<tentativa>`, retido por **14 dias**. Baixar pelo
+resumo ou pela área Artifacts da execução, extrair o AAB e enviá-lo manualmente
+ao Google Play Console. O AAB não é um APK instalável diretamente.
+
+#### Versão e código do build
+
+[`tool/android_release_version.sh`](../tool/android_release_version.sh) lê a
+versão visível do `pubspec.yaml` e calcula `GITHUB_RUN_NUMBER + 5`. A primeira
+execução deste workflow gera código **6**, acima do **5** em teste interno.
+O build usa `--build-name` e `--build-number`; não grava esses valores no projeto.
+
+| `pubspec.yaml` | Execução | Artefato |
+| --- | --- | --- |
+| `version: 1.0.0+1` | 1 | `1.0.0 (6)` |
+| `version: 1.0.1+1` | 2 | `1.0.1 (7)` |
+| `version: 1.1.0+1` | 3 | `1.1.0 (8)` |
+
+Para mudar a versão visível, alterar somente `1.0.0` para `1.0.1` ou `1.1.0` no
+`pubspec.yaml`, integrar a alteração à `main` e disparar outra execução. O sufixo
+local `+1` não determina o código no CI. A sequência não reinicia quando a versão
+visível muda; execuções que falham também consomem números, portanto lacunas são
+esperadas e aceitas pelo Google Play.
+
+**Re-run jobs mantém o mesmo código** da execução original. Serve para repetir
+uma tentativa que falhou, não para gerar uma atualização após publicar aquele
+código. Para um novo código, usar **Run workflow** novamente. O número da
+tentativa diferencia os artefatos de uma reexecução.
+
+O contador pertence a este workflow, não ao Google Play. Não recriar/renomear o
+arquivo de workflow nem gerar uploads locais independentes sem revisar o offset
+`+ 5` para superar o maior código já utilizado. Enviar artefatos em ordem crescente;
+um código menor que outro já enviado não pode ser reutilizado. O workflow não
+consulta a versão publicada nem configura os secrets automaticamente.
+
+As actions estão fixadas por SHA: checkout 7.0.1, setup-java 6.2.0, setup-android
+4.0.4, flutter-action 2.23.0 e upload-artifact 7.0.2. Atualizar os SHAs e esta lista
+juntos após revisão. A primeira execução remota assinada continua dependendo da
+configuração dos secrets e não é comprovada pela validação local do YAML/testes.
+
+Verificação local desta entrega: `actionlint .github/workflows/android-release.yml`,
+`shellcheck tool/android_release_version.sh`, `flutter pub get --enforce-lockfile`
+e `flutter analyze` passaram; `flutter test --reporter failures-only` aprovou
+**1420 testes**, incluindo os cenários de versionamento, mudança de versão visível,
+reexecução, entradas inválidas e limite de código. Não houve build assinado local,
+execução da Action, acesso ao keystore ou publicação remota nesta verificação.
 
 ### Focus And Splash Verification
 
