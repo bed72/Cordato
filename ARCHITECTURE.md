@@ -17,9 +17,7 @@ Screen/Form -> evento -> Bloc -> IFeatureRepository
                                      |
                          FeatureRepository
                                      |
-                        PocketBase / IStorageClient
-                                     |
-                              adapters / SDKs
+                        SDK PocketBase / clients nativos
 
 Direção de dependências
 
@@ -42,10 +40,11 @@ Cordato oferece finanças pessoais e familiares. A pessoa é dona dos dados;
 família é somente uma lente autorizada de leitura. O backend Kotlin legado é
 referência de domínio, não dependência de execução ou modelo de pastas Flutter.
 O serviço PocketBase 0.41.1 agora está versionado separadamente em `backend/`,
-incluindo schema, migrations, Compose e testes próprios. Seu contexto de build
+incluindo schema, migrations e Compose. Seu contexto de build
 fica restrito a essa pasta; runtime e volume são independentes do aplicativo.
-Essa inclusão não migra os clients, contratos ou fluxos Flutter para PocketBase,
-nem declara equivalência com os recursos financeiros do backend anterior.
+Authentication, Session, User, Expense e Metrics no Flutter usam o SDK PocketBase.
+Isso não comprova homologação remota nem equivalência com todos os recursos
+financeiros do backend anterior.
 
 | Contexto/feature | Escopo                                                                |
 | ---------------- | --------------------------------------------------------------------- |
@@ -353,8 +352,8 @@ Core reúne tema, widgets básicos, animações, imagens, formatters, erros
 compartilhados e clients de infraestrutura. Não recebe regras específicas de
 uma feature para contornar imports proibidos.
 
-- Authentication e Session não importam uma à outra. Escrita e observação da
-  mesma chave de storage fazem a comunicação.
+- Authentication e Session não importam uma à outra. Compartilham o AuthStore do
+  SDK; Session observa `authStore.onChange`, não o Secure Storage.
 - Expense e Budget não dependem de outros contextos financeiros.
 - Family pode ler Expense/Budget por contratos próprios e adapters de
   infrastructure. Contextos proprietários não dependem de Family.
@@ -385,9 +384,9 @@ a listagem nativa filtrada do histórico pessoal.
 | Aspecto            | Flutter atual                                                                                                                                                                                                                                                             | PocketBase atual                                                                                                                                                                            |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Transporte         | Authentication, Session, User, Expense e Metrics usam endpoints nativos PocketBase.                                                                                                                                                                                       | API REST nativa de coleções, sem envelope JSON:API.                                                                                                                                         |
-| Autenticação       | Sign-in persiste JWT e `record.id` nas chaves existentes; sign-out limpa storage local sem HTTP.                                                                                                                                                                          | Autenticação nativa da coleção `users`; não há endpoint de logout ou revogação individual do JWT ao sair.                                                                                   |
-| Confirmação        | Após cadastro, confirmação solicita automaticamente `request-verification`; callback recebe `token` e usa `confirm-verification`. Cooldown de 60 segundos no Bloc somente após sucesso. App Links/Universal Links declarados; associação pública e homologação pendentes. | Verificação nativa; migration incremental direciona verificação de `users` ao app. Templates administrativos permanecem no PocketBase. A criação do record não envia confirmação por si só. |
-| Erros e paginação  | HTTP aceita erros JSON:API e PocketBase; Expense usa paginação nativa e erros 400 por campo; Metrics lê a lista nativa da view.                                                                                                                                           | Formatos nativos PocketBase.                                                                                                                                                                |
+| Autenticação       | AuthStore compartilhado; token e record persistidos no JSON `@cordato.pocketbase_auth`. Sign-out limpa a memória sem HTTP ou confirmação durável. | Autenticação nativa da coleção `users`; não há endpoint de logout ou revogação individual do JWT ao sair. |
+| Confirmação        | SDK solicita e confirma verificação; callback recebe `token`. Cooldown de 60 segundos após sucesso; associação pública e homologação pendentes. | Migration inicial consolidada configura os templates de `users` para o app em banco novo; criar a conta não envia e-mail automaticamente. |
+| Erros e paginação  | `ClientException` convertido por `PocketBaseMapper`; formatadores ainda aceitam códigos legados conhecidos. Expense usa páginas numéricas e Metrics lê o envelope por `send`. | Formatos nativos PocketBase. |
 | Datas de despesas  | Data civil escrita como meia-noite UTC e lida pelos componentes do dia, sem conversão de fuso.                                                                                                                                                                            | `occurred_on` opcional como Date UTC, sem default.                                                                                                                                          |
 | Categoria          | Novas despesas recebem `other`; edição preserva a categoria retornada. Sem classificação automática.                                                                                                                                                                      | Select opcional; vazio não significa `other`.                                                                                                                                               |
 | Recursos derivados | Sugestões consultam o histórico por GET filtrado; Metrics lê totais e percentuais mensais já calculados.                                                                                                                                                                  | View `metrics` agrupa despesas por proprietário/mês; sem endpoint customizado.                                                                                                              |
@@ -407,9 +406,9 @@ removidos em `lib/`. A análise e a suíte Flutter globais estão limpas, inclui
 composição sem UI e os testes do core adaptados às APIs atuais. Não houve build
 nativo ou homologação do serviço nesta etapa.
 
-A arquitetura de camadas Flutter permanece válida. As seções seguintes descrevem
-o desenho anterior dos fluxos ainda não migrados, e não endpoints a
-recriar no PocketBase. A continuação da integração deverá atualizar implementação,
+A arquitetura de camadas Flutter permanece válida. As seções de implementação
+descrevem o SDK atual; registros identificados como históricos não autorizam
+restaurar o client HTTP antigo. Alterações futuras devem atualizar implementação,
 consumidores e testes juntos, sem apresentar fixtures como homologação do serviço.
 Não há migração de dados, contas ou sessões do backend anterior neste trabalho.
 
@@ -509,7 +508,7 @@ O fechamento é nativo do Bloc. Não há override de `close()`, flag paralela ou
 cancelamento HTTP. A operação remota e gravações de storage podem continuar
 após saída da tela; ausência de estado tardio não significa rollback da sessão.
 
-## HTTP E Persistência
+## Operações Do SDK E Persistência
 
 ### Cadastro Com Bloc
 
@@ -521,11 +520,11 @@ Submissões pendentes e posteriores ao sucesso são bloqueadas; falha permite
 retry manual. Falhas esperadas preservam `ErrorsEntity`; inesperadas usam
 `addError` e fallback seguro, respeitando fechamento/handler invalidado.
 
-O repository envia POST público para `collections/users/records`, relativo à
-base com `/api/`, com `email`, `password` e `passwordConfirm`.
-Não envia token, `verified`, `emailVisibility` ou campos opcionais de perfil.
-A resposta 200 é um record nativo; o contrato precisa somente da conclusão,
-portanto não há DTO de cadastro, parsing dos campos não consumidos ou persistência.
+O repository chama `collection('users').create` com `email`, `password` e
+`passwordConfirm`. O SDK monta endpoint e headers; a configuração recebe a raiz
+do serviço, sem `/api/`. Não envia `verified`, `emailVisibility` ou campos opcionais
+de perfil. O SDK retorna um record nativo; o contrato precisa somente da conclusão,
+portanto não há DTO de cadastro, parsing dos campos não consumidos ou sessão criada.
 Após sucesso do cadastro, a tela de confirmação dispara automaticamente a
 solicitação de verificação como operação separada. Falha de e-mail não se torna
 falha da criação e o retry solicita somente o e-mail, sem recriar a conta.
@@ -543,9 +542,9 @@ visual e flows de UI foram removidos por decisão do projeto.
 
 ### Reenvio Com Bloc
 
-O repository envia POST público para `collections/users/request-verification`
-com JSON plano `email`, aceita 204 sem corpo e não persiste sessão. Erros nativos
-passam pelo mesmo adapter HTTP e `AuthenticationException`.
+O repository chama `collection('users').requestVerification(email)`, sem criar
+sessão. Sucesso segue o contrato do SDK, sem revalidar status 204. `ClientException`
+passa por `PocketBaseMapper` e vira `AuthenticationException`.
 
 `ResendEmailScreen` recebe uma factory estável de `ResendEmailBloc`, cria a
 instância em `initState`, substitui/fecha quando a factory muda e fecha no
@@ -601,7 +600,7 @@ A tela mantém o indicador animado e seu rótulo semântico durante a confirmaç
 Fechamento, troca de factory e substituição do link impedem efeitos obsoletos.
 
 Testes próprios do módulo verificam factories independentes e repository real
-com clients mockados. Os testes de UI da rota e flows de callback foram removidos.
+com SDK real e transporte mockado. Os testes de UI da rota e flows de callback foram removidos.
 A entrega nativa de deep links não é provada pelos testes unitários.
 
 O destino público é
@@ -635,8 +634,8 @@ contrato de Authentication, sem depender de visitar uma rota irmã.
 
 Solicitação e “Confira seu e-mail” são duas etapas visuais da mesma rota para
 preservar cooldown e e-mail confirmado no estado, sem callbacks de navegação ou
-flags locais de execução. `requestPasswordReset(email:)` exige 204 e envia somente
-`email` para `collections/users/request-password-reset`. A confirmação visual é
+flags locais de execução. `requestPasswordReset(email:)` delega ao método nativo
+do SDK, que envia `email` para `collections/users/request-password-reset`. A confirmação visual é
 neutra quanto à existência da conta. Submissões são `droppable`; o cooldown começa
 apenas depois do sucesso, dura 60 segundos e não provoca reenvio automático.
 `EmailCooldown` compartilha duração e ticks com `ResendEmailBloc`; o lifecycle
@@ -646,11 +645,12 @@ a etapa de confirmação e habilita retry imediato.
 O callback extrai exatamente um token não vazio da query, decodificado uma única
 vez. Não faz GET de URL recebida e não guarda token ou senhas no estado do Bloc.
 Ao abrir, `ResetPasswordBloc` aguarda `signOut()` para limpar a sessão local antes
-de habilitar a ação; falhas de storage são reportadas e bloqueiam o formulário.
+de habilitar a ação. Isso limpa o AuthStore em memória, sem aguardar exclusão
+durável; falhas assíncronas de storage não são reportadas pelo Future de logout.
 A observação global de Session preserva essa rota pública durante o logout.
 
-`confirmPasswordReset(token:, password:, passwordConfirm:)` exige 204 e usa JSON
-plano no endpoint público `collections/users/confirm-password-reset`, sem gravar
+`confirmPasswordReset(token:, password:, passwordConfirm:)` delega ao método
+nativo do SDK para `collections/users/confirm-password-reset`, sem gravar
 credenciais ou criar sessão. Erro PocketBase 400 em `/token` vira
 `PasswordResetTokenException`, preservando os erros remotos. Outros erros remotos
 viram `AuthenticationException`; falhas inesperadas não viram sucesso.
@@ -664,8 +664,8 @@ iniciados. Sucesso e token inválido/expirado redirecionam ao sign-in com toast;
 falhas de rede mantêm o formulário para retry. O backend invalida JWTs anteriores
 e pode verificar o e-mail conforme a semântica nativa de reset do PocketBase.
 
-O logger não registra requests, responses ou erros dos endpoints de recuperação,
-nem URLs contendo `token`; Authorization é mascarado. A inicial consolidada
+Não há logging HTTP. Token e senhas não entram nos estados nem nos logs do
+observer de Blocs. A inicial consolidada
 `1793491200_initial.js` configura o link de recuperação de `users` para
 `https://app.cordato.cloud/authentication/reset-password?token={TOKEN}` e mantém
 destinos nativos em `_superusers`. Android declara o caminho exato e o gerador AASA inclui
@@ -716,9 +716,9 @@ redirecionar sign-in a Dashboard; novas observações continuam com a regra norm
 testada, preservando outros logouts. Não há store global, dependência entre
 Authentication e Session ou outro proprietário de SessionBloc.
 
-O filtro comum do logger omite request, response e error quando o body contém
-`oldPassword`, `password` ou `passwordConfirm`. Filtros de reset/token e ocultação
-de Authorization permanecem. PATCH comum de perfil não é excluído pelo endpoint.
+Não há logger HTTP nem interceptors próprios. O observer de debug registra
+lifecycle e tipos seguros dos Blocs, sem imprimir eventos/estados completos,
+payloads, senhas, tokens ou URLs de callback.
 
 ### Logout Em Settings
 
@@ -1244,7 +1244,7 @@ aprovados; `git diff --check` sem problemas. Os testes usam clients mockados ou
 transporte simulado, sem homologação real de autorização ou persistência.
 `dart run tool/widget_preview.dart` compilou e serviu o catálogo; encerrado por
 timeout de 45 segundos sem cliente conectado, sem validação visual manual.
-Dashboard e Metrics não foram migradas; o endpoint de agregações permanece
+Naquela etapa, Dashboard e Metrics ainda não haviam sido migradas; o endpoint de agregações permanecia
 incompatível com o PocketBase atual. Sem alteração no schema/runtime do backend,
 migração de dados ou deploy. Alterações paralelas em três widgets visuais do core
 foram preservadas fora do escopo desta tarefa.
@@ -1252,7 +1252,8 @@ foram preservadas fora do escopo desta tarefa.
 ### Clients Compartilhados
 
 `main.dart` aguarda `createDependencies` de `lib/factory.dart` antes de `runApp`.
-A factory cria `FlutterSecureStorage` e aguarda `PocketBaseFactory.create`.
+`createDependencies` configura o observer e aguarda `PocketBaseFactory.create`,
+que cria `FlutterSecureStorage` e lê a sessão persistida.
 `createAppModule` encaminha somente o SDK pronto a `createCoreModule`, que
 registra `PocketBase` por `addInstance`, sem expor storage na DI.
 Os repositories recebem o SDK diretamente,
@@ -1272,12 +1273,10 @@ SessionInterceptor. Não use o SDK compartilhado para destinos externos nem
 registre tokens, RecordAuth, AuthStoreEvent, senhas ou URLs com token em logs.
 O transporte usa o lifecycle padrão do SDK, sem conexão persistente compartilhada.
 
-`PocketBaseFactory` usa o `AsyncAuthStore` oficial com callbacks de leitura,
-gravação e exclusão diretamente por `FlutterSecureStorage`. O wrapper
-O storage legado permanece referenciado somente em Expense, sem registro na DI.
-Esse consumidor ainda precisa ser migrado.
-O wrapper não participa da persistência do PocketBase e poderá ser removido
-após essas migrações.
+`PocketBaseFactory` aguarda a leitura segura e fornece seu conteúdo inicial ao
+`AsyncAuthStore` oficial, com callbacks de gravação e exclusão diretamente por
+`FlutterSecureStorage`. Não há `IStorageClient`, wrapper de storage ou consumidor
+do storage legado em Expense.
 Não há classe AuthStore própria, fila própria ou bind separado de autenticação.
 O SDK serializa token e usuário nas propriedades `token` e `model` de um JSON
 único na chave `@cordato.pocketbase_auth`; chaves e formatos anteriores não são
@@ -1301,7 +1300,7 @@ de senha usa o ID do auth record. O logout pós-troca continua pertencendo ao Bl
 Os repositories adotam a semântica de sucesso do SDK, sem conferir novamente
 status 200/204 específicos que os métodos tipados não expõem.
 
-`PocketBaseErrorMapper` converte `ClientException` para `ErrorsEntity`, preservando
+`PocketBaseMapper` converte `ClientException` para `ErrorsEntity`, preservando
 status real, ordem e code dos campos, pointer escapado e parameter original.
 Falhas sem status recebem fallback seguro; Error e FormatException encapsulados
 pelo SDK são propagados. A apresentação continua usando suas mensagens locais.
@@ -1326,9 +1325,9 @@ preservam as verificações de privacidade e restauram o observer global. O mock
 órfão de `IStorageClient` foi removido, sem restaurar seu contrato legado.
 Testes de comportamento das features foram preservados. Por solicitação explícita,
 testes exclusivos de HTTP/Dio, incluindo os cenários de transporte de Session e
-User, e seus mocks/fakes foram removidos. As garantias de privacidade, conversão
-de erros e invalidação de sessão desses testes precisam ser cobertas novamente na
-migração dos consumidores. Os testes arquiteturais não foram enfraquecidos.
+User, e seus mocks/fakes foram removidos. A cobertura atual verifica os contratos
+do SDK e as semânticas de sessão descritas aqui, não as antigas garantias de
+persistência/isolamento do client removido. Os testes arquiteturais não foram enfraquecidos.
 Os testes de Authentication/Session foram migrados para o SDK real com transporte
 mockado por `package:http/testing.dart`, dependência somente de desenvolvimento.
 Não há rede real, testes de UI ou restauração da abstração HTTP antiga. Foram
@@ -1651,12 +1650,17 @@ isso não significa que todo o aplicativo esteja migrado ou componha seus destin
 | Expense               | ExpenseBloc e ExpensesBloc por factory; CRUD, cadastro contínuo, filtros e paginação; sem Either/data source/commands.                  |
 | Dashboard             | Bloc agregado sobre contratos de aplicação e resultados diretos dos contextos consultados, sem Either.                                  |
 | Bootstrap e Root      | AppWidget é dono do SessionBloc; AppScreen apenas visual; handler CommandIt removido do bootstrap.                                      |
-| Dependências/core     | CommandIt, Either e `response<T>` removidos; testes de core alinhados aos DTOs e exceções HTTP atuais.                                  |
+| Dependências/core     | CommandIt, Either, Dio e client HTTP/storage próprios removidos; testes do core alinhados à factory PocketBase e ao observer atuais. |
 | Composição global     | Todos os destinos registrados; Authentication e Expense sem path, sem colisão de binds; logout resolve o contrato no injector raiz.     |
 | Navegação de despesas | Contexto local e resultados tipados na edição; listagem sem callbacks de rota; consumidores recarregam em qualquer retorno da listagem. |
 | Testes de UI          | Removidos, incluindo Maestro, scripts e servidores de fixtures; previews manuais preservados.                                           |
 
-Verificação atual após remover a suíte visual: `flutter pub get` concluído,
+Última verificação registrada da migração do client: `flutter analyze` sem
+problemas e `flutter test --reporter failures-only` com **1401 testes aprovados**.
+Não repetida nesta revisão exclusivamente documental; não comprova build nativo
+ou homologação remota. Resultados das etapas anteriores são históricos.
+
+Verificação histórica após remover a suíte visual: `flutter pub get` concluído,
 `flutter analyze` sem problemas e `flutter test --reporter expanded` com
 **733 aprovados, sem falhas**. O teste de conversão de erros de autenticação
 agora exige a ordem original da resposta. Os testes de debounce do Bloc de

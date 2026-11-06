@@ -1,6 +1,6 @@
 # AGENTS.md
 
-## Transição Atual: SDK PocketBase
+## Client Atual: SDK PocketBase
 
 A infraestrutura HTTP própria foi removida por solicitação explícita.
 Authentication, Session, User, Expense e Metrics já usam o SDK, com testes de
@@ -9,11 +9,11 @@ A análise e a suíte Flutter globais estão limpas após adaptar os testes do c
 à factory e ao observer atuais. Isso não comprova build nativo nem homologação remota e não autoriza
 restaurar o client removido ou apagar/enfraquecer testes de comportamento.
 Por solicitação explícita, testes exclusivos de HTTP/Dio e seus mocks/fakes também
-foram removidos. As garantias de sessão, erros e privacidade que cobriam precisam
-ser verificadas novamente na migração dos consumidores para o SDK.
+foram removidos. A cobertura atual usa o SDK real com transporte mockado; não
+restaure os testes da abstração removida nem suas garantias de persistência.
 
-Para migrações seguintes, o bootstrap aguarda `createDependencies` de
-`lib/factory.dart`, que cria o storage e aguarda `PocketBaseFactory.create`
+O bootstrap aguarda `createDependencies` de
+`lib/factory.dart`, que aguarda `PocketBaseFactory.create`; esta cria o storage
 antes de `runApp`. `createAppModule` e
 `createCoreModule` recebem somente o PocketBase pronto; repositories de
 infrastructure recebem diretamente o `PocketBase` compartilhado pela DI, sem
@@ -21,9 +21,9 @@ Future de inicialização. Falhas de leitura inicial propagam antes de montar o 
 sem ausência de sessão presumida, limpeza ou retry automático; SDK e
 `RecordModel` não atravessam os contratos
 de application nem chegam ao domínio ou à apresentação. Não crie wrapper de CRUD.
-As referências a `IHttpClient`, Requests, Responses, Dio e interceptors abaixo
-descrevem o contrato anterior e requisitos de comportamento a preservar, não
-infraestrutura disponível. A migração do transporte não está concluída.
+O transporte dos repositories existentes foi migrado para o SDK. `IHttpClient`,
+`IStorageClient`, Requests, Responses, Dio e interceptors próprios não fazem parte
+da infraestrutura disponível. Homologação remota é uma verificação separada.
 
 `PocketBaseFactory.create` configura o `AsyncAuthStore` oficial com callbacks do
 `FlutterSecureStorage` diretamente, sem `IStorageClient`, classe AuthStore própria
@@ -35,7 +35,7 @@ Por simplificação explicitamente aprovada, o SDK atualiza memória e publica
 mudanças de sessão antes de concluir a persistência. `save` e `clear` retornam
 void; não há Future `persistence`, rollback ou propagação das falhas de gravação
 ao Future de autenticação. Isso substitui as garantias anteriores de espera no
-login/logout nos consumidores a migrar. A leitura inicial ainda é aguardada e
+login/logout. A leitura inicial ainda é aguardada e
 suas falhas propagam. Não prometa confirmação durável do logout nem atomicidade.
 Authentication e Session usam somente o AuthStore compartilhado para credenciais
 e observação, sem ler/gravar `StorageKeyEnum.token` ou `userId`. Cadastro não cria
@@ -46,7 +46,7 @@ seus erros como falha esperada, sem logout ou telemetry. O PATCH não captura
 snapshots nem limpa a sessão em 401; apenas `signOut()` executa a limpeza explícita.
 O SDK decide sucesso pelos seus
 contratos; repositories não reimplementam validação de status 2xx específicos.
-`PocketBaseErrorMapper` preserva status, ordem, code, pointer e parameter nativos
+`PocketBaseMapper` preserva status, ordem, code, pointer e parameter nativos
 em `ErrorsEntity`, com fallback de transporte e propagação de Error/FormatException
 encapsulados pelo SDK. Tipos e mensagens remotas não chegam diretamente à UI.
 Session compartilha refresh pendente e observa `authStore.onChange`. Por
@@ -83,8 +83,9 @@ e o estado do produto estão em [README.md](README.md).
 
 O serviço PocketBase independente está isolado em `backend/`, com orientações
 próprias em [backend/AGENTS.md](backend/AGENTS.md). A presença do backend neste
-repositório não significa que o aplicativo já consuma sua API. Não migrar o cliente
-Flutter nem executar deploy como parte de manutenção localizada do backend.
+repositório não comprova homologação remota: o Flutter já consome a API nativa pelo
+SDK. Não alterar o cliente Flutter nem executar deploy como parte de manutenção
+localizada do backend.
 
 PocketBase é o backend adotado. Sign-in, cadastro, solicitação e confirmação de verificação
 usam os endpoints nativos `collections/users/auth-with-password`,
@@ -164,12 +165,12 @@ Sucesso leva ao sign-in com “Senha alterada. Entre novamente”. A composiçã
 possui `SessionRedirectDeferral`, não global, exposto por inherited widget do core:
 a tela adia redirecionamentos somente da própria rota enquanto a operação está
 pendente e libera ao falhar o PATCH, concluir a navegação ou ser descartada.
-Authentication e Session continuam sem importar uma à outra. O logger omite
-request/response/error de payloads com `oldPassword`, `password` ou
-`passwordConfirm`, além dos filtros existentes de reset/token.
-Descrições JSON:API e token opaco neste
-documento referem-se aos fluxos Flutter não migrados, não a requisitos para recriar a API antiga
-no PocketBase. Não trate troca de `BASE_URL` como integração. Diferenças e lacunas
+Authentication e Session continuam sem importar uma à outra. Não há logger HTTP;
+o observer de debug registra somente lifecycle e tipos seguros dos Blocs, sem
+payloads, estados completos, credenciais ou URLs com token.
+Descrições JSON:API e token opaco em documentos históricos não são requisitos
+para recriar a API antiga no PocketBase. Não trate troca de `BASE_URL` como
+homologação da integração. Diferenças e lacunas
 estão em [ARCHITECTURE.md](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração);
 alterações de contrato exigem tarefa explícita com consumidores e testes.
 
@@ -179,7 +180,7 @@ migrações. O padrão obrigatório é:
 ```text
 Screen/Widget -> Bloc -> contrato de repository em application
                            ^
-                repository em infrastructure -> clients do core -> SDKs
+                repository em infrastructure -> SDK PocketBase / clients do core
 ```
 
 O Bloc chama o contrato; o módulo injeta a implementação. Contratos retornam
@@ -188,8 +189,9 @@ dados por `Future<T>` e falhas esperadas por exceções de aplicação. Não use
 para código novo ou para um fluxo migrado.
 
 Há código legado incompatível com esse desenho. Sua existência não constitui
-uma exceção arquitetural aprovada. Não descreva a migração como concluída e não
-amplie uma tarefa localizada para migrar o restante do aplicativo sem solicitação.
+uma exceção arquitetural aprovada. A migração do transporte para o SDK não implica
+migração de todo ownership de Bloc ou homologação remota. Não amplie uma tarefa
+localizada para migrar outros fluxos sem solicitação.
 Specs OpenSpec arquivadas e registros de execução são históricos. Em conflitos,
 prevalecem estas regras e `ARCHITECTURE.md`; consulte `openspec/README.md`.
 Não restaure Supabase/RPC, commands ou ownership antigo por uma descrição histórica.
@@ -269,8 +271,9 @@ data sources, BaseBloc ou stores globais sem necessidade concreta aprovada.
 - `domain`: tipos e regras puros, sem Flutter, Bloc, HTTP, storage ou application.
 - `application`: contratos de operações e exceções esperadas, sem adapters ou UI.
   Contratos de repository ficam aqui, não em `domain/repositories/`.
-- `infrastructure`: implementa os contratos e coordena HTTP, DTOs e persistência
-  usando interfaces de clients do core. Não importe Dio no repository da feature.
+- `infrastructure`: implementa os contratos, usa o SDK PocketBase compartilhado
+  diretamente e converte records/payloads em tipos próprios. Capacidades nativas
+  compartilhadas, como home_widget, usam contratos de clients do core.
 - `presentation`: Bloc, estados, eventos, telas, validação e feedback. Conhece
   contratos e exceções de aplicação, nunca repositories concretos ou clients.
 - Módulos fazem a composição e podem importar implementações concretas.
@@ -298,7 +301,7 @@ Dashboard, previews e testes próprios. Não restaurá-la a partir de specs hist
   e casts; não esconda `TypeError` ou `FormatException` como falhas de negócio.
 - Repository usa o SDK PocketBase diretamente, sem data sources intermediários.
   Trate `ClientException` e preserve os erros nativos convertidos para `ErrorsEntity`
-  por `PocketBaseErrorMapper`; use fallback nas falhas de transporte.
+  por `PocketBaseMapper`; use fallback nas falhas de transporte.
 - Lance exceção específica de aplicação, como `AuthenticationException`.
   Não introduza `catch` genérico no repository para mascarar erros inesperados.
 - Preserve ordem e metadados dos erros, incluindo `pointer` e `parameter`.
@@ -536,13 +539,14 @@ unitários de Bloc, validação, formatação, contratos, infraestrutura e arqui
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Domain                       | Invariantes, imutabilidade e semântica dos valores, sem SDKs.                                                                  |
 | Application                  | Contratos puros e preservação de erros nas exceções.                                                                           |
-| Repository em infrastructure | Payload, DTO, clients mockados, erros HTTP, parsing inválido, ordem/espera de persistência e propagação de falhas inesperadas. |
+| Repository em infrastructure | SDK real com transporte mockado; payload, conversão, erros nativos, parsing inválido, efeitos no AuthStore e falhas inesperadas. |
 | Bloc                         | Estado inicial, sequência de estados, delegação, falha esperada/inesperada, concorrência, retry e fechamento pendente.         |
 | Modular/rotas                | Catálogo de rotas e resolução de dependências/factories sem montar UI.                                                         |
 | Architecture                 | Imports, camadas, contextos e isolamento de contratos; DI/rotas exigem testes próprios.                                        |
 
 - Use `mocktail`, `bloc_test` e `flutter_test`. Em teste de Bloc, mocke o contrato
-  de repository, não o client HTTP. Em teste do repository, mocke os clients.
+  de repository, não o client HTTP. Em teste do repository PocketBase, use o SDK
+  real com transporte mockado; capacidades nativas auxiliares usam clients mockados.
 - Testes da factory usam o canal simulado do FlutterSecureStorage, sem injetar
   storage na API de produção. HTTP do SDK pode usar `http.runWithClient` com
   `MockClient`, sem servidor local. Testes do observer exercitam eventos, estados,

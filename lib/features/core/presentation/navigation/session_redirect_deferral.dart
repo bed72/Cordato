@@ -7,7 +7,9 @@ final class SessionRedirectDeferral({
 
   void Function() hold(String path) {
     final key = Object();
+
     _holds[key] = path;
+
     return () {
       if (_holds.remove(key) != null) onReleased();
     };

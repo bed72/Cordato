@@ -2,7 +2,7 @@
 
 Serviço independente **PocketBase 0.41.1** para contas, despesas pessoais e métricas mensais, preparado para Docker Compose no Dokploy. Sem Node, hooks, worker, IA ou Batch API.
 
-O backend vive em `backend/` no repositório do aplicativo Flutter, mas tem build, serviço e volume próprios. Execute os comandos deste documento **a partir de `backend/`**. A transferência dos arquivos não integra nem migra o cliente Flutter para a API PocketBase.
+O backend vive em `backend/` no repositório do aplicativo Flutter, mas tem build, serviço e volume próprios. Execute os comandos deste documento **a partir de `backend/`**. O Flutter já usa o SDK oficial PocketBase; a presença dos arquivos neste repositório não comprova provisionamento ou homologação remota.
 
 ## Escopo E Fontes De Verdade
 
@@ -18,8 +18,11 @@ específicas de manutenção ficam em [AGENTS.md](AGENTS.md).
 - **Ausente nesta configuração:** agregações por intervalos arbitrários, insights, endpoints
   customizados de sugestões, orçamentos e família. O Flutter obtém sugestões por
   GET filtrado do histórico pessoal, sem recurso adicional no servidor.
-- **Cliente Flutter:** Authentication, Session, User, Expense e Metrics usam APIs nativas.
-  Expense envia `owner` na criação, categoria `other` e a data civil codificada
+- **Cliente Flutter:** Authentication, Session, User, Expense e Metrics usam o SDK
+  PocketBase compartilhado pela DI, sem Dio ou client HTTP próprio. A sessão usa
+  `AsyncAuthStore` com Secure Storage; logout é local, sem revogação remota ou
+  confirmação de exclusão durável. Expense envia `owner` na criação, a categoria
+  selecionada (`other` por padrão) e a data civil codificada
   como meia-noite UTC, sem conversão de fuso. Paginação usa `page`/`perPage` e
   filtros nativos. Não há migração de registros antigos ou fallback para campos
   vazios; os campos opcionais de despesas permanecem inalterados. Metrics consulta
@@ -31,9 +34,10 @@ específicas de manutenção ficam em [AGENTS.md](AGENTS.md).
   das permissões do serviço.
 - **Fora desta etapa:** migração de dados, provisionamento remoto e deploy.
 
-Os exemplos Dart abaixo ilustram chamadas pelo SDK PocketBase, não integrado ao
-aplicativo, que utiliza `IHttpClient` diretamente. As evidências locais ao
-final são registros anteriores, não verificações executadas nesta revisão.
+Os exemplos Dart abaixo ilustram a API nativa do SDK PocketBase. No aplicativo,
+essas chamadas pertencem aos repositories de infrastructure; SDK e records não
+atravessam os contratos de application nem chegam aos Blocs. As evidências locais
+ao final são registros anteriores, não verificações executadas nesta revisão.
 
 ## Arquivos
 

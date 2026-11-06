@@ -27,8 +27,8 @@ Future<void> main() async {
           return AppWidget(
             navigatorKey: navigatorKey,
             sessionBloc: inject<SessionBloc>,
-            homeWidgetLaunchBloc: inject<HomeWidgetLaunchBloc>,
             homeWidgetSyncBloc: inject<HomeWidgetSyncBloc>,
+            homeWidgetLaunchBloc: inject<HomeWidgetLaunchBloc>,
           );
         },
       ),
