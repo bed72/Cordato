@@ -24,12 +24,14 @@ final class WidgetPresentationTests: XCTestCase {
 
         XCTAssertFalse(dimensions.horizontal)
         XCTAssertEqual(dimensions.summaryWidth, 126)
+        XCTAssertEqual(dimensions.actionWidth, 136)
     }
 
     func testMediumComposition() {
         let dimensions = WidgetDimensions(width: 300, size: .medium)
 
         XCTAssertTrue(dimensions.horizontal)
+        XCTAssertEqual(dimensions.actionWidth, 136)
         XCTAssertEqual(dimensions.summaryWidth, 152)
     }
 
@@ -37,6 +39,7 @@ final class WidgetPresentationTests: XCTestCase {
         let dimensions = WidgetDimensions(width: 240, size: .medium)
 
         XCTAssertTrue(dimensions.horizontal)
+        XCTAssertEqual(dimensions.actionWidth, 136)
         XCTAssertEqual(dimensions.summaryWidth, 92)
     }
 
@@ -60,16 +63,16 @@ final class WidgetPresentationTests: XCTestCase {
     func testSmallAmountUsesSmallerFont() {
         let dimensions = WidgetDimensions(width: 126, size: .small)
 
-        XCTAssertEqual(dimensions.preferredAmountFont, 17)
-        XCTAssertEqual(dimensions.maximumAmountFont, 19)
+        XCTAssertEqual(dimensions.preferredAmountFont, 16)
+        XCTAssertEqual(dimensions.maximumAmountFont, 18)
         XCTAssertEqual(dimensions.summaryActionSpacing, 10)
     }
 
     func testMediumAmountKeepsLargerFont() {
         let dimensions = WidgetDimensions(width: 300, size: .medium)
 
-        XCTAssertEqual(dimensions.preferredAmountFont, 20)
-        XCTAssertEqual(dimensions.maximumAmountFont, 24)
+        XCTAssertEqual(dimensions.preferredAmountFont, 18)
+        XCTAssertEqual(dimensions.maximumAmountFont, 22)
         XCTAssertEqual(dimensions.summaryActionSpacing, 12)
     }
 
@@ -129,6 +132,24 @@ final class WidgetPresentationTests: XCTestCase {
 
         XCTAssertEqual(layout.fontSize, 26 * 150 / 180, accuracy: 0.001)
         XCTAssertLessThanOrEqual(layout.fontSize * 180 / 26, 150.001)
+    }
+
+    func testNarrowMediumKeepsExtremeAmountInsideSpaceBesideFullAction() {
+        let dimensions = WidgetDimensions(width: 220, size: .medium)
+        let money = WidgetMoney(cents: Int64.max)
+        let availableWidth = dimensions.summaryWidth - 2
+        let layout = WidgetAmountLayout(
+            money: money,
+            availableWidth: availableWidth,
+            inlineWidth: 250,
+            numberWidth: 220,
+            baseFontSize: dimensions.preferredAmountFont
+        )
+
+        XCTAssertTrue(layout.separateCurrency)
+        XCTAssertEqual(layout.text, "92.233.720.368.547.758,07")
+        XCTAssertEqual(layout.fontSize, 18 * 70 / 220, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(layout.fontSize * 220 / 18, availableWidth + 0.001)
     }
 }
 

@@ -41,7 +41,7 @@ mixin SettingsScreenStateMixin on State<SettingsScreen> {
       context: context,
       confirmLabel: 'Sair',
       title: 'Realmente deseja sair?',
-      subtitle: 'Ao sair da sua conta, você precisará fazer login novamente para acessar o Trocado.',
+      subtitle: 'Ao sair da sua conta, você precisará fazer login novamente para acessar o Cordato.',
       onConfirm: () {
         if (!mounted ||
             !identical(bloc, owner) ||

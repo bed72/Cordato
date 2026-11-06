@@ -34,26 +34,29 @@ adaptada ao espaço nativo; toda a área do widget continua clicável.
 O mês começa com maiúscula, o valor tem peso bold e o conteúdo fica agrupado no
 centro vertical, sem separar o resumo da ação nas extremidades. As cores
 acompanham o tema do sistema. iOS oferece famílias pequena e média, com composição
-vertical e horizontal, respectivamente. Android permite
-redimensionamento nos dois eixos, com limites solicitados ao launcher. A partir
+vertical e horizontal, respectivamente.
+No iOS, a ação preserva **+ Nova despesa**, com fonte de 13 pontos, altura de 44
+e raio 14; no médio, sua largura é de 136 pontos.
+Android permite redimensionamento nos dois eixos, com limites solicitados ao launcher. A partir
 de 300dp de largura, quando mais largo que alto, o resumo e a ação ficam lado a
 lado; formatos quadrados ou altos preservam a composição vertical agrupada.
 Android solicita altura mínima de redimensionamento de 56dp para permitir uma
 linha da grade. Abaixo de 150dp,
 usa espaçamentos e botão menores e exibe apenas o mês no título; o launcher
 continua decidindo os tamanhos finais segundo sua grade.
-Na composição de uma linha (menos de 96dp), resumo e ação ficam lado a lado e a
-moeda permanece junto ao número. Se a largura também for menor que 300dp, a ação
-mostra somente **+**, mantendo “Adicionar despesa” na descrição acessível.
+Na composição de uma linha (menos de 96dp), a moeda permanece junto ao número.
+Se a largura também for menor que 300dp, o botão é ocultado e o resumo ocupa toda
+a largura interna; nos formatos baixos largos, resumo e ação ficam lado a lado.
+Tocar em qualquer área continua abrindo Nova despesa, inclusive sem botão visível.
 O padding horizontal permanece em 16dp, inclusive no formato baixo; somente o
 vertical diminui para caber em uma linha, sem encostar o resumo ou a ação nas
-bordas. Na variante estreita com botão **+**, a fonte parte de 15; o formato baixo largo
+bordas. Na variante estreita sem botão, a fonte parte de 15; o formato baixo largo
 preserva 16. Nas composições verticais, a fonte parte de 19 e tem limite de
 acessibilidade de 21, sem mudar o formato horizontal regular.
 Adicione **Adicionar despesa** pela galeria de widgets
 do celular após instalar uma nova compilação; hot reload não instala o componente.
-No iOS pequeno o valor parte de 17, com limite de acessibilidade de 19; no médio
-parte de 20, limitado a 24. A composição segue explicitamente `widgetFamily`,
+No iOS pequeno o valor parte de 16, com limite de acessibilidade de 18; no médio
+parte de 18, limitado a 22. A composição segue explicitamente `widgetFamily`,
 não uma inferência pela largura, e sua identidade muda com a família para refazer
 o layout ao alternar tamanhos. O espaço entre resumo e botão no pequeno é de 10
 pontos, sem mudar a altura da ação. No Android, o formato horizontal regular
@@ -193,14 +196,14 @@ inclui Authentication, Session, User (consulta de perfil, nome, avatar e exclus�
 e Expense (CRUD, listagem e sugestões por histórico). Metrics e a distribuição
 mensal da Dashboard usam a view nativa `metrics`.
 
-| Parte | Estado atual |
-| --- | --- |
-| Backend em `backend/` | Contas, despesas próprias e view mensal de métricas; contrato nativo PocketBase. |
-| Cliente Flutter em `lib/` | Authentication, Session, User, Expense e Metrics usam endpoints nativos PocketBase. |
-| Sugestões | GET filtrado do histórico pessoal de despesas, sem endpoint customizado. |
-| Metrics e Dashboard | Total e distribuição mensal por categoria calculados em SQL na view `metrics`; UI e navegação preservadas. |
-| Budget e Family | Planejados; não implementados no backend atual nem nas features Flutter. |
-| Integração e operação | Aplicação da migration da view, homologação integrada e validação no Dokploy ainda pendentes. |
+| Parte                     | Estado atual                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Backend em `backend/`     | Contas, despesas próprias e view mensal de métricas; contrato nativo PocketBase.                           |
+| Cliente Flutter em `lib/` | Authentication, Session, User, Expense e Metrics usam endpoints nativos PocketBase.                        |
+| Sugestões                 | GET filtrado do histórico pessoal de despesas, sem endpoint customizado.                                   |
+| Metrics e Dashboard       | Total e distribuição mensal por categoria calculados em SQL na view `metrics`; UI e navegação preservadas. |
+| Budget e Family           | Planejados; não implementados no backend atual nem nas features Flutter.                                   |
+| Integração e operação     | Aplicação da migration da view, homologação integrada e validação no Dokploy ainda pendentes.              |
 
 Trocar apenas `BASE_URL` não integra o aplicativo ao PocketBase. Autenticação,
 erros, paginação, datas e recursos disponíveis possuem contratos diferentes.
@@ -213,7 +216,7 @@ Veja os [limites da integração](ARCHITECTURE.md#backend-pocketbase-e-limite-de
 
 User consulta, altera e exclui a conta por `collections/users/records/{id}`.
 Nome e avatar usam JSON plano; avatar permanece uma seed textual, sem upload.
-Nome vazio é exibido como `Trocado`, sem gravar esse fallback. A edição exige
+Nome vazio é exibido como `Cordato`, sem gravar esse fallback. A edição exige
 2–32 caracteres após trim e reconhece erros nativos de nome no campo.
 A exclusão aguarda HTTP 204 e a limpeza local do storage; Session redireciona.
 A cascata das despesas está configurada no backend e requer homologação real.
@@ -481,7 +484,12 @@ telas e Session permanece sob ownership global de `AppWidget`.
 
 Session também usa contrato em application, repository direto em infrastructure
 e Bloc. `AppWidget` é o único dono da observação contínua e do fechamento;
-`AppScreen` apenas mostra o splash. Ao abrir com token persistido, faz POST
+`AppScreen` apenas mostra o splash, usando as mesmas imagens e margens da abertura
+nativa: 288dp no Android e 168 pontos no iOS, centralizadas na área completa.
+Login, cadastro e redefinição de senha possuem destino explícito para “Próximo”
+no teclado; a troca de senha já usa esse comportamento. A validação visual é
+manual, sem adicionar flows ou testes de UI ao projeto.
+Ao abrir com token persistido, faz POST
 `collections/users/auth-refresh` e aguarda ID/token renovados no storage. Sem
 token, não chama a API. 401 invalida somente o token enviado; 403 e falhas de rede
 preservam o storage e levam ao fallback seguro, sem fingir sessão validada.
@@ -508,7 +516,7 @@ Na Dashboard, nome e avatar usam o mesmo contrato de User/PocketBase e são
 consultados novamente ao voltar de dados pessoais ou configurações. Falhas nessa
 consulta levam à tela de erro global, inclusive durante atualização; não são
 tratadas como ausência de usuário. Retry é manual e recarrega a Dashboard completa.
-Nome vazio continua exibindo `Trocado`.
+Nome vazio continua exibindo `Cordato`.
 
 O total de gastos da Dashboard conta de zero até o valor confirmado em 700 ms
 a cada carga ou atualização de métricas, inclusive troca de mês e retorno de
@@ -834,13 +842,13 @@ o exemplo de `provide`, ownership, estado de migração e limites de DI.
 
 ## Testes
 
-| Camada | Padrão |
-| --- | --- |
-| Domain/application | Regras puras e exceções, sem SDKs. |
-| Infrastructure/repository | Mocks dos clients; payload, parsing, erros e persistência. |
-| Bloc | Repository mockado; estados, concorrência, retry e fechamento. |
-| Modular/rotas | Catálogo e resolução de dependências/factories sem montar UI. |
-| Architecture | Imports, fronteiras de contextos e direção das dependências. |
+| Camada                    | Padrão                                                         |
+| ------------------------- | -------------------------------------------------------------- |
+| Domain/application        | Regras puras e exceções, sem SDKs.                             |
+| Infrastructure/repository | Mocks dos clients; payload, parsing, erros e persistência.     |
+| Bloc                      | Repository mockado; estados, concorrência, retry e fechamento. |
+| Modular/rotas             | Catálogo e resolução de dependências/factories sem montar UI.  |
+| Architecture              | Imports, fronteiras de contextos e direção das dependências.   |
 
 Testes espelham os caminhos de `lib/`; doubles públicos ficam em arquivos
 próprios de `test/support/`, sem classes auxiliares nos arquivos `*_test.dart`.

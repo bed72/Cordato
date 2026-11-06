@@ -6,7 +6,7 @@
   AppBar durante erro e recuperação. A tentativa de adicionar o cabeçalho foi
   desfeita; o arquivo de DashboardScreen conserva sua composição anterior.
 - Saudação, avatar, notificações e Menu aparecem somente no conteúdo normal.
-  O fallback “Trocado” pertence ao cabeçalho normal quando apenas User falha.
+  O fallback “Cordato” pertence ao cabeçalho normal quando apenas User falha.
 - A mesma instância de Dashboard mantém mês, latch, recuperação, commands e
   pendências. O corpo de erro continua sem seletor mensal, seções ou FAB.
 - O preview existente de erro financeiro continua nos temas claro e escuro.
@@ -50,7 +50,7 @@ previews de fallback atendem a 5.2, mas não são apresentados como execução M
 As evidências anteriores registram falhas isoladas das três seções, múltiplas
 falhas e exceção, retry bloqueado e recuperação, mês histórico, ajuste pelo limite
 e recuperação financeira com falhas auxiliares. Permanecem sem nova comprovação
-runtime o fallback “Trocado” e as falhas auxiliares isoladas. A ausência de AppBar
+runtime o fallback “Cordato” e as falhas auxiliares isoladas. A ausência de AppBar
 no erro foi conferida na composição; navegação pelo cabeçalho durante erro
 deixou de ser requisito por decisão explícita do usuário.
 

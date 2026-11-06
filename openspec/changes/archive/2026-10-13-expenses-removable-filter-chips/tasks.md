@@ -1,6 +1,6 @@
 ## 1. Estado ativo dos filtros
 
-- [x] 1.1 Conferir `ExpensesScreen`, seu mixin, widgets usados, previews e testes correspondentes; verificar o export de `InputChip` em `material_ui` e a referência visual de Trocado.
+- [x] 1.1 Conferir `ExpensesScreen`, seu mixin, widgets usados, previews e testes correspondentes; verificar o export de `InputChip` em `material_ui` e a referência visual de Cordato.
 - [x] 1.2 Inicializar `activeCategory` e `activePeriod` pelos parâmetros da tela antes da primeira consulta, preservando os contratos públicos e a rota existente.
 - [x] 1.3 Atualizar rótulos, vazio, consultas e pertencimento após edição para usar exclusivamente filtros ativos; manter rótulo pt-BR conhecido e fallback textual para categoria futura.
 - [x] 1.4 Preservar filtros locais em rebuilds e troca isolada do command; reinicializar a lente somente após mudança efetiva nas entradas, respeitando o descarte da instância anterior.

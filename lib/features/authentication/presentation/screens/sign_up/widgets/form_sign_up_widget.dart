@@ -33,8 +33,10 @@ class FormSignUpWidgetState extends State<FormSignUpWidget>
           failure: emailFailure,
           hint: 'Digite seu e-mail',
           onChanged: onEmailChanged,
+          onEditingComplete: focusPassword,
         ),
         PasswordFieldWidget(
+          focusNode: passwordFocus,
           enabled: widget.enabled,
           label: 'Senha',
           controller: passwordController,

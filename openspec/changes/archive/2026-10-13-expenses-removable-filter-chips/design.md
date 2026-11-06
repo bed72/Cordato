@@ -6,7 +6,7 @@ A Dashboard já abre `/expenses` com seu mês selecionado e, ao tocar um card, a
 
 Atualmente o cabeçalho varia a descrição para informar mês/categoria. O usuário confirmou descrição fixa e remoção independente: remover mês consulta todo o histórico; remover categoria mantém o mês; remover ambos consulta o histórico geral.
 
-Referência visual: `/Users/gabrielramos/Code/Me/Mobile/Flutter/Trocado/lib/src/presentation/ui/expenses/widgets/filter/expenses_filter_choice_chip_widget.dart`. O arquivo usa `ChoiceChip`, cores semânticas e fundo suave. Não será importado nem copiado como dependência.
+Referência visual: `/Users/gabrielramos/Code/Me/Mobile/Flutter/Cordato/lib/src/presentation/ui/expenses/widgets/filter/expenses_filter_choice_chip_widget.dart`. O arquivo usa `ChoiceChip`, cores semânticas e fundo suave. Não será importado nem copiado como dependência.
 
 ## Goals / Non-Goals
 
@@ -64,12 +64,12 @@ Não reutilizar a preservação de itens do refresh para essa transição: resul
 
 Tabela de consulta após remover um filtro:
 
-| Estado anterior | Remoção | Próxima primeira página |
-| --- | --- | --- |
-| Categoria + mês | Categoria | `from`/`to` ativos, `category: null`, `pageLink: null` |
-| Categoria + mês | Mês | `category` ativa, `from: null`, `to: null`, `pageLink: null` |
-| Apenas categoria | Categoria | Todos os filtros nulos e `pageLink: null` |
-| Apenas mês | Mês | Todos os filtros nulos e `pageLink: null` |
+| Estado anterior  | Remoção   | Próxima primeira página                                      |
+| ---------------- | --------- | ------------------------------------------------------------ |
+| Categoria + mês  | Categoria | `from`/`to` ativos, `category: null`, `pageLink: null`       |
+| Categoria + mês  | Mês       | `category` ativa, `from: null`, `to: null`, `pageLink: null` |
+| Apenas categoria | Categoria | Todos os filtros nulos e `pageLink: null`                    |
+| Apenas mês       | Mês       | Todos os filtros nulos e `pageLink: null`                    |
 
 Não enviar string vazia, data default, `filter[year]`, `filter[month]` ou `filter[day]` para representar remoção.
 

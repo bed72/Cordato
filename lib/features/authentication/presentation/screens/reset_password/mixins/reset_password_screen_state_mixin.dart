@@ -17,6 +17,7 @@ mixin ResetPasswordScreenStateMixin on State<ResetPasswordScreen> {
 
   final passwordController = TextEditingController();
   final confirmationController = TextEditingController();
+  final confirmationFocus = FocusNode();
 
   @override
   void initState() {
@@ -38,9 +39,16 @@ mixin ResetPasswordScreenStateMixin on State<ResetPasswordScreen> {
 
   @override
   void dispose() {
+    confirmationFocus.dispose();
     passwordController.dispose();
     confirmationController.dispose();
     super.dispose();
+  }
+
+  void focusConfirmation() {
+    if (widget.bloc.state.canSubmit) {
+      confirmationFocus.requestFocus();
+    }
   }
 
   void open() => widget.bloc.add(

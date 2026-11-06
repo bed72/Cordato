@@ -11,6 +11,7 @@ final class const EmailFieldWidget({
   final ValueChanged<String>? onChanged,
   final String hint = 'email@exemplo.com',
   final TextEditingController? controller,
+  final VoidCallback? onEditingComplete,
   final ValueChanged<String>? onSubmitted,
   final TextInputAction inputAction = .next,
 }) extends StatelessWidget {
@@ -24,6 +25,7 @@ final class const EmailFieldWidget({
       onChanged: onChanged,
       controller: controller,
       onSubmitted: onSubmitted,
+      onEditingComplete: onEditingComplete,
       inputAction: inputAction,
       initialValue: initialValue,
       keyboardType: .emailAddress,

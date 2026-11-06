@@ -1,6 +1,6 @@
 ## Context
 
-`SettingsScreen` já está registrada em `settingsModule` e aberta a partir do dashboard, mas hoje renderiza somente um `Scaffold` vazio. A referência do Trocado organiza a tela em app bar, cabeçalho, três seções e botão de logout, porém também depende de Riverpod, estado de casal, confirmação e autenticação que não pertencem ao escopo atual do Cordato.
+`SettingsScreen` já está registrada em `settingsModule` e aberta a partir do dashboard, mas hoje renderiza somente um `Scaffold` vazio. A referência do Cordato organiza a tela em app bar, cabeçalho, três seções e botão de logout, porém também depende de Riverpod, estado de casal, confirmação e autenticação que não pertencem ao escopo atual do Cordato.
 
 A implementação deve permanecer integralmente em `settings/presentation`, usar `material_ui` e reutilizar os recursos visuais do `core`. Como a rota existente constrói `const SettingsScreen()` sem argumentos, novos callbacks precisam ser anuláveis para não exigir alteração no módulo.
 

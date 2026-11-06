@@ -44,18 +44,18 @@ fica restrito a essa pasta; runtime e volume são independentes do aplicativo.
 Essa inclusão não migra os clients, contratos ou fluxos Flutter para PocketBase,
 nem declara equivalência com os recursos financeiros do backend anterior.
 
-| Contexto/feature | Escopo |
-| --- | --- |
-| Authentication | E-mail/senha, cadastro, confirmação por link, reenvio e logout. |
-| Session | Validação inicial via auth-refresh e observação da presença do token. |
-| User | Perfil, nome, avatar e exclusão da conta. |
-| Expense | Registro, consulta, edição e exclusão de gastos individuais. |
-| Metrics | Agregações somente leitura, como totais e distribuição por categoria. |
-| Budget | Planejado: tetos por intervalo inclusivo de datas. |
-| Family | Planejado: membros e leitura combinada autorizada. |
-| Dashboard | Composição de apresentação, não contexto de negócio. |
-| Root | Entrada e composição visual global, sem domínio próprio. |
-| Information | Termos, privacidade e ajuda públicos, exclusivamente de apresentação. |
+| Contexto/feature | Escopo                                                                |
+| ---------------- | --------------------------------------------------------------------- |
+| Authentication   | E-mail/senha, cadastro, confirmação por link, reenvio e logout.       |
+| Session          | Validação inicial via auth-refresh e observação da presença do token. |
+| User             | Perfil, nome, avatar e exclusão da conta.                             |
+| Expense          | Registro, consulta, edição e exclusão de gastos individuais.          |
+| Metrics          | Agregações somente leitura, como totais e distribuição por categoria. |
+| Budget           | Planejado: tetos por intervalo inclusivo de datas.                    |
+| Family           | Planejado: membros e leitura combinada autorizada.                    |
+| Dashboard        | Composição de apresentação, não contexto de negócio.                  |
+| Root             | Entrada e composição visual global, sem domínio próprio.              |
+| Information      | Termos, privacidade e ajuda públicos, exclusivamente de apresentação. |
 
 `identity` não será recriado para espelhar o backend antigo; `chat` está fora
 do escopo atual. Features visuais não precisam de camadas vazias.
@@ -116,15 +116,19 @@ lado a lado em formatos largos e composição vertical nos quadrados/altos.
 Android solicita redimensionamento até 56dp de altura e possui composição
 compacta baixa, com espaçamentos reduzidos e moeda mantida junto ao número.
 Com menos de 96dp de altura, a composição é horizontal; se também houver menos
-de 300dp de largura, a ação usa somente **+**, preservando o rótulo acessível.
+de 300dp de largura, a ação é ocultada e o resumo recebe toda a largura interna.
+O toque no widget inteiro e sua descrição acessível continuam abrindo Nova despesa.
 O padding horizontal fica em 16dp mesmo no formato de uma linha, com fonte
-monetária preferencial/máxima de 15 na variante estreita com **+** e 16 na larga;
+monetária preferencial/máxima de 15 na variante estreita sem botão e 16 na larga;
 o padding vertical é ajustado separadamente. Composições verticais usam fonte
 preferencial 19, limitada a 21; a horizontal regular mantém 22, limitada a 26.
 WidgetKit seleciona a composição por `widgetFamily` e renova a identidade visual
 ao trocar a família; a geometria serve somente à largura útil do texto. O valor
-parte de 17 no pequeno e 20 no médio, limitado a 19/24 antes do ajuste de largura.
+parte de 16 no pequeno e 18 no médio, limitado a 18/22 antes do ajuste de largura.
 O intervalo entre resumo e ação no pequeno é de 10 pontos.
+No WidgetKit, a ação preserva **+ Nova despesa**, com fonte de 13 pontos,
+altura de 44, raio 14 e rótulo acessível “Nova despesa”. No médio, a largura
+é de 136 pontos; o resumo considera essa reserva antes de ajustar o dinheiro.
 `WidgetRenderedActionView` adapta o botão pelo `widgetRenderingMode`: full color
 usa as cores do DS, accented/vibrant usam texto primário do sistema sobre fundo
 a 16% de opacidade para impedir branco opaco sobre branco opaco em Liquid Glass.
@@ -375,15 +379,15 @@ a listagem nativa filtrada do histórico pessoal.
 
 ### Contrato Atual Do Cliente Versus Backend Adotado
 
-| Aspecto | Flutter atual | PocketBase atual |
-| --- | --- | --- |
-| Transporte | Authentication, Session, User, Expense e Metrics usam endpoints nativos PocketBase. | API REST nativa de coleções, sem envelope JSON:API. |
-| Autenticação | Sign-in persiste JWT e `record.id` nas chaves existentes; sign-out limpa storage local sem HTTP. | Autenticação nativa da coleção `users`; não há endpoint de logout ou revogação individual do JWT ao sair. |
-| Confirmação | Após cadastro, confirmação solicita automaticamente `request-verification`; callback recebe `token` e usa `confirm-verification`. Cooldown de 60 segundos no Bloc somente após sucesso. App Links/Universal Links declarados; associação pública e homologação pendentes. | Verificação nativa; migration incremental direciona verificação de `users` ao app. Templates administrativos permanecem no PocketBase. A criação do record não envia confirmação por si só. |
-| Erros e paginação | HTTP aceita erros JSON:API e PocketBase; Expense usa paginação nativa e erros 400 por campo; Metrics lê a lista nativa da view. | Formatos nativos PocketBase. |
-| Datas de despesas | Data civil escrita como meia-noite UTC e lida pelos componentes do dia, sem conversão de fuso. | `occurred_on` opcional como Date UTC, sem default. |
-| Categoria | Novas despesas recebem `other`; edição preserva a categoria retornada. Sem classificação automática. | Select opcional; vazio não significa `other`. |
-| Recursos derivados | Sugestões consultam o histórico por GET filtrado; Metrics lê totais e percentuais mensais já calculados. | View `metrics` agrupa despesas por proprietário/mês; sem endpoint customizado. |
+| Aspecto            | Flutter atual                                                                                                                                                                                                                                                             | PocketBase atual                                                                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Transporte         | Authentication, Session, User, Expense e Metrics usam endpoints nativos PocketBase.                                                                                                                                                                                       | API REST nativa de coleções, sem envelope JSON:API.                                                                                                                                         |
+| Autenticação       | Sign-in persiste JWT e `record.id` nas chaves existentes; sign-out limpa storage local sem HTTP.                                                                                                                                                                          | Autenticação nativa da coleção `users`; não há endpoint de logout ou revogação individual do JWT ao sair.                                                                                   |
+| Confirmação        | Após cadastro, confirmação solicita automaticamente `request-verification`; callback recebe `token` e usa `confirm-verification`. Cooldown de 60 segundos no Bloc somente após sucesso. App Links/Universal Links declarados; associação pública e homologação pendentes. | Verificação nativa; migration incremental direciona verificação de `users` ao app. Templates administrativos permanecem no PocketBase. A criação do record não envia confirmação por si só. |
+| Erros e paginação  | HTTP aceita erros JSON:API e PocketBase; Expense usa paginação nativa e erros 400 por campo; Metrics lê a lista nativa da view.                                                                                                                                           | Formatos nativos PocketBase.                                                                                                                                                                |
+| Datas de despesas  | Data civil escrita como meia-noite UTC e lida pelos componentes do dia, sem conversão de fuso.                                                                                                                                                                            | `occurred_on` opcional como Date UTC, sem default.                                                                                                                                          |
+| Categoria          | Novas despesas recebem `other`; edição preserva a categoria retornada. Sem classificação automática.                                                                                                                                                                      | Select opcional; vazio não significa `other`.                                                                                                                                               |
+| Recursos derivados | Sugestões consultam o histórico por GET filtrado; Metrics lê totais e percentuais mensais já calculados.                                                                                                                                                                  | View `metrics` agrupa despesas por proprietário/mês; sem endpoint customizado.                                                                                                              |
 
 Centavos inteiros continuam obrigatórios. Expense utiliza a representação UTC
 como codificação da data civil: não chama `toUtc()` sobre a seleção local nem
@@ -427,12 +431,12 @@ Bloc. DTO, token e ID não são devolvidos à apresentação.
 
 `SignInState` é sealed, com quatro variantes imutáveis:
 
-| Estado | Interface e ações |
-| --- | --- |
-| `SignInInitial` | Campos e envio disponíveis, sem request automática. |
-| `SignInSubmitting` | Campos/envio desabilitados e botão em loading. |
-| `SignInSuccess` | Tentativa concluída; novos envios bloqueados. |
-| `SignInFailure(errors)` | Feedback e retry manual disponíveis. |
+| Estado                  | Interface e ações                                   |
+| ----------------------- | --------------------------------------------------- |
+| `SignInInitial`         | Campos e envio disponíveis, sem request automática. |
+| `SignInSubmitting`      | Campos/envio desabilitados e botão em loading.      |
+| `SignInSuccess`         | Tentativa concluída; novos envios bloqueados.       |
+| `SignInFailure(errors)` | Feedback e retry manual disponíveis.                |
 
 `canSubmit` e `isSubmitting` são derivados do estado. Não há booleans locais
 duplicando a execução nem credenciais armazenadas nas variantes.
@@ -678,8 +682,7 @@ Blocs e seu lifecycle anteriores, sem importar apresentação de Authentication.
 
 `IAuthenticationRepository.changePassword(oldPassword:, password:,
 passwordConfirm:) -> Future<void>` lê o ID atual no storage e usa PATCH nativo de
-`collections/users/records/{id}`, com os três campos em JSON plano e sucesso HTTP
-200. Não grava credenciais, não reautentica e não limpa storage nesse método.
+`collections/users/records/{id}`, com os três campos em JSON plano e sucesso HTTP 200. Não grava credenciais, não reautentica e não limpa storage nesse método.
 Erros remotos preservam `ErrorsEntity`; falhas inesperadas/storage propagam.
 
 O Bloc descarta submissões concorrentes com `droppable` compartilhado entre
@@ -780,6 +783,15 @@ Para esta observação contínua, o único proprietário é `AppWidget`, que rec
 `bloc: inject<SessionBloc>`, inicia em `initState`, fecha no descarte e substitui
 somente quando a factory muda. Não há singleton de Bloc nem uma instância por
 tela. `AppScreen` é apenas o splash visual e não possui operação ou fechamento.
+A splash Flutter reutiliza cópias exatas das imagens nativas, incluindo margens
+transparentes: caixa de 288dp no Android e 168 pontos no iOS, centralizada sem
+`SafeArea` para acompanhar o centro nativo. Testes de assets verificam igualdade
+com os arquivos de origem e registro no bundle; não montam UI.
+
+Login, cadastro, redefinição e troca de senha encaminham a ação `next`
+explicitamente ao próximo campo por `onEditingComplete` e `FocusNode` pertencente
+ao mixin do formulário. Não dependem da ordem automática de botões auxiliares;
+ações finais continuam usando a submissão existente.
 
 O listener de Root agenda navegação depois do frame e valida instância, estado
 atual e navigator key antes do efeito. Entrada protegida a frio passa pelo splash;
@@ -816,7 +828,7 @@ vazia; falhas inesperadas usam fallback seguro e `addError`. Resultados de ciclo
 substituídos ou encerrados não alteram o estado nem reportam falhas tardias.
 Sucesso na atualização do perfil preserva os dados financeiros confirmados;
 retry após falha recarrega a Dashboard completa. Nome vazio continua exibindo
-`Trocado` somente na apresentação. Esta alteração não migra Metrics nem modifica
+`Cordato` somente na apresentação. Esta alteração não migra Metrics nem modifica
 o tratamento existente da consulta auxiliar do histórico de despesas.
 O repository concreto fica em `user/infrastructure/repositories/`, recebe
 `IHttpClient` e `IStorageClient` e absorve os antigos data sources local/remoto.
@@ -832,7 +844,7 @@ storage e exceções inesperadas propagam sem serem convertidos em falhas espera
 `UserResponse` interpreta o record nativo PocketBase diretamente, sem envelope
 JSON:API. `UserEntity` não possui o antigo campo `status`; `verified` não é
 convertido em status nem usado como autorização local. Nome vazio é preservado
-no domínio e exibido como `Trocado` somente pela apresentação, inclusive na
+no domínio e exibido como `Cordato` somente pela apresentação, inclusive na
 Dashboard, sem persistir esse fallback. Avatar textual vazio vira ausência de
 seed em infrastructure, preservando o fallback visual baseado no ID.
 
@@ -1206,12 +1218,12 @@ contornar a política dos clients/interceptors.
 `HttpClient` retorna `Responses(status, body)` em sucesso 2xx. Corpo vazio vira
 mapa vazio; corpo incompatível ou status ausente produz erro tipado.
 
-| Exceção HTTP | Significado |
-| --- | --- |
-| `HttpResponseException` | Resposta não 2xx, com status real e `ErrorsResponse`; erros malformados usam fallback. |
-| `HttpTransportException` | Conexão, timeout ou cancelamento, identificado por `HttpExceptionEnum`, sem status sintético. |
-| `HttpInvalidResponseException` | Resposta incompatível com o contrato de mapa/status. |
-| `HttpUnexpectedException` | Falha Dio não classificada como transporte, sem expor causas internas. |
+| Exceção HTTP                   | Significado                                                                                   |
+| ------------------------------ | --------------------------------------------------------------------------------------------- |
+| `HttpResponseException`        | Resposta não 2xx, com status real e `ErrorsResponse`; erros malformados usam fallback.        |
+| `HttpTransportException`       | Conexão, timeout ou cancelamento, identificado por `HttpExceptionEnum`, sem status sintético. |
+| `HttpInvalidResponseException` | Resposta incompatível com o contrato de mapa/status.                                          |
+| `HttpUnexpectedException`      | Falha Dio não classificada como transporte, sem expor causas internas.                        |
 
 `ErrorsResponse` converte erros para `ErrorsEntity`, incluindo `pointer` e
 `parameter` distintos. Para PocketBase, converte `data.<campo>.code`/`message`,
@@ -1317,19 +1329,19 @@ Não confunda rotas registradas com DI funcional nem widget tests com E2E nativo
 
 Rotas definidas nas features e no catálogo:
 
-| Rota | Destino |
-| --- | --- |
-| `/` | AppScreen: aguarda validação inicial via auth-refresh quando há token persistido. |
-| `/welcome` | Boas-vindas. |
-| `/authentication/sign-in` | SignInScreen com Bloc. |
-| `/authentication/sign-up` | Cadastro. |
-| `/authentication/confirm` | Espera/reenvio da verificação. |
-| `/authentication/confirm-email` | Callback de confirmação por link. |
-| `/dashboard` | Composição financeira. |
-| `/settings` | Configurações. |
-| `/user` e `/user/edit` | Perfil e edição de nome. |
-| `/expense` | Criação sem ID ou edição com ID. |
-| `/expenses` | Listagem paginada. |
+| Rota                            | Destino                                                                           |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| `/`                             | AppScreen: aguarda validação inicial via auth-refresh quando há token persistido. |
+| `/welcome`                      | Boas-vindas.                                                                      |
+| `/authentication/sign-in`       | SignInScreen com Bloc.                                                            |
+| `/authentication/sign-up`       | Cadastro.                                                                         |
+| `/authentication/confirm`       | Espera/reenvio da verificação.                                                    |
+| `/authentication/confirm-email` | Callback de confirmação por link.                                                 |
+| `/dashboard`                    | Composição financeira.                                                            |
+| `/settings`                     | Configurações.                                                                    |
+| `/user` e `/user/edit`          | Perfil e edição de nome.                                                          |
+| `/expense`                      | Criação sem ID ou edição com ID.                                                  |
+| `/expenses`                     | Listagem paginada.                                                                |
 
 Todos os destinos do catálogo estão registrados na composição atual.
 Isso não comprova DI nem execução bem-sucedida no dispositivo.
@@ -1540,24 +1552,24 @@ O módulo de Authentication possui teste próprio de DI do callback, sem montar 
 Os fluxos de Authentication e a observação Session/Root usam o novo desenho;
 isso não significa que todo o aplicativo esteja migrado ou componha seus destinos.
 
-| Área | Situação encontrada |
-| --- | --- |
-| Sign-in | Bloc no `provide` da rota via extension do core; screen recebe instância sem fechar. |
-| Cadastro | SignUpBloc por factory, lifecycle da tela e confirmação por navegação de contexto. |
-| Reenvio | ResendEmailBloc por factory, cooldown e feedback no mixin da tela. |
-| Callback | CallbackBloc por factory, latest-link-wins e navegação/feedback no listener da tela. |
-| Logout | LogoutBloc em Settings, contrato de Authentication e navegação global por sessão preservada. |
-| Session | Contrato em application, repository direto em infrastructure e SessionBloc contínuo. |
-| User | Contrato/repository migrados; perfil, avatar e exclusão com UserBloc; edição de nome com EditBloc; sem commands. |
-| Metrics | Contrato em application, repository direto em infrastructure e ExpenseMetricsBloc por factory, sem Either/data source/commands. |
-| Insight | Removido do aplicativo, incluindo composição, seção da Dashboard, previews e testes próprios. |
-| Expense | ExpenseBloc e ExpensesBloc por factory; CRUD, cadastro contínuo, filtros e paginação; sem Either/data source/commands. |
-| Dashboard | Bloc agregado sobre contratos de aplicação e resultados diretos dos contextos consultados, sem Either. |
-| Bootstrap e Root | AppWidget é dono do SessionBloc; AppScreen apenas visual; handler CommandIt removido do bootstrap. |
-| Dependências/core | CommandIt, Either e `response<T>` removidos; testes de core alinhados aos DTOs e exceções HTTP atuais. |
-| Composição global | Todos os destinos registrados; Authentication e Expense sem path, sem colisão de binds; logout resolve o contrato no injector raiz. |
+| Área                  | Situação encontrada                                                                                                                     |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Sign-in               | Bloc no `provide` da rota via extension do core; screen recebe instância sem fechar.                                                    |
+| Cadastro              | SignUpBloc por factory, lifecycle da tela e confirmação por navegação de contexto.                                                      |
+| Reenvio               | ResendEmailBloc por factory, cooldown e feedback no mixin da tela.                                                                      |
+| Callback              | CallbackBloc por factory, latest-link-wins e navegação/feedback no listener da tela.                                                    |
+| Logout                | LogoutBloc em Settings, contrato de Authentication e navegação global por sessão preservada.                                            |
+| Session               | Contrato em application, repository direto em infrastructure e SessionBloc contínuo.                                                    |
+| User                  | Contrato/repository migrados; perfil, avatar e exclusão com UserBloc; edição de nome com EditBloc; sem commands.                        |
+| Metrics               | Contrato em application, repository direto em infrastructure e ExpenseMetricsBloc por factory, sem Either/data source/commands.         |
+| Insight               | Removido do aplicativo, incluindo composição, seção da Dashboard, previews e testes próprios.                                           |
+| Expense               | ExpenseBloc e ExpensesBloc por factory; CRUD, cadastro contínuo, filtros e paginação; sem Either/data source/commands.                  |
+| Dashboard             | Bloc agregado sobre contratos de aplicação e resultados diretos dos contextos consultados, sem Either.                                  |
+| Bootstrap e Root      | AppWidget é dono do SessionBloc; AppScreen apenas visual; handler CommandIt removido do bootstrap.                                      |
+| Dependências/core     | CommandIt, Either e `response<T>` removidos; testes de core alinhados aos DTOs e exceções HTTP atuais.                                  |
+| Composição global     | Todos os destinos registrados; Authentication e Expense sem path, sem colisão de binds; logout resolve o contrato no injector raiz.     |
 | Navegação de despesas | Contexto local e resultados tipados na edição; listagem sem callbacks de rota; consumidores recarregam em qualquer retorno da listagem. |
-| Testes de UI | Removidos, incluindo Maestro, scripts e servidores de fixtures; previews manuais preservados. |
+| Testes de UI          | Removidos, incluindo Maestro, scripts e servidores de fixtures; previews manuais preservados.                                           |
 
 Verificação atual após remover a suíte visual: `flutter pub get` concluído,
 `flutter analyze` sem problemas e `flutter test --reporter expanded` com

@@ -9,6 +9,7 @@ import 'package:cordato/features/authentication/presentation/formatters/authenti
 mixin FormSignUpWidgetStateMixin on State<FormSignUpWidget> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final passwordFocus = FocusNode();
 
   String email = '';
   String? emailFailure;
@@ -55,9 +56,16 @@ mixin FormSignUpWidgetStateMixin on State<FormSignUpWidget> {
 
   @override
   void dispose() {
+    passwordFocus.dispose();
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  void focusPassword() {
+    if (widget.enabled) {
+      passwordFocus.requestFocus();
+    }
   }
 
   void clear() {

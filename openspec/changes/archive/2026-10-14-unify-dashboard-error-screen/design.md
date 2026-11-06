@@ -13,7 +13,7 @@ A mudança é de apresentação e composição. As regras atuais de HTTP JSON:AP
 - Ter uma `ErrorScreen` compartilhada que controla Scaffold, cabeçalho, corpo e footer.
 - Mostrar um erro financeiro global imediatamente quando qualquer uma das três seções falhar.
 - Oferecer recuperação única, sem perder o mês ou recriar a Dashboard.
-- Remover o retry do nome e aplicar o fallback “Trocado”.
+- Remover o retry do nome e aplicar o fallback “Cordato”.
 - Manter estados vazios, consultas financeiras e navegação bem-sucedida existentes.
 
 **Non-Goals:**
@@ -75,11 +75,11 @@ Um handler único inicia a tentativa apenas quando nenhuma consulta existente es
 
 O mês continua selecionado durante o erro. Não há reset para hoje. O ajuste existente é permitido somente quando um novo limite válido torna a seleção anterior inválida. A recuperação não introduz retry automático, não acumula solicitações por toques bloqueados e não muda a lógica de recarga após navegação.
 
-Falha de User mantém “Trocado”; falha do limite mantém a seta anterior bloqueada. Nenhuma dessas falhas ativa ou prolonga o erro financeiro global depois que as três seções se recuperarem. A perda da sessão continua sendo tratada pelo app root.
+Falha de User mantém “Cordato”; falha do limite mantém a seta anterior bloqueada. Nenhuma dessas falhas ativa ou prolonga o erro financeiro global depois que as três seções se recuperarem. A perda da sessão continua sendo tratada pelo app root.
 
 ### 5. Fallback do nome
 
-`UserNameWidget` conserva loading por skeleton e nome/avatar retornados no sucesso. Falha tipada e exceção renderizam a mesma composição com nome “Trocado” e avatar placeholder. O link de retry e seu import são removidos. O fallback não é persistido nem sobrescreve o usuário da API.
+`UserNameWidget` conserva loading por skeleton e nome/avatar retornados no sucesso. Falha tipada e exceção renderizam a mesma composição com nome “Cordato” e avatar placeholder. O link de retry e seu import são removidos. O fallback não é persistido nem sobrescreve o usuário da API.
 
 ### 6. Validação e documentação
 

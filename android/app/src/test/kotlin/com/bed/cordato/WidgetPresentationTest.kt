@@ -12,6 +12,7 @@ class WidgetPresentationTest {
 
         assertFalse(dimensions.horizontal)
         assertFalse(dimensions.tight)
+        assertTrue(dimensions.showAction)
         assertEquals(148f, dimensions.summaryWidth, 0.001f)
         assertEquals(19f, dimensions.preferredAmountFont, 0.001f)
         assertEquals(21f, dimensions.maximumAmountFont, 0.001f)
@@ -54,6 +55,7 @@ class WidgetPresentationTest {
 
         assertFalse(dimensions.horizontal)
         assertTrue(dimensions.tight)
+        assertTrue(dimensions.showAction)
         assertFalse(dimensions.canSplitCurrency)
         assertEquals(118f, dimensions.summaryWidth, 0.001f)
         assertEquals(19f, dimensions.preferredAmountFont, 0.001f)
@@ -80,7 +82,7 @@ class WidgetPresentationTest {
 
         assertTrue(dimensions.horizontal)
         assertTrue(dimensions.singleRow)
-        assertFalse(dimensions.iconAction)
+        assertTrue(dimensions.showAction)
         assertFalse(dimensions.canSplitCurrency)
         assertEquals(120f, dimensions.summaryWidth, 0.001f)
         assertEquals(16f, dimensions.preferredAmountFont, 0.001f)
@@ -89,23 +91,30 @@ class WidgetPresentationTest {
     }
 
     @Test
-    fun singleRowNarrowReservesCompactActionWithoutHidingMoney() {
+    fun singleRowNarrowHidesActionAndGivesSummaryAllInnerWidth() {
         val dimensions = WidgetDimensions(150f, 56f)
 
         assertTrue(dimensions.horizontal)
-        assertTrue(dimensions.iconAction)
+        assertFalse(dimensions.showAction)
         assertFalse(dimensions.canSplitCurrency)
         assertEquals(15f, dimensions.preferredAmountFont, 0.001f)
         assertEquals(15f, dimensions.maximumAmountFont, 0.001f)
-        assertEquals(44f, dimensions.actionWidth, 0.001f)
-        assertEquals(62f, dimensions.summaryWidth, 0.001f)
+        assertEquals(118f, dimensions.summaryWidth, 0.001f)
         assertEquals(16f, dimensions.horizontalPadding, 0.001f)
         assertEquals(4f, dimensions.verticalPadding, 0.001f)
         assertTrue(16f + dimensions.amountHeight + dimensions.verticalPadding * 2 <= dimensions.height)
     }
 
     @Test
-    fun narrowMonthlyAmountShrinksInsideHorizontalInsets() {
+    fun singleRowBelowWidthAndHeightBoundariesHidesAction() {
+        val dimensions = WidgetDimensions(299f, 95f)
+
+        assertFalse(dimensions.showAction)
+        assertEquals(267f, dimensions.summaryWidth, 0.001f)
+    }
+
+    @Test
+    fun narrowMonthlyAmountUsesSpaceFreedByHiddenAction() {
         val dimensions = WidgetDimensions(190f, 80f)
         val money = WidgetMoney.fromCents(313732L)
         val layout = WidgetAmountLayout.fit(
@@ -117,11 +126,10 @@ class WidgetPresentationTest {
             dimensions.canSplitCurrency
         )
 
-        assertEquals(102f, dimensions.summaryWidth, 0.001f)
+        assertEquals(158f, dimensions.summaryWidth, 0.001f)
         assertEquals(money.complete, layout.text)
         assertFalse(layout.separateCurrency)
-        assertEquals(15f * 100f / 110f, layout.fontSize, 0.001f)
-        assertTrue(layout.fontSize < 15f)
+        assertEquals(15f, layout.fontSize, 0.001f)
     }
 
     @Test

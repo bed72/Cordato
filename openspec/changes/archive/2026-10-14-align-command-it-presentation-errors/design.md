@@ -2,7 +2,7 @@
 
 ### Baseline e evidências
 
-O projeto Cordato/Trocado usa commands pequenos injetados por Flutter Modular, contracts de repository com Either e mixins de State para interação, navegação e coordenação. Esta change nasce da auditoria da apresentação e da decisão de avaliar a adaptação de Left para o mecanismo nativo de exceções, sem substituir a arquitetura.
+O projeto Cordato/Cordato usa commands pequenos injetados por Flutter Modular, contracts de repository com Either e mixins de State para interação, navegação e coordenação. Esta change nasce da auditoria da apresentação e da decisão de avaliar a adaptação de Left para o mecanismo nativo de exceções, sem substituir a arquitetura.
 
 As versões resolvidas na elaboração são CommandIt 9.5.2, listen_it 6.0.0, Flutter Modular 7.1.1 e auto_injector 2.2.0. A documentação web é apoio; o código instalado é a referência para assinaturas e comportamento. Antes da implementação, confirmar que o lockfile e o baseline continuam compatíveis.
 
@@ -18,16 +18,16 @@ Fontes revisadas:
 
 ### Diagnóstico que orienta a mudança
 
-| Local | Classificação | Evidência | Decisão |
-| --- | --- | --- | --- |
-| Dashboard: results e errors das três consultas | Duplicação comprovada | Mesma reação e releitura das duas fontes de exceção | Usar results para detecção contextual |
-| ExpenseScreen: loading, entidade e loadErrors | Duplicação comprovada | Cópias da operação já observada por CommandBuilder | Remover cópias e renderizar snapshot |
-| Dashboard: setState vazio em cada sinal | Oportunidade de simplificação | Seções já têm builders próprios | Restringir reconstrução e separar coordenação |
-| Builders de dados com onSuccess e leitura de value | Oportunidade de simplificação | Ignoram os dados do snapshot observado | Preferir onData/onNullData |
-| FirstExpenseMonth e Callback sem handler local/global | Bug de caminho excepcional em debug identificado por inspeção | Filtro padrão pode lançar assertion antes de completar runAsync | Garantir fallback global real |
-| User com builder removido durante ErrorScreen | Risco potencial | Handler local depende da presença do conteúdo | Fallback independente da montagem da seção |
-| Consumidores sem religação em didUpdateWidget | Risco potencial | Listener antigo pode sobreviver à troca | Cancelar assinatura da instância observada |
-| Filas, revisões, flags de ciclo e erro persistente | Oportunidade avaliada sem substituição nativa suficiente | run/runAsync não garantem nova operação e não conhecem navegação | Preservar responsabilidade local |
+| Local                                                 | Classificação                                                 | Evidência                                                        | Decisão                                       |
+| ----------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------- |
+| Dashboard: results e errors das três consultas        | Duplicação comprovada                                         | Mesma reação e releitura das duas fontes de exceção              | Usar results para detecção contextual         |
+| ExpenseScreen: loading, entidade e loadErrors         | Duplicação comprovada                                         | Cópias da operação já observada por CommandBuilder               | Remover cópias e renderizar snapshot          |
+| Dashboard: setState vazio em cada sinal               | Oportunidade de simplificação                                 | Seções já têm builders próprios                                  | Restringir reconstrução e separar coordenação |
+| Builders de dados com onSuccess e leitura de value    | Oportunidade de simplificação                                 | Ignoram os dados do snapshot observado                           | Preferir onData/onNullData                    |
+| FirstExpenseMonth e Callback sem handler local/global | Bug de caminho excepcional em debug identificado por inspeção | Filtro padrão pode lançar assertion antes de completar runAsync  | Garantir fallback global real                 |
+| User com builder removido durante ErrorScreen         | Risco potencial                                               | Handler local depende da presença do conteúdo                    | Fallback independente da montagem da seção    |
+| Consumidores sem religação em didUpdateWidget         | Risco potencial                                               | Listener antigo pode sobreviver à troca                          | Cancelar assinatura da instância observada    |
+| Filas, revisões, flags de ciclo e erro persistente    | Oportunidade avaliada sem substituição nativa suficiente      | run/runAsync não garantem nova operação e não conhecem navegação | Preservar responsabilidade local              |
 
 ### Relação com planejamento existente
 
@@ -93,24 +93,24 @@ O tipo não contém BuildContext, callback, rota, logging, Flutter Modular, aces
 
 Todos os resultados continuam anuláveis quando null é usado como initialValue. Não inventar entidades vazias para permitir tipos não anuláveis.
 
-| Command | Saída alvo de execute | Sucesso particular |
-| --- | --- | --- |
-| GetExpensesCommand | `ExpensePageEntity?` | Página vazia válida; não acumula páginas |
-| GetExpenseCommand | `ExpenseEntity?` | Entidade consultada pelo ID |
-| CreateExpenseCommand | `ExpenseEntity?` | Entidade criada |
-| UpdateExpenseCommand | `ExpenseEntity?` | Entidade atualizada |
-| DeleteExpenseCommand | `bool?` | false não confirma exclusão |
-| GetInsightsCommand | `List<InsightEntity>?` | Lista vazia válida |
-| GetExpenseMetricsCommand | `ExpenseMetricsEntity?` | Total zero válido |
-| UserCommand | `UserEntity?` | Nome/avatar preservados |
-| UpdateUserCommand | `UserEntity?` | Nome atualizado |
-| UpdateAvatarCommand | `UserEntity?` | Consumidor confere seed devolvida |
-| DeleteUserCommand | `bool?` | false não confirma exclusão nem navegação |
-| SignInCommand | `SessionEntity?` | Sessão criada pelo repository |
-| SignUpCommand | `bool?` | Navega somente em true |
-| ResendEmailCommand | `bool?` | Cooldown reinicia somente em true |
-| LogoutCommand | `bool?` | Efeitos de sessão continuam no repository/storage |
-| GetFirstExpenseMonthCommand | `DateTime?` | null após execução concluída significa ausência de histórico |
+| Command                     | Saída alvo de execute   | Sucesso particular                                           |
+| --------------------------- | ----------------------- | ------------------------------------------------------------ |
+| GetExpensesCommand          | `ExpensePageEntity?`    | Página vazia válida; não acumula páginas                     |
+| GetExpenseCommand           | `ExpenseEntity?`        | Entidade consultada pelo ID                                  |
+| CreateExpenseCommand        | `ExpenseEntity?`        | Entidade criada                                              |
+| UpdateExpenseCommand        | `ExpenseEntity?`        | Entidade atualizada                                          |
+| DeleteExpenseCommand        | `bool?`                 | false não confirma exclusão                                  |
+| GetInsightsCommand          | `List<InsightEntity>?`  | Lista vazia válida                                           |
+| GetExpenseMetricsCommand    | `ExpenseMetricsEntity?` | Total zero válido                                            |
+| UserCommand                 | `UserEntity?`           | Nome/avatar preservados                                      |
+| UpdateUserCommand           | `UserEntity?`           | Nome atualizado                                              |
+| UpdateAvatarCommand         | `UserEntity?`           | Consumidor confere seed devolvida                            |
+| DeleteUserCommand           | `bool?`                 | false não confirma exclusão nem navegação                    |
+| SignInCommand               | `SessionEntity?`        | Sessão criada pelo repository                                |
+| SignUpCommand               | `bool?`                 | Navega somente em true                                       |
+| ResendEmailCommand          | `bool?`                 | Cooldown reinicia somente em true                            |
+| LogoutCommand               | `bool?`                 | Efeitos de sessão continuam no repository/storage            |
+| GetFirstExpenseMonthCommand | `DateTime?`             | null após execução concluída significa ausência de histórico |
 
 No GetFirstExpenseMonthCommand, o algoritmo continua consumindo Either do repository, percorrendo páginas, detectando repetição e interrompendo novas páginas após dispose. Falhas remotas e ciclos de continuação são lançados como CommandFailureException com ErrorsEntity apropriado. A flag cooperativa de descarte permanece; não usar cancel de um command comum como substituto. Depois de detectar o próprio descarte, encerrar o algoritmo com retorno neutro sem lançar uma falha artificial de descarte: a publicação já está invalidada, e uma exceção tardia não deve reabrir o caminho de erro dos notifiers descartados. Essa conclusão neutra nunca conta como recuperação válida na tela.
 
@@ -155,17 +155,17 @@ Preferir builders Flutter sobre listenables existentes. `Listenable.merge` pode 
 
 Manter as seguintes responsabilidades:
 
-| Estado/controle | Motivo para permanecer |
-| --- | --- |
-| selectedMonth e monthEnd | Lente civil da pessoa e composição das três consultas |
-| hasFinancialError | Latch, não mera derivação do resultado atual |
-| isRecovering | Tentativa iniciada no erro, distinta de refresh normal que venha a falhar |
-| _isRefreshingDashboard | Ciclo sequencial/paralelo, inclusive lacunas entre commands |
-| _dependenciesVersion | Validade de continuations e retornos de navegação |
-| _refreshPendingAfterNavigation | Uma intenção coalescida posterior às alterações confirmadas |
-| _userRefreshPending | Leitura nova depois de eventual edição, não adesão à leitura antiga |
-| _isOpeningExpenses | Exclusão mútua de navegação para a listagem |
-| mounted e comparação de instâncias | Impedem aplicação em tela ou dependência inválida |
+| Estado/controle                    | Motivo para permanecer                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------- |
+| selectedMonth e monthEnd           | Lente civil da pessoa e composição das três consultas                     |
+| hasFinancialError                  | Latch, não mera derivação do resultado atual                              |
+| isRecovering                       | Tentativa iniciada no erro, distinta de refresh normal que venha a falhar |
+| \_isRefreshingDashboard            | Ciclo sequencial/paralelo, inclusive lacunas entre commands               |
+| \_dependenciesVersion              | Validade de continuations e retornos de navegação                         |
+| \_refreshPendingAfterNavigation    | Uma intenção coalescida posterior às alterações confirmadas               |
+| \_userRefreshPending               | Leitura nova depois de eventual edição, não adesão à leitura antiga       |
+| \_isOpeningExpenses                | Exclusão mútua de navegação para a listagem                               |
+| mounted e comparação de instâncias | Impedem aplicação em tela ou dependência inválida                         |
 
 Nenhuma flag de ciclo é removida somente por existir isRunning. É permitido manter os nomes atuais. Não criar enum ou notifier adicional apenas para agrupar essas flags.
 
@@ -205,13 +205,13 @@ Substituir a flag local de loading apenas quando o estado do command e o control
 
 ICommand continua implementando Disposable. AutoInjector retém instâncias singleton/lazy singleton, não cada factory resolvida. Portanto:
 
-| Registro | Proprietário |
-| --- | --- |
-| Factory: consultas/mutações Expense, UserCommand, UpdateAvatar, Insights, Metrics e FirstExpenseMonth | Tela consumidora; remove listeners e descarta instância |
-| Lazy singleton em `/user`: DeleteUser e UpdateUser | Modular quando última rota do escopo sai; tela remove listeners |
-| Lazy singleton em `/settings`: Logout | Modular; tela remove listeners |
-| Lazy singleton root: SignIn, SignUp, Callback, ResendEmail, Session | Escopo compartilhado; telas não descartam ao sair |
-| Commands criados por preview | Wrapper ou tela, conforme propriedade já existente; nunca ambos |
+| Registro                                                                                              | Proprietário                                                    |
+| ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Factory: consultas/mutações Expense, UserCommand, UpdateAvatar, Insights, Metrics e FirstExpenseMonth | Tela consumidora; remove listeners e descarta instância         |
+| Lazy singleton em `/user`: DeleteUser e UpdateUser                                                    | Modular quando última rota do escopo sai; tela remove listeners |
+| Lazy singleton em `/settings`: Logout                                                                 | Modular; tela remove listeners                                  |
+| Lazy singleton root: SignIn, SignUp, Callback, ResendEmail, Session                                   | Escopo compartilhado; telas não descartam ao sair               |
+| Commands criados por preview                                                                          | Wrapper ou tela, conforme propriedade já existente; nunca ambos |
 
 Para commands substituíveis, guardar a assinatura da instância observada. `ListenableSubscription.cancel()` permite remover a assinatura mesmo após widget.command apontar para outro objeto. Cancelar antes de religar/descartar; nunca remover do command novo supondo que isso limpa o antigo.
 
@@ -231,37 +231,37 @@ Não criar testes Flutter automatizados de widgets, screens, temas, mixins de UI
 
 ### 12. Matriz de verificação e critérios de conclusão
 
-| ID | Cenário | Meio principal | Evidência mínima |
-| --- | --- | --- | --- |
-| C01 | Right de entidade/lista/página | Unitário do command | Mesma instância/valor no Future e results.data |
-| C02 | Left com vários erros | Unitário do command/exceção | Mesmo ErrorsEntity no erro, pointer/parameter/ordem preservados |
-| C03 | Lista de erros vazia | Unitário + inspeção de handler | Transporte vazio e fallback seguro, sem acesso indevido a first |
-| C04 | Throwable inesperado | Unitário do command | Mesma instância no Future/results; não encapsulada como falha esperada |
-| C05 | Sem handler local | Unitário com callback global real | Future termina; falha esperada não é reportada; inesperada chega ao fallback |
-| C06 | Right(false), vazio e zero | Unitários e fluxo pertinente | Resultado válido; confirmação/vazio preservados na UI |
-| C07 | Limite nulo e páginas não ordenadas | Unitário FirstExpenseMonth | Menor mês correto ou null concluído sem falha |
-| C08 | runAsync A/B e duplicação | Unitário com Completer | Sem GET extra; adesão não conta como execução de B |
-| C09 | Dispose durante execução | Unitário com Completer | Sem publicação tardia de sucesso, nova página ou assinatura sobrevivente |
-| C10 | Sucesso anterior seguido de falha | Unitário + fluxo pertinente | Snapshot com erro; value antigo não produz efeito de sucesso |
-| D01 | Abertura e mudança mensal | Maestro | Mesma lente das três seções, tamanho seis, setas bloqueadas |
-| D02 | Uma falha antes das outras conclusões | Maestro controlado | Erro imediato e persistente, sem aguardar ou flash de conteúdo |
-| D03 | Retry falha e depois recupera | Maestro controlado | Uma tentativa por toque válido, loading estável, três sucessos correntes |
-| D04 | User/limite falhos e financeiro válido | Maestro controlado | Fallback e bloqueio anterior, sem prolongar latch financeiro |
-| D05 | Limite nulo/ajustado durante recovery | Maestro controlado | Seleção civil correta e parâmetros das consultas subsequentes |
-| D06 | Cadastro/listagem retorna com/sem alteração | Maestro | Mês preservado, recarga somente após sinal confirmado |
-| D07 | Retorno enquanto leitura anterior carrega | Maestro controlado ou verificação técnica | Uma intenção coalescida gera leitura nova após idle |
-| D08 | Dependência muda/descarte durante retry | Verificação técnica, runtime se autorizado | Revisão antiga não altera flags/mês/latch nem finaliza ciclo novo |
-| E01 | Consulta de edição e retry | Maestro | Skeleton acessível, entidade correta e mensagem contextual |
-| E02 | IDs A/B/C e retirada de ID | Verificação técnica, runtime se autorizado | Resultado incompatível ignorado; somente ID final consultado |
-| E03 | Toque simples e hold | Maestro | Navegação ou reset corretos; falha/interrupção preservam entrada |
-| E04 | PATCH parcial e erros de pointer | Unitário + Maestro | Inputs omitidos preservados e erros em campos corretos |
-| E05 | Listagem: lente, refresh, página e retry | Maestro | Itens/continuação preservados ou limpos conforme operação/lente |
-| E06 | Edição/exclusão da listagem | Maestro | Confirmação, gesto, reposicionamento, filtros e rolagem preservados |
-| U01 | Nome e avatar | Maestro | Um efeito de sucesso, seed conferida e autosave coalescido |
-| A01 | SignIn/SignUp/Resend/Logout | Maestro + unitários | Sessão/booleanos/cooldown/erros e confirmação inalterados |
-| A02 | Callback: mesmo link e link novo | Unitário existente + verificação técnica | Sem GET duplicado do mesmo link e sem efeito do link obsoleto |
-| L01 | Troca de command e listener | Verificação técnica, runtime se autorizado | Assinatura antiga cancelada, nova única e nenhum efeito tardio |
-| L02 | Screen/preview/module ownership | Inspeção + execução de previews | Nenhum double dispose ou descarte prematuro |
+| ID  | Cenário                                     | Meio principal                             | Evidência mínima                                                             |
+| --- | ------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------- |
+| C01 | Right de entidade/lista/página              | Unitário do command                        | Mesma instância/valor no Future e results.data                               |
+| C02 | Left com vários erros                       | Unitário do command/exceção                | Mesmo ErrorsEntity no erro, pointer/parameter/ordem preservados              |
+| C03 | Lista de erros vazia                        | Unitário + inspeção de handler             | Transporte vazio e fallback seguro, sem acesso indevido a first              |
+| C04 | Throwable inesperado                        | Unitário do command                        | Mesma instância no Future/results; não encapsulada como falha esperada       |
+| C05 | Sem handler local                           | Unitário com callback global real          | Future termina; falha esperada não é reportada; inesperada chega ao fallback |
+| C06 | Right(false), vazio e zero                  | Unitários e fluxo pertinente               | Resultado válido; confirmação/vazio preservados na UI                        |
+| C07 | Limite nulo e páginas não ordenadas         | Unitário FirstExpenseMonth                 | Menor mês correto ou null concluído sem falha                                |
+| C08 | runAsync A/B e duplicação                   | Unitário com Completer                     | Sem GET extra; adesão não conta como execução de B                           |
+| C09 | Dispose durante execução                    | Unitário com Completer                     | Sem publicação tardia de sucesso, nova página ou assinatura sobrevivente     |
+| C10 | Sucesso anterior seguido de falha           | Unitário + fluxo pertinente                | Snapshot com erro; value antigo não produz efeito de sucesso                 |
+| D01 | Abertura e mudança mensal                   | Maestro                                    | Mesma lente das três seções, tamanho seis, setas bloqueadas                  |
+| D02 | Uma falha antes das outras conclusões       | Maestro controlado                         | Erro imediato e persistente, sem aguardar ou flash de conteúdo               |
+| D03 | Retry falha e depois recupera               | Maestro controlado                         | Uma tentativa por toque válido, loading estável, três sucessos correntes     |
+| D04 | User/limite falhos e financeiro válido      | Maestro controlado                         | Fallback e bloqueio anterior, sem prolongar latch financeiro                 |
+| D05 | Limite nulo/ajustado durante recovery       | Maestro controlado                         | Seleção civil correta e parâmetros das consultas subsequentes                |
+| D06 | Cadastro/listagem retorna com/sem alteração | Maestro                                    | Mês preservado, recarga somente após sinal confirmado                        |
+| D07 | Retorno enquanto leitura anterior carrega   | Maestro controlado ou verificação técnica  | Uma intenção coalescida gera leitura nova após idle                          |
+| D08 | Dependência muda/descarte durante retry     | Verificação técnica, runtime se autorizado | Revisão antiga não altera flags/mês/latch nem finaliza ciclo novo            |
+| E01 | Consulta de edição e retry                  | Maestro                                    | Skeleton acessível, entidade correta e mensagem contextual                   |
+| E02 | IDs A/B/C e retirada de ID                  | Verificação técnica, runtime se autorizado | Resultado incompatível ignorado; somente ID final consultado                 |
+| E03 | Toque simples e hold                        | Maestro                                    | Navegação ou reset corretos; falha/interrupção preservam entrada             |
+| E04 | PATCH parcial e erros de pointer            | Unitário + Maestro                         | Inputs omitidos preservados e erros em campos corretos                       |
+| E05 | Listagem: lente, refresh, página e retry    | Maestro                                    | Itens/continuação preservados ou limpos conforme operação/lente              |
+| E06 | Edição/exclusão da listagem                 | Maestro                                    | Confirmação, gesto, reposicionamento, filtros e rolagem preservados          |
+| U01 | Nome e avatar                               | Maestro                                    | Um efeito de sucesso, seed conferida e autosave coalescido                   |
+| A01 | SignIn/SignUp/Resend/Logout                 | Maestro + unitários                        | Sessão/booleanos/cooldown/erros e confirmação inalterados                    |
+| A02 | Callback: mesmo link e link novo            | Unitário existente + verificação técnica   | Sem GET duplicado do mesmo link e sem efeito do link obsoleto                |
+| L01 | Troca de command e listener                 | Verificação técnica, runtime se autorizado | Assinatura antiga cancelada, nova única e nenhum efeito tardio               |
+| L02 | Screen/preview/module ownership             | Inspeção + execução de previews            | Nenhum double dispose ou descarte prematuro                                  |
 
 Critérios mensuráveis: os três listeners financeiros duplicados de errors deixam de existir; ExpenseScreen deixa de copiar os três campos de consulta; consumers migrados não interpretam Left; nenhuma nova abstração de estado ou dependência é adicionada; a propriedade dos recursos e os cenários acima têm evidência ou pendência explicitamente registrada. Redução absoluta de linhas ou remoção de toda flag não é critério de aceitação. Uma tarefa de execução pendente não é marcada como concluída apenas porque foi inspecionada estaticamente.
 

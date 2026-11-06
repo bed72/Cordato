@@ -32,8 +32,10 @@ class FormSignInWidgetState extends State<FormSignInWidget>
           failure: emailFailure,
           hint: 'Digite seu e-mail',
           onChanged: onEmailChanged,
+          onEditingComplete: focusPassword,
         ),
         PasswordFieldWidget(
+          focusNode: passwordFocus,
           enabled: widget.enabled,
           label: 'Senha',
           inputAction: .done,

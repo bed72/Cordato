@@ -7,11 +7,25 @@ import 'package:cordato/features/authentication/presentation/screens/sign_in/wid
 import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 
 mixin FormSignInWidgetStateMixin on State<FormSignInWidget> {
+  final passwordFocus = FocusNode();
+
   String email = '';
   String? emailFailure;
 
   String password = '';
   String? passwordFailure;
+
+  @override
+  void dispose() {
+    passwordFocus.dispose();
+    super.dispose();
+  }
+
+  void focusPassword() {
+    if (widget.enabled) {
+      passwordFocus.requestFocus();
+    }
+  }
 
   List<ErrorEntity> showErrors(List<ErrorEntity> errors) {
     final emailMessages = <String>[];

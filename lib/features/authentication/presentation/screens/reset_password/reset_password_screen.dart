@@ -74,6 +74,7 @@ final class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                   failure: passwordFailure,
                                   enabled: state.canSubmit,
                                   inputAction: .next,
+                                  onEditingComplete: focusConfirmation,
                                   autofillHints: const [
                                     AutofillHints.newPassword,
                                   ],
@@ -81,6 +82,7 @@ final class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                 ),
                                 PasswordFieldWidget(
                                   inputAction: .done,
+                                  focusNode: confirmationFocus,
                                   enabled: state.canSubmit,
                                   failure: confirmationFailure,
                                   hint: 'Confirme a nova senha',

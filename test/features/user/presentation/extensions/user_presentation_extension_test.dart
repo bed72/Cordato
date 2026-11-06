@@ -5,14 +5,14 @@ import 'package:cordato/features/user/presentation/extensions/user_presentation_
 
 void main() {
   for (final name in ['', '   ', '\t\n']) {
-    test('displays Trocado for an empty name: ${name.codeUnits}', () {
+    test('displays Cordato for an empty name: ${name.codeUnits}', () {
       final user = UserEntity(
         id: 'user',
         name: name,
         email: 'person@example.com',
       );
 
-      expect(user.displayName, 'Trocado');
+      expect(user.displayName, 'Cordato');
       expect(user.name, name);
     });
   }

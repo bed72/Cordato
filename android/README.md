@@ -77,9 +77,10 @@ centered text and 14dp corners rather than a capsule. Resizing is enabled on bot
 axes, down to a requested height of 56dp, subject to the launcher's grid. Short
 widgets use tighter spacing; wide widgets place the action beside the summary.
 Below 96dp tall, the layout is horizontal with inline currency; below 300dp wide
-as well, the action displays **+** while retaining its accessible description.
+as well, the action is hidden and the summary uses the full inner width. The
+whole widget remains tappable to open New expense, with its accessible description.
 Horizontal padding stays at 16dp even in a single row; vertical padding alone
-shrinks to 4dp. Narrow single-row money beside **+** starts at 15; wide single-row
+shrinks to 4dp. Narrow single-row money without an action starts at 15; wide single-row
 money retains 16. Vertical layouts use 19, capped at 21 for accessibility, while
 regular horizontal layouts retain 22, capped at 26. Money can shrink further to
 keep all digits inside the padded summary rather than pressing against the edges.
@@ -173,11 +174,20 @@ are normal debug diagnostics, not application build failures.
 
 ### Distribution Artifacts
 
-Build an Android App Bundle for distribution:
+Build the 1.0.0 (5) Android App Bundle for internal testing, explicitly using
+the PocketBase API validated by the local release login:
 
 ```bash
-flutter build appbundle --release
+flutter build appbundle --release \
+  --build-name=1.0.0 \
+  --build-number=5 \
+  --dart-define=BASE_URL=https://pocketbase.cordato.cloud/api/
 ```
+
+Use a higher build number for subsequent uploads. After publishing to internal
+testing, install or update through the tester's Google Play link, confirm that
+version code 5 is installed, and verify sign-in and the native widget. Local
+release success does not by itself validate the artifact distributed by Play.
 
 The artifact is `build/app/outputs/bundle/release/app-release.aab`. To build an
 APK instead, run `flutter build apk --release`; the artifact is
@@ -207,6 +217,19 @@ grep -F 'android.permission.INTERNET' \
 
 The exact merged-manifest directory is Android Gradle Plugin-version specific;
 use the generated `build/app/intermediates/` path if this location changes.
+
+### Focus And Splash Verification
+
+After making keyboard-next destinations explicit and aligning Flutter splash
+assets with native images, `flutter pub get`, `flutter analyze` and
+`flutter test --reporter failures-only` passed (1405 tests). Android debug APK
+and unsigned iOS simulator builds with the PocketBase `BASE_URL` also succeeded.
+Manual Maestro hierarchy inspection on a moto g05 with Android 15 confirmed that
+Next moves from email to password and keeps the keyboard open in sign-in and
+sign-up. No Maestro flows or UI tests were added. The original intermittent
+sign-in failure was not reproduced before the change; this is not verification
+of every device or the Google Play release. The previously generated build 5 AAB
+predates these focus/splash changes and must not be presented as containing them.
 
 ## App Links
 

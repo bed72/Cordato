@@ -30,6 +30,6 @@ A listagem já recebe mês e categoria pela Dashboard, mas comunica essas lentes
 - Feature proprietária: `expense`, em `presentation/screens/expenses/`. Alterações esperadas em `ExpensesScreen`, `ExpensesScreenStateMixin` e novo widget público de filtros no diretório `widgets/` da tela.
 - Reutiliza `GetExpensesCommand`, repository, data source e os filtros HTTP já existentes. Não exige endpoint, dependência ou mudança de contrato de consulta; uma nova primeira página sem continuação impede recuperar filtros removidos de links antigos.
 - Preserva `/expenses`, os records aceitos pela rota e os callbacks de Dashboard, edição e alteração financeira.
-- Reutiliza `material_ui`, tema e formatters atuais. O componente de Trocado é referência visual, não dependência do aplicativo.
+- Reutiliza `material_ui`, tema e formatters atuais. O componente de Cordato é referência visual, não dependência do aplicativo.
 - Atualiza previews de Expense e os documentos `ARCHITECTURE.md`, `README.md` e `AGENTS.md` onde descrevem apresentação e estado dos filtros.
 - Validação visual e de fluxo com Maestro; não introduz testes Flutter de widgets, screens ou rotas.

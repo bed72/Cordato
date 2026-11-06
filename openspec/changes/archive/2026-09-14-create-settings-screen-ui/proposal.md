@@ -1,6 +1,6 @@
 ## Why
 
-A rota de configurações já existe, mas sua tela ainda é um placeholder vazio. A implementação visual deve ganhar a mesma hierarquia da tela de referência do Trocado, adaptada aos componentes e limites arquiteturais do Cordato.
+A rota de configurações já existe, mas sua tela ainda é um placeholder vazio. A implementação visual deve ganhar a mesma hierarquia da tela de referência do Cordato, adaptada aos componentes e limites arquiteturais do Cordato.
 
 ## What Changes
 

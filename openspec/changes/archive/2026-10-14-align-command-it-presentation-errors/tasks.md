@@ -39,7 +39,7 @@ Registro do grupo 3: [fronteira tipada, fallback e testes](implementation-part-2
 - [x] 4.1 Migrar GetExpensesCommand para ExpensePageEntity anulável com switch Right/Left; na mesma unidade adaptar DashboardScreenStateMixin, ExpensesSectionWidget, ExpensesScreen/mixin, previews e testes, mantendo acúmulo exclusivamente no consumidor.
 - [x] 4.2 Migrar GetInsightsCommand para lista de InsightEntity anulável; adaptar InsightsSectionWidget, Dashboard, previews e testes preservando filtros opcionais, ordem, vazio e período nulo.
 - [x] 4.3 Migrar GetExpenseMetricsCommand para ExpenseMetricsEntity anulável; adaptar MetricsSectionWidget, Dashboard, previews e testes preservando total zero e categorias ausentes/vazias.
-- [x] 4.4 Migrar UserCommand para UserEntity anulável; adaptar UserNameWidget, UserScreen/mixin, Dashboard e previews/testes preservando saudação, nome/seed e fallback Trocado.
+- [x] 4.4 Migrar UserCommand para UserEntity anulável; adaptar UserNameWidget, UserScreen/mixin, Dashboard e previews/testes preservando saudação, nome/seed e fallback Cordato.
 - [x] 4.5 Migrar GetFirstExpenseMonthCommand para DateTime anulável com falha tipada, mantendo pages não ordenadas, next opaco, página vazia com continuação, links repetidos e interrupção cooperativa após dispose sem lançar erro artificial de descarte.
 - [x] 4.6 Adaptar Dashboard à saída do limite, distinguindo conclusão válida nula de erro/estado inicial e preservando ajuste civil da seleção e bloqueio anterior em falha.
 - [x] 4.7 Usar onData/onNullData nos builders que consomem dados e remover releituras de value para decidir sucesso/erro; manter builders de botão que ignoram o retorno.

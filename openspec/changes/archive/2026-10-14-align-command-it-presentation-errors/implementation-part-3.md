@@ -2,13 +2,13 @@
 
 ## Grupo 4 concluído
 
-| Command | Saída de execute | Adaptação |
-| --- | --- | --- |
-| GetExpensesCommand | ExpensePageEntity? | Right publica a mesma página; Left lança CommandFailureException com a ErrorsEntity original |
-| GetInsightsCommand | List<InsightEntity>? | Right publica a mesma lista, inclusive vazia; Left conserva a falha tipada |
-| GetExpenseMetricsCommand | ExpenseMetricsEntity? | Right publica a mesma entidade, preservando total zero e agrupamento ausente/vazio; Left conserva a falha tipada |
-| UserCommand | UserEntity? | Right publica a mesma entidade; Left conserva a falha tipada |
-| GetFirstExpenseMonthCommand | DateTime? | Menor mês civil ou null para histórico ausente; falha remota/continuação repetida lança falha tipada |
+| Command                     | Saída de execute      | Adaptação                                                                                                        |
+| --------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| GetExpensesCommand          | ExpensePageEntity?    | Right publica a mesma página; Left lança CommandFailureException com a ErrorsEntity original                     |
+| GetInsightsCommand          | List<InsightEntity>?  | Right publica a mesma lista, inclusive vazia; Left conserva a falha tipada                                       |
+| GetExpenseMetricsCommand    | ExpenseMetricsEntity? | Right publica a mesma entidade, preservando total zero e agrupamento ausente/vazio; Left conserva a falha tipada |
+| UserCommand                 | UserEntity?           | Right publica a mesma entidade; Left conserva a falha tipada                                                     |
+| GetFirstExpenseMonthCommand | DateTime?             | Menor mês civil ou null para histórico ausente; falha remota/continuação repetida lança falha tipada             |
 
 Entradas, registros factory, contratos de repository, DTOs e HTTP permanecem
 vigentes. Repositories e fakes continuam retornando Either. Os callbacks dos
@@ -83,6 +83,6 @@ continuam restauradas no teardown.
 
 O Maestro listou apenas dispositivos desconectados. Não foi executado fluxo de
 Dashboard, perfil ou listagem nesta etapa; não se reaproveita o aceite da Parte 1
-como validação runtime desta migração. Skeletons, fallback Trocado, recuperação,
+como validação runtime desta migração. Skeletons, fallback Cordato, recuperação,
 paginação e navegação foram preservados por inspeção, com validação de interação
 pendente em dispositivo conectado. Não há harness ou hook de simulação adicionado.

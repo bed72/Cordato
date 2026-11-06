@@ -7,12 +7,12 @@ void main() {
     test('represents the user independently of the JSON:API envelope', () {
       final user = UserEntity(
         id: '10',
-        name: 'Trocado',
+        name: 'Cordato',
         email: 'developer.bed@gmail.com',
       );
 
       expect(user.id, '10');
-      expect(user.name, 'Trocado');
+      expect(user.name, 'Cordato');
       expect(user.email, 'developer.bed@gmail.com');
     });
   });

@@ -20,7 +20,7 @@ final class const UserNameWidget({
 
     return _buildContent(
       context,
-      user?.displayName ?? 'Trocado',
+      user?.displayName ?? 'Cordato',
       seed: user == null
           ? 'cordato-placeholder'
           : user?.avatar ?? 'cordato-user-${user?.id}',
@@ -28,7 +28,7 @@ final class const UserNameWidget({
   }
 
   UserNameSkeletonWidget _buildSkeleton(BuildContext context) =>
-      UserNameSkeletonWidget(child: _buildContent(context, 'Trocado'));
+      UserNameSkeletonWidget(child: _buildContent(context, 'Cordato'));
 
   Row _buildContent(
     BuildContext context,

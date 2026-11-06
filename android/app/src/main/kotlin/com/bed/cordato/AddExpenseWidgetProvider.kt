@@ -167,13 +167,13 @@ class AddExpenseWidgetProvider : HomeWidgetProvider() {
     }
 
     private fun RemoteViews.applyAction(context: Context, dimensions: WidgetDimensions) {
-        val width = if (dimensions.horizontal) dimensions.actionWidth else dimensions.summaryWidth
-        val labelResource = if (dimensions.iconAction) {
-            R.string.action_home_widget_add_expense_compact
-        } else {
-            R.string.action_home_widget_add_expense
+        setViewVisibility(R.id.widget_action, if (dimensions.showAction) View.VISIBLE else View.GONE)
+        if (!dimensions.showAction) {
+            return
         }
-        val label = context.getString(labelResource)
+
+        val width = if (dimensions.horizontal) dimensions.actionWidth else dimensions.summaryWidth
+        val label = context.getString(R.string.action_home_widget_add_expense)
         val height = (dimensions.actionHeight * context.resources.displayMetrics.density).toInt()
 
         setTextViewText(R.id.widget_action, label)

@@ -33,8 +33,8 @@ struct WidgetDimensions {
     var horizontal: Bool { size == .medium }
     var actionWidth: Double { 136 }
     var summaryWidth: Double { max(1, width - (horizontal ? actionWidth + 12 : 0)) }
-    var preferredAmountFont: Double { size == .small ? 17 : 20 }
-    var maximumAmountFont: Double { size == .small ? 19 : 24 }
+    var preferredAmountFont: Double { size == .small ? 16 : 18 }
+    var maximumAmountFont: Double { size == .small ? 18 : 22 }
     var summaryActionSpacing: Double { size == .small ? 10 : 12 }
 }
 

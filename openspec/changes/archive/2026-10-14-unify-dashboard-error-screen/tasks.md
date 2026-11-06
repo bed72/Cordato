@@ -6,7 +6,7 @@
 
 ## 2. Fallback do cabeçalho
 
-- [x] 2.1 Alterar `UserNameWidget` para mostrar “Trocado” com avatar placeholder em Left ou exceção e remover o retry localizado e seu import.
+- [x] 2.1 Alterar `UserNameWidget` para mostrar “Cordato” com avatar placeholder em Left ou exceção e remover o retry localizado e seu import.
 - [x] 2.2 Preservar skeleton, nome e seed da API no sucesso, saudação e callbacks do avatar e cabeçalho.
 
 ## 3. Estado de erro global da Dashboard
@@ -35,7 +35,7 @@
 - [x] 6.1 Executar `flutter pub get` quando aplicável, `flutter analyze` e `flutter test`, registrando causas de eventuais falhas sem criar testes Flutter de UI, módulos ou rotas.
 - [x] 6.2 Preparar cenários controlados e flows Maestro para falha isolada de cada seção, múltiplas falhas, falha antes de outras conclusões e erro observável por exceção.
 - [x] 6.3 Validar com Maestro retry bloqueado durante consultas, loading estável, toques repetidos, nova falha e recuperação financeira completa sem flashes de conteúdo.
-- [x] 6.4 Validar com Maestro mês histórico preservado, ajuste por novo limite, falhas auxiliares independentes, fallback “Trocado” no conteúdo normal e ausência de cabeçalho no erro.
+- [x] 6.4 Validar com Maestro mês histórico preservado, ajuste por novo limite, falhas auxiliares independentes, fallback “Cordato” no conteúdo normal e ausência de cabeçalho no erro.
 - [x] 6.5 Validar previews e interação da tela compartilhada em ambos os temas, espaço reduzido e texto ampliado, incluindo acesso às ações no footer.
 
 ## Registro da etapa 1
@@ -51,7 +51,7 @@
 - Maestro Android aprovou a matriz com cinco cenários (falhas isoladas de Metrics, Insights e despesas, múltiplas falhas e exceção), retry que falha novamente e recupera na segunda tentativa, mês histórico preservado, ajuste pelo novo limite e recuperação financeira com falhas auxiliares.
 - Os contadores verificaram ausência de consultas extras por toques bloqueados. O mês efetivamente consultado foi verificado antes e depois da recuperação histórica e do ajuste de limite.
 - A chamada MCP com vários flows excedeu o timeout; a validação foi confirmada pelo CLI Maestro com relatórios JUnit. A navegação de Menu foi conferida na exploração inicial.
-- A validação de interface foi encerrada por orientação do usuário. A tarefa 6.4 permanece parcialmente pendente para conferir explicitamente o fallback “Trocado”, falhas auxiliares isoladas e os callbacks de cabeçalho durante o erro. Não há promessa de cobertura completa de lifecycle por esses flows.
+- A validação de interface foi encerrada por orientação do usuário. A tarefa 6.4 permanece parcialmente pendente para conferir explicitamente o fallback “Cordato”, falhas auxiliares isoladas e os callbacks de cabeçalho durante o erro. Não há promessa de cobertura completa de lifecycle por esses flows.
 - A análise final encontrou dois erros fora deste escopo em `test/features/core/infrastructure/clients/firebase/firebase_client_test.dart:38` e `:56`: os testes acessam `FirebaseClient.initialize` por instância após uma alteração concorrente que tornou o método estático. As alterações de Firebase foram preservadas. A suíte unitária não foi repetida nesta etapa; os 671 testes registrados acima pertencem à etapa 1.
 - O build debug normal (`lib/main.dart`) compilou e foi reinstalado no Android com `adb install -r`, preservando o storage local. `git diff --check` não apontou problemas na revisão.
 

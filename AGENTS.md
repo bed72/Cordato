@@ -38,7 +38,7 @@ Lista vazia representa mês sem despesas; resposta inválida ou falha HTTP não
 vira sucesso com zero. UI, contratos de apresentação e navegação ficam preservados.
 User também usa `collections/users/records/{id}` para consulta, PATCH com JSON
 plano de nome/avatar e exclusão. Não há `status` em `UserEntity`; não o derive
-de `verified`. Nome vazio é exibido como `Trocado` somente na apresentação.
+de `verified`. Nome vazio é exibido como `Cordato` somente na apresentação.
 Edição valida 2–32 caracteres Unicode após trim e mapeia erros 400 de `/name`
 ao campo. Avatar vazio do PocketBase vira ausência de seed em infrastructure.
 O JWT usa `StorageKeyEnum.token` (`@trocado.token`), sem migração automática das
@@ -122,18 +122,18 @@ Não restaure Supabase/RPC, commands ou ownership antigo por uma descrição his
 Cordato é um aplicativo de finanças pessoais e familiares. Cada pessoa é dona
 dos próprios dados; família é uma lente autorizada de leitura, não dona do dinheiro.
 
-| Feature/contexto | Responsabilidade |
-| --- | --- |
-| `authentication` | Entrada, cadastro, confirmação de e-mail, reenvio e logout. |
-| `session` | Validação inicial via auth-refresh e observação da presença do token. |
-| `user` | Dados pessoais, nome, avatar e exclusão da conta. |
-| `expense` | Fatos atômicos de gastos individuais. |
-| `metrics` | Agregações financeiras somente leitura. |
-| `budget` | Planejado: tetos por intervalo de datas. |
-| `family` | Planejado: organização de membros e leitura combinada. |
-| `dashboard` | Apresentação e composição, não um bounded context financeiro. |
-| `root` | Composição visual global e entrada do app. |
-| `information` | Termos, privacidade e ajuda públicos, com conteúdo local e sem camadas de dados. |
+| Feature/contexto | Responsabilidade                                                                 |
+| ---------------- | -------------------------------------------------------------------------------- |
+| `authentication` | Entrada, cadastro, confirmação de e-mail, reenvio e logout.                      |
+| `session`        | Validação inicial via auth-refresh e observação da presença do token.            |
+| `user`           | Dados pessoais, nome, avatar e exclusão da conta.                                |
+| `expense`        | Fatos atômicos de gastos individuais.                                            |
+| `metrics`        | Agregações financeiras somente leitura.                                          |
+| `budget`         | Planejado: tetos por intervalo de datas.                                         |
+| `family`         | Planejado: organização de membros e leitura combinada.                           |
+| `dashboard`      | Apresentação e composição, não um bounded context financeiro.                    |
+| `root`           | Composição visual global e entrada do app.                                       |
+| `information`    | Termos, privacidade e ajuda públicos, com conteúdo local e sem camadas de dados. |
 
 Não crie `identity` para reproduzir o backend legado. `chat` está fora do escopo.
 O Kotlin legado é referência de domínio, não de estrutura Flutter.
@@ -292,6 +292,10 @@ Dashboard, previews e testes próprios. Não restaurá-la a partir de specs hist
 - Formulário mantém entrada, validação e erros por campo localmente. No sign-in,
   o validator remove espaços do e-mail, mas preserva a senha; Bloc e repository
   delegam os valores recebidos sem outra normalização.
+- Quando `next` leva a outro campo de texto, a ação aponta explicitamente ao
+  `FocusNode` desse campo por `onEditingComplete`, sem depender da ordem
+  automática que também inclui botões auxiliares. O mixin do formulário possui
+  e descarta esses nós; ações finais preservam a submissão existente.
 - Desabilite campos e envio conforme o estado. No sign-in, mapeie erros PocketBase
   400 pelos pointers `/identity` (e-mail) e `/password`, preservando `code` e
   `parameter` na conversão HTTP. Erros 422 legados conhecidos por pointer continuam
@@ -446,14 +450,14 @@ Não manter nem criar testes de UI: telas, widgets, goldens, integração visual
 ou flows Maestro. Previews manuais permanecem disponíveis. Preserve testes
 unitários de Bloc, validação, formatação, contratos, infraestrutura e arquitetura.
 
-| Alvo | Cobertura mínima |
-| --- | --- |
-| Domain | Invariantes, imutabilidade e semântica dos valores, sem SDKs. |
-| Application | Contratos puros e preservação de erros nas exceções. |
+| Alvo                         | Cobertura mínima                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Domain                       | Invariantes, imutabilidade e semântica dos valores, sem SDKs.                                                                  |
+| Application                  | Contratos puros e preservação de erros nas exceções.                                                                           |
 | Repository em infrastructure | Payload, DTO, clients mockados, erros HTTP, parsing inválido, ordem/espera de persistência e propagação de falhas inesperadas. |
-| Bloc | Estado inicial, sequência de estados, delegação, falha esperada/inesperada, concorrência, retry e fechamento pendente. |
-| Modular/rotas | Catálogo de rotas e resolução de dependências/factories sem montar UI. |
-| Architecture | Imports, camadas, contextos e isolamento de contratos; DI/rotas exigem testes próprios. |
+| Bloc                         | Estado inicial, sequência de estados, delegação, falha esperada/inesperada, concorrência, retry e fechamento pendente.         |
+| Modular/rotas                | Catálogo de rotas e resolução de dependências/factories sem montar UI.                                                         |
+| Architecture                 | Imports, camadas, contextos e isolamento de contratos; DI/rotas exigem testes próprios.                                        |
 
 - Use `mocktail`, `bloc_test` e `flutter_test`. Em teste de Bloc, mocke o contrato
   de repository, não o client HTTP. Em teste do repository, mocke os clients.

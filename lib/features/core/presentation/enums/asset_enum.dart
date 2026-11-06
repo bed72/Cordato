@@ -1,5 +1,10 @@
 enum AssetEnum({required final String alt, required final String source}) {
-  logo(alt: 'Logo Trocado', source: 'assets/images/logo.webp'),
+  logo(alt: 'Logo Cordato', source: 'assets/images/logo.webp'),
+  splashAndroid(
+    alt: 'Logo Cordato',
+    source: 'assets/images/splash_android.png',
+  ),
+  splashIos(alt: 'Logo Cordato', source: 'assets/images/splash_ios.png'),
   genericError(
     alt: 'Ilustração de erro',
     source: 'assets/images/errors/generic_error.webp',
