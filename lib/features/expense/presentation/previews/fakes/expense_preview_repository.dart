@@ -42,9 +42,9 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
     DateTime? to,
     DateTime? from,
     String? category,
-    String? pageLink,
+    int page = 1,
     int pageSize = 30,
-  }) async => ExpensePageEntity(items: [expense], next: null, prev: null);
+  }) async => ExpensePageEntity(items: [expense], nextPage: null);
 
   @override
   Future<void> delete({required String id}) async =>

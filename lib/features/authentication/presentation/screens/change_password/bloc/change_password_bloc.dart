@@ -1,6 +1,8 @@
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 
+import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
+
 import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 import 'package:cordato/features/authentication/presentation/screens/change_password/bloc/change_password_event.dart';
@@ -52,6 +54,12 @@ final class ChangePasswordBloc({
 
       return true;
     } on AuthenticationException catch (error) {
+      if (isClosed || emit.isDone) {
+        return false;
+      }
+
+      emit(ChangePasswordFailure(errors: error.errors));
+    } on MissingAuthenticatedUserException catch (error) {
       if (isClosed || emit.isDone) {
         return false;
       }

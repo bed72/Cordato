@@ -24,7 +24,7 @@ Widget previewLoadingExpensesSectionWidget() => _sectionPreview();
   size: Size(390.0, 420.0),
 )
 Widget previewEmptyExpensesSectionWidget() =>
-    _sectionPreview(data: ExpensePageEntity(items: [], next: null, prev: null));
+    _sectionPreview(data: ExpensePageEntity(items: [], nextPage: null));
 
 @CordatoPreview(
   group: 'Dashboard / Despesas',
@@ -61,8 +61,7 @@ ExpensePageEntity _expensesPage() {
       ];
 
   return ExpensePageEntity(
-    next: null,
-    prev: null,
+    nextPage: null,
     items: [
       for (final (index, fixture) in fixtures.indexed)
         ExpenseEntity(

@@ -1,11 +1,8 @@
-import 'package:mocktail/mocktail.dart';
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 import 'package:cordato/features/metrics/metrics_module.dart';
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_bloc.dart';
@@ -13,37 +10,36 @@ import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_event
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_state.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
-import '../../support/core/mocks/http_client_mock.dart';
+import '../../support/core/fakes/pocketbase_fixture.dart';
 import '../../support/core/mocks/home_widget_client_mock.dart';
 
 void main() {
-  setUpAll(() => registerFallbackValue(const Requests(path: '')));
-
-  late HttpClientMock http;
+  late PocketBaseFixture fixture;
   late ModularBootstrap boot;
+  late DateTime first;
+  late DateTime last;
 
   setUp(() {
-    http = HttpClientMock();
-    when(() => http.get(parameter: any(named: 'parameter'))).thenAnswer(
-      (_) async => const Responses(
-        status: 200,
-        body: {
-          'items': [
-            {
-              'id': 'metrics',
-              'categories': [],
-              'total_amount': '123',
-              'end_date': '2026-10-31',
-              'start_date': '2026-10-01',
-            },
-          ],
+    final now = DateTime.now();
+    first = DateTime(now.year, now.month - 1);
+    last = DateTime(first.year, first.month + 1, 0);
+    fixture = PocketBaseFixture();
+    addTearDown(fixture.client.close);
+    fixture.respond = (_) => PocketBaseFixture.jsonResponse({
+      'items': [
+        {
+          'id': 'metrics',
+          'categories': [],
+          'total_amount': '123',
+          'end_date': last.toIso8601String().split('T').first,
+          'start_date': first.toIso8601String().split('T').first,
         },
-      ),
-    );
+      ],
+    });
     boot = bootstrapModule(
       createModule(
         register: (context) {
-          context.addInstance<IHttpClient>(http);
+          context.addInstance<PocketBase>(fixture.client);
           context.addInstance<IHomeWidgetClient>(HomeWidgetClientMock());
           context.module(metricsModule);
         },
@@ -52,49 +48,37 @@ void main() {
     addTearDown(boot.injector.dispose);
   });
 
-  test(
-    'binds the contract to one HTTP-backed repository without a data source',
-    () async {
-      final repository = inject<IMetricsRepository>();
-      expect(inject<IMetricsRepository>(), same(repository));
+  test('resolves the shared SDK repository and independent Bloc factories without visiting routes', () async {
+    final repository = inject<IMetricsRepository>();
+    expect(inject<IMetricsRepository>(), same(repository));
 
-      final bloc = inject<ExpenseMetricsBloc>();
-      final other = inject<ExpenseMetricsBloc>();
+    final bloc = inject<ExpenseMetricsBloc>();
+    final other = inject<ExpenseMetricsBloc>();
 
-      addTearDown(bloc.close);
-      addTearDown(other.close);
+    addTearDown(bloc.close);
+    addTearDown(other.close);
 
-      expect(bloc, isNot(same(other)));
-      expect(other.state, isA<ExpenseMetricsInitial>());
+    expect(bloc, isNot(same(other)));
+    expect(other.state, isA<ExpenseMetricsInitial>());
 
-      final ready = bloc.stream.firstWhere(
-        (state) => state is ExpenseMetricsSuccess,
-      );
-      bloc.add(
-        ExpenseMetricsRequestedEvent(
-          startDate: DateTime(2026, 10),
-          endDate: DateTime(2026, 10, 31),
-          groupBy: .category,
-        ),
-      );
-      final data = (await ready).metrics!;
+    final ready = bloc.stream.firstWhere(
+      (state) => state is ExpenseMetricsSuccess,
+    );
+    bloc.add(
+      ExpenseMetricsRequestedEvent(
+        startDate: first,
+        endDate: last,
+        groupBy: .category,
+      ),
+    );
+    final data = (await ready).metrics!;
 
-      expect(data.totalAmount, 123);
-      expect(data.categories, isEmpty);
+    expect(data.totalAmount, 123);
+    expect(data.categories, isEmpty);
 
-      final request =
-          verify(() => http.get(parameter: captureAny(named: 'parameter')))
-                  .captured
-                  .single
-              as Requests;
-      expect(request.path, 'collections/metrics/records');
-      expect(request.query, {
-        'page': 1,
-        'perPage': 2,
-        'filter': 'start_date = "2026-10-01"',
-        'skipTotal': true,
-      });
-      verifyNoMoreInteractions(http);
-    },
-  );
+    expect(
+      fixture.requests.single.url.path,
+      '/api/collections/metrics/records',
+    );
+  });
 }

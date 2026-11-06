@@ -26,7 +26,7 @@ final class ExpensesListPreviewRepository({
     DateTime? to,
     DateTime? from,
     String? category,
-    String? pageLink,
+    int page = 1,
     int pageSize = 30,
   }) async {
     if (loading) return Completer<ExpensePageEntity>().future;
@@ -47,16 +47,13 @@ final class ExpensesListPreviewRepository({
       );
     }
 
-    final offset = pageLink == null
-        ? 0
-        : int.parse(Uri.parse(pageLink).queryParameters['offset']!);
-    final page = filtered.skip(offset).take(pageSize).toList();
-    final end = offset + page.length;
+    final offset = (page - 1) * pageSize;
+    final pageItems = filtered.skip(offset).take(pageSize).toList();
+    final end = offset + pageItems.length;
 
     return ExpensePageEntity(
-      prev: null,
-      items: page,
-      next: end < filtered.length ? '?offset=$end' : null,
+      items: pageItems,
+      nextPage: end < filtered.length ? page + 1 : null,
     );
   }
 

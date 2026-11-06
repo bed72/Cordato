@@ -3,6 +3,8 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/app_module.dart';
 
+import 'support/core/fakes/pocketbase_fixture.dart';
+
 import 'package:cordato/features/root/presentation/bloc/home_widget_sync_bloc.dart';
 import 'package:cordato/features/root/presentation/bloc/home_widget_launch_bloc.dart';
 
@@ -25,7 +27,9 @@ void main() {
     late ModularBootstrap boot;
 
     setUp(() {
-      boot = bootstrapModule(appModule);
+      final fixture = PocketBaseFixture();
+      addTearDown(fixture.client.close);
+      boot = bootstrapModule(createAppModule(pocketBase: fixture.client));
       addTearDown(boot.injector.dispose);
     });
 

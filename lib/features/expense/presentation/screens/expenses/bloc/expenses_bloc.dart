@@ -17,7 +17,7 @@ final class ExpensesBloc({required final IExpenseRepository repository})
       _next,
       transformer: (events, mapper) =>
           restartable<ExpensesNextPageRequestedEvent>()(
-            events.where((_) => !state.isBusy && state.data.next != null),
+            events.where((_) => !state.isBusy && state.data.nextPage != null),
             mapper,
           ),
     );
@@ -40,7 +40,7 @@ final class ExpensesBloc({required final IExpenseRepository repository})
     }
     final data = ExpensesData(
       items: sameFilters ? previous.items : [],
-      next: sameFilters ? previous.next : null,
+      nextPage: sameFilters ? previous.nextPage : null,
       hasLoaded: sameFilters && previous.hasLoaded,
       category: event.category,
       from: event.from,
@@ -53,7 +53,7 @@ final class ExpensesBloc({required final IExpenseRepository repository})
     ExpensesNextPageRequestedEvent event,
     Emitter<ExpensesState> emit,
   ) async {
-    if (state.isBusy || state.data.next == null) return;
+    if (state.isBusy || state.data.nextPage == null) return;
     await _load(state.data, false, _revision, emit);
   }
 
@@ -70,7 +70,7 @@ final class ExpensesBloc({required final IExpenseRepository repository})
         category: data.category,
         from: data.from,
         to: data.to,
-        pageLink: refresh ? null : data.next,
+        page: refresh ? 1 : data.nextPage!,
       );
       if (isClosed || emit.isDone || revision != _revision) return;
       final items = <String, ExpenseEntity>{
@@ -82,7 +82,7 @@ final class ExpensesBloc({required final IExpenseRepository repository})
         ExpensesReady(
           data: ExpensesData(
             items: _sorted(items.values),
-            next: page.next,
+            nextPage: page.nextPage,
             category: data.category,
             from: data.from,
             to: data.to,
@@ -168,7 +168,7 @@ final class ExpensesBloc({required final IExpenseRepository repository})
   ExpensesData _withItems(ExpensesData data, Iterable<ExpenseEntity> items) =>
       ExpensesData(
         items: _sorted(items),
-        next: data.next,
+        nextPage: data.nextPage,
         category: data.category,
         from: data.from,
         to: data.to,

@@ -1,14 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
+import 'package:pocketbase/pocketbase.dart';
 
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_exception_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
+import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
@@ -17,8 +16,8 @@ import 'package:cordato/features/expense/domain/entities/expense_suggestion_enti
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
 
-import '../../../../support/core/mocks/http_client_mock.dart';
-import '../../../../support/core/mocks/storage_client_mock.dart';
+import '../../../../support/core/fakes/pocketbase_fixture.dart';
+import '../../../../support/core/mocks/auth_store_mock.dart';
 import '../../../../support/core/mocks/home_widget_client_mock.dart';
 
 void main() {
@@ -29,201 +28,174 @@ void main() {
     'occurred_on': '2026-10-05 00:00:00.000Z',
   };
   const resource = {'id': '8', ...attributes};
-  const single = Responses(status: 200, body: resource);
-  const listing = Responses(
-    status: 200,
-    body: {
-      'items': [resource],
-      'page': 1,
-      'totalPages': 2,
-    },
-  );
-  late HttpClientMock client;
-  late StorageClientMock storage;
+  const listing = {
+    'items': [resource],
+    'page': 1,
+    'perPage': 30,
+    'totalItems': 2,
+    'totalPages': 2,
+  };
+  late PocketBaseFixture fixture;
   late IExpenseRepository repository;
   late HomeWidgetClientMock homeWidgetClient;
 
-  setUpAll(() => registerFallbackValue(const Requests(path: '')));
   setUp(() {
-    client = HttpClientMock();
-    storage = StorageClientMock();
-    when(() => storage.read(key: StorageKeyEnum.userId.key))
-        .thenAnswer((_) async => 'owner-id');
+    fixture = PocketBaseFixture();
+    fixture.authenticate(id: 'owner-id');
+    fixture.respond = (_) => PocketBaseFixture.jsonResponse(resource);
     homeWidgetClient = HomeWidgetClientMock();
     repository = ExpenseRepository(
-      httpClient: client,
-      storageClient: storage,
+      pocketBase: fixture.client,
       homeWidgetClient: homeWidgetClient,
     );
+    addTearDown(fixture.client.close);
   });
 
-  Future<ErrorsEntity> errorsOf(Future<Object?> operation) async {
-    try {
-      await operation;
-      fail('Expected ExpenseException');
-    } on ExpenseException catch (exception) {
-      return exception.errors;
-    }
-  }
+  Map<String, dynamic> bodyOf(http.Request request) => request.body.isEmpty
+      ? <String, dynamic>{}
+      : jsonDecode(request.body) as Map<String, dynamic>;
 
   group('Individual records and mutations', () {
     for (final operation in ['create', 'update', 'delete']) {
-      test('$operation requests a widget refresh only after success', () async {
-        when(() => client.post(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => single);
-        when(() => client.patch(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => single);
-        when(() => client.delete(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => const Responses(status: 204, body: {}));
+      test(
+        '$operation notifies the widget only after remote success',
+        () async {
+          final response = Completer<http.Response>();
+          final started = Completer<void>();
+          fixture.respond = (_) {
+            started.complete();
+            return response.future;
+          };
 
-        await switch (operation) {
-          'create' => repository.create(cents: 1500, description: 'Mercado'),
-          'update' => repository.update(id: '8', cents: 1500),
-          _ => repository.delete(id: '8'),
-        };
+          final pending = switch (operation) {
+            'create' => repository.create(cents: 1500, description: 'Mercado'),
+            'update' => repository.update(id: '8', cents: 1500),
+            _ => repository.delete(id: '8'),
+          };
+          await started.future;
+          verifyNever(homeWidgetClient.requestMonthlyRefresh);
 
-        verify(homeWidgetClient.requestMonthlyRefresh).called(1);
-      });
+          response.complete(switch (operation) {
+            'delete' => http.Response('', 204),
+            _ => PocketBaseFixture.jsonResponse(resource),
+          });
+          await pending;
+
+          verify(homeWidgetClient.requestMonthlyRefresh).called(1);
+        },
+      );
     }
 
-    test('reading a record does not request synchronization', () async {
-      when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => single);
+    test(
+      'reads the encoded ID and maps the remote record without synchronization',
+      () async {
+        const id = ' a/b?c#d ';
 
-      await repository.getById(id: '8');
+        final expense = await repository.getById(id: id);
 
-      verifyNever(homeWidgetClient.requestMonthlyRefresh);
-    });
+        expect(expense.id, '8');
+        expect(expense.cents.cents, 1500);
+        expect(expense.description, ' Ônibus e metrô ');
+        expect(expense.category, ExpenseCategoryEnum.transport);
+        expect(expense.occurredOn, DateTime(2026, 10, 5));
+        final request = fixture.requests.single;
+        expect(request.method, 'GET');
+        expect(request.url.pathSegments.last, id);
+        expect(request.url.query, isEmpty);
+        expect(request.url.fragment, isEmpty);
+        expect(request.body, isEmpty);
+        expect(request.headers['Authorization'], PocketBaseFixture.token);
+        verifyNever(homeWidgetClient.requestMonthlyRefresh);
+      },
+    );
 
-    test('failed deletion does not request synchronization', () async {
-      when(() => client.delete(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => const Responses(status: 200, body: {}));
+    for (final owner in <String?>[null, '', '   ']) {
+      test('rejects missing auth owner "$owner" before HTTP', () async {
+        if (owner == null) {
+          fixture.client.authStore.clear();
+        } else {
+          fixture.authenticate(id: owner);
+        }
 
-      await expectLater(
-        repository.delete(id: '8'),
-        throwsA(isA<ExpenseException>()),
-      );
-
-      verifyNever(homeWidgetClient.requestMonthlyRefresh);
-    });
-    for (final owner in [null, '', '   ']) {
-      test('rejects missing owner "$owner" before HTTP', () async {
-        when(() => storage.read(key: StorageKeyEnum.userId.key))
-            .thenAnswer((_) async => owner);
         await expectLater(
           repository.create(cents: 100, description: 'Game'),
-          throwsA(isA<ExpenseException>()),
+          throwsA(isA<MissingAuthenticatedUserException>()),
         );
-        verifyZeroInteractions(client);
+
+        expect(fixture.requests, isEmpty);
+        verifyNever(homeWidgetClient.requestMonthlyRefresh);
       });
     }
 
-    test('awaits owner lookup and preserves the original stored ID', () async {
-      final pending = Completer<String?>();
-      when(() => storage.read(key: StorageKeyEnum.userId.key))
-          .thenAnswer((_) => pending.future);
-      when(() => client.post(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => single);
-      final creation = repository.create(cents: 100, description: 'Game');
-      verifyZeroInteractions(client);
-      pending.complete(' owner-id ');
-      await creation;
-      final request =
-          verify(() => client.post(parameter: captureAny(named: 'parameter')))
-                  .captured
-                  .single
-              as Requests;
-      expect(request.body!['owner'], ' owner-id ');
+    test('preserves the original auth ID without trimming', () async {
+      fixture.authenticate(id: ' owner-id ');
+
+      await repository.create(cents: 100, description: 'Game');
+
+      expect(bodyOf(fixture.requests.single)['owner'], ' owner-id ');
     });
 
     test('reads the current owner for each creation without caching', () async {
-      when(() => client.post(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => single);
       await repository.create(cents: 100, description: 'First');
-      when(() => storage.read(key: StorageKeyEnum.userId.key))
-          .thenAnswer((_) async => 'new-owner');
+      fixture.authenticate(id: 'new-owner');
       await repository.create(cents: 100, description: 'Second');
-      final requests = verify(
-        () => client.post(parameter: captureAny(named: 'parameter')),
-      ).captured.cast<Requests>();
-      expect(requests.map((request) => request.body!['owner']), [
+
+      expect(fixture.requests.map((request) => bodyOf(request)['owner']), [
         'owner-id',
         'new-owner',
       ]);
     });
 
-    test('propagates owner storage failures without HTTP', () async {
-      final failure = StateError('storage unavailable');
-      when(() => storage.read(key: StorageKeyEnum.userId.key))
-          .thenAnswer((_) async => throw failure);
+    test('propagates auth record lookup failures without HTTP', () async {
+      final store = AuthStoreMock();
+      final failure = StateError('auth record unavailable');
+      when(() => store.record).thenThrow(failure);
+      final client = PocketBase(
+        fixture.client.baseURL,
+        authStore: store,
+        httpClientFactory: fixture.client.httpClientFactory,
+      );
+      addTearDown(client.close);
+      final failingRepository = ExpenseRepository(
+        pocketBase: client,
+        homeWidgetClient: homeWidgetClient,
+      );
+
       await expectLater(
-        repository.create(cents: 100, description: 'Game'),
+        failingRepository.create(cents: 100, description: 'Game'),
         throwsA(same(failure)),
       );
-      verifyZeroInteractions(client);
-    });
 
-    test('reads an encoded id with no body, query or custom headers', () async {
-      when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => single);
-      final expense = await repository.getById(id: ' a/b?c#d ');
-      expect(expense.id, '8');
-      expect(expense.cents.cents, 1500);
-      expect(expense.description, ' Ônibus e metrô ');
-      expect(expense.category, ExpenseCategoryEnum.transport);
-      expect(expense.occurredOn, DateTime(2026, 10, 5));
-      final request =
-          verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                  .captured
-                  .single
-              as Requests;
-      expect(
-        request.path,
-        'collections/expenses/records/${Uri.encodeComponent(' a/b?c#d ')}',
-      );
-      expect(request.body, isNull);
-      expect(request.query, isNull);
-      expect(request.headers, isNull);
-      verifyNoMoreInteractions(client);
+      expect(fixture.requests, isEmpty);
+      verifyNever(homeWidgetClient.requestMonthlyRefresh);
     });
 
     test(
       'creates a native record with owner, default category and civil UTC date',
       () async {
-        when(() => client.post(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => single);
         final expense = await repository.create(
           cents: 9007199254740991,
           description: ' Game ',
           occurredOn: DateTime.utc(2026, 9, 1, 23),
         );
+
         expect(expense.cents.cents, 1500);
-        final request =
-            verify(() => client.post(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .single
-                as Requests;
-        expect(request.path, 'collections/expenses/records');
-        expect(request.body, {
+        final request = fixture.requests.single;
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/collections/expenses/records');
+        expect(bodyOf(request), {
           'owner': 'owner-id',
           'category': 'other',
           'amount': 9007199254740991,
           'description': ' Game ',
           'occurred_on': '2026-09-01 00:00:00.000Z',
         });
-        expect(request.query, isNull);
-        expect(request.headers, isNull);
-        verifyNoMoreInteractions(client);
-        verify(() => storage.read(key: StorageKeyEnum.userId.key)).called(1);
-        verifyNoMoreInteractions(storage);
+        expect(request.url.query, isEmpty);
       },
     );
 
     for (final category in ExpenseCategoryEnum.values) {
       test('creates with the persisted ${category.value} category', () async {
-        when(() => client.post(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => single);
-
         final expense = await repository.create(
           cents: 1500,
           description: ' Original ',
@@ -231,12 +203,7 @@ void main() {
           occurredOn: DateTime(2026, 10, 5),
         );
 
-        final request =
-            verify(() => client.post(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .single
-                as Requests;
-        expect(request.body, {
+        expect(bodyOf(fixture.requests.single), {
           'owner': 'owner-id',
           'amount': 1500,
           'description': ' Original ',
@@ -247,39 +214,30 @@ void main() {
       });
 
       test(
-        'patches only the ${category.value} category without reading storage',
+        'patches only ${category.value} without requiring an auth owner',
         () async {
-          when(() => client.patch(parameter: any(named: 'parameter')))
-              .thenAnswer((_) async => single);
+          fixture.client.authStore.clear();
 
           final expense = await repository.update(id: '8', category: category);
 
-          final request =
-              verify(
-                    () =>
-                        client.patch(parameter: captureAny(named: 'parameter')),
-                  ).captured.single
-                  as Requests;
-          expect(request.path, 'collections/expenses/records/8');
-          expect(request.body, {'category': category.value});
+          final request = fixture.requests.single;
+          expect(request.method, 'PATCH');
+          expect(request.url.path, '/api/collections/expenses/records/8');
+          expect(bodyOf(request), {'category': category.value});
           expect(expense.category, ExpenseCategoryEnum.transport);
-          verifyZeroInteractions(storage);
         },
       );
     }
 
     test('uses the current civil date only when create has no date', () async {
-      when(() => client.post(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => single);
       final before = DateTime.now();
+
       await repository.create(cents: 100, description: 'Game');
+
       final after = DateTime.now();
-      final request =
-          verify(() => client.post(parameter: captureAny(named: 'parameter')))
-                  .captured
-                  .single
-              as Requests;
-      final date = DateTime.parse(request.body!['occurred_on'] as String);
+      final date = DateTime.parse(
+        bodyOf(fixture.requests.single)['occurred_on'] as String,
+      );
       expect(
         date.isBefore(DateTime.utc(before.year, before.month, before.day)),
         isFalse,
@@ -290,88 +248,63 @@ void main() {
       );
     });
 
-    test(
-      'patches only supplied attributes and preserves id and description',
-      () async {
-        when(() => client.patch(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => single);
-        for (final input in [
-          (
-            cents: 0,
-            description: ' Novo nome ',
-            date: DateTime.utc(2026, 9, 30, 23),
-          ),
-          (cents: null, description: null, date: null),
-        ]) {
-          expect(
-            (await repository.update(
-              id: 'a/b',
-              cents: input.cents,
-              description: input.description,
-              occurredOn: input.date,
-            )).id,
-            '8',
-          );
-          final request =
-              verify(
-                    () =>
-                        client.patch(parameter: captureAny(named: 'parameter')),
-                  ).captured.single
-                  as Requests;
-          expect(request.path, 'collections/expenses/records/a%2Fb');
-          expect(request.body, {
-            'amount': ?input.cents,
-            'description': ?input.description,
-            if (input.date != null) 'occurred_on': '2026-09-30 00:00:00.000Z',
-          });
-          expect(request.headers, isNull);
-          expect(request.query, isNull);
-        }
-      },
-    );
+    for (final input in [
+      (
+        cents: 0,
+        description: ' Novo nome ',
+        date: DateTime.utc(2026, 9, 30, 23),
+      ),
+      (cents: null, description: null, date: null),
+    ]) {
+      test('patches only supplied attributes: $input', () async {
+        final expense = await repository.update(
+          id: 'a/b',
+          cents: input.cents,
+          description: input.description,
+          occurredOn: input.date,
+        );
 
-    test(
-      'deletion concludes only on 204 and encodes the original id',
-      () async {
-        when(() => client.delete(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => const Responses(status: 204, body: {}));
+        expect(expense.id, '8');
+        final request = fixture.requests.single;
+        expect(request.method, 'PATCH');
+        expect(request.url.pathSegments.last, 'a/b');
+        expect(bodyOf(request), {
+          'amount': ?input.cents,
+          'description': ?input.description,
+          if (input.date != null) 'occurred_on': '2026-09-30 00:00:00.000Z',
+        });
+        expect(request.url.query, isEmpty);
+      });
+    }
+
+    for (final status in [200, 201, 202, 204]) {
+      test('uses native SDK deletion success semantics for $status', () async {
+        fixture.respond = (_) => http.Response('', status);
+
         await repository.delete(id: 'a/b?c#d');
-        final request =
-            verify(
-                  () =>
-                      client.delete(parameter: captureAny(named: 'parameter')),
-                ).captured.single
-                as Requests;
-        expect(request.path, 'collections/expenses/records/a%2Fb%3Fc%23d');
-        expect(request.body, isNull);
-        expect(request.query, isNull);
-        expect(request.headers, isNull);
-        for (final status in [200, 201, 202]) {
-          when(() => client.delete(parameter: any(named: 'parameter')))
-              .thenAnswer((_) async => Responses(status: status, body: {}));
-          await expectLater(
-            repository.delete(id: '8'),
-            throwsA(isA<ExpenseException>()),
-          );
-        }
-      },
-    );
+
+        final request = fixture.requests.single;
+        expect(request.method, 'DELETE');
+        expect(request.url.pathSegments.last, 'a/b?c#d');
+        expect(request.url.query, isEmpty);
+        expect(request.body, isEmpty);
+        verify(homeWidgetClient.requestMonthlyRefresh).called(1);
+      });
+    }
   });
 
   group('Listing, filters and pagination', () {
+    setUp(
+      () => fixture.respond = (_) => PocketBaseFixture.jsonResponse(listing),
+    );
+
     test(
       'escapes category filter values without allowing new expressions',
       () async {
-        when(() => client.get(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => listing);
         await repository.get(category: 'food" || amount > 0 \\');
-        final request =
-            verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .single
-                as Requests;
+
         expect(
-          request.query!['filter'],
+          fixture.requests.single.url.queryParameters['filter'],
           r'category = "food\" || amount > 0 \\"',
         );
       },
@@ -382,274 +315,162 @@ void main() {
       (end: DateTime(2026, 12, 31), next: '2027-01-01'),
     ]) {
       test('uses exclusive next-day bound after ${date.end}', () async {
-        when(() => client.get(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => listing);
         await repository.get(to: date.end);
-        final request =
-            verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .single
-                as Requests;
+
         expect(
-          request.query!['filter'],
+          fixture.requests.single.url.queryParameters['filter'],
           'occurred_on < "${date.next} 00:00:00.000Z"',
         );
       });
     }
 
-    test(
-      'preserves response order and builds immutable native page continuations',
-      () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => const Responses(
-            status: 200,
-            body: {
-              'items': [
-                resource,
-                {'id': '2', ...attributes},
-              ],
-              'page': 2,
-              'totalPages': 3,
-            },
-          ),
-        );
-        final page = await repository.get();
-        expect(page.items.map((item) => item.id), ['8', '2']);
-        expect(Uri.parse(page.next!).queryParameters, {
-          'page': '3',
-          'perPage': '30',
-          'sort': '-occurred_on,-id',
-        });
-        expect(Uri.parse(page.prev!).queryParameters['page'], '1');
-        expect(() => page.items.clear(), throwsUnsupportedError);
-        final request =
-            verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .single
-                as Requests;
-        expect(request.path, 'collections/expenses/records');
-        expect(request.query, {
-          'page': 1,
-          'perPage': 30,
-          'sort': '-occurred_on,-id',
-        });
-        expect(request.headers, isNull);
-      },
-    );
+    test('preserves response order and returns the next page number', () async {
+      fixture.respond = (_) => PocketBaseFixture.jsonResponse({
+        ...listing,
+        'items': [
+          resource,
+          {'id': '2', ...attributes},
+        ],
+        'page': 2,
+        'totalPages': 3,
+      });
 
-    test('accepts empty pages and preserves the page-size fallback', () async {
-      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Responses(
-          status: 200,
-          body: {'items': [], 'page': 1, 'totalPages': 0},
-        ),
-      );
-      for (final size in [0, -1, 6, 20]) {
-        final page = await repository.get(pageSize: size);
-        expect(page.items, isEmpty);
-        expect(page.next, isNull);
-        expect(page.prev, isNull);
-        final request =
-            verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .single
-                as Requests;
-        expect(request.query, {
-          'page': 1,
-          'perPage': size > 0 ? size : 30,
-          'sort': '-occurred_on,-id',
-        });
-      }
+      final page = await repository.get(page: 2);
+
+      expect(page.items.map((item) => item.id), ['8', '2']);
+      expect(page.nextPage, 3);
+      expect(() => page.items.clear(), throwsUnsupportedError);
+      expect(fixture.requests.single.url.queryParameters['page'], '2');
+      verifyNever(homeWidgetClient.requestMonthlyRefresh);
     });
 
-    test(
-      'extracts continuation queries without following remote hosts or paths',
-      () async {
-        when(() => client.get(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => listing);
-        for (final link in [
-          'https://other.example/ignored?page=2&perPage=20&expand=owner',
-          'ignored?page=2&perPage=20',
-          '?page=2&perPage=20',
-        ]) {
-          await repository.get(pageSize: 6, pageLink: link);
-          final request =
-              verify(
-                    () => client.get(parameter: captureAny(named: 'parameter')),
-                  ).captured.single
-                  as Requests;
-          expect(request.path, 'collections/expenses/records');
-          expect(request.query, {
-            'page': 2,
-            'perPage': 6,
-            'sort': '-occurred_on,-id',
+    for (final size in [0, -1, 6, 20]) {
+      test(
+        'accepts empty pages and preserves the page-size fallback for $size',
+        () async {
+          fixture.respond = (_) => PocketBaseFixture.jsonResponse({
+            'items': [],
+            'page': 1,
+            'totalPages': 0,
           });
-        }
-      },
-    );
+
+          final page = await repository.get(pageSize: size);
+
+          expect(page.items, isEmpty);
+          expect(page.nextPage, isNull);
+          expect(
+            fixture.requests.single.url.queryParameters['perPage'],
+            '${size > 0 ? size : 30}',
+          );
+        },
+      );
+    }
 
     test(
-      'replaces continuation filters with explicit civil period and category',
+      'applies explicit civil period, category and sort to the requested page',
       () async {
-        when(() => client.get(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => listing);
         await repository.get(
           pageSize: 20,
           category: 'food',
           sort: 'occurred_on',
           from: DateTime.utc(2026, 9, 1, 23),
           to: DateTime(2026, 9, 30, 12),
-          pageLink: '?page=2&perPage=6&sort=-occurred_on&filter=category%3D%27travel%27',
+          page: 2,
         );
-        final request =
-            verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .single
-                as Requests;
-        expect(request.path, 'collections/expenses/records');
-        expect(request.query, {
-          'page': 2,
-          'perPage': 20,
+
+        expect(fixture.requests.single.url.queryParameters, {
+          'page': '2',
+          'perPage': '20',
           'sort': 'occurred_on',
+          'skipTotal': 'false',
           'filter': 'category = "food" && occurred_on >= "2026-09-01 00:00:00.000Z" && occurred_on < "2026-10-01 00:00:00.000Z"',
         });
       },
     );
 
-    test(
-      'preserves continuation filters when no explicit filters are supplied',
-      () async {
-        when(() => client.get(parameter: any(named: 'parameter')))
-            .thenAnswer((_) async => listing);
-        final first = await repository.get(
-          category: 'food',
-          sort: 'occurred_on',
-        );
-        await repository.get(pageLink: first.next);
-        final request =
-            verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .last
-                as Requests;
-        expect(request.query, {
-          'page': 2,
-          'perPage': 30,
-          'filter': 'category = "food"',
-          'sort': 'occurred_on',
-        });
-      },
-    );
+    for (final limits in [
+      (
+        from: DateTime.utc(2026, 9, 1, 23),
+        to: null,
+        filter: 'occurred_on >= "2026-09-01 00:00:00.000Z"',
+      ),
+      (
+        from: null,
+        to: DateTime(2026, 9, 30, 12),
+        filter: 'occurred_on < "2026-10-01 00:00:00.000Z"',
+      ),
+    ]) {
+      test(
+        'does not complete incomplete civil intervals: ${limits.filter}',
+        () async {
+          await repository.get(from: limits.from, to: limits.to);
 
-    test('does not complete incomplete civil intervals', () async {
-      when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) async => listing);
-      for (final limits in [
-        (from: DateTime.utc(2026, 9, 1, 23), to: null),
-        (from: null, to: DateTime(2026, 9, 30, 12)),
-      ]) {
-        await repository.get(from: limits.from, to: limits.to);
-        final request =
-            verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                    .captured
-                    .single
-                as Requests;
-        expect(request.query, {
-          'page': 1,
-          'perPage': 30,
-          'sort': '-occurred_on,-id',
-          if (limits.from != null)
-            'filter': 'occurred_on >= "2026-09-01 00:00:00.000Z"',
-          if (limits.to != null)
-            'filter': 'occurred_on < "2026-10-01 00:00:00.000Z"',
-        });
-      }
-    });
-
-    test(
-      'invalid continuations fail before HTTP without being masked',
-      () async {
-        for (final link in [
-          '',
-          'expenses',
-          '?page=2#fragment',
-          '?page=0',
-          '?page=-1',
-          '?page=abc',
-        ]) {
-          await expectLater(
-            repository.get(pageLink: link),
-            throwsFormatException,
+          expect(
+            fixture.requests.single.url.queryParameters['filter'],
+            limits.filter,
           );
-        }
-        verifyZeroInteractions(client);
+        },
+      );
+    }
+
+    for (final pageNumber in [1, 2, 3]) {
+      test('derives the next page for page $pageNumber of 3', () async {
+        fixture.respond = (_) => PocketBaseFixture.jsonResponse({
+          ...listing,
+          'page': pageNumber,
+          'totalPages': 3,
+        });
+
+        final page = await repository.get(page: pageNumber);
+
+        expect(page.nextPage, pageNumber < 3 ? pageNumber + 1 : null);
+      });
+    }
+
+    for (final malformed in [
+      {'items': [], 'page': '1', 'totalPages': 1},
+      {
+        'items': [null],
+        'page': 1,
+        'totalPages': 1,
       },
-    );
+    ]) {
+      test('propagates invalid native page data: $malformed', () async {
+        fixture.respond = (_) => PocketBaseFixture.jsonResponse(malformed);
+
+        await expectLater(repository.get(), throwsA(isA<TypeError>()));
+      });
+    }
   });
 
   group('Suggestions', () {
-    test(
-      'invalid historical category propagates without a partial result',
-      () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => const Responses(
-            status: 200,
-            body: {
-              'items': [
-                {
-                  'id': 'market',
-                  'description': 'Mercado',
-                  'amount': 20000,
-                  'category': 'food',
-                },
-                {
-                  'id': 'invalid',
-                  'description': 'Outro registro',
-                  'amount': 100,
-                  'category': 'unknown',
-                },
-              ],
-            },
-          ),
-        );
-
-        await expectLater(
-          repository.suggestions(query: 'Mer'),
-          throwsStateError,
-        );
-        verifyZeroInteractions(storage);
-      },
-    );
-
-    test('suggestions use filtered history and keep the most recent description ignoring case', () async {
-      when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-        (_) async => const Responses(
-          status: 200,
-          body: {
-            'items': [
-              {
-                'id': 'rent',
-                'description': 'Aluguel',
-                'amount': 160000,
-                'category': 'housing',
-              },
-              {
-                'id': 'market',
-                'description': 'Mercado',
-                'amount': 20000,
-                'category': 'food',
-              },
-              {
-                'id': 'old-rent',
-                'description': 'ALUGUEL',
-                'amount': 150000,
-                'category': 'other',
-              },
-            ],
+    test('uses filtered recent history and deduplicates descriptions ignoring case', () async {
+      fixture.respond = (_) => PocketBaseFixture.jsonResponse({
+        'items': [
+          {
+            'id': 'rent',
+            'description': 'Aluguel',
+            'amount': 160000,
+            'category': 'housing',
           },
-        ),
-      );
+          {
+            'id': 'market',
+            'description': 'Mercado',
+            'amount': 20000,
+            'category': 'food',
+          },
+          {
+            'id': 'old-rent',
+            'description': 'ALUGUEL',
+            'amount': 150000,
+            'category': 'other',
+          },
+        ],
+      });
       const query = r" [Demo] Aluguél ' || amount > 0 \ & ?/# ";
+
       final suggestions = await repository.suggestions(query: query);
+
       expect(suggestions.map((item) => item.id), ['rent', 'market']);
       expect(suggestions.map((item) => item.cents), [160000, 20000]);
       expect(suggestions.map((item) => item.category), [
@@ -657,47 +478,64 @@ void main() {
         ExpenseCategoryEnum.food,
       ]);
       expect(() => suggestions.clear(), throwsUnsupportedError);
-      final request =
-          verify(() => client.get(parameter: captureAny(named: 'parameter')))
-                  .captured
-                  .single
-              as Requests;
-      expect(request.path, 'collections/expenses/records');
-      expect(request.query, {
-        'page': 1,
-        'perPage': 30,
+      final request = fixture.requests.single;
+      expect(request.url.path, '/api/collections/expenses/records');
+      expect(request.url.queryParameters, {
+        'page': '1',
+        'perPage': '30',
         'sort': '-occurred_on,-created,-id',
         'filter':
             r'''description ~ " [Demo] Aluguél ' || amount > 0 \\ & ?/# "''',
-        'skipTotal': true,
+        'skipTotal': 'true',
         'fields': 'id,description,amount,category',
       });
-      expect(request.body, isNull);
-      expect(request.headers, isNull);
+      expect(request.body, isEmpty);
+      verifyNever(homeWidgetClient.requestMonthlyRefresh);
     });
 
-    test(
-      'empty suggestions succeed but malformed suggestions propagate',
-      () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-          (_) async => const Responses(status: 200, body: {'items': []}),
+    test('empty suggestions succeed', () async {
+      fixture.respond = (_) => PocketBaseFixture.jsonResponse({'items': []});
+
+      expect(await repository.suggestions(query: 'Mer'), isEmpty);
+    });
+
+    test('uses native SDK defaults for absent list items', () async {
+      fixture.respond = (_) => PocketBaseFixture.jsonResponse({});
+
+      expect(await repository.suggestions(query: 'Mer'), isEmpty);
+    });
+
+    for (final items in [
+      <String, dynamic>{},
+      [
+        {'id': 'bad', 'description': 10, 'amount': 100},
+      ],
+    ]) {
+      test('malformed suggestions propagate: $items', () async {
+        fixture.respond = (_) =>
+            PocketBaseFixture.jsonResponse({'items': items});
+
+        await expectLater(
+          repository.suggestions(query: 'Mer'),
+          throwsA(isA<TypeError>()),
         );
-        expect(await repository.suggestions(query: 'Mer'), isEmpty);
-        for (final data in [
-          null,
-          {},
-          [
-            {'id': 'bad', 'description': 10, 'amount': 100},
+      });
+    }
+
+    test(
+      'invalid historical category propagates without a partial response',
+      () async {
+        fixture.respond = (_) => PocketBaseFixture.jsonResponse({
+          'items': [
+            resource,
+            {...resource, 'id': 'invalid', 'category': 'unknown'},
           ],
-        ]) {
-          when(() => client.get(parameter: any(named: 'parameter'))).thenAnswer(
-            (_) async => Responses(status: 200, body: {'items': data}),
-          );
-          await expectLater(
-            repository.suggestions(query: 'Mer'),
-            throwsA(isA<TypeError>()),
-          );
-        }
+        });
+
+        await expectLater(
+          repository.suggestions(query: 'Mer'),
+          throwsStateError,
+        );
       },
     );
   });
@@ -716,6 +554,7 @@ void main() {
           await repository.delete(id: '8');
           return null;
         }
+
         return switch (operation) {
           'getById' => repository.getById(id: '8'),
           'get' => repository.get(),
@@ -730,179 +569,206 @@ void main() {
             cents: 0,
             category: .transport,
           ),
-          _ => throw StateError(operation),
+          _ => throw StateError('Unknown expense operation'),
         };
       }
 
-      void stub(Future<Responses> Function() answer) {
-        switch (operation) {
-          case 'getById' || 'get' || 'suggestions':
-            when(() => client.get(parameter: any(named: 'parameter')))
-                .thenAnswer((_) => answer());
-          case 'create':
-            when(() => client.post(parameter: any(named: 'parameter')))
-                .thenAnswer((_) => answer());
-          case 'update':
-            when(() => client.patch(parameter: any(named: 'parameter')))
-                .thenAnswer((_) => answer());
-          case 'delete':
-            when(() => client.delete(parameter: any(named: 'parameter')))
-                .thenAnswer((_) => answer());
-        }
-      }
+      Map<String, dynamic> payload(Map<String, dynamic> record) =>
+          switch (operation) {
+            'get' || 'suggestions' => {
+              ...listing,
+              'items': [record],
+            },
+            _ => record,
+          };
 
       test(
-        '$operation preserves ordered HTTP errors and all metadata',
+        '$operation preserves native error order, status, code, pointer and parameter',
         () async {
-          final exception = HttpResponseException(
-            status: 422,
-            errors: const ErrorsResponse(
-              errors: [
-                ErrorResponse(
-                  status: '422',
-                  title: 'Valor inválido',
-                  detail: 'Informe o valor.',
-                  pointer: '/data/attributes/amount',
-                  parameter: 'filter[from]',
-                ),
-                ErrorResponse(
-                  status: '403',
-                  title: 'Sem permissão',
-                  detail: 'Outro erro.',
-                ),
-              ],
+          fixture.respond = (_) => PocketBaseFixture.jsonResponse({
+            'message': 'Failed to save record.',
+            'data': {
+              'amount': {
+                'code': 'validation_min_greater_equal_than_required',
+                'message': 'Invalid amount.',
+              },
+              'description': {
+                'code': 'validation_length_out_of_range',
+                'message': 'Invalid description.',
+              },
+              'category': {
+                'code': 'validation_in_invalid',
+                'message': 'Invalid category.',
+              },
+            },
+          }, status: 400);
+
+          await expectLater(
+            execute(),
+            throwsA(
+              isA<ExpenseException>().having(
+                (failure) => failure.errors.errors
+                    .map(
+                      (error) => (
+                        error.status,
+                        error.code,
+                        error.pointer,
+                        error.parameter,
+                        error.detail,
+                      ),
+                    )
+                    .toList(),
+                'ordered metadata',
+                [
+                  (
+                    '400',
+                    'validation_min_greater_equal_than_required',
+                    '/amount',
+                    'amount',
+                    'Invalid amount.',
+                  ),
+                  (
+                    '400',
+                    'validation_length_out_of_range',
+                    '/description',
+                    'description',
+                    'Invalid description.',
+                  ),
+                  (
+                    '400',
+                    'validation_in_invalid',
+                    '/category',
+                    'category',
+                    'Invalid category.',
+                  ),
+                ],
+              ),
             ),
           );
-          stub(() async => throw exception);
-          final errors = (await errorsOf(execute())).errors;
-          expect(errors.map((error) => error.title), [
-            'Valor inválido',
-            'Sem permissão',
-          ]);
-          expect(errors.first.status, '422');
-          expect(errors.first.detail, 'Informe o valor.');
-          expect(errors.first.pointer, '/data/attributes/amount');
-          expect(errors.first.parameter, 'filter[from]');
-          expect(errors.last.status, '403');
-          expect(errors.last.detail, 'Outro erro.');
+          verifyNever(homeWidgetClient.requestMonthlyRefresh);
         },
       );
 
-      test('$operation preserves PocketBase field error metadata', () async {
-        stub(
-          () async => throw HttpResponseException.fromResponse(
-            const Responses(
-              status: 400,
-              body: {
-                'status': 400,
-                'message': 'Failed to save record.',
-                'data': {
-                  'amount': {
-                    'code': 'validation_min_greater_equal_than_required',
-                    'message': 'Invalid amount.',
-                  },
-                  'description': {
-                    'code': 'validation_length_out_of_range',
-                    'message': 'Invalid description.',
-                  },
-                  'category': {
-                    'code': 'validation_in_invalid',
-                    'message': 'Invalid category.',
-                  },
-                },
-              },
+      for (final status in [401, 403, 404, 422, 503]) {
+        test(
+          '$operation maps HTTP $status without managing sessions or notifying the widget',
+          () async {
+            fixture.respond = (_) => PocketBaseFixture.jsonResponse({
+              'message': 'Remote failure',
+            }, status: status);
+            final record = fixture.client.authStore.record;
+
+            await expectLater(
+              execute(),
+              throwsA(
+                isA<ExpenseException>().having(
+                  (failure) => failure.errors.errors.single.status,
+                  'status',
+                  '$status',
+                ),
+              ),
+            );
+
+            expect(fixture.client.authStore.token, PocketBaseFixture.token);
+            expect(fixture.client.authStore.record, same(record));
+            verifyNever(homeWidgetClient.requestMonthlyRefresh);
+          },
+        );
+      }
+
+      for (final response in <Map<String, dynamic>>[
+        {},
+        {'errors': []},
+        {'errors': 'invalid'},
+      ]) {
+        test(
+          '$operation preserves HTTP status when field errors are absent: $response',
+          () async {
+            fixture.respond = (_) =>
+                PocketBaseFixture.jsonResponse(response, status: 503);
+
+            await expectLater(
+              execute(),
+              throwsA(
+                isA<ExpenseException>().having(
+                  (failure) => failure.errors.errors.single.status,
+                  'status',
+                  '503',
+                ),
+              ),
+            );
+          },
+        );
+      }
+
+      test('$operation maps transport failures to a safe fallback', () async {
+        fixture.respond = (_) => throw const SocketException('offline');
+
+        await expectLater(
+          execute(),
+          throwsA(
+            isA<ExpenseException>().having(
+              (failure) => failure.errors.errors.single.title,
+              'title',
+              'Erro desconhecido',
             ),
           ),
         );
-        final errors = (await errorsOf(execute())).errors;
-        expect(errors.map((error) => error.pointer), [
-          '/amount',
-          '/description',
-          '/category',
-        ]);
-        expect(errors.map((error) => error.parameter), [
-          'amount',
-          'description',
-          'category',
-        ]);
-        expect(errors.first.status, '400');
-        expect(errors.first.detail, 'Invalid amount.');
+
+        expect(fixture.client.authStore.token, PocketBaseFixture.token);
+        verifyNever(homeWidgetClient.requestMonthlyRefresh);
       });
 
-      test(
-        '$operation uses safe fallback for malformed remote errors',
-        () async {
-          for (final body in <Map<String, dynamic>>[
-            {},
-            {'errors': []},
-            {'errors': 'invalid'},
-          ]) {
-            stub(
-              () async => throw HttpResponseException.fromResponse(
-                Responses(status: 503, body: body),
-              ),
-            );
-            expect(
-              (await errorsOf(execute())).errors.single.title,
-              'Erro desconhecido',
-            );
-          }
-        },
-      );
-
-      for (final failure in <HttpClientException>[
-        for (final type in HttpExceptionEnum.values)
-          HttpTransportException(failure: type),
-        HttpInvalidResponseException(status: 200),
-        HttpUnexpectedException(),
+      for (final failure in [
+        StateError('private detail'),
+        const FormatException('invalid payload'),
       ]) {
-        test(
-          '$operation translates ${failure.runtimeType} into expected failure',
-          () async {
-            stub(() async => throw failure);
-            expect(
-              (await errorsOf(execute())).errors.single.title,
-              'Erro desconhecido',
-            );
-          },
-        );
+        for (final synchronous in [true, false]) {
+          test(
+            '$operation propagates ${failure.runtimeType} unchanged (synchronous: $synchronous)',
+            () async {
+              fixture.respond = (_) {
+                if (synchronous) {
+                  throw failure;
+                }
+                return Future<http.Response>.error(failure);
+              };
+
+              await expectLater(execute(), throwsA(same(failure)));
+
+              verifyNever(homeWidgetClient.requestMonthlyRefresh);
+            },
+          );
+        }
       }
 
-      for (final synchronous in [true, false]) {
-        test(
-          '$operation propagates unexpected failures (synchronous: $synchronous)',
-          () async {
-            final failure = StateError('private detail');
-            stub(() {
-              if (synchronous) throw failure;
-              return Future.error(failure);
-            });
-            await expectLater(execute(), throwsA(same(failure)));
-          },
-        );
-      }
-
-      test('$operation waits for HTTP completion', () async {
-        final pending = Completer<Responses>();
-        stub(() => pending.future);
-        var complete = false;
-        final pendingOperation = execute().then((value) {
-          complete = true;
+      test('$operation waits for SDK completion', () async {
+        final response = Completer<http.Response>();
+        final started = Completer<void>();
+        fixture.respond = (_) {
+          started.complete();
+          return response.future;
+        };
+        var completed = false;
+        final pending = execute().then((value) {
+          completed = true;
           return value;
         });
-        expect(complete, isFalse);
-        pending.complete(
-          operation == 'get' || operation == 'suggestions'
-              ? listing
-              : operation == 'delete'
-              ? const Responses(status: 204, body: {})
-              : single,
-        );
-        await pendingOperation;
-        expect(complete, isTrue);
+        await started.future;
+
+        expect(completed, isFalse);
+        response.complete(switch (operation) {
+          'delete' => http.Response('', 204),
+          _ => PocketBaseFixture.jsonResponse(payload(resource)),
+        });
+        await pending;
+
+        expect(completed, isTrue);
       });
 
-      if (operation == 'delete') continue;
+      if (operation == 'delete') {
+        continue;
+      }
 
       for (final malformed in [
         'shape',
@@ -912,11 +778,11 @@ void main() {
         'fraction',
       ]) {
         if (operation == 'suggestions' &&
-            (malformed == 'date' || malformed == 'category')) {
+            (malformed == 'date' || malformed == 'amount')) {
           continue;
         }
         test(
-          '$operation propagates invalid $malformed without partial success',
+          '$operation propagates invalid $malformed without partial success or widget notification',
           () async {
             final invalid = switch (malformed) {
               'shape' => <String, dynamic>{},
@@ -929,18 +795,15 @@ void main() {
                 if (malformed == 'fraction') 'amount': 1.5,
               },
             };
-            stub(
-              () async => Responses(
-                status: 200,
-                body: operation == 'get' || operation == 'suggestions'
-                    ? {
-                        'items': [resource, invalid],
-                        'page': 1,
-                        'totalPages': 1,
-                      }
-                    : invalid,
-              ),
-            );
+            fixture.respond = (_) =>
+                PocketBaseFixture.jsonResponse(switch (operation) {
+                  'get' || 'suggestions' => {
+                    ...listing,
+                    'items': [resource, invalid],
+                  },
+                  _ => invalid,
+                });
+
             await expectLater(
               execute(),
               throwsA(switch (malformed) {
@@ -950,33 +813,26 @@ void main() {
                 _ => isA<TypeError>(),
               }),
             );
+
+            verifyNever(homeWidgetClient.requestMonthlyRefresh);
           },
         );
       }
 
       test('$operation preserves large integer cents in responses', () async {
-        final large = {...resource, 'amount': 9007199254740991};
-        stub(
-          () async => Responses(
-            status: 200,
-            body: operation == 'get' || operation == 'suggestions'
-                ? {
-                    'items': [large],
-                    'page': 1,
-                    'totalPages': 1,
-                  }
-                : large,
-          ),
+        fixture.respond = (_) => PocketBaseFixture.jsonResponse(
+          payload({...resource, 'amount': 9007199254740991}),
         );
+
         final confirmedExpenses = await execute();
-        if (confirmedExpenses is List<ExpenseSuggestionEntity>) {
-          expect(confirmedExpenses.single.cents, 9007199254740991);
-          return;
-        }
-        final expense = confirmedExpenses is ExpenseEntity
-            ? confirmedExpenses
-            : (confirmedExpenses as ExpensePageEntity).items.single;
-        expect(expense.cents.cents, 9007199254740991);
+
+        final cents = switch (confirmedExpenses) {
+          List<ExpenseSuggestionEntity>() => confirmedExpenses.single.cents,
+          ExpenseEntity() => confirmedExpenses.cents.cents,
+          ExpensePageEntity() => confirmedExpenses.items.single.cents.cents,
+          _ => throw StateError('Unexpected expense response'),
+        };
+        expect(cents, 9007199254740991);
       });
     }
   });

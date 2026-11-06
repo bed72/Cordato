@@ -1,11 +1,7 @@
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
+import 'package:pocketbase/pocketbase.dart';
+
+import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_mapper.dart';
+import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_extension.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/infrastructure/responses/user_response.dart';
@@ -13,85 +9,44 @@ import 'package:cordato/features/user/infrastructure/responses/user_response.dar
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
-final class UserRepository({
-  required final IHttpClient _httpClient,
-  required final IStorageClient _storageClient,
-}) implements IUserRepository {
+final class UserRepository({required final PocketBase pocketBase})
+    implements IUserRepository {
   @override
   Future<UserEntity> getById() async {
+    final id = pocketBase.userId();
+
     try {
-      final id = await _getId();
+      final user = await pocketBase.collection('users').getOne(id);
 
-      final response = await _httpClient.get(
-        parameter: Requests(
-          path: '${HttpPathEnum.userRecords.path}/${Uri.encodeComponent(id)}',
-        ),
-      );
-
-      return UserResponse.fromJson(response.body).toEntity();
-    } on HttpResponseException catch (exception) {
-      throw UserException(errors: exception.errors.toEntity());
-    } on HttpClientException {
-      throw UserException(errors: .unknown());
+      return UserResponse.fromJson(user.toJson()).toEntity();
+    } on ClientException catch (exception) {
+      throw UserException(errors: PocketBaseMapper.fromException(exception));
     }
   }
 
   @override
   Future<UserEntity> update({String? name, String? avatar}) async {
+    final id = pocketBase.userId();
+
     try {
-      final id = await _getId();
+      final user = await pocketBase
+          .collection('users')
+          .update(id, body: {'name': ?name, 'avatar': ?avatar});
 
-      final response = await _httpClient.patch(
-        parameter: Requests(
-          path: '${HttpPathEnum.userRecords.path}/${Uri.encodeComponent(id)}',
-          body: {'name': ?name, 'avatar': ?avatar},
-        ),
-      );
-
-      return UserResponse.fromJson(response.body).toEntity();
-    } on HttpResponseException catch (exception) {
-      throw UserException(errors: exception.errors.toEntity());
-    } on HttpClientException {
-      throw UserException(errors: .unknown());
+      return UserResponse.fromJson(user.toJson()).toEntity();
+    } on ClientException catch (exception) {
+      throw UserException(errors: PocketBaseMapper.fromException(exception));
     }
   }
 
   @override
   Future<void> delete() async {
+    final id = pocketBase.userId();
+
     try {
-      final id = await _getId();
-      final response = await _httpClient.delete(
-        parameter: Requests(
-          path: '${HttpPathEnum.userRecords.path}/${Uri.encodeComponent(id)}',
-        ),
-      );
-
-      if (response.status != 204) {
-        throw UserException(errors: .unknown());
-      }
-    } on HttpResponseException catch (exception) {
-      throw UserException(errors: exception.errors.toEntity());
-    } on HttpClientException {
-      throw UserException(errors: .unknown());
+      await pocketBase.collection('users').delete(id);
+    } on ClientException catch (exception) {
+      throw UserException(errors: PocketBaseMapper.fromException(exception));
     }
-
-    await _storageClient.clear();
-  }
-
-  Future<String> _getId() async {
-    final id = await _storageClient.read(key: StorageKeyEnum.userId.key);
-    if (id == null || id.trim().isEmpty) {
-      throw UserException(
-        errors: const ErrorsEntity(
-          errors: [
-            ErrorEntity(
-              title: 'Usuário não identificado',
-              detail: 'Não foi possível identificar o usuário atual.',
-            ),
-          ],
-        ),
-      );
-    }
-    return id;
   }
 }

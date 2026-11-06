@@ -1,13 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_exception_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
@@ -17,7 +15,7 @@ import 'package:cordato/features/metrics/infrastructure/repositories/metrics_rep
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
-import '../../../../support/core/mocks/http_client_mock.dart';
+import '../../../../support/core/fakes/pocketbase_fixture.dart';
 import '../../../../support/core/mocks/home_widget_client_mock.dart';
 
 void main() {
@@ -36,13 +34,12 @@ void main() {
       },
     ],
   };
-  late HttpClientMock client;
+  late PocketBaseFixture fixture;
   late HomeWidgetClientMock homeWidgetClient;
   late IMetricsRepository repository;
 
   void respond(Map<String, dynamic> body) {
-    when(() => client.get(parameter: any(named: 'parameter')))
-        .thenAnswer((_) async => Responses(status: 200, body: body));
+    fixture.respond = (_) => PocketBaseFixture.jsonResponse(body);
   }
 
   Future<ExpenseMetricsEntity> load({ExpenseMetricsGroupByEnum? groupBy}) =>
@@ -51,12 +48,6 @@ void main() {
         endDate: DateTime(2026, 10, 31),
         groupBy: groupBy,
       );
-
-  Requests request() =>
-      verify(() => client.get(parameter: captureAny(named: 'parameter')))
-              .captured
-              .single
-          as Requests;
 
   Future<ErrorsEntity> errorsOf(Future<ExpenseMetricsEntity> operation) async {
     try {
@@ -68,11 +59,12 @@ void main() {
   }
 
   setUpAll(() {
-    registerFallbackValue(const Requests(path: ''));
     registerFallbackValue(DateTime(2026));
   });
   setUp(() {
-    client = HttpClientMock();
+    fixture = PocketBaseFixture();
+    fixture.authenticate(id: 'owner-id');
+    addTearDown(fixture.client.close);
     homeWidgetClient = HomeWidgetClientMock();
     when(() => homeWidgetClient.beginMonthlyRead()).thenReturn(1);
     when(
@@ -83,7 +75,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
     repository = MetricsRepository(
-      httpClient: client,
+      pocketBase: fixture.client,
       homeWidgetClient: homeWidgetClient,
     );
     respond({
@@ -92,6 +84,60 @@ void main() {
   });
 
   group('Monthly view requests', () {
+    test(
+      'awaits widget publication with the revision captured before HTTP',
+      () async {
+        final now = DateTime.now();
+        final first = DateTime(now.year, now.month);
+        final last = DateTime(now.year, now.month + 1, 0);
+        final remote = Completer<http.Response>();
+        final started = Completer<void>();
+        final publishing = Completer<void>();
+        final published = Completer<void>();
+        when(() => homeWidgetClient.beginMonthlyRead()).thenReturn(7);
+        fixture.respond = (_) {
+          started.complete();
+          return remote.future;
+        };
+        when(
+          () => homeWidgetClient.publishMonthlyTotal(
+            revision: 7,
+            month: first,
+            cents: 389205,
+          ),
+        ).thenAnswer((_) {
+          publishing.complete();
+          return published.future;
+        });
+        var completed = false;
+
+        final pending = repository.getExpenses().then((metrics) {
+          completed = true;
+          return metrics;
+        });
+        await started.future;
+        verify(homeWidgetClient.beginMonthlyRead).called(1);
+        when(() => homeWidgetClient.beginMonthlyRead()).thenReturn(8);
+        remote.complete(
+          PocketBaseFixture.jsonResponse({
+            'items': [
+              {
+                ...record,
+                'start_date': first.toIso8601String().split('T').first,
+                'end_date': last.toIso8601String().split('T').first,
+              },
+            ],
+          }),
+        );
+        await publishing.future;
+
+        expect(completed, isFalse);
+        published.complete();
+        expect((await pending).totalAmount, 389205);
+        expect(completed, isTrue);
+      },
+    );
+
     test('publishes the current month total returned by PocketBase', () async {
       final now = DateTime.now();
       final first = DateTime(now.year, now.month);
@@ -190,17 +236,17 @@ void main() {
         expect(data.startDate, DateTime(2026, 10));
         expect(data.endDate, DateTime(2026, 10, 31));
         expect(data.categories, isNull);
-        final captured = request();
-        expect(captured.path, 'collections/metrics/records');
-        expect(captured.query, {
-          'page': 1,
-          'perPage': 2,
+        final captured = fixture.requests.single;
+        expect(captured.url.path, '/api/collections/metrics/records');
+        expect(captured.url.queryParameters, {
+          'page': '1',
+          'perPage': '2',
           'filter': 'start_date = "2026-10-01"',
-          'skipTotal': true,
+          'skipTotal': 'true',
         });
-        expect(captured.body, isNull);
-        expect(captured.headers, isNull);
-        verifyNoMoreInteractions(client);
+        expect(captured.method, 'GET');
+        expect(captured.body, isEmpty);
+        expect(captured.headers['Authorization'], PocketBaseFixture.token);
       },
     );
 
@@ -217,7 +263,10 @@ void main() {
               : DateTime(2024, 2, 29, 23),
         );
 
-        expect(request().query!['filter'], 'start_date = "2024-02-01"');
+        expect(
+          fixture.requests.single.url.queryParameters['filter'],
+          'start_date = "2024-02-01"',
+        );
         expect(data.startDate, DateTime(2024, 2));
         expect(data.endDate, DateTime(2024, 2, 29));
       });
@@ -234,7 +283,7 @@ void main() {
         expect(data.startDate, DateTime(now.year, now.month));
         expect(data.endDate, DateTime(now.year, now.month + 1, 0));
         expect(
-          request().query!['filter'],
+          fixture.requests.single.url.queryParameters['filter'],
           contains(data.startDate.year.toString()),
         );
       },
@@ -273,7 +322,8 @@ void main() {
 
           expect(errors.errors.single.title, 'Período inválido');
           expect(errors.errors.single.parameter, 'period');
-          verifyZeroInteractions(client);
+          expect(fixture.requests, isEmpty);
+          verifyZeroInteractions(homeWidgetClient);
         },
       );
     }
@@ -351,23 +401,24 @@ void main() {
     );
 
     test('waits for the view response before returning', () async {
-      final pending = Completer<Responses>();
-      when(() => client.get(parameter: any(named: 'parameter')))
-          .thenAnswer((_) => pending.future);
+      final pending = Completer<http.Response>();
+      final started = Completer<void>();
+      fixture.respond = (_) {
+        started.complete();
+        return pending.future;
+      };
       var completed = false;
       final operation = load().then((value) {
         completed = true;
         return value;
       });
 
+      await started.future;
       expect(completed, isFalse);
       pending.complete(
-        const Responses(
-          status: 200,
-          body: {
-            'items': [record],
-          },
-        ),
+        PocketBaseFixture.jsonResponse({
+          'items': [record],
+        }),
       );
 
       expect((await operation).totalAmount, 389205);
@@ -376,6 +427,40 @@ void main() {
   });
 
   group('Malformed responses', () {
+    for (final envelope in <Map<String, dynamic>>[
+      {},
+      {'items': null},
+      {'data': record},
+    ]) {
+      test(
+        'invalid current-month envelope never becomes a published zero: $envelope',
+        () async {
+          respond(envelope);
+
+          await expectLater(
+            repository.getExpenses(),
+            throwsA(isA<TypeError>()),
+          );
+
+          verifyNever(
+            () => homeWidgetClient.publishMonthlyTotal(
+              revision: any(named: 'revision'),
+              month: any(named: 'month'),
+              cents: any(named: 'cents'),
+            ),
+          );
+        },
+      );
+    }
+
+    for (final body in ['', 'invalid JSON', '[]', 'null']) {
+      test('invalid successful response body propagates: "$body"', () async {
+        fixture.respond = (_) => http.Response(body, 200);
+
+        await expectLater(load(), throwsA(isA<TypeError>()));
+      });
+    }
+
     final malformed = <String, Map<String, dynamic>>{
       'missing items': {},
       'null items': {'items': null},
@@ -443,101 +528,104 @@ void main() {
   });
 
   group('Failure handling', () {
-    test(
-      'preserves PocketBase errors including pointers and parameters',
-      () async {
-        final failure = HttpResponseException.fromResponse(
-          const Responses(
-            status: 400,
-            body: {
-              'code': 400,
-              'message': 'Filtro inválido',
-              'data': {
-                'filter': {
-                  'code': 'validation_invalid_filter',
-                  'message': 'Período inválido',
-                },
-              },
-            },
-          ),
-        );
-        when(() => client.get(parameter: any(named: 'parameter')))
-            .thenThrow(failure);
+    for (final status in [401, 403, 404, 422, 429, 500]) {
+      test(
+        'HTTP $status preserves the session and never publishes a current-month zero',
+        () async {
+          fixture.respond = (_) => PocketBaseFixture.jsonResponse({
+            'message': 'Remote failure',
+          }, status: status);
+          final authRecord = fixture.client.authStore.record;
 
-        final errors = (await errorsOf(load())).errors;
-        final original = failure.errors.toEntity().errors;
+          final errors = await errorsOf(repository.getExpenses());
 
-        expect(errors.length, original.length);
-        expect(errors.first.title, original.first.title);
-        expect(errors.first.pointer, original.first.pointer);
-        expect(errors.first.parameter, original.first.parameter);
-        expect(errors.first.code, original.first.code);
-      },
-    );
-
-    test(
-      'preserves legacy remote errors without rebuilding their metadata',
-      () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenThrow(
-          HttpResponseException.fromResponse(
-            const Responses(
-              status: 422,
-              body: {
-                'errors': [
-                  {
-                    'title': 'Período inválido',
-                    'source': {
-                      'pointer': '/start_date',
-                      'parameter': 'start_date',
-                    },
-                  },
-                  {'detail': 'Outro erro'},
-                ],
-              },
+          expect(errors.errors.single.status, '$status');
+          expect(fixture.client.authStore.token, PocketBaseFixture.token);
+          expect(fixture.client.authStore.record, same(authRecord));
+          verifyNever(
+            () => homeWidgetClient.publishMonthlyTotal(
+              revision: any(named: 'revision'),
+              month: any(named: 'month'),
+              cents: any(named: 'cents'),
             ),
+          );
+        },
+      );
+    }
+
+    test('preserves ordered PocketBase errors including codes, pointers and parameters', () async {
+      fixture.respond = (_) => PocketBaseFixture.jsonResponse({
+        'message': 'Filtro inválido',
+        'data': {
+          'filter': {
+            'code': 'validation_invalid_filter',
+            'message': 'Período inválido',
+          },
+          'sort': {
+            'code': 'validation_invalid_sort',
+            'message': 'Ordenação inválida',
+          },
+        },
+      }, status: 400);
+
+      final errors = (await errorsOf(load())).errors;
+
+      expect(
+        errors
+            .map(
+              (error) => (
+                error.status,
+                error.code,
+                error.pointer,
+                error.parameter,
+                error.detail,
+              ),
+            )
+            .toList(),
+        [
+          (
+            '400',
+            'validation_invalid_filter',
+            '/filter',
+            'filter',
+            'Período inválido',
           ),
-        );
-
-        final errors = (await errorsOf(load())).errors;
-
-        expect(errors, hasLength(2));
-        expect(errors.first.pointer, '/start_date');
-        expect(errors.first.parameter, 'start_date');
-        expect(errors.last.detail, 'Outro erro');
-      },
-    );
+          (
+            '400',
+            'validation_invalid_sort',
+            '/sort',
+            'sort',
+            'Ordenação inválida',
+          ),
+        ],
+      );
+    });
 
     for (final body in <Map<String, dynamic>>[
       {},
       {'errors': []},
       {'errors': 'invalid'},
     ]) {
-      test('uses a safe fallback for malformed HTTP errors: $body', () async {
-        when(() => client.get(parameter: any(named: 'parameter'))).thenThrow(
-          HttpResponseException.fromResponse(
-            Responses(status: 503, body: body),
-          ),
-        );
+      test(
+        'preserves HTTP status without native field errors: $body',
+        () async {
+          fixture.respond = (_) =>
+              PocketBaseFixture.jsonResponse(body, status: 503);
 
-        expect(
-          (await errorsOf(load())).errors.single.title,
-          'Erro desconhecido',
-        );
-      });
+          expect((await errorsOf(load())).errors.single.status, '503');
+        },
+      );
     }
 
-    for (final failure in <HttpClientException>[
-      HttpTransportException(failure: HttpExceptionEnum.connection),
-      HttpTransportException(failure: HttpExceptionEnum.timeout),
-      HttpTransportException(failure: HttpExceptionEnum.cancelled),
-      HttpInvalidResponseException(status: 200),
-      HttpUnexpectedException(),
+    for (final failure in <Exception>[
+      const SocketException('offline'),
+      TimeoutException('timeout'),
+      http.ClientException('connection closed'),
     ]) {
       test(
-        'translates ${failure.runtimeType} ${failure is HttpTransportException ? failure.failure.name : ''} into MetricsException',
+        'translates ${failure.runtimeType} into a safe MetricsException',
         () async {
-          when(() => client.get(parameter: any(named: 'parameter')))
-              .thenThrow(failure);
+          fixture.respond = (_) => throw failure;
 
           expect(
             (await errorsOf(load())).errors.single.title,
@@ -547,22 +635,25 @@ void main() {
       );
     }
 
-    for (final synchronous in [false, true]) {
-      test(
-        'propagates an unexpected failure with synchronous=$synchronous',
-        () async {
-          final failure = StateError('unexpected');
-          if (synchronous) {
-            when(() => client.get(parameter: any(named: 'parameter')))
-                .thenThrow(failure);
-          } else {
-            when(() => client.get(parameter: any(named: 'parameter')))
-                .thenAnswer((_) async => throw failure);
-          }
+    for (final failure in [
+      StateError('unexpected'),
+      const FormatException('invalid payload'),
+    ]) {
+      for (final synchronous in [false, true]) {
+        test(
+          'propagates ${failure.runtimeType} unchanged with synchronous=$synchronous',
+          () async {
+            fixture.respond = (_) {
+              if (synchronous) {
+                throw failure;
+              }
+              return Future<http.Response>.error(failure);
+            };
 
-          await expectLater(load(), throwsA(same(failure)));
-        },
-      );
+            await expectLater(load(), throwsA(same(failure)));
+          },
+        );
+      }
     }
   });
 }

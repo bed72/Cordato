@@ -4,6 +4,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 import 'package:cordato/features/authentication/presentation/screens/change_password/bloc/change_password_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/change_password/bloc/change_password_event.dart';
@@ -59,6 +60,39 @@ void main() {
   });
 
   group('Change operation', () {
+    const missingIdentity = MissingAuthenticatedUserException();
+    blocTest<ChangePasswordBloc, ChangePasswordState>(
+      'preserves shared identity failure without reporting or signing out and permits retry',
+      build: () {
+        stubChange(() async => throw missingIdentity);
+        return ChangePasswordBloc(repository: repository);
+      },
+      act: (bloc) async {
+        final failed = bloc.stream.firstWhere(
+          (state) => state is ChangePasswordFailure,
+        );
+        bloc.add(submitted);
+        await failed;
+        verifyNever(repository.signOut);
+        stubChange(() async {});
+        bloc.add(submitted);
+      },
+      expect: () => [
+        isA<ChangePasswordSubmitting>(),
+        isA<ChangePasswordFailure>()
+            .having(
+              (state) => state.errors,
+              'errors',
+              same(missingIdentity.errors),
+            )
+            .having((state) => state.canSubmit, 'canSubmit', isTrue),
+        isA<ChangePasswordSubmitting>(),
+        isA<ChangePasswordSigningOut>(),
+        isA<ChangePasswordSuccess>(),
+      ],
+      errors: () => isEmpty,
+    );
+
     blocTest<ChangePasswordBloc, ChangePasswordState>(
       'delegates exact entries, signs out and ignores events after success',
       build: () => ChangePasswordBloc(repository: repository),
@@ -211,6 +245,31 @@ void main() {
   });
 
   group('Concurrency and lifecycle', () {
+    test(
+      'ignores a shared identity failure after closure without signing out',
+      () async {
+        final pending = Completer<void>();
+        final started = Completer<void>();
+        stubChange(() {
+          started.complete();
+          return pending.future;
+        });
+        final bloc = ChangePasswordBloc(repository: repository);
+        final states = <ChangePasswordState>[];
+        final subscription = bloc.stream.listen(states.add);
+        addTearDown(subscription.cancel);
+
+        bloc.add(submitted);
+        await started.future;
+        final closing = bloc.close();
+        pending.completeError(const MissingAuthenticatedUserException());
+        await closing;
+
+        expect(states, [isA<ChangePasswordSubmitting>()]);
+        verifyNever(repository.signOut);
+      },
+    );
+
     test(
       'drops submits and retries throughout pending PATCH and clear',
       () async {

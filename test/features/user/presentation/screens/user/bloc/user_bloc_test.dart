@@ -5,6 +5,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
@@ -227,6 +228,19 @@ void main() {
         );
       }
 
+      const missingIdentity = MissingAuthenticatedUserException();
+      blocTest<UserBloc, UserState>(
+        '${event.runtimeType} preserves shared identity errors without reporting',
+        build: () {
+          stub(() async => throw missingIdentity);
+          return UserBloc(repository: repository);
+        },
+        seed: () => const UserReady(data: user),
+        act: (bloc) => bloc.add(event),
+        expect: () => [submitting(), failure(missingIdentity.errors)],
+        errors: () => isEmpty,
+      );
+
       final unexpected = StateError('internal secret');
       blocTest<UserBloc, UserState>(
         '${event.runtimeType} reports unexpected failure with safe fallback',
@@ -302,7 +316,12 @@ void main() {
         },
       );
 
-      for (final outcome in ['success', 'expected', 'unexpected']) {
+      for (final outcome in [
+        'success',
+        'expected',
+        'missing identity',
+        'unexpected',
+      ]) {
         test(
           '${event.runtimeType} ignores late $outcome after closing',
           () async {
@@ -331,6 +350,10 @@ void main() {
                 pending.complete(confirmedUser());
               case 'expected':
                 pending.completeError(UserException(errors: errors));
+              case 'missing identity':
+                pending.completeError(
+                  const MissingAuthenticatedUserException(),
+                );
               default:
                 pending.completeError(unexpected);
             }

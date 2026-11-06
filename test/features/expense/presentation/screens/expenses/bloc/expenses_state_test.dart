@@ -20,7 +20,7 @@ void main() {
     test('pending pagination is not a confirmed empty result', () {
       final state = ExpensesDeleted(
         id: 'last-loaded-expense',
-        data: ExpensesData(hasLoaded: true, next: '?page=2'),
+        data: ExpensesData(hasLoaded: true, nextPage: 2),
       );
 
       expect(state.isEmpty, isFalse);

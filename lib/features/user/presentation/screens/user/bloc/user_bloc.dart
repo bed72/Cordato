@@ -1,6 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 
+import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 
@@ -50,6 +51,8 @@ final class UserBloc({required final IUserRepository repository})
           emit(UserDeleteSuccess(data: user));
       }
     } on UserException catch (error) {
+      _fail(event, user, error.errors, emit);
+    } on MissingAuthenticatedUserException catch (error) {
       _fail(event, user, error.errors, emit);
     } catch (error, stackTrace) {
       if (isClosed || emit.isDone) return;

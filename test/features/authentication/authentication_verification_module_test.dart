@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:mocktail/mocktail.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 import 'package:cordato/features/authentication/authentication_module.dart';
 import 'package:cordato/features/authentication/presentation/screens/resend_email/bloc/resend_email_bloc.dart';
@@ -9,47 +12,33 @@ import 'package:cordato/features/authentication/presentation/screens/resend_emai
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_event.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_state.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
 
-import '../../support/core/mocks/http_client_mock.dart';
-import '../../support/core/mocks/storage_client_mock.dart';
+import '../../support/core/fakes/pocketbase_fixture.dart';
 
 void main() {
-  setUpAll(() => registerFallbackValue(const Requests(path: '')));
-
-  test('verification retry after creation never recreates the account or a session', () async {
-    final client = HttpClientMock();
-    final storage = StorageClientMock();
-    final requests = <Requests>[];
+  test('verification retry after SDK creation never recreates the account or a session', () async {
+    final fixture = PocketBaseFixture();
     var verificationAttempts = 0;
-    when(() => client.post(parameter: any(named: 'parameter')))
-        .thenAnswer((invocation) async {
-          final request = invocation.namedArguments[#parameter] as Requests;
-          requests.add(request);
-          if (request.path == 'collections/users/records') {
-            return const Responses(status: 200, body: {});
-          }
-          if (++verificationAttempts == 1) throw HttpUnexpectedException();
-          return const Responses(status: 204, body: {});
-        });
-
+    fixture.respond = (request) {
+      if (request.url.path.endsWith('/records')) {
+        return PocketBaseFixture.jsonResponse({'id': 'user-1'});
+      }
+      if (++verificationAttempts == 1) {
+        throw const SocketException('offline');
+      }
+      return PocketBaseFixture.jsonResponse({}, status: 204);
+    };
+    addTearDown(fixture.client.close);
     final boot = bootstrapModule(
       createModule(
-        register: (context) {
-          context
-            ..addInstance<IHttpClient>(client)
-            ..addInstance<IStorageClient>(storage)
-            ..module(authenticationModule);
-        },
+        register: (context) => context
+          ..addInstance<PocketBase>(fixture.client)
+          ..module(authenticationModule),
       ),
     );
     addTearDown(boot.injector.dispose);
-    final signUp = inject<SignUpBloc>();
-    final verification = inject<ResendEmailBloc>();
+    final signUp = boot.injector.get<SignUpBloc>();
+    final verification = boot.injector.get<ResendEmailBloc>();
     addTearDown(signUp.close);
     addTearDown(verification.close);
 
@@ -61,9 +50,6 @@ void main() {
       ),
     );
     final account = await created as SignUpSuccess;
-    expect(requests.map((request) => request.path), [
-      'collections/users/records',
-    ]);
 
     final failed = verification.stream.firstWhere(
       (state) => state is ResendEmailFailure,
@@ -84,15 +70,15 @@ void main() {
 
     expect(verification.state.canSubmit, isFalse);
     expect(verification.state.remaining, const Duration(seconds: 60));
-    expect(requests.map((request) => request.path), [
-      'collections/users/records',
-      'collections/users/request-verification',
-      'collections/users/request-verification',
+    expect(fixture.requests.map((request) => request.url.path), [
+      '/api/collections/users/records',
+      '/api/collections/users/request-verification',
+      '/api/collections/users/request-verification',
     ]);
     expect(
-      requests.skip(1).map((request) => request.body),
+      fixture.requests.skip(1).map((request) => jsonDecode(request.body)),
       everyElement({'email': account.email}),
     );
-    verifyZeroInteractions(storage);
+    expect(fixture.client.authStore.token, isEmpty);
   });
 }

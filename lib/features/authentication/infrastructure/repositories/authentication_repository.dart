@@ -1,78 +1,84 @@
-import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/storage_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/storage/enums/storage_key_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
+import 'package:pocketbase/pocketbase.dart';
 
-import 'package:cordato/features/authentication/infrastructure/responses/sign_in_response.dart';
+import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_mapper.dart';
+import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_extension.dart';
 
 import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
 import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 import 'package:cordato/features/authentication/application/exceptions/password_reset_token_exception.dart';
 import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 
-final class AuthenticationRepository({
-  required final IHttpClient _httpClient,
-  required final IStorageClient _storageClient,
-}) implements IAuthenticationRepository {
+final class AuthenticationRepository({required final PocketBase pocketBase})
+    implements IAuthenticationRepository {
   @override
   Future<void> signOut() async {
-    await _storageClient.clear();
+    pocketBase.authStore.clear();
   }
 
   @override
-  Future<void> changePassword({
-    required String password,
-    required String oldPassword,
-    required String passwordConfirm,
-  }) async {
-    final id = await _storageClient.read(key: StorageKeyEnum.userId.key);
-
-    if (id == null || id.trim().isEmpty) {
-      throw AuthenticationException(errors: .unknown());
+  Future<void> signIn({required String email, required String password}) async {
+    try {
+      await pocketBase.collection('users').authWithPassword(email, password);
+    } on ClientException catch (exception) {
+      throw AuthenticationException(
+        errors: PocketBaseMapper.fromException(exception),
+      );
     }
+  }
+
+  @override
+  Future<void> signUp({required String email, required String password}) async {
+    try {
+      await pocketBase
+          .collection('users')
+          .create(
+            body: {
+              'email': email,
+              'password': password,
+              'passwordConfirm': password,
+            },
+          );
+    } on ClientException catch (exception) {
+      throw AuthenticationException(
+        errors: PocketBaseMapper.fromException(exception),
+      );
+    }
+  }
+
+  @override
+  Future<void> resendEmail({required String email}) async {
+    try {
+      await pocketBase.collection('users').requestVerification(email);
+    } on ClientException catch (exception) {
+      throw AuthenticationException(
+        errors: PocketBaseMapper.fromException(exception),
+      );
+    }
+  }
+
+  @override
+  Future<EmailVerificationStatusEnum> confirmEmail(String token) async {
+    if (token.isEmpty) return .invalid;
 
     try {
-      final response = await _httpClient.patch(
-        parameter: Requests(
-          path: '${HttpPathEnum.userRecords.path}/${Uri.encodeComponent(id)}',
-          body: {
-            'password': password,
-            'oldPassword': oldPassword,
-            'passwordConfirm': passwordConfirm,
-          },
-        ),
-      );
+      await pocketBase.collection('users').confirmVerification(token);
 
-      if (response.status != 200) {
-        throw AuthenticationException(errors: .unknown());
-      }
-    } on HttpResponseException catch (exception) {
-      throw AuthenticationException(errors: exception.errors.toEntity());
-    } on HttpClientException {
-      throw AuthenticationException(errors: .unknown());
+      return .success;
+    } on ClientException catch (exception) {
+      final errors = PocketBaseMapper.fromException(exception);
+
+      return errors.errors.first.status == '400' ? .invalid : .failure;
     }
   }
 
   @override
   Future<void> requestPasswordReset({required String email}) async {
     try {
-      final response = await _httpClient.post(
-        parameter: Requests(
-          path: HttpPathEnum.requestPasswordReset.path,
-          body: {'email': email},
-        ),
+      await pocketBase.collection('users').requestPasswordReset(email);
+    } on ClientException catch (exception) {
+      throw AuthenticationException(
+        errors: PocketBaseMapper.fromException(exception),
       );
-
-      if (response.status != 204) {
-        throw AuthenticationException(errors: .unknown());
-      }
-    } on HttpResponseException catch (exception) {
-      throw AuthenticationException(errors: exception.errors.toEntity());
-    } on HttpClientException {
-      throw AuthenticationException(errors: .unknown());
     }
   }
 
@@ -83,113 +89,44 @@ final class AuthenticationRepository({
     required String passwordConfirm,
   }) async {
     try {
-      final response = await _httpClient.post(
-        parameter: Requests(
-          path: HttpPathEnum.confirmPasswordReset.path,
-          body: {
-            'token': token,
-            'password': password,
-            'passwordConfirm': passwordConfirm,
-          },
-        ),
-      );
-      if (response.status != 204) {
-        throw AuthenticationException(errors: .unknown());
-      }
-    } on HttpResponseException catch (exception) {
-      final errors = exception.errors.toEntity();
-      if (exception.status == 400 &&
+      await pocketBase
+          .collection('users')
+          .confirmPasswordReset(token, password, passwordConfirm);
+    } on ClientException catch (exception) {
+      final errors = PocketBaseMapper.fromException(exception);
+
+      if (exception.statusCode == 400 &&
           errors.errors.any((error) => error.pointer == '/token')) {
         throw PasswordResetTokenException(errors: errors);
       }
+
       throw AuthenticationException(errors: errors);
-    } on HttpClientException {
-      throw AuthenticationException(errors: .unknown());
     }
   }
 
   @override
-  Future<EmailVerificationStatusEnum> confirmEmail(String token) async {
-    if (token.isEmpty) return .invalid;
+  Future<void> changePassword({
+    required String password,
+    required String oldPassword,
+    required String passwordConfirm,
+  }) async {
+    final id = pocketBase.userId();
 
     try {
-      final response = await _httpClient.post(
-        parameter: Requests(
-          path: HttpPathEnum.confirmEmailVerification.path,
-          body: {'token': token},
-        ),
+      await pocketBase
+          .collection('users')
+          .update(
+            id,
+            body: {
+              'password': password,
+              'oldPassword': oldPassword,
+              'passwordConfirm': passwordConfirm,
+            },
+          );
+    } on ClientException catch (exception) {
+      throw AuthenticationException(
+        errors: PocketBaseMapper.fromException(exception),
       );
-
-      return switch (response.status) {
-        204 => .success,
-        _ => .failure,
-      };
-    } on HttpResponseException catch (exception) {
-      return exception.status == 400 ? .invalid : .failure;
-    } on HttpClientException {
-      return .failure;
-    }
-  }
-
-  @override
-  Future<void> resendEmail({required String email}) async {
-    try {
-      await _httpClient.post(
-        parameter: Requests(
-          path: HttpPathEnum.resendEmailVerification.path,
-          body: {'email': email},
-        ),
-      );
-    } on HttpResponseException catch (exception) {
-      throw AuthenticationException(errors: exception.errors.toEntity());
-    } on HttpClientException {
-      throw AuthenticationException(errors: .unknown());
-    }
-  }
-
-  @override
-  Future<void> signUp({required String email, required String password}) async {
-    try {
-      await _httpClient.post(
-        parameter: Requests(
-          path: HttpPathEnum.signUp.path,
-          body: {
-            'email': email,
-            'password': password,
-            'passwordConfirm': password,
-          },
-        ),
-      );
-    } on HttpResponseException catch (exception) {
-      throw AuthenticationException(errors: exception.errors.toEntity());
-    } on HttpClientException {
-      throw AuthenticationException(errors: .unknown());
-    }
-  }
-
-  @override
-  Future<void> signIn({required String email, required String password}) async {
-    try {
-      final response = await _httpClient.post(
-        parameter: Requests(
-          path: HttpPathEnum.signIn.path,
-          body: {'identity': email, 'password': password},
-        ),
-      );
-
-      final data = SignInResponse.fromJson(response.body);
-
-      await Future.wait([
-        _storageClient.write(
-          value: data.userId,
-          key: StorageKeyEnum.userId.key,
-        ),
-        _storageClient.write(value: data.token, key: StorageKeyEnum.token.key),
-      ]);
-    } on HttpResponseException catch (exception) {
-      throw AuthenticationException(errors: exception.errors.toEntity());
-    } on HttpClientException {
-      throw AuthenticationException(errors: .unknown());
     }
   }
 }

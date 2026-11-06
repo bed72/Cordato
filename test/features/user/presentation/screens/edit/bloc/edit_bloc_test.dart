@@ -5,6 +5,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
@@ -74,6 +75,29 @@ void main() {
   });
 
   group('Failures and manual retry', () {
+    const missingIdentity = MissingAuthenticatedUserException();
+
+    blocTest<EditBloc, EditState>(
+      'preserves shared identity errors without reporting',
+      build: () {
+        when(() => repository.update(name: event.name))
+            .thenAnswer((_) async => throw missingIdentity);
+        return EditBloc(repository: repository);
+      },
+      act: (bloc) => bloc.add(event),
+      expect: () => [
+        isA<EditSubmitting>(),
+        isA<EditFailure>()
+            .having(
+              (state) => state.errors,
+              'errors',
+              same(missingIdentity.errors),
+            )
+            .having((state) => state.canSubmit, 'canSubmit', isTrue),
+      ],
+      errors: () => isEmpty,
+    );
+
     for (final failure in [errors, const ErrorsEntity(errors: [])]) {
       blocTest<EditBloc, EditState>(
         'preserves ${failure.errors.length} expected errors without reporting',
@@ -172,6 +196,7 @@ void main() {
     for (final outcome in [
       'success',
       'expected failure',
+      'missing identity',
       'unexpected failure',
     ]) {
       test(
@@ -195,6 +220,8 @@ void main() {
               pending.complete(user);
             case 'expected failure':
               pending.completeError(UserException(errors: errors));
+            case 'missing identity':
+              pending.completeError(const MissingAuthenticatedUserException());
             default:
               pending.completeError(unexpected);
           }

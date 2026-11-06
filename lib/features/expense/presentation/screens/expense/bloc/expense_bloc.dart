@@ -1,5 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
+import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_event.dart';
@@ -79,6 +80,12 @@ final class ExpenseBloc({required final IExpenseRepository repository})
     } on ExpenseException catch (error) {
       if (isClosed || emit.isDone) return;
       if (revision != _revision) return;
+      emit(ExpenseSubmissionFailure(errors: error.errors, expense: previous));
+    } on MissingAuthenticatedUserException catch (error) {
+      if (isClosed || emit.isDone || revision != _revision) {
+        return;
+      }
+
       emit(ExpenseSubmissionFailure(errors: error.errors, expense: previous));
     } catch (error, stackTrace) {
       if (isClosed || emit.isDone) return;

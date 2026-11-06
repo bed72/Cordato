@@ -33,8 +33,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  dio: ^5.11.1
   intl: ^0.20.3
+  pocketbase: ^0.25.3
   home_widget: ^0.10.0
   flutter_modular: ^7.1.1
   flutter_secure_storage: ^11.2.0
@@ -52,10 +52,10 @@ dependencies:
 
   talker: ^5.2.0
   talker_logger: ^5.2.0
-  talker_dio_logger: ^5.2.0
   talker_bloc_logger: ^5.2.0
 
 dev_dependencies:
+  http: ^1.6.0
   flutter_test:
     sdk: flutter
 

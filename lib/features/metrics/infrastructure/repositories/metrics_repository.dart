@@ -1,14 +1,10 @@
-import 'dart:convert';
+import 'package:pocketbase/pocketbase.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/requests/requests.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/responses/responses.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/enums/http_path_enum.dart';
-import 'package:cordato/features/core/infrastructure/serializers/civil_date_serializer.dart';
-import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
+import 'package:cordato/features/core/infrastructure/serializers/date_serializer.dart';
+import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_mapper.dart';
 
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
@@ -19,7 +15,7 @@ import 'package:cordato/features/metrics/application/exceptions/metrics_exceptio
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
 final class MetricsRepository({
-  required final IHttpClient _httpClient,
+  required final PocketBase _pocketBase,
   required final IHomeWidgetClient _homeWidgetClient,
 }) implements IMetricsRepository {
   @override
@@ -30,6 +26,7 @@ final class MetricsRepository({
   }) async {
     final now = DateTime.now();
     final start = startDate ?? DateTime(now.year, now.month);
+
     final first = DateTime(start.year, start.month);
     final last = DateTime(start.year, start.month + 1, 0);
     final isCurrentMonth = first.year == now.year && first.month == now.month;
@@ -53,19 +50,19 @@ final class MetricsRepository({
         : null;
 
     try {
-      final response = await _httpClient.get(
-        parameter: Requests(
-          path: HttpPathEnum.expenseMetrics.path,
-          query: {
-            'page': 1,
-            'perPage': 2,
-            'skipTotal': true,
-            'filter': 'start_date = ${jsonEncode(formatDateSerializer(first))}',
-          },
-        ),
+      final response = await _pocketBase.send<Map<String, dynamic>>(
+        '/api/collections/metrics/records',
+        query: {
+          'page': 1,
+          'perPage': 2,
+          'skipTotal': true,
+          'filter': _pocketBase.filter('start_date = {:month}', {
+            'month': dateSerializer(first),
+          }),
+        },
       );
 
-      final items = response.body['items'] as List;
+      final items = response['items'] as List;
       if (items.isEmpty) {
         if (widgetRevision != null) {
           await _homeWidgetClient.publishMonthlyTotal(
@@ -79,7 +76,7 @@ final class MetricsRepository({
           endDate: last,
           totalAmount: 0,
           startDate: first,
-          id: 'empty-${formatDateSerializer(first)}',
+          id: 'empty-${dateSerializer(first)}',
           categories: groupBy == .category ? const [] : null,
         );
       }
@@ -108,10 +105,8 @@ final class MetricsRepository({
         totalAmount: metrics.totalAmount,
         categories: groupBy == .category ? metrics.categories : null,
       );
-    } on HttpResponseException catch (exception) {
-      throw MetricsException(errors: exception.errors.toEntity());
-    } on HttpClientException {
-      throw MetricsException(errors: .unknown());
+    } on ClientException catch (exception) {
+      throw MetricsException(errors: PocketBaseMapper.fromException(exception));
     }
   }
 

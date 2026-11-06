@@ -33,13 +33,13 @@ void main() {
     occurredOn: DateTime(2026, 9, 2),
     category: .transport,
   );
-  ExpensePageEntity page(List<ExpenseEntity> items, {String? next}) =>
-      ExpensePageEntity(items: items, next: next, prev: null);
+  ExpensePageEntity page(List<ExpenseEntity> items, {int? nextPage}) =>
+      ExpensePageEntity(items: items, nextPage: nextPage);
   setUp(() {
     repository = ExpenseRepositoryMock();
     when(() => repository.get(pageSize: 20))
-        .thenAnswer((_) async => page([first], next: '?page=2'));
-    when(() => repository.get(pageSize: 20, pageLink: '?page=2'))
+        .thenAnswer((_) async => page([first], nextPage: 2));
+    when(() => repository.get(pageSize: 20, page: 2))
         .thenAnswer((_) async => page([first, second]));
     when(() => repository.delete(id: '1')).thenAnswer((_) async {});
   });
@@ -63,7 +63,7 @@ void main() {
     });
 
     blocTest<ExpensesBloc, ExpensesState>(
-      'paginates using opaque continuation and deduplicates IDs',
+      'paginates using page numbers and deduplicates IDs',
       build: () => ExpensesBloc(repository: repository),
       act: (bloc) async {
         await load(bloc);
@@ -75,11 +75,10 @@ void main() {
         isA<ExpensesLoading>().having((s) => s.refresh, 'append', false),
         isA<ExpensesReady>()
             .having((s) => s.data.items, 'merged', [first, second])
-            .having((s) => s.data.next, 'end', isNull),
+            .having((s) => s.data.nextPage, 'end', isNull),
       ],
       verify: (_) =>
-          verify(() => repository.get(pageSize: 20, pageLink: '?page=2'))
-              .called(1),
+          verify(() => repository.get(pageSize: 20, page: 2)).called(1),
     );
 
     blocTest<ExpensesBloc, ExpensesState>(
@@ -194,7 +193,7 @@ void main() {
     blocTest<ExpensesBloc, ExpensesState>(
       'page failure retains continuation for manual retry',
       build: () {
-        when(() => repository.get(pageSize: 20, pageLink: '?page=2'))
+        when(() => repository.get(pageSize: 20, page: 2))
             .thenThrow(ExpenseException(errors: .unknown()));
         return ExpensesBloc(repository: repository);
       },
@@ -203,7 +202,7 @@ void main() {
         final failed = bloc.stream.firstWhere((s) => s is ExpensesFailure);
         bloc.add(const ExpensesNextPageRequestedEvent());
         await failed;
-        when(() => repository.get(pageSize: 20, pageLink: '?page=2'))
+        when(() => repository.get(pageSize: 20, page: 2))
             .thenAnswer((_) async => page([second]));
         bloc.add(const ExpensesNextPageRequestedEvent());
       },
@@ -213,7 +212,7 @@ void main() {
         isA<ExpensesLoading>(),
         isA<ExpensesFailure>()
             .having((s) => s.refresh, 'append retry', false)
-            .having((s) => s.data.next, 'link', '?page=2'),
+            .having((s) => s.data.nextPage, 'next page', 2),
         isA<ExpensesLoading>(),
         isA<ExpensesReady>().having((s) => s.data.items, 'merged', [
           first,
@@ -224,14 +223,68 @@ void main() {
   });
 
   group('Pagination concurrency and filters', () {
+    test('keeps category and civil period on subsequent pages and refreshes from page one', () async {
+      final from = DateTime(2026, 9);
+      final to = DateTime(2026, 9, 30);
+      when(
+        () =>
+            repository.get(pageSize: 20, category: 'food', from: from, to: to),
+      ).thenAnswer((_) async => page([first], nextPage: 2));
+      when(
+        () => repository.get(
+          pageSize: 20,
+          category: 'food',
+          from: from,
+          to: to,
+          page: 2,
+        ),
+      ).thenAnswer((_) async => page([second]));
+      final bloc = ExpensesBloc(repository: repository);
+      addTearDown(bloc.close);
+      final filters = ExpensesRequestedEvent(
+        category: 'food',
+        from: from,
+        to: to,
+      );
+      final loaded = bloc.stream.firstWhere((state) => state is ExpensesReady);
+
+      bloc.add(filters);
+      await loaded;
+      final paged = bloc.stream.firstWhere((state) => state is ExpensesReady);
+      bloc.add(const ExpensesNextPageRequestedEvent());
+      await paged;
+
+      expect(bloc.state.data.items, [first, second]);
+      verify(
+        () => repository.get(
+          pageSize: 20,
+          category: 'food',
+          from: from,
+          to: to,
+          page: 2,
+        ),
+      ).called(1);
+      final refreshed = bloc.stream.firstWhere(
+        (state) => state is ExpensesReady,
+      );
+      bloc.add(filters);
+      await refreshed;
+
+      expect(bloc.state.data.items, [first]);
+      expect(bloc.state.data.nextPage, 2);
+      verify(
+        () =>
+            repository.get(pageSize: 20, category: 'food', from: from, to: to),
+      ).called(2);
+    });
+
     test('new filters invalidate pending pagination', () async {
       final pending = Completer<ExpensePageEntity>();
       final entered = Completer<void>();
-      when(() => repository.get(pageSize: 20, pageLink: '?page=2'))
-          .thenAnswer((_) {
-            entered.complete();
-            return pending.future;
-          });
+      when(() => repository.get(pageSize: 20, page: 2)).thenAnswer((_) {
+        entered.complete();
+        return pending.future;
+      });
       when(() => repository.get(pageSize: 20, category: 'transport'))
           .thenAnswer((_) async => page([second]));
       final bloc = ExpensesBloc(repository: repository);
@@ -252,20 +305,14 @@ void main() {
       () async {
         final old = Completer<ExpensePageEntity>();
         final entered = Completer<void>();
-        when(() => repository.get(pageSize: 20, pageLink: '?page=2'))
-            .thenAnswer((_) {
-              entered.complete();
-              return old.future;
-            });
+        when(() => repository.get(pageSize: 20, page: 2)).thenAnswer((_) {
+          entered.complete();
+          return old.future;
+        });
         when(() => repository.get(pageSize: 20, category: 'transport'))
-            .thenAnswer((_) async => page([second], next: '?fresh=2'));
-        when(
-          () => repository.get(
-            pageSize: 20,
-            category: 'transport',
-            pageLink: '?fresh=2',
-          ),
-        ).thenAnswer((_) async => page([]));
+            .thenAnswer((_) async => page([second], nextPage: 2));
+        when(() => repository.get(pageSize: 20, category: 'transport', page: 2))
+            .thenAnswer((_) async => page([]));
         final bloc = ExpensesBloc(repository: repository);
         await load(bloc);
         bloc.add(const ExpensesNextPageRequestedEvent());
@@ -276,7 +323,7 @@ void main() {
         final paged = bloc.stream.firstWhere((s) => s is ExpensesReady);
         bloc.add(const ExpensesNextPageRequestedEvent());
         await paged;
-        expect(bloc.state.data.next, isNull);
+        expect(bloc.state.data.nextPage, isNull);
         old.completeError(StateError('obsolete'));
         await bloc.close();
         expect(bloc.state.data.items, [second]);
@@ -288,11 +335,10 @@ void main() {
       () async {
         final pending = Completer<ExpensePageEntity>();
         final entered = Completer<void>();
-        when(() => repository.get(pageSize: 20, pageLink: '?page=2'))
-            .thenAnswer((_) {
-              entered.complete();
-              return pending.future;
-            });
+        when(() => repository.get(pageSize: 20, page: 2)).thenAnswer((_) {
+          entered.complete();
+          return pending.future;
+        });
         final bloc = ExpensesBloc(repository: repository);
         await load(bloc);
         bloc.add(const ExpensesNextPageRequestedEvent());
@@ -303,8 +349,7 @@ void main() {
         pending.complete(page([second]));
         await ready;
         await bloc.close();
-        verify(() => repository.get(pageSize: 20, pageLink: '?page=2'))
-            .called(1);
+        verify(() => repository.get(pageSize: 20, page: 2)).called(1);
         expect(bloc.state.data.items, [first, second]);
       },
     );
@@ -373,7 +418,7 @@ void main() {
         verify(() => repository.delete(id: '1')).called(1);
         verifyNever(() => repository.delete(id: '2'));
         verify(() => repository.get(pageSize: 20)).called(1);
-        verifyNever(() => repository.get(pageSize: 20, pageLink: '?page=2'));
+        verifyNever(() => repository.get(pageSize: 20, page: 2));
       },
     );
 

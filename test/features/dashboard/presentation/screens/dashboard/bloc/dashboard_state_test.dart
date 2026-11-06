@@ -10,7 +10,7 @@ import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/d
 
 void main() {
   final month = DateTime(2026, 11);
-  final emptyPage = ExpensePageEntity(items: [], next: null, prev: null);
+  final emptyPage = ExpensePageEntity(items: [], nextPage: null);
   final populatedPage = ExpensePageEntity(
     items: [
       ExpenseEntity(
@@ -21,8 +21,7 @@ void main() {
         cents: .create(cents: 100),
       ),
     ],
-    next: null,
-    prev: null,
+    nextPage: null,
   );
   ExpenseMetricsEntity metrics(int cents) => ExpenseMetricsEntity(
     id: 'metrics',

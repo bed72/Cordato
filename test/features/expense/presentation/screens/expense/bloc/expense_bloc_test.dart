@@ -5,6 +5,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
@@ -204,6 +205,39 @@ void main() {
   });
 
   group('Failure handling', () {
+    const missingIdentity = MissingAuthenticatedUserException();
+    blocTest<ExpenseBloc, ExpenseState>(
+      'preserves shared identity errors and permits a manual retry',
+      build: () {
+        when(() => repository.create(cents: 1234, description: ' Original '))
+            .thenThrow(missingIdentity);
+        return ExpenseBloc(repository: repository);
+      },
+      act: (bloc) async {
+        final failed = bloc.stream.firstWhere(
+          (state) => state is ExpenseSubmissionFailure,
+        );
+        bloc.add(submitted);
+        await failed;
+        when(() => repository.create(cents: 1234, description: ' Original '))
+            .thenAnswer((_) async => expense);
+        bloc.add(submitted);
+      },
+      expect: () => [
+        isA<ExpenseSubmitting>(),
+        isA<ExpenseSubmissionFailure>()
+            .having(
+              (state) => state.errors,
+              'errors',
+              same(missingIdentity.errors),
+            )
+            .having((state) => state.canSubmit, 'canSubmit', isTrue),
+        isA<ExpenseSubmitting>(),
+        isA<ExpenseSuccess>(),
+      ],
+      errors: () => isEmpty,
+    );
+
     for (final errors in [
       const ErrorsEntity(errors: []),
       ErrorsEntity.unknown(),
@@ -304,6 +338,7 @@ void main() {
     for (final failure in [
       null,
       ExpenseException(errors: .unknown()),
+      const MissingAuthenticatedUserException(),
       StateError('late'),
     ]) {
       blocTest<ExpenseBloc, ExpenseState>(

@@ -3,7 +3,7 @@ import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 
 final class ExpensesData({
   List<ExpenseEntity> items = const [],
-  final String? next,
+  final int? nextPage,
   final DateTime? to,
   final DateTime? from,
   final String? category,
@@ -20,7 +20,7 @@ sealed class const ExpensesState({required final ExpensesData data}) {
       (this is ExpensesReady || this is ExpensesDeleted) &&
       data.hasLoaded &&
       data.items.isEmpty &&
-      data.next == null;
+      data.nextPage == null;
 }
 
 final class const ExpensesInitial({required super.data})

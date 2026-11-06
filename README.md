@@ -7,6 +7,103 @@ Aplicativo Flutter de finanças pessoais e familiares.
 
 ## Verificação atual
 
+**Repositories migrados; análise e suíte Flutter globais aprovadas.** A infraestrutura
+agora usa o SDK oficial PocketBase 0.25.3, compartilhado por DI e com persistência
+no `flutter_secure_storage`. Dio, talker_dio_logger e o client HTTP próprio foram
+removidos. Authentication, Session, User, Expense e Metrics já usam o SDK compartilhado,
+com testes de comportamento e DI migrados. `lib/` não referencia o HTTP/storage
+removidos. Os testes do core foram adaptados à factory e ao observer atuais;
+não houve build nativo ou homologação remota. Testes exclusivos do HTTP/Dio antigo
+e seus mocks/fakes foram removidos por solicitação explícita.
+
+`BASE_URL` passa a ser a raiz do PocketBase, por padrão
+`https://app.cordato.cloud`, sem o sufixo `/api/`. A factory passa a URL diretamente
+ao SDK, sem validação ou normalização próprias.
+O bootstrap aguarda `createDependencies` de `lib/factory.dart`, que cria o storage,
+configura o observer de debug e aguarda a leitura segura por `PocketBaseFactory`
+antes de `runApp`. `createAppModule` e `createCoreModule` recebem somente o SDK
+pronto; a DI compartilha um único `PocketBase` diretamente com os repositories.
+Falhas de leitura propagam antes da montagem do app, sem limpeza de credenciais
+ou retry automático; não há tela de retry de inicialização nesta etapa. A nova chave
+`@cordato.pocketbase_auth` não importa sessões anteriores: será necessário login.
+O `AsyncAuthStore` oficial persiste por callbacks de `FlutterSecureStorage`
+diretamente na factory, sem adapter próprio. Expense não usa mais storage legado.
+Mudanças de sessão em memória não aguardam escrita/exclusão segura; não há confirmação durável
+de login/logout nem propagação dessas falhas ao Future de autenticação. Veja
+[Clients Compartilhados](ARCHITECTURE.md#clients-compartilhados).
+
+Authentication usa os métodos nativos para login, cadastro, verificação,
+recuperação e troca de senha, mantendo os contratos da apresentação. Session
+valida por auth-refresh diretamente no SDK compartilhado e observa o AuthStore.
+Por simplificação aprovada, um refresh tardio pode sobrescrever logout/novo login
+e um 401 limpa o AuthStore atual. Erros nativos preservam campos e status para
+os formatadores locais. Essa etapa não altera UI, navegação ou backend.
+Troca de senha lê a identidade por `pocketBase.userId()`, sem validação duplicada,
+snapshots ou limpeza em 401. Ausência de identidade é falha esperada no Bloc;
+o logout explícito permanece separado e ocorre após sucesso da alteração.
+
+User usa `getOne`, `update` e `delete` nativos com o ID do auth record atual,
+sem storage próprio. Nome/avatar continuam mapeados para entidades puras.
+O SDK atualiza o auth record na edição e limpa a sessão após excluir a conta
+correspondente; Session observa essa limpeza sem confirmação durável do storage.
+Erros de campo e 401 são mapeados no repository sem gerenciar ou limpar sessões,
+sem alterar contratos, Blocs ou UI.
+
+Expense usa CRUD e sugestões pelo SDK compartilhado, com `owner` do auth record
+atual na criação. Listagem recebe número de página e retorna `nextPage`, sem URLs
+ou parsing de query; filtros ficam no Bloc e são reenviados em cada página.
+Centavos inteiros, categorias, datas civis e notificações ao widget são preservados.
+Não há gestão de sessão no repository; falhas nativas são mapeadas e ausência de
+identidade usa a exceção compartilhada do core.
+
+Metrics consulta a view mensal pelo `PocketBase.send` nativo, sem wrapper. Essa
+operação preserva o envelope bruto para rejeitar `items` ausente/nulo: os defaults
+de `getList` não podem transformar resposta inválida em total zero. Mantém meses
+civis completos, centavos textuais, agregações do servidor e sincronização mensal
+do widget, sem gerir sessões ou alterar UI/navegação.
+
+Verificação atual: `flutter analyze` sem problemas e
+`flutter test --reporter failures-only` com **1401 testes aprovados**. Os testes
+da factory simulam o canal do storage e o transporte HTTP, sem servidor local;
+os do observer verificam lifecycle e privacidade pelo fluxo real dos Blocs,
+sem chamadas diretas a métodos protegidos. O mock órfão do storage removido foi
+excluído. A correção dos testes do core não exigiu alteração de produção.
+Não houve build nativo, execução visual ou acesso ao backend real.
+
+Histórico da verificação de Metrics: `flutter analyze lib test/features/metrics` sem problemas;
+`flutter test test/features/metrics test/features/dashboard test/features/root
+test/architecture test/app_module_test.dart --reporter failures-only` com 345
+testes aprovados. Naquela etapa, a análise global apontava 29 problemas em testes legados do core;
+a suíte global teve 1381 aprovados e 4 falhas de carregamento nesses testes
+(módulo core, observer, storage legado e factory PocketBase). Não foram alterados
+nesta etapa. Não houve build nativo, execução visual ou acesso ao backend real.
+
+Histórico da verificação de Expense e da paginação simplificada: análise focada sem problemas;
+`flutter test test/features/expense test/features/dashboard test/architecture
+--reporter failures-only` com 528 testes aprovados. `flutter analyze` global ainda
+reporta 80 problemas em Metrics e testes legados do core. A suíte global teve 1314
+testes aprovados e 7 falhas de carregamento em Metrics, core e composição global.
+Essas pendências anteriores não foram alteradas nesta etapa; não houve build,
+execução visual ou validação contra o PocketBase remoto.
+
+Verificação da migração Authentication/Session: `flutter pub get` concluído;
+320 testes focados (features, infraestrutura, DI e arquitetura) aprovados. A análise
+focada não encontrou problemas. `flutter analyze` reportou 211 problemas nos
+consumidores HTTP restantes. `flutter test --reporter failures-only` teve 1034
+testes aprovados e 7 falhas de carregamento/compilação em User, Expense, Metrics
+e composição global. Esses bloqueios decorrem da remoção anterior do HTTP próprio.
+Não houve build do app nem homologação remota. O histórico abaixo
+não representa uma verificação do estado transitório atual.
+
+O teste isolado de `createCoreModule` controla a leitura do storage por
+`Completer`: comprova espera pela restauração antes da composição, resolução
+síncrona das mesmas instâncias e propagação da falha antes da montagem do módulo.
+
+Verificação da composição com instâncias prontas: `flutter pub get` concluído;
+320 testes focados de arquitetura, core, Authentication e Session aprovados.
+`flutter analyze` e `test/app_module_test.dart` continuam bloqueados pelos imports
+da infraestrutura HTTP removida em User, Expense, Metrics e testes legados.
+
 As cinco falhas de contagem de palavras nas descrições de categorias de Expense
 foram corrigidas, preservando a regra de cinco ou seis palavras. `flutter pub get`
 e `flutter analyze` concluíram sem problemas; `flutter test --reporter failures-only`
@@ -162,13 +259,14 @@ Authentication/Sign-in é a referência obrigatória para desenvolvimento e test
 ```text
 Screen/Form -> Bloc -> contrato de repository (application)
                          -> repository (infrastructure)
-                         -> clients do core -> HTTP/storage
+                         -> SDK PocketBase / clients do core
 ```
 
 - Organização por feature, sem camadas ou abstrações vazias.
 - Domain com entidades e regras puras; application com contratos e exceções.
-- Repositories concretos em `infrastructure/repositories/`, usando `IHttpClient`
-  e `IStorageClient` diretamente, sem data sources intermediários desnecessários.
+- Repositories concretos em `infrastructure/repositories/`, com acesso direto ao
+  SDK PocketBase e ao storage quando necessário, sem wrappers de CRUD. A migração
+  dos consumidores do HTTP removido ainda está pendente.
 - Retorno por `Future<T>`; falhas esperadas por exceção de aplicação, sem Either.
 - Bloc com eventos concretos e estados sealed imutáveis. Sign-in usa ownership
   pelo escopo Modular; telas ainda não migradas mantêm ownership local. Formulário
@@ -207,10 +305,11 @@ mensal da Dashboard usam a view nativa `metrics`.
 
 Trocar apenas `BASE_URL` não integra o aplicativo ao PocketBase. Autenticação,
 erros, paginação, datas e recursos disponíveis possuem contratos diferentes.
-O Flutter mantém `HttpClient`/`IHttpClient` com Dio, interceptors e o contrato HTTP
-anterior nas operações não migradas. O SDK PocketBase não está integrado. O login
-e o cadastro aceitam erros nativos PocketBase (400 por campo ou mensagem geral). Mantenha
-`/api/` na base, por exemplo `https://pocketbase.cordato.cloud/api/`. Esta adaptação
+O Flutter usa o SDK PocketBase compartilhado, sem Dio, interceptors ou client HTTP
+próprio. Login e cadastro aceitam erros nativos PocketBase (400 por campo ou mensagem
+geral). Configure somente a raiz do serviço, por exemplo
+`https://pocketbase.cordato.cloud`, sem `/api/`: o SDK acrescenta esse trecho aos endpoints.
+Uma base terminada em `/api/` duplica o caminho e pode impedir o login. Esta adaptação
 não representa homologação integrada nem migração das sessões existentes.
 Veja os [limites da integração](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração).
 
@@ -490,15 +589,15 @@ Login, cadastro e redefinição de senha possuem destino explícito para “Pró
 no teclado; a troca de senha já usa esse comportamento. A validação visual é
 manual, sem adicionar flows ou testes de UI ao projeto.
 Ao abrir com token persistido, faz POST
-`collections/users/auth-refresh` e aguarda ID/token renovados no storage. Sem
-token, não chama a API. 401 invalida somente o token enviado; 403 e falhas de rede
-preservam o storage e levam ao fallback seguro, sem fingir sessão validada.
-Chamadas simultâneas compartilham o refresh, sem retry automático. Uma mudança
-recente do token tem precedência sobre a resposta antiga, com verificações antes
-das gravações; o storage não oferece comparação/gravação transacional.
-Falhas de storage não confirmam ausência: Root usa Welcome como fallback seguro
-e mantém a observação. O interceptor também reconhece records nativos protegidos
-de users/expenses, mas isso não migra seus repositories/payloads legados.
+`collections/users/auth-refresh` pelo PocketBase compartilhado. O SDK salva a
+resposta no AuthStore sem aguardar persistência durável. Sem token, não chama a
+API. HTTP 401 limpa o AuthStore atual; 403 e rede preservam a sessão e falham.
+Chamadas simultâneas compartilham o refresh, sem retry automático. Não há client
+temporário ou proteção contra respostas antigas: sucesso tardio pode sobrescrever
+logout/novo login e 401 tardio pode limpar uma sessão nova. Parsing/defaults seguem
+o SDK; a presença local de token é consultada por `pocketBase.hasSession`, sem
+validar autorização. Falha na leitura inicial de storage propaga antes de montar
+o app; não há interceptor HTTP próprio.
 
 User já possui contrato em application, `UserException` e repository em
 infrastructure usando HTTP/storage diretamente, sem `Either` ou data sources.
@@ -552,7 +651,7 @@ compilou e serviu o catálogo, encerrado por timeout de 60 segundos sem cliente
 conectado ou validação visual pelo agente. `git diff --check` passou.
 
 Metrics também usa contrato em application, `MetricsException` e repository em
-infrastructure chamando HTTP diretamente, sem Either ou data source. Consulta
+infrastructure usando `PocketBase.send` diretamente, sem Either, wrapper ou data source. Consulta
 `collections/metrics/records` por mês civil completo. Sem datas,
 usa o mês atual; intervalos parciais, incompletos ou de vários meses são rejeitados,
 sem truncamento silencioso. Total mensal, valores por categoria e percentuais vêm
@@ -610,21 +709,21 @@ seção da Dashboard, previews e testes próprios. Referências nas verificaçõ
 históricas abaixo não representam funcionalidade disponível.
 
 Expense também usa contrato em application, `ExpenseException` e repository em
-infrastructure com HTTP/storage diretos, sem Either ou data source. Usa CRUD nativo
+infrastructure com o SDK PocketBase direto, sem Either ou data source. Usa CRUD nativo
 em `collections/expenses/records`, centavos inteiros positivos, datas civis e
-filtros/paginação PocketBase. Criação lê o ID atual do storage para `owner` e envia
+filtros/paginação PocketBase. Criação lê o ID atual do auth record para `owner` e envia
 categoria selecionada, com `other` como padrão quando ausente; atualização envia
 somente os campos fornecidos, incluindo categoria, sem trocar proprietário.
 A data escolhida é enviada como meia-noite UTC e lida como
 data civil, sem conversão de fuso. Consulta,
-criação e atualização retornam entidades; exclusão retorna `Future<void>` e só
-conclui após HTTP 204. `AmountValueObject.create` retorna o valor diretamente e
+criação e atualização retornam entidades; exclusão retorna `Future<void>` e
+segue o sucesso nativo do SDK. `AmountValueObject.create` retorna o valor diretamente e
 rejeita centavos não positivos com `ArgumentError`. Parsing e falhas inesperadas
 propagam. `ExpenseBloc` substitui consulta/criação/edição e `ExpensesBloc` substitui
 listagem/exclusão, com estados sealed, factories estáveis e lifecycle das telas.
 Mantém validação, erros PocketBase 400 e legados 422 por campo, retry manual,
 cadastro contínuo por hold,
-filtros, paginação opaca e confirmação de exclusão sem remoção otimista. Consultas
+filtros, paginação por números e confirmação de exclusão sem remoção otimista. Consultas
 obsoletas não sobrescrevem filtros recentes; mutações pendentes bloqueiam duplicatas.
 Listagem navega diretamente pelo `BuildContext`, sem callbacks nos argumentos de
 rota; Dashboard e métricas recarregam ao retornar da listagem, mesmo sem alteração.
@@ -760,21 +859,22 @@ flutter test
 Os comandos podem expor os bloqueios de migração descritos acima. Não restaure
 dependências antigas ou silencie checks para aparentar compatibilidade.
 
-Após resolver os bloqueios de compilação e composição, execute em Android/iOS:
+Para executar em Android/iOS:
 
 ```bash
 flutter run
 ```
 
-A API padrão **do cliente ainda não migrado** é `https://app.cordato.cloud/api/`.
-Para outra base compatível com esse contrato:
+A raiz padrão do PocketBase é `https://app.cordato.cloud`.
+Para outra instância:
 
 ```bash
-flutter run --dart-define=BASE_URL=https://api.exemplo.com/api/
+flutter run --dart-define=BASE_URL=https://pocketbase.exemplo.com
 ```
 
-Preserve o prefixo `/api/`. `BASE_URL` é definido no build; reinicie o app após
-alterá-lo. Confira também os overrides de `.vscode/launch.json`.
+Não acrescente `/api/`: esse trecho pertence ao SDK. `BASE_URL` é definido no build;
+encerre a execução e inicie novamente após alterá-lo, sem depender de hot reload.
+Confira também os overrides locais de `.vscode/launch.json`, ignorados pelo Git.
 
 ### Backend Local
 
@@ -978,9 +1078,9 @@ e o Bloc fornece fallback seguro e `addError` sem conhecer SDKs de telemetria.
 
 Session valida o token persistido ao abrir por auth-refresh e observa mudanças
 locais para entrada e redirecionamento global. Não há refresh periódico, retry
-automático de requests ou guard Modular. Um 401 protegido remove
-somente o token enviado se ainda for o armazenado, preservando o ID.
-Sign-out aguarda a limpeza local de todo o storage seguro, sem HTTP.
+automático de requests ou guard Modular. Um 401 de auth-refresh limpa o AuthStore
+atual; não há proteção contra respostas antigas após logout/novo login.
+Sign-out chama `authStore.clear()` localmente, sem HTTP ou espera durável.
 Confirmação de e-mail envia token por POST sem Bearer e não cria sessão.
 
 O `talker_bloc_logger` usa o Talker compartilhado por meio de `AppBlocObserver`,

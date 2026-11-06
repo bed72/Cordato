@@ -5,6 +5,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
@@ -34,10 +35,9 @@ void main() {
   final today = DateTime(2026, 10, 19, 16, 30);
   const profile = UserEntity(id: 'user', name: 'Gabriel', email: 'a@b.com');
 
-  ExpensePageEntity page(List<DateTime> dates, {String? next}) =>
+  ExpensePageEntity page(List<DateTime> dates, {int? nextPage}) =>
       ExpensePageEntity(
-        next: next,
-        prev: null,
+        nextPage: nextPage,
         items: [
           for (final date in dates)
             ExpenseEntity(
@@ -481,9 +481,7 @@ void main() {
 
     test('reads the first historical civil month once and ignores opaque continuations', () async {
       when(history).thenAnswer(
-        (_) async => page([
-          DateTime.utc(2000, 2, 29, 23),
-        ], next: 'https://other.example/?page[cursor]=opaque'),
+        (_) async => page([DateTime.utc(2000, 2, 29, 23)], nextPage: 2),
       );
       await send(DashboardOpened());
       expect(bloc.state.firstMonth, DateTime(2000, 2));
@@ -766,6 +764,47 @@ void main() {
       DashboardOpened(),
       DashboardUserRequested(),
     ]) {
+      const missingIdentity = MissingAuthenticatedUserException();
+      blocTest<DashboardBloc, DashboardState>(
+        '${event.runtimeType} preserves shared identity errors without reporting',
+        setUp: () => bloc.close(),
+        build: () {
+          when(() => users.getById())
+              .thenAnswer((_) async => throw missingIdentity);
+          return bloc = create();
+        },
+        seed: () => DashboardState(
+          currentMonth: today,
+          phase: event is DashboardUserRequested
+              ? DashboardPhaseEnum.ready
+              : DashboardPhaseEnum.loading,
+        ),
+        act: (bloc) => bloc.add(event),
+        expect: () => [
+          isA<DashboardState>().having(
+            (state) => state.isLoading,
+            'loading',
+            isTrue,
+          ),
+          isA<DashboardState>()
+              .having(
+                (state) => state.phase,
+                'phase',
+                DashboardPhaseEnum.failure,
+              )
+              .having(
+                (state) => state.financialError,
+                'errors',
+                same(missingIdentity.errors),
+              )
+              .having((state) => state.user, 'user', isNull)
+              .having((state) => state.metrics, 'metrics', isNull)
+              .having((state) => state.expenses, 'expenses', isNull),
+        ],
+        errors: () => isEmpty,
+        verify: (_) => verifyZeroInteractions(metricsRepository),
+      );
+
       for (final synchronous in [false, true]) {
         final error = StateError('unexpected profile failure');
         blocTest<DashboardBloc, DashboardState>(
@@ -866,16 +905,14 @@ void main() {
           await firstClose;
           final closed = bloc.state;
           if (pendingHistory) {
-            oldHistory.complete(
-              page([DateTime(2000)], next: '?page[after]=late'),
-            );
+            oldHistory.complete(page([DateTime(2000)], nextPage: 2));
           } else {
             oldMetrics.completeError(StateError('late metrics'));
           }
           await flush();
           expect(bloc.state, same(closed));
           if (pendingHistory) verifyZeroInteractions(metricsRepository);
-          verifyNever(() => expenses.get(pageLink: '?page[after]=late'));
+          verifyNever(() => expenses.get(page: 2));
         },
       );
     }

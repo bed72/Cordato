@@ -28,7 +28,7 @@ final class ExpensesPreviewRepository({required final ExpensePageEntity data})
     int pageSize = 30,
     DateTime? to,
     DateTime? from,
-    String? pageLink,
+    int page = 1,
     String? category,
   }) async => data;
 
