@@ -259,7 +259,8 @@ Não é necessário cadastrar conta de serviço Google, JSON ou credenciais do P
 
 Depois que o workflow estiver na `main`, abrir Actions → **Android release** →
 **Run workflow**, selecionar `main` e executar. Outras branches são ignoradas.
-O job usa Ubuntu 24.04, Java 21, Android SDK 37 e Flutter **3.47.9 stable**.
+O job usa Ubuntu 24.04, Java 21, Android SDK 37 (pacote
+`platforms;android-37.0`), Build Tools 37.0.0 e Flutter **3.47.9 stable**.
 Instala dependências com o lockfile obrigatório, executa `flutter analyze` e a
 suíte Flutter unitária completa antes de acessar os secrets de assinatura.
 
