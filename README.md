@@ -2,6 +2,12 @@
 
 Aplicativo Flutter de finanças pessoais e familiares.
 
+Configurações inclui a tela “Pague-me um café”, em `/settings/support`, com
+mensagem de apoio voluntário e QR Code Pix estático de valor livre na própria tela,
+renderizado com `pretty_qr_code`. “Copiar Pix” copia o código para pagar no banco.
+Não há confirmação de pagamento
+ou consulta bancária no app; a chave e o destinatário exigem conferência no banco.
+
 > Cada pessoa é dona dos próprios dados. A família é uma lente de leitura,
 > nunca dona do dinheiro ou autorizada a escrever nos dados de outro membro.
 
@@ -490,7 +496,8 @@ e serviu o catálogo incluindo Information, encerrando por timeout de 60 segundo
 sem cliente conectado ou inspeção visual. `git diff --check` passou. Não houve
 deploy, publicação web, homologação em dispositivo ou validação jurídica.
 
-Refinamento visual dos resumos: `InformationSummaryWidget` substitui o card
+Refinamento visual dos resumos: `SummaryCardWidget` do core, usado diretamente
+pelos documentos e previews de Information e pela tela de apoio de Settings, substitui o card
 compacto com ícone lateral por uma composição vertical de largura integral,
 tipografia de corpo, espaçamento maior e superfície/borda do tema. A Ajuda não
 repete links de Termos e Privacidade no rodapé; os acessos pela Welcome e pelas

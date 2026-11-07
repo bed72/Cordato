@@ -328,8 +328,9 @@ em uma única CustomScrollView. A seleção de texto permanece disponível e o
 cabeçalho expandido acompanha a coluna de leitura de até 680 pixels em telas
 largas; recolhido, o título se alinha ao voltar da barra superior.
 
-O resumo usa `InformationSummaryWidget`, específico da feature, com título acima
-do texto, largura integral, corpo legível e superfície/borda discretas do tema.
+O resumo usa diretamente `SummaryCardWidget` do core, também reutilizado por
+Settings, com título acima do texto, largura integral, corpo legível e
+superfície/borda discretas do tema, sem wrapper específico da feature.
 Não reutiliza o card compacto de informação com ícone lateral, inadequado aos
 parágrafos longos dos documentos. Previews isolados cobrem os dois resumos em
 claro/escuro e privacidade em largura reduzida com texto ampliado.

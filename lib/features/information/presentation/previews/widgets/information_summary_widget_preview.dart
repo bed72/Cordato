@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/previews/preview.dart';
 import 'package:cordato/features/information/presentation/content/information_content.dart';
-import 'package:cordato/features/information/presentation/widgets/information_summary_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/cards/summary_card_widget.dart';
 
 @CordatoPreview(
   group: 'Informações / Widgets',
@@ -50,7 +50,7 @@ Widget _summary(String summary, {double textScale = 1.0}) => Builder(
         child: SelectionArea(
           child: SingleChildScrollView(
             padding: const .all(16.0),
-            child: InformationSummaryWidget(summary: summary),
+            child: SummaryCardWidget(summary: summary),
           ),
         ),
       ),

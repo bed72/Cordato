@@ -1,11 +1,11 @@
 enum RouteEnum(final String path, {final bool authenticated = false}) {
   app('/'),
   welcome('/welcome'),
-  informationTerms('/information/terms'),
-  informationPrivacy('/information/privacy'),
-  informationHelp('/information/help'),
   user('/user', authenticated: true),
+  informationHelp('/information/help'),
+  informationTerms('/information/terms'),
   expense('/expense', authenticated: true),
+  informationPrivacy('/information/privacy'),
   expenses('/expenses', authenticated: true),
   settings('/settings', authenticated: true),
   userEdit('/user/edit', authenticated: true),
@@ -13,6 +13,7 @@ enum RouteEnum(final String path, {final bool authenticated = false}) {
   authenticationSignIn('/authentication/sign-in'),
   authenticationSignUp('/authentication/sign-up'),
   authenticationConfirm('/authentication/confirm'),
+  settingsSupport('/settings/support', authenticated: true),
   authenticationConfirmEmail('/authentication/confirm-email'),
   authenticationPasswordRecovery('/authentication/password-recovery'),
   authenticationChangePassword(

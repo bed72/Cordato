@@ -5,7 +5,7 @@ import 'package:cordato/features/information/presentation/content/information_co
 import 'package:cordato/features/information/presentation/widgets/information_page_widget.dart';
 import 'package:cordato/features/information/presentation/widgets/information_contact_widget.dart';
 import 'package:cordato/features/information/presentation/widgets/information_section_widget.dart';
-import 'package:cordato/features/information/presentation/widgets/information_summary_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/cards/summary_card_widget.dart';
 
 final class const InformationDocumentWidget({
   super.key,
@@ -27,7 +27,7 @@ final class const InformationDocumentWidget({
             color: context.colors.onSurfaceVariant,
           ),
         ),
-        InformationSummaryWidget(summary: summary),
+        SummaryCardWidget(summary: summary),
         for (var index = 0; index < sections.length; index++)
           InformationSectionWidget(
             title: '${index + 1}. ${sections[index].title}',

@@ -1,6 +1,6 @@
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
@@ -14,6 +14,7 @@ import 'package:cordato/features/settings/presentation/screens/settings/bloc/log
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_logout_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_app_bar_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/mixins/settings_screen_state_mixin.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_support_badge_widget.dart';
 
 final class const SettingsScreen({
   super.key,
@@ -59,6 +60,14 @@ final class _SettingsScreenState extends State<SettingsScreen>
                                 label: 'Dados pessoais',
                                 icon: Icons.person_outline,
                                 onPressed: widget.onPersonalDataPressed,
+                              ),
+                              MenuItemWidget(
+                                label: 'Pague-me um café',
+                                icon: Icons.coffee_outlined,
+                                onPressed: () => context.pushNamed(
+                                  RouteEnum.settingsSupport.path,
+                                ),
+                                trailing: const SettingsSupportBadgeWidget(),
                               ),
                             ],
                           ),
