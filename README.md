@@ -23,7 +23,7 @@ não houve build nativo ou homologação remota. Testes exclusivos do HTTP/Dio a
 e seus mocks/fakes foram removidos por solicitação explícita.
 
 `BASE_URL` passa a ser a raiz do PocketBase, por padrão
-`https://app.cordato.cloud`, sem o sufixo `/api/`. A factory passa a URL diretamente
+`https://pocketbase.cordato.cloud`, sem o sufixo `/api/`. A factory passa a URL diretamente
 ao SDK, sem validação ou normalização próprias.
 O bootstrap aguarda `createDependencies` de `lib/factory.dart`, que configura o
 observer de debug e aguarda `PocketBaseFactory.create`. Esta cria o Secure Storage
@@ -742,7 +742,7 @@ criação e atualização retornam entidades; exclusão retorna `Future<void>` e
 segue o sucesso nativo do SDK. `AmountValueObject.create` retorna o valor diretamente e
 rejeita centavos não positivos com `ArgumentError`. Parsing e falhas inesperadas
 propagam. `ExpenseBloc` substitui consulta/criação/edição e `ExpensesBloc` substitui
-listagem/exclusão, com estados sealed, factories estáveis e lifecycle das telas.
+listagem/exclusão/recadastro, com estados sealed, factories estáveis e lifecycle das telas.
 Mantém validação, erros PocketBase 400 e legados 422 por campo, retry manual,
 cadastro contínuo por hold,
 filtros, paginação por números e confirmação de exclusão sem remoção otimista. Consultas
@@ -751,6 +751,17 @@ Listagem navega diretamente pelo `BuildContext`, sem callbacks nos argumentos de
 rota; Dashboard e métricas recarregam ao retornar da listagem, mesmo sem alteração.
 Expense não depende mais de CommandIt. Dashboard consome resultados diretos de
 todos os contextos consultados.
+
+Na listagem, mantenha uma despesa pressionada para abrir “Recadastrar” (também
+disponível por ação de acessibilidade). “Voltar” cancela; “Cadastrar” salva direto,
+sem formulário, copiando descrição, valor e categoria com a data civil de hoje.
+A original permanece intacta e gastos iguais no mesmo dia são permitidos.
+Durante o envio, os botões e o fechamento ficam bloqueados; ao concluir, a folha
+fecha e mostra um toast com título e descrição, inclusive em falha. Não há retry
+automático. Após sucesso, a listagem recarrega a primeira página sem mudar filtros:
+se hoje estiver fora do intervalo ativo, a nova despesa não aparece nessa consulta.
+Falha na recarga não desfaz o cadastro nem repete a escrita. Previews em
+“Expense / Recadastro” permitem exercitar sucesso, falha e envio lento sem rede.
 
 O formulário de despesa oferece um campo Categoria somente leitura, preenchido
 com Outros no cadastro e com a categoria salva na edição. A bottom-sheet reutiliza
@@ -904,7 +915,7 @@ Para executar em Android/iOS:
 flutter run
 ```
 
-A raiz padrão do PocketBase é `https://app.cordato.cloud`.
+A raiz padrão do PocketBase é `https://pocketbase.cordato.cloud`.
 Para outra instância:
 
 ```bash

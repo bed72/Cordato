@@ -1,10 +1,15 @@
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
-import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
-import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
+
+import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
+
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_event.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_state.dart';
+
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
 final class ExpensesBloc({required final IExpenseRepository repository})
     extends Bloc<ExpensesEvent, ExpensesState> {
@@ -23,6 +28,7 @@ final class ExpensesBloc({required final IExpenseRepository repository})
     );
     on<ExpensesDeleteRequestedEvent>(_delete, transformer: droppable());
     on<ExpensesUpdatedEvent>(_update);
+    on<ExpensesReregisterRequestedEvent>(_reregister, transformer: droppable());
   }
 
   Future<void> _refresh(
@@ -30,6 +36,11 @@ final class ExpensesBloc({required final IExpenseRepository repository})
     Emitter<ExpensesState> emit,
   ) async {
     final previous = state.data;
+    if (state is ExpensesReregistering) {
+      _pendingQuery = event;
+      return;
+    }
+
     final sameFilters =
         previous.category == event.category &&
         previous.from == event.from &&
@@ -155,7 +166,67 @@ final class ExpensesBloc({required final IExpenseRepository repository})
     );
   }
 
+  Future<void> _reregister(
+    ExpensesReregisterRequestedEvent event,
+    Emitter<ExpensesState> emit,
+  ) async {
+    if (state.isBusy) {
+      return;
+    }
+
+    final data = state.data;
+    final source = event.expense;
+    ExpensesRequestedEvent? reload;
+    ++_revision;
+    emit(ExpensesReregistering(data: data, id: source.id));
+
+    try {
+      final createdExpense = await repository.create(
+        cents: source.cents.cents,
+        description: source.description,
+        category: source.category,
+        occurredOn: event.occurredOn,
+      );
+      if (isClosed || emit.isDone) {
+        return;
+      }
+
+      emit(ExpensesReregistered(data: data, expense: createdExpense));
+      reload = ExpensesRequestedEvent(
+        category: data.category,
+        from: data.from,
+        to: data.to,
+      );
+    } on ExpenseException catch (error) {
+      if (isClosed || emit.isDone) {
+        return;
+      }
+
+      emit(ExpensesReregisterFailure(data: data, errors: error.errors));
+    } on MissingAuthenticatedUserException catch (error) {
+      if (isClosed || emit.isDone) {
+        return;
+      }
+
+      emit(ExpensesReregisterFailure(data: data, errors: error.errors));
+    } catch (error, stackTrace) {
+      if (isClosed || emit.isDone) {
+        return;
+      }
+
+      addError(error, stackTrace);
+      emit(ExpensesReregisterFailure(data: data, errors: .unknown()));
+    } finally {
+      final query = _pendingQuery ?? reload;
+      _pendingQuery = null;
+      if (query != null && !isClosed && !emit.isDone) {
+        add(query);
+      }
+    }
+  }
+
   DateTime _day(DateTime date) => DateTime.utc(date.year, date.month, date.day);
+
   List<ExpenseEntity> _sorted(Iterable<ExpenseEntity> items) {
     final indexed = items.indexed.toList();
     indexed.sort((a, b) {
@@ -168,10 +239,10 @@ final class ExpensesBloc({required final IExpenseRepository repository})
   ExpensesData _withItems(ExpensesData data, Iterable<ExpenseEntity> items) =>
       ExpensesData(
         items: _sorted(items),
+        to: data.to,
+        from: data.from,
         nextPage: data.nextPage,
         category: data.category,
-        from: data.from,
-        to: data.to,
         hasLoaded: data.hasLoaded,
       );
 }

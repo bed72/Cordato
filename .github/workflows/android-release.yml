@@ -93,7 +93,7 @@ jobs:
           flutter build appbundle --release \
             --build-name="$BUILD_NAME" \
             --build-number="$BUILD_NUMBER" \
-            --dart-define=BASE_URL=https://app.cordato.cloud
+            --dart-define=BASE_URL=https://pocketbase.cordato.cloud
 
       - name: Verificar assinatura do AAB
         run: |

@@ -1213,6 +1213,27 @@ Os Blocs preservam `ExpenseException.errors`, reportam inesperadas por `addError
 com fallback seguro e verificam fechamento/handler invalidado antes de publicar.
 Isso não cancela HTTP ou desfaz mutações já iniciadas.
 
+Recadastro por long press ou ação semântica usa `ExpensesBloc` →
+`IExpenseRepository.create`, sem chamar o Bloc/formulário de cadastro ou importar
+Root/Metrics. A UI captura a data local ao confirmar e o evento a representa como
+meia-noite UTC pelos componentes civis, sem conversão de fuso. Copia descrição,
+centavos e categoria, inclusive `other`, sem reutilizar o ID nem alterar o original.
+`droppable` e `isBusy` bloqueiam submissões e outras mutações simultâneas; consultas
+durante o POST aguardam a conclusão, preservando somente a última intenção.
+A criação invalida páginas obsoletas pela revisão e, após sucesso, solicita a
+primeira página com os filtros preservados. Falha desse GET é falha de consulta,
+nunca falha/retry da criação confirmada. Identidade ausente preserva a exceção
+esperada compartilhada do core, sem limpeza própria de sessão ou telemetry.
+
+`ExpenseReregistrationWidget` recebe o Bloc da listagem sem possuir seu fechamento.
+Reutiliza o scaffold e botões compartilhados; loading e bloqueio de back derivam
+do estado do Bloc, com drag/barreira desabilitados na rota modal. Seu listener
+fecha somente a bottom-sheet atual pelo Navigator local (o `context.pop` do Modular
+7.1.1 prioriza páginas declarativas). O mixin aguarda esse retorno para mostrar
+um único toast de sucesso/falha com mensagens locais do formatter de Expense.
+O ID da confirmação aberta é apenas coordenação visual, não cópia de dados ou
+loading. A atualização do widget mensal permanece no repository existente.
+
 O módulo registra os dois Blocs por factory, sem commands ou data source. Previews
 usam factories estáveis ou `PreviewResourceWidget` como único dono do recurso.
 Testes unitários de Bloc cobrem concorrência, retry e fechamento; o teste de
@@ -1264,7 +1285,7 @@ ausência de sessão ou tentar novamente automaticamente. Não há tela de retry
 de inicialização nesta etapa.
 Não há singleton global estático nem wrapper dos métodos de coleção.
 
-`BASE_URL` padrão: `https://app.cordato.cloud`. O SDK acrescenta `/api/` aos
+`BASE_URL` padrão: `https://pocketbase.cordato.cloud`. O SDK acrescenta `/api/` aos
 endpoints. A factory passa a configuração diretamente ao SDK, sem validação ou
 normalização próprias. Configure a raiz do PocketBase, sem o sufixo `/api/`.
 

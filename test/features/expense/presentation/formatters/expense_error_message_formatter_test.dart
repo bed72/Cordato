@@ -6,6 +6,35 @@ import 'package:cordato/features/expense/presentation/formatters/expense_error_m
 void main() {
   const fallback = 'Não foi possível salvar a despesa.';
 
+  group('Reregistration toast descriptions', () {
+    for (final errors in [
+      const ErrorsEntity(errors: []),
+      const ErrorsEntity(errors: [
+        ErrorEntity(status: '499', title: 'Private title', detail: 'Private detail'),
+      ]),
+    ]) {
+      test('uses safe fallback with ${errors.errors.length} unknown errors', () {
+        expect(
+          ExpenseErrorMessageFormatter.reregistration(errors),
+          'Tente novamente em instantes.',
+        );
+      });
+    }
+
+    test('maps field and access errors locally, deduplicating in order', () {
+      const errors = ErrorsEntity(errors: [
+        ErrorEntity(status: '400', pointer: '/category', detail: 'Private'),
+        ErrorEntity(status: '400', pointer: '/category', detail: 'Private'),
+        ErrorEntity(status: '403', detail: 'Private'),
+      ]);
+
+      expect(
+        ExpenseErrorMessageFormatter.reregistration(errors),
+        'Selecione uma categoria válida.\nVocê não tem permissão para realizar esta ação.',
+      );
+    });
+  });
+
   group('Expense form error classification', () {
     for (final source in [
       (status: '400', prefix: ''),

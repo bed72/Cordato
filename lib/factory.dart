@@ -21,7 +21,7 @@ Future<Module> createDependencies() async {
   final pocketBase = await PocketBaseFactory.create(
     url: const String.fromEnvironment(
       'BASE_URL',
-      defaultValue: 'https://app.cordato.cloud',
+      defaultValue: 'https://pocketbase.cordato.cloud',
     ),
   );
 

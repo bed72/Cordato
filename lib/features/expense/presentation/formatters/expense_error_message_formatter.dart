@@ -2,12 +2,21 @@ import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 
 abstract final class ExpenseErrorMessageFormatter {
+  static String reregistration(ErrorsEntity errors) {
+    const fallback = 'Tente novamente em instantes.';
+    final messages = errors.errors
+        .map((error) => format(error, fallback: fallback))
+        .toSet();
+
+    return messages.isEmpty ? fallback : messages.join('\n');
+  }
+
   static ({String? cents, String? description, String? date, String? toast})
   fields(ErrorsEntity errors, {required bool isEditing}) {
     final dateMessages = <String>[];
     final amountMessages = <String>[];
-    final descriptionMessages = <String>[];
     final remaining = <ErrorEntity>[];
+    final descriptionMessages = <String>[];
 
     for (final error in errors.errors) {
       if (error.status != '422' && error.status != '400') {

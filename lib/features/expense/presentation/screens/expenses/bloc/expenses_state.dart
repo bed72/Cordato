@@ -15,7 +15,8 @@ final class ExpensesData({
 
 sealed class const ExpensesState({required final ExpensesData data}) {
   bool get isLoading => this is ExpensesLoading;
-  bool get isBusy => isLoading || this is ExpensesDeleting;
+  bool get isBusy =>
+      isLoading || this is ExpensesDeleting || this is ExpensesReregistering;
   bool get isEmpty =>
       (this is ExpensesReady || this is ExpensesDeleted) &&
       data.hasLoaded &&
@@ -52,5 +53,20 @@ final class const ExpensesDeleted({
 final class const ExpensesDeleteFailure({
   required super.data,
   required final String id,
+  required final ErrorsEntity errors,
+}) extends ExpensesState {}
+
+final class const ExpensesReregistering({
+  required super.data,
+  required final String id,
+}) extends ExpensesState {}
+
+final class const ExpensesReregistered({
+  required super.data,
+  required final ExpenseEntity expense,
+}) extends ExpensesState {}
+
+final class const ExpensesReregisterFailure({
+  required super.data,
   required final ErrorsEntity errors,
 }) extends ExpensesState {}

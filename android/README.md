@@ -117,11 +117,11 @@ zero, signed cents, 15-million boundaries, Long limits, short/wide/tall dimensio
 and measured-width font adaptation. Manually check rendering with long amounts,
 large accessibility text and the stale-summary hint before distribution.
 
-The default production PocketBase root is `https://app.cordato.cloud`, without
+The default production PocketBase root is `https://pocketbase.cordato.cloud`, without
 `/api/`; the SDK adds that path. To explicitly pin it when building an APK:
 
 ```bash
-flutter build apk --release --dart-define=BASE_URL=https://app.cordato.cloud
+flutter build apk --release --dart-define=BASE_URL=https://pocketbase.cordato.cloud
 ```
 
 Android builds require JDK 21. Confirm that Flutter and Gradle are using it:
@@ -182,7 +182,7 @@ current PocketBase root:
 flutter build appbundle --release \
   --build-name=1.0.0 \
   --build-number=6 \
-  --dart-define=BASE_URL=https://app.cordato.cloud
+  --dart-define=BASE_URL=https://pocketbase.cordato.cloud
 ```
 
 Use a higher build number for subsequent uploads, coordinating local codes with
@@ -269,7 +269,7 @@ validação existente sem fallback para debug. O keystore fica em `runner.temp`,
 com permissões restritas, e um passo `always()` remove o arquivo após o job.
 Não se deve habilitar debug de shell ou adicionar dumps do ambiente aos passos.
 
-Após o build com `BASE_URL=https://app.cordato.cloud`, o workflow verifica a
+Após o build com `BASE_URL=https://pocketbase.cordato.cloud`, o workflow verifica a
 presença da assinatura e executa `jarsigner -verify`. O único arquivo enviado é
 `build/app/outputs/bundle/release/app-release.aab`, em um artefato
 `cordato-<versão>-<código>-attempt-<tentativa>`, retido por **14 dias**. Baixar pelo

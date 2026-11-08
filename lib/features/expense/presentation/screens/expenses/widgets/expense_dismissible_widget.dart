@@ -11,6 +11,7 @@ final class const ExpenseDismissibleWidget({
   required final Widget child,
   required final Future<void> Function() onConfirmDelete,
   final Future<void> Function()? onEdit,
+  final Future<void> Function()? onReregister,
   final bool enabled = true,
   final bool isDeleting = false,
   required final VoidCallback? onAccessibleDelete,
@@ -37,6 +38,9 @@ final class _ExpenseDismissibleWidgetState
         const CustomSemanticsAction(label: 'Editar despesa'): ?(canSwipe
             ? widget.onEdit
             : null),
+        const CustomSemanticsAction(label: 'Recadastrar despesa'): ?(canSwipe
+            ? widget.onReregister
+            : null),
       },
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -45,6 +49,7 @@ final class _ExpenseDismissibleWidgetState
               : 88.0;
           return GestureDetector(
             behavior: .opaque,
+            onLongPress: canSwipe ? widget.onReregister : null,
             onHorizontalDragStart: canSwipe ? startSwipe : null,
             onHorizontalDragUpdate: canSwipe
                 ? (details) => updateSwipe(details, maxDistance)

@@ -4,17 +4,23 @@ import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
-import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
 final class ExpensesListPreviewRepository({
-  required final List<ExpenseEntity> items,
+  required List<ExpenseEntity> items,
   final bool loading = false,
   final ErrorsEntity? failure,
+  final ErrorsEntity? creationFailure,
+  final Duration creationDelay = .zero,
 }) implements IExpenseRepository {
+  final List<ExpenseEntity> items;
+
+  this : items = List.of(items);
+
   @override
   Future<List<ExpenseSuggestionEntity>> suggestions({
     required String query,
@@ -40,12 +46,12 @@ final class ExpensesListPreviewRepository({
           (to == null || !day.isAfter(_civilDay(to)));
     }).toList();
 
-    if (sort == 'occurred_on') {
-      filtered.sort(
-        (left, right) =>
-            _civilDay(left.occurredOn).compareTo(_civilDay(right.occurredOn)),
-      );
-    }
+    filtered.sort((left, right) {
+      final byDay = _civilDay(left.occurredOn)
+          .compareTo(_civilDay(right.occurredOn));
+
+      return sort == 'occurred_on' ? byDay : -byDay;
+    });
 
     final offset = (page - 1) * pageSize;
     final pageItems = filtered.skip(offset).take(pageSize).toList();
@@ -74,7 +80,26 @@ final class ExpensesListPreviewRepository({
     required String description,
     ExpenseCategoryEnum category = .other,
     DateTime? occurredOn,
-  }) async => throw ExpenseException(errors: .unknown());
+  }) async {
+    if (creationDelay != Duration.zero) {
+      await Future<void>.delayed(creationDelay);
+    }
+
+    if (creationFailure != null) {
+      throw ExpenseException(errors: creationFailure!);
+    }
+
+    final createdExpense = ExpenseEntity(
+      id: 'copy-${items.length}',
+      description: description,
+      cents: .create(cents: cents),
+      category: category,
+      occurredOn: occurredOn ?? DateTime.now(),
+    );
+    items.add(createdExpense);
+
+    return createdExpense;
+  }
 
   @override
   Future<ExpenseEntity> update({

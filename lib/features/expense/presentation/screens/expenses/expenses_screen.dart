@@ -1,11 +1,11 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/headers/collapsible_header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/empty_state_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/widgets/headers/collapsible_header_widget.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_state.dart';
@@ -95,17 +95,20 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
                   key: ValueKey(expense.id),
                   id: expense.id,
                   enabled:
-                      !isLoading &&
+                      !bloc.state.isBusy &&
                       !isEditingExpense &&
+                      pendingReregistrationId == null &&
                       (pendingDeleteId == null ||
                           pendingDeleteId == expense.id),
                   isDeleting: deletingExpenseId == expense.id,
                   onConfirmDelete: () => confirmDeleteExpense(expense.id),
-                  onEdit:
-                      isLoading || pendingDeleteId != null || isEditingExpense
+                  onEdit: !canRemoveFilters
                       ? null
                       : () => editExpense(expense.id),
-                  onAccessibleDelete: isLoading || pendingDeleteId != null
+                  onReregister: canRemoveFilters
+                      ? () => confirmReregisterExpense(expense)
+                      : null,
+                  onAccessibleDelete: !canRemoveFilters
                       ? null
                       : () => deleteExpenseAccessibly(expense.id),
                   child: ExpenseItemWidget(

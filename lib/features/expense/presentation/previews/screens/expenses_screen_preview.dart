@@ -145,6 +145,38 @@ Widget previewFailureMonthlyExpensesScreen() => _screenPreview(failure: true);
 Widget previewGeneralExpensesScreen() => _screenPreview(general: true);
 
 @CordatoPreview(
+  group: 'Expense / Recadastro',
+  name: 'Long press / Sucesso',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewReregistrationSuccess() => _screenPreview(
+  general: true,
+  creationDelay: const Duration(seconds: 2),
+);
+
+@CordatoPreview(
+  group: 'Expense / Recadastro',
+  name: 'Long press / Falha',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewReregistrationFailure() => _screenPreview(
+  general: true,
+  creationFails: true,
+  creationDelay: const Duration(seconds: 2),
+);
+
+@CordatoPreview(
+  group: 'Expense / Recadastro',
+  name: 'Long press / Loading prolongado',
+  size: cordatoPhonePreviewSize,
+  brightness: Brightness.dark,
+)
+Widget previewReregistrationLoading() => _screenPreview(
+  general: true,
+  creationDelay: const Duration(seconds: 10),
+);
+
+@CordatoPreview(
   group: 'Expense / Listagem',
   name: 'Sem despesas / Claro',
   size: cordatoPhonePreviewSize,
@@ -199,10 +231,14 @@ Widget _screenPreview({
   bool loading = false,
   bool failure = false,
   bool general = false,
+  bool creationFails = false,
+  Duration creationDelay = Duration.zero,
 }) {
   final repository = ExpensesListPreviewRepository(
     loading: loading,
     failure: failure ? .unknown() : null,
+    creationFailure: creationFails ? .unknown() : null,
+    creationDelay: creationDelay,
     items:
         empty
               ? []
