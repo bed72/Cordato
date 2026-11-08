@@ -1,17 +1,18 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
 
+import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/application/enums/share_outcome_enum.dart';
+import 'package:cordato/features/core/application/models/share_origin_model.dart';
+import 'package:cordato/features/core/application/models/share_attachment_model.dart';
 import 'package:cordato/features/core/application/exceptions/file_share_exception.dart';
 import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
-import 'package:cordato/features/core/application/models/file_share_outcome.dart';
-import 'package:cordato/features/core/application/models/share_attachment.dart';
-import 'package:cordato/features/core/application/models/share_origin.dart';
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+
 import 'package:cordato/features/expense/application/models/document_model.dart';
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/settings/application/exceptions/export_exception.dart';
 import 'package:cordato/features/settings/application/models/prepared_export_model.dart';
 import 'package:cordato/features/settings/infrastructure/repositories/export_repository.dart';
@@ -21,12 +22,12 @@ import '../../../../support/expense/mocks/export_repository_mock.dart';
 
 void main() {
   setUpAll(() => registerFallbackValue(Uint8List(0)));
-  const attachment = ShareAttachment(
+  const attachment = ShareAttachmentModel(
     id: 'attachment-test',
     fileName: 'expenses.csv',
   );
   const export = PreparedExportModel(ownerId: 'owner', attachment: attachment);
-  const origin = ShareOrigin(x: 1, y: 2, width: 30, height: 40);
+  const origin = ShareOriginModel(x: 1, y: 2, width: 30, height: 40);
   const errors = ErrorsEntity(
     errors: [
       ErrorEntity(
@@ -47,7 +48,7 @@ void main() {
     files = FileShareClientMock();
     repository = ExportRepository(
       expenseRepository: expenses,
-      fileShareClient: files,
+      shareClient: files,
     );
     document = DocumentModel(
       ownerId: 'owner',
@@ -119,7 +120,7 @@ void main() {
     test(
       'discards the prepared attachment if the owner changes during file IO',
       () async {
-        final pendingFile = Completer<ShareAttachment>();
+        final pendingFile = Completer<ShareAttachmentModel>();
         final started = Completer<void>();
         when(
           () => files.prepare(
@@ -192,7 +193,7 @@ void main() {
   });
 
   group('Sharing and discard', () {
-    for (final outcome in FileShareOutcome.values) {
+    for (final outcome in ShareOutcomeEnum.values) {
       test(
         'passes anchor and MIME and returns ${outcome.name} without claiming delivery',
         () async {

@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_event.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/metrics/metrics_section_widget.dart';
 
 mixin MetricsSectionStateMixin on State<MetricsSectionWidget> {

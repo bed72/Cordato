@@ -17,15 +17,15 @@ mixin SettingsScreenStateMixin on State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    bloc = widget.bloc();
+    bloc = widget.logoutBloc();
   }
 
   @override
   void didUpdateWidget(covariant SettingsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.bloc == widget.bloc) return;
+    if (oldWidget.logoutBloc == widget.logoutBloc) return;
     unawaited(bloc.close());
-    bloc = widget.bloc();
+    bloc = widget.logoutBloc();
   }
 
   @override
@@ -65,8 +65,10 @@ mixin SettingsScreenStateMixin on State<SettingsScreen> {
           fallback: 'Não foi possível sair. Tente novamente.',
         ),
       );
+
       return;
     }
+
     context.showToast(
       variant: .error,
       title: 'Erro ao sair',

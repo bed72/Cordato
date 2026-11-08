@@ -1,11 +1,12 @@
-import 'package:flutter_modular/flutter_modular.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/app_module.dart';
-import 'package:cordato/features/core/application/clients/interface_file_share_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/file_share/file_share_client.dart';
+
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/share/share_client.dart';
+import 'package:cordato/features/core/application/clients/interface_share_client.dart';
 import 'package:cordato/features/expense/application/repositories/interface_export_repository.dart'
     as expense;
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/export_bloc.dart';
@@ -28,12 +29,12 @@ void main() {
     addTearDown(fixture.client.close);
     final boot = bootstrapModule(createAppModule(pocketBase: fixture.client));
     addTearDown(boot.injector.dispose);
-    final client = boot.injector.get<IFileShareClient>();
-    expect(client, isA<FileShareClient>());
-    expect(boot.injector.get<IFileShareClient>(), same(client));
+    final client = boot.injector.get<IShareClient>();
+    expect(client, isA<ShareClient>());
+    expect(boot.injector.get<IShareClient>(), same(client));
     final files = FileShareClientMock();
     when(files.cleanExpired).thenAnswer((_) async {});
-    boot.injector.replaceInstance<IFileShareClient>(files);
+    boot.injector.replaceInstance<IShareClient>(files);
 
     final route = boot.routes.routes.singleWhere(
       (route) => route.path == RouteEnum.settings.path,

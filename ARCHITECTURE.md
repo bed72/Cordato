@@ -1987,21 +1987,28 @@ recolhimento confirmado pode registrar uma linha no console debug. X e lifecycle
 descartam. Não há IA, arquivo de áudio, cadastro financeiro ou mudança no PocketBase.
 O serviço do sistema pode usar rede; não há garantia de reconhecimento offline.
 
-`SpeechCaptureBloc` pertence ao `provide` da Dashboard, sem migrar DashboardBloc.
-Consome `ISpeechCaptureRepository`; infrastructure usa `IRecognitionClient`
+`SpeechBloc` pertence ao `provide` da Dashboard, sem migrar DashboardBloc.
+Consome `ISpeechRepository`; infrastructure usa `IRecognitionClient`
 do core, com um adapter compartilhado do plugin. A observação possui a captura
 e sua interrupção libera o recurso nativo. Apresentação não importa o plugin.
 
-Os arquivos de contrato contêm somente as interfaces. Eventos/atualizações,
-enums de falha e exceções ficam em `application/models`, `application/enums` e
-`application/exceptions` dos respectivos contextos. `RecognitionClient` coordena
-inicialização, seleção de pt-BR e escuta em etapas explícitas; `RecognitionSession`
+Os arquivos de contrato contêm somente as interfaces. Eventos de reconhecimento
+do core e notificações de captura da Dashboard ficam em `application/events`
+dos respectivos contextos; modelos ficam em `application/models`, enums de falha em `application/enums` e exceções em
+`application/exceptions` dos respectivos contextos. Os modelos de compartilhamento
+usam `ShareAttachmentModel` e `ShareOriginModel`, em arquivos `_model.dart`.
+`RecognitionClient` coordena
+inicialização, seleção de pt-BR e escuta em etapas explícitas; `RecognitionSessionModel`
 possui os recursos de uma captura e `RecognitionMapper` converte erros e níveis
-nativos. `SpeechCaptureMapper` mantém essa conversão fora do repository da
+nativos. `SpeechMapper` mantém essa conversão fora do repository da
 Dashboard. Nenhum tipo do plugin atravessa o contrato do core.
 
+`RecognitionSessionModel` permanece em `infrastructure/clients/recognition/models`,
+no arquivo `recognition_session_model.dart`: seus controllers, completer e timer
+são recursos internos do adapter, não dados de application ou domínio.
+
 Na apresentação, o widget de ação conecta o Bloc ao mixin de lifecycle/animação.
-`SpeechCaptureBarWidget` compõe a superfície e seus estados visuais;
+`SpeechBarWidget` compõe a superfície e seus estados visuais;
 `ExpenseActionButtonWidget` mantém o gesto e a acessibilidade do botão recolhido.
 
 A pedido do usuário, a entrega é uma POC sem novos testes automatizados.

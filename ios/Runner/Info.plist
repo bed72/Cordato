@@ -40,6 +40,10 @@
 	<true/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Permita o microfone para experimentar a captura de fala na Dashboard.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Permita reconhecer frases em português. O serviço do sistema pode usar rede.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

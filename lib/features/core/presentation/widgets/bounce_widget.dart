@@ -1,5 +1,5 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter/physics.dart';
+import 'package:material_ui/material_ui.dart';
 
 const _upScale = 1.0;
 const _downScale = 0.96;
@@ -88,6 +88,8 @@ final class _BounceWithoutPressWidgetState
     required double damping,
     required double stiffness,
   }) {
+    if (!mounted) return;
+
     _scaleController.animateWith(
       SpringSimulation(
         SpringDescription(

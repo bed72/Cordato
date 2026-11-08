@@ -6,7 +6,7 @@ import 'package:cordato/features/expense/domain/entities/expense_page_entity.dar
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 
 import 'package:cordato/features/dashboard/presentation/enums/dashboard_phase_enum.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_state.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_state.dart';
 
 void main() {
   final month = DateTime(2026, 11);

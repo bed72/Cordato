@@ -1,4 +1,4 @@
-import 'package:cordato/features/core/application/models/share_origin.dart';
+import 'package:cordato/features/core/application/models/share_origin_model.dart';
 
 sealed class ExportEvent {
   const ExportEvent();
@@ -6,7 +6,7 @@ sealed class ExportEvent {
 
 final class const ExportRequested() extends ExportEvent {}
 
-final class const ExportShareRequested({final ShareOrigin? origin})
+final class const ExportShareRequested({final ShareOriginModel? origin})
     extends ExportEvent {}
 
 final class const ExportAbandoned() extends ExportEvent {}

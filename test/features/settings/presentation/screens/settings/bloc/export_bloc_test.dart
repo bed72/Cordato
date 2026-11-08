@@ -1,13 +1,14 @@
 import 'dart:async';
 
+import 'package:mocktail/mocktail.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 
-import 'package:cordato/features/core/application/models/file_share_outcome.dart';
-import 'package:cordato/features/core/application/models/share_attachment.dart';
-import 'package:cordato/features/core/application/models/share_origin.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/application/enums/share_outcome_enum.dart';
+import 'package:cordato/features/core/application/models/share_origin_model.dart';
+import 'package:cordato/features/core/application/models/share_attachment_model.dart';
+
 import 'package:cordato/features/settings/application/exceptions/export_exception.dart';
 import 'package:cordato/features/settings/application/models/prepared_export_model.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/export_bloc.dart';
@@ -19,7 +20,7 @@ import '../../../../../../support/settings/mocks/export_repository_mock.dart';
 void main() {
   const export = PreparedExportModel(
     ownerId: 'owner',
-    attachment: ShareAttachment(
+    attachment: ShareAttachmentModel(
       id: 'attachment-test',
       fileName: 'expenses.csv',
     ),
@@ -34,7 +35,7 @@ void main() {
       ),
     ],
   );
-  const origin = ShareOrigin(x: 1, y: 2, width: 30, height: 40);
+  const origin = ShareOriginModel(x: 1, y: 2, width: 30, height: 40);
   late ExportRepositoryMock repository;
 
   setUp(() {
@@ -42,7 +43,7 @@ void main() {
     when(repository.prepare).thenAnswer((_) async => export);
     when(() => repository.discard(export)).thenAnswer((_) async {});
     when(() => repository.share(export: export, origin: origin))
-        .thenAnswer((_) async => FileShareOutcome.completed);
+        .thenAnswer((_) async => ShareOutcomeEnum.completed);
   });
 
   Future<void> prepare(ExportBloc bloc) async {
@@ -173,7 +174,7 @@ void main() {
   });
 
   group('Sharing and concurrency', () {
-    for (final outcome in FileShareOutcome.values) {
+    for (final outcome in ShareOutcomeEnum.values) {
       blocTest<ExportBloc, ExportState>(
         '${outcome.name} finishes and allows another export',
         setUp: () =>
@@ -206,7 +207,7 @@ void main() {
         final document = Completer<PreparedExportModel?>();
         final preparing = Completer<void>();
         final sharing = Completer<void>();
-        final shared = Completer<FileShareOutcome>();
+        final shared = Completer<ShareOutcomeEnum>();
         when(repository.prepare).thenAnswer((_) {
           preparing.complete();
           return document.future;
@@ -233,7 +234,7 @@ void main() {
         final completed = bloc.stream.firstWhere(
           (state) => state is ExportCompleted,
         );
-        shared.complete(FileShareOutcome.completed);
+        shared.complete(ShareOutcomeEnum.completed);
         await completed;
         verify(repository.prepare).called(1);
         verify(() => repository.share(export: export, origin: origin))
@@ -259,7 +260,7 @@ void main() {
     test(
       'close while sharing does not emit completion or start another operation',
       () async {
-        final shared = Completer<FileShareOutcome>();
+        final shared = Completer<ShareOutcomeEnum>();
         final started = Completer<void>();
         when(() => repository.share(export: export, origin: origin))
             .thenAnswer((_) {
@@ -271,7 +272,7 @@ void main() {
         bloc.add(const ExportShareRequested(origin: origin));
         await started.future;
         final closed = bloc.close();
-        shared.complete(FileShareOutcome.completed);
+        shared.complete(ShareOutcomeEnum.completed);
         await closed;
         expect(bloc.state, isA<ExportSharing>());
         verify(() => repository.share(export: export, origin: origin))

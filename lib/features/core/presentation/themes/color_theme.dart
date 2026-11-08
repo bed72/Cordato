@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 class const AppColors({
   required final Color background,
   required final Color surface,
+  required final Color surfaceElevated,
   required final Color surfaceSubtle,
   required final Color field,
   required final Color text,
@@ -29,6 +30,7 @@ class const AppColors({
   AppColors copyWith({
     Color? background,
     Color? surface,
+    Color? surfaceElevated,
     Color? surfaceSubtle,
     Color? field,
     Color? text,
@@ -52,6 +54,7 @@ class const AppColors({
   }) => AppColors(
     background: background ?? this.background,
     surface: surface ?? this.surface,
+    surfaceElevated: surfaceElevated ?? this.surfaceElevated,
     surfaceSubtle: surfaceSubtle ?? this.surfaceSubtle,
     field: field ?? this.field,
     text: text ?? this.text,
@@ -81,6 +84,11 @@ class const AppColors({
       : AppColors(
           background: Color.lerp(background, other.background, t)!,
           surface: Color.lerp(surface, other.surface, t)!,
+          surfaceElevated: Color.lerp(
+            surfaceElevated,
+            other.surfaceElevated,
+            t,
+          )!,
           surfaceSubtle: Color.lerp(surfaceSubtle, other.surfaceSubtle, t)!,
           field: Color.lerp(field, other.field, t)!,
           text: Color.lerp(text, other.text, t)!,
@@ -111,6 +119,7 @@ class const AppColors({
 const lightColors = AppColors(
   background: Color(0xFFF6FBF4),
   surface: Color(0xFFFFFFFF),
+  surfaceElevated: Color(0xFFE6EDE5),
   surfaceSubtle: Color(0xFFF0F5EE),
   field: Color(0xFFF6FBF4),
   text: Color(0xFF181D19),
@@ -136,6 +145,7 @@ const lightColors = AppColors(
 const darkColors = AppColors(
   background: Color(0xFF0F1511),
   surface: Color(0xFF1C211D),
+  surfaceElevated: Color(0xFF2D312E),
   surfaceSubtle: Color(0xFF181D19),
   field: Color(0xFF1C211D),
   text: Color(0xFFDFE4DD),

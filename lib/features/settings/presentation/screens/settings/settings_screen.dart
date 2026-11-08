@@ -20,7 +20,7 @@ import 'package:cordato/features/settings/presentation/screens/settings/widgets/
 
 final class const SettingsScreen({
   super.key,
-  required final LogoutBloc Function() bloc,
+  required final LogoutBloc Function() logoutBloc,
   required final ExportBloc exportBloc,
   required final ValueChanged<BuildContext> onBackPressed,
   final VoidCallback? onPersonalDataPressed,

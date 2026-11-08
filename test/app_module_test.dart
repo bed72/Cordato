@@ -13,7 +13,7 @@ import 'package:cordato/features/core/application/clients/interface_home_widget_
 import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
 
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_bloc.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';

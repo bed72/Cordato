@@ -1,47 +1,44 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 
-import 'package:cordato/features/core/presentation/enums/route_enum.dart';
-import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
+import 'package:cordato/features/dashboard/presentation/widgets/speech_bar_widget.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/speech_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/speech_state.dart';
+import 'package:cordato/features/dashboard/presentation/widgets/mixins/dashboard_speech_state_mixin.dart';
 
-import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
-import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-
-final class const ActionButtonDashboardWidget({super.key})
-    extends StatelessWidget {
+final class const ActionButtonDashboardWidget({
+  super.key,
+  required final SpeechBloc bloc,
+}) extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return BounceWidget.withoutOnPress(
-      child: FloatingActionButton(
-        elevation: 0.0,
-        onPressed: () => _openExpense(context),
-        tooltip: 'Adicionar gasto',
-        backgroundColor: context.colors.primary,
-        foregroundColor: context.colors.onPrimary,
-        shape: RoundedRectangleBorder(
-          borderRadius: context.radius.cornerRadius100,
-        ),
-        child: const IconWidget(size: 20.0, icon: Icons.receipt_long_outlined),
-      ),
-    );
-  }
+  State<ActionButtonDashboardWidget> createState() =>
+      _ActionButtonDashboardWidgetState();
+}
 
-  Future<void> _openExpense(BuildContext context) async {
-    if (ModalRoute.of(context)?.isCurrent == false) return;
-    final bloc = context.read<DashboardBloc>();
-    final expense = await context.pushNamed<ExpenseEntity>(
-      RouteEnum.expense.path,
-      arguments: (returnToPrevious: true),
-    );
-    if (expense != null &&
-        context.mounted &&
-        !bloc.isClosed &&
-        identical(context.read<DashboardBloc>(), bloc)) {
-      bloc.add(DashboardExpensesChanged());
-    }
-  }
+final class _ActionButtonDashboardWidgetState
+    extends State<ActionButtonDashboardWidget>
+    with
+        SingleTickerProviderStateMixin,
+        WidgetsBindingObserver,
+        DashboardSpeechStateMixin {
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    bottom: false,
+    child: BlocConsumer<SpeechBloc, SpeechState>(
+      bloc: widget.bloc,
+      listener: (_, state) => handleSpeechState(state),
+      builder: (context, state) => AnimatedBuilder(
+        animation: expansion,
+        builder: (context, _) => SpeechBarWidget(
+          expansion: expansion.value,
+          state: state,
+          onOpenExpense: openExpense,
+          onStartCapture: startSpeech,
+          onCancelCapture: cancelSpeech,
+          onSubmitCapture: submitSpeech,
+        ),
+      ),
+    ),
+  );
 }

@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/application/models/share_origin.dart';
+import 'package:cordato/features/core/application/models/share_origin_model.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/export_event.dart';
@@ -44,14 +44,14 @@ mixin ExportStateMixin on State<ExportWidget> {
     }
   }
 
-  ShareOrigin? _origin() {
+  ShareOriginModel? _origin() {
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.hasSize) {
       return null;
     }
 
     final offset = box.localToGlobal(Offset.zero);
-    return ShareOrigin(
+    return ShareOriginModel(
       x: offset.dx,
       y: offset.dy,
       width: box.size.width,

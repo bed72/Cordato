@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_event.dart';
 
 import 'package:cordato/features/core/presentation/widgets/buttons/navigation_icon_button_widget.dart';
 

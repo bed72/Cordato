@@ -18,9 +18,9 @@ import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 
 import 'package:cordato/features/dashboard/presentation/enums/dashboard_phase_enum.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_event.dart';
-import 'package:cordato/features/dashboard/presentation/screens/dashboard/bloc/dashboard_state.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_event.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_state.dart';
 
 import '../../../../../../support/user/mocks/user_repository_mock.dart';
 import '../../../../../../support/expense/mocks/expense_repository_mock.dart';
