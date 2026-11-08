@@ -9,8 +9,10 @@ import 'package:cordato/features/core/presentation/widgets/menu/menu_item_widget
 import 'package:cordato/features/core/presentation/widgets/menu/menu_section_widget.dart';
 
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_bloc.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/bloc/export_bloc.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_state.dart';
 
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/export_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_logout_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_app_bar_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/mixins/settings_screen_state_mixin.dart';
@@ -19,6 +21,7 @@ import 'package:cordato/features/settings/presentation/screens/settings/widgets/
 final class const SettingsScreen({
   super.key,
   required final LogoutBloc Function() bloc,
+  required final ExportBloc exportBloc,
   required final ValueChanged<BuildContext> onBackPressed,
   final VoidCallback? onPersonalDataPressed,
 }) extends StatefulWidget {
@@ -69,6 +72,7 @@ final class _SettingsScreenState extends State<SettingsScreen>
                                 ),
                                 trailing: const SettingsSupportBadgeWidget(),
                               ),
+                              ExportWidget(bloc: widget.exportBloc),
                             ],
                           ),
                         ),

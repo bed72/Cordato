@@ -7,12 +7,15 @@ import 'package:cordato/features/core/presentation/formatters/interface_date_for
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+import 'package:cordato/features/core/application/clients/interface_file_share_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/file_share/file_share_client.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
 
 Module createCoreModule({required PocketBase pocketBase}) => createModule(
   register: (context) => context
     ..addInstance<PocketBase>(pocketBase)
+    ..addLazySingleton<IFileShareClient>(FileShareClient.new)
     ..addLazySingleton<IMoneyFormatter>(MoneyFormatter.new)
     ..addLazySingleton<IDateFormatter>(() => DateFormatter())
     ..addLazySingleton<IHomeWidgetClient>(HomeWidgetClient.new),

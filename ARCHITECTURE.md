@@ -76,6 +76,55 @@ Invariantes financeiras:
 As garantias de autorização pertencem ao serviço responsável e exigem testes
 no backend; o aplicativo não as prova por ocultar ações na interface.
 
+## Exportação de despesas em CSV
+
+Settings possui a interação “Exportar despesas” por `ExportBloc`, criado somente
+no `provide` da rota e recebido explicitamente pela apresentação. O ownership
+preexistente de LogoutBloc não muda. O fluxo separa preparação e compartilhamento:
+o Bloc publica o anexo pronto e o listener da rota ativa solicita a abertura nativa.
+Uma preparação tardia após fechamento não abre o compartilhamento nem publica UI;
+isso não cancela HTTP/IO já iniciados.
+
+Cada feature possui `application/repositories/interface_export_repository.dart`
+com `IExportRepository` e implementação `ExportRepository` em infrastructure.
+O contrato de Expense consulta todas as páginas próprias no SDK compartilhado,
+fixando o owner e usando `PocketBase.filter` em cada página; confirma identidade
+antes/depois das leituras e antes do compartilhamento. Não limpa/atualiza sessão
+nem consulta dados familiares. O filtro explícito não substitui autorização remota.
+
+Expense produz `DocumentModel`, em `application/models/document_model.dart`, com
+identidade de origem e bytes imutáveis. Seu `CsvSerializer` puro formata UTF-8/BOM,
+CRLF, `;`, datas civis e centavos por operações inteiras, com categorias pelo enum
+value e proteção textual contra fórmulas. A consulta não oferece snapshot
+transacional diante de mutações simultâneas; páginas são processadas em sequência,
+mas os bytes finais permanecem em memória, sem promessa de escala ilimitada.
+
+O repository de Settings coordena o contrato de Expense e `IFileShareClient` do
+core, sem SDKs no Bloc ou plugins na apresentação. O AutoInjector resolve tipos
+pelo nome textual; aliases Dart não distinguem binds homônimos. Por isso, apenas
+o `IExportRepository` de Expense tem bind compartilhado. O `provide` de Settings
+compõe seu adapter explicitamente com o contrato de Expense e o client nativo e
+o entrega ao construtor de ExportBloc como seu contrato de aplicação, sem bind
+homônimo adicional. Settings resolve sem visita prévia às rotas de Expense.
+
+`FileShareClient` encapsula `share_plus` e `path_provider`, com anexo identificado
+por metadados puros e geometria opcional para iPad, nunca BuildContext ou caminhos
+nativos no estado do Bloc. Mantém um diretório temporário privado dedicado,
+descarta parciais/abandonados e limpa anexos expirados em novas exportações.
+Anexos cujo compartilhamento foi iniciado ficam retidos por 24 horas, inclusive
+se o sistema relatar falha depois do despacho, para não revogar leituras pendentes.
+Não há garantia de remoção pontual com o app fechado, de preservação do cache
+pelo sistema ou de exclusão em destinatários externos.
+
+Concorrência usa droppable e guardas por fase; vazio, erro ou retorno nativo
+permitem nova tentativa manual. Falhas esperadas preservam ErrorsEntity; inesperadas
+seguem addError e o observer seguro existente, sem logs de payload financeiro.
+Cancelamento e resultado nativo indisponível não são falhas nem confirmação de
+entrega durável. Não há backend novo, “Salvar como”, permissão ampla de armazenamento,
+exportação offline ou processamento em background. Testes cobrem serialização,
+SDK mockado, coordenação, lifecycle, temporários e DI sem UI; isso não comprova
+build nativo, Excel, compartilhamento real ou homologação remota.
+
 ## Atalho de cadastro pela tela inicial do celular
 
 Root possui a observação de lançamentos do widget e a coordenação com Session.

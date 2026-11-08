@@ -8,6 +8,10 @@ final _importPattern = RegExp(
 
 const _financialContexts = {'expense', 'budget', 'family'};
 const _forbiddenDomainImports = {
+  'package:pocketbase/',
+  'package:csv/',
+  'package:share_plus/',
+  'package:path_provider/',
   'package:dio/',
   'package:http/',
   'package:bloc/',
@@ -19,6 +23,9 @@ const _forbiddenDomainImports = {
   'package:flutter_secure_storage/',
 };
 const _forbiddenPresentationImports = {
+  'package:share_plus/',
+  'package:path_provider/',
+  'package:csv/',
   'package:dio/',
   'package:pocketbase/',
   'package:http/',
@@ -152,7 +159,11 @@ void main() {
                   'application/repositories/interface_home_widget_launch_repository.dart',
                 }.contains(targetPath);
             final isApplicationContract =
-                isFeatureRepositoryContract || isRootWidgetContract;
+                isFeatureRepositoryContract ||
+                isRootWidgetContract ||
+                (targetContext == 'settings' &&
+                    targetPath ==
+                        'application/repositories/interface_export_repository.dart');
             final isOuterAdapter =
                 targetPath.startsWith('application/clients/') ||
                 targetPath.startsWith('application/repositories/') ||
@@ -203,6 +214,8 @@ void main() {
                 file.uri.pathSegments.contains('session') ||
                 file.uri.pathSegments.contains('user') ||
                 file.uri.pathSegments.contains('expense') ||
+                file.uri.pathSegments.contains('settings') ||
+                file.uri.pathSegments.contains('core') ||
                 file.uri.pathSegments.contains('metrics')) &&
             file.uri.pathSegments.contains('application'),
       )) {

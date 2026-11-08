@@ -8,6 +8,33 @@ renderizado com `pretty_qr_code`. “Copiar Pix” copia o código para pagar no
 Não há confirmação de pagamento
 ou consulta bancária no app; a chave e o destinatário exigem conferência no banco.
 
+### Exportar despesas
+
+Em **Configurações → Conta → Exportar despesas**, o app consulta todo o histórico
+do próprio usuário e gera um CSV no dispositivo para o compartilhamento nativo
+Android/iOS. Exige internet e a tela ativa durante a preparação; não há filtros,
+dados de familiares/perfil, processamento em background ou seletor “Salvar como”.
+Histórico vazio mostra um aviso; falhas permitem tentar novamente sem compartilhar
+um arquivo parcial.
+
+O CSV contém Identificador, Data, Descrição, Categoria e Valor (BRL), com UTF-8/BOM,
+separador `;`, data civil `dd/MM/yyyy` e decimal com vírgula, sem perda por `double`.
+Categorias usam os valores estáveis (`food`, `other`, etc.). Textos potencialmente
+interpretados como fórmulas recebem proteção somente na cópia exportada.
+A leitura paginada não é um snapshot transacional contra mudanças simultâneas.
+
+Arquivos ficam no cache privado; parciais/abandonados são descartados. Anexos
+entregues ao compartilhamento são conservados por pelo menos 24 horas enquanto o
+cache existir e limpos em exportações posteriores, sem prazo exato de remoção.
+Destinos dependem do sistema e dos apps instalados; o retorno do compartilhamento
+não comprova entrega ou salvamento durável. Dados enviados a outros aplicativos
+ficam fora do controle de Cordato.
+
+Verificação desta funcionalidade: `flutter pub get`, `flutter analyze` sem problemas
+e `flutter test --reporter failures-only` com **1531 testes aprovados**. Não houve
+build nativo, conferência visual Android/iOS/iPad, abertura no Excel ou homologação
+remota nesta implementação.
+
 > Cada pessoa é dona dos próprios dados. A família é uma lente de leitura,
 > nunca dona do dinheiro ou autorizada a escrever nos dados de outro membro.
 

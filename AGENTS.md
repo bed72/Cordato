@@ -414,6 +414,8 @@ placeholders posicionais.
 
 ### Legibilidade E Coesão
 
+- Não use `var`, inclusive em testes, previews e ferramentas. Use `final` para
+  variáveis que não são reatribuídas e tipo explícito para variáveis mutáveis.
 - Use nomes que expressem o significado do dado ou da operação. É proibido nomear
   variáveis, parâmetros, campos ou getters como `result`, inclusive em testes,
   previews e ferramentas. Prefira nomes como `passwordCheck`, `createdExpense`
