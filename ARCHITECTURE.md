@@ -1977,3 +1977,33 @@ Flutter; não invente resultado de análise, testes ou execução no dispositivo
 
 Mudanças estruturais atualizam os documentos afetados na mesma alteração.
 Histórico de OpenSpec não substitui o código atual nem redefine estas decisões.
+# POC de captura de fala na Dashboard
+
+O toque curto no botão de despesa mantém o formulário; toque longo abre a barra
+com X, onda e seta. Soltar não confirma. A captura usa `speech_to_text` em pt-BR,
+solicita até 30 segundos e aceita término nativo antecipado sem reiniciar.
+A seta aguarda resultado final nativo por até cinco segundos; somente após
+recolhimento confirmado pode registrar uma linha no console debug. X e lifecycle
+descartam. Não há IA, arquivo de áudio, cadastro financeiro ou mudança no PocketBase.
+O serviço do sistema pode usar rede; não há garantia de reconhecimento offline.
+
+`SpeechCaptureBloc` pertence ao `provide` da Dashboard, sem migrar DashboardBloc.
+Consome `ISpeechCaptureRepository`; infrastructure usa `IRecognitionClient`
+do core, com um adapter compartilhado do plugin. A observação possui a captura
+e sua interrupção libera o recurso nativo. Apresentação não importa o plugin.
+
+Os arquivos de contrato contêm somente as interfaces. Eventos/atualizações,
+enums de falha e exceções ficam em `application/models`, `application/enums` e
+`application/exceptions` dos respectivos contextos. `RecognitionClient` coordena
+inicialização, seleção de pt-BR e escuta em etapas explícitas; `RecognitionSession`
+possui os recursos de uma captura e `RecognitionMapper` converte erros e níveis
+nativos. `SpeechCaptureMapper` mantém essa conversão fora do repository da
+Dashboard. Nenhum tipo do plugin atravessa o contrato do core.
+
+Na apresentação, o widget de ação conecta o Bloc ao mixin de lifecycle/animação.
+`SpeechCaptureBarWidget` compõe a superfície e seus estados visuais;
+`ExpenseActionButtonWidget` mantém o gesto e a acessibilidade do botão recolhido.
+
+A pedido do usuário, a entrega é uma POC sem novos testes automatizados.
+`flutter analyze` passou durante a implementação. Gestos, microfone, permissões,
+animação e comportamento em Android/iOS reais ainda não foram homologados.

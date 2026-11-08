@@ -1207,3 +1207,14 @@ Não adicione comentários ao código; decisões ficam em Markdown.
 Mudanças de arquitetura, testes ou estado do produto devem manter estes três
 documentos coerentes e registrar limitações reais, sem declarar migrações ou
 validações que ainda não ocorreram.
+## POC de fala na Dashboard
+
+Mantenha o botão de adicionar gasto pressionado para abrir a captura em pt-BR.
+Soltar mantém a captura; X descarta e a seta finaliza. O toque curto continua
+abrindo o formulário. Após silêncio, a barra aguarda seta ou X.
+
+É somente uma POC: não usa IA nem cadastra despesas. Apenas em debug, a seta
+permite imprimir a transcrição final após recolher a barra. Use frases fictícias.
+O reconhecedor do sistema pode usar rede e parar antes dos 30 segundos solicitados.
+Android/iOS reais e builds nativos ainda precisam de validação. A pedido do usuário,
+não foram mantidos testes automatizados novos para esta POC.

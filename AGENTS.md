@@ -209,6 +209,11 @@ Não restaure Supabase/RPC, commands ou ownership antigo por uma descrição his
 
 ## Produto E Limites
 
+A POC de fala na Dashboard permite exclusivamente a transcrição final no console
+debug após seta e confirmação do recolhimento da mesma captura. Parciais, descarte,
+erros e release não registram fala. Essa exceção não autoriza conteúdo no observer,
+telemetry ou logs financeiros genéricos. A POC não interpreta nem cadastra despesas.
+
 Cordato é um aplicativo de finanças pessoais e familiares. Cada pessoa é dona
 dos próprios dados; família é uma lente autorizada de leitura, não dona do dinheiro.
 
