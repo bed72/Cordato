@@ -209,10 +209,22 @@ Não restaure Supabase/RPC, commands ou ownership antigo por uma descrição his
 
 ## Produto E Limites
 
-A POC de fala na Dashboard permite exclusivamente a transcrição final no console
-debug após seta e confirmação do recolhimento da mesma captura. Parciais, descarte,
-erros e release não registram fala. Essa exceção não autoriza conteúdo no observer,
-telemetry ou logs financeiros genéricos. A POC não interpreta nem cadastra despesas.
+A captura de áudio na Dashboard usa `record`, sem transcrição ou logs de conteúdo,
+inclusive em debug. O widget, seus gestos e animações permanecem preservados.
+O adapter grava AAC em `.m4a` temporário por até 30 segundos; X, lifecycle e
+cancelamento da observação liberam o microfone e removem o arquivo. A seta finaliza
+a captura, mas o envio está deliberadamente pendente na infraestrutura e retorna
+falha esperada de envio indisponível, sem indicar aceite remoto.
+O fluxo usa `IAudioRepository` → `AudioRepository` → `IRecordingClient` /
+`RecordingClient`. `RecordingEvent` é a única família de notificações de captura,
+repassada sem duplicação ou mapper; o Bloc e os tipos da Dashboard usam `Audio`,
+não `Speech`. O client separa preparação, observação, finalização e limpeza, sem
+misturar essas responsabilidades em callbacks extensos. Não adicionar
+`http` ou `http_parser` às dependências de produção sem autorização explícita.
+O contrato remoto previsto é POST `/api/collections/audio/process`, multipart
+com campo `file` de tipo `audio/mp4`; `202` representa somente aceite para
+processamento e `415` formato não suportado. Isso não comprova integração ou
+homologação do endpoint. Não interpretar nem cadastrar despesas neste fluxo.
 
 Cordato é um aplicativo de finanças pessoais e familiares. Cada pessoa é dona
 dos próprios dados; família é uma lente autorizada de leitura, não dona do dinheiro.

@@ -1977,40 +1977,56 @@ Flutter; não invente resultado de análise, testes ou execução no dispositivo
 
 Mudanças estruturais atualizam os documentos afetados na mesma alteração.
 Histórico de OpenSpec não substitui o código atual nem redefine estas decisões.
-# POC de captura de fala na Dashboard
+# Captura de áudio na Dashboard
 
 O toque curto no botão de despesa mantém o formulário; toque longo abre a barra
-com X, onda e seta. Soltar não confirma. A captura usa `speech_to_text` em pt-BR,
-solicita até 30 segundos e aceita término nativo antecipado sem reiniciar.
-A seta aguarda resultado final nativo por até cinco segundos; somente após
-recolhimento confirmado pode registrar uma linha no console debug. X e lifecycle
-descartam. Não há IA, arquivo de áudio, cadastro financeiro ou mudança no PocketBase.
-O serviço do sistema pode usar rede; não há garantia de reconhecimento offline.
+com X, onda e seta. Soltar não confirma. Os widgets, gestos e animações permanecem
+inalterados. A captura usa `record`, grava AAC mono em arquivo `.m4a` temporário
+por até 30 segundos e alimenta a onda existente com amplitude normalizada de dBFS.
+Ao atingir o limite, encerra a gravação e aguarda seta ou X, sem reinício automático.
+Não há transcrição, diagnóstico de conteúdo, interpretação ou cadastro financeiro.
 
-`SpeechBloc` pertence ao `provide` da Dashboard, sem migrar DashboardBloc.
-Consome `ISpeechRepository`; infrastructure usa `IRecognitionClient`
+`AudioBloc` pertence ao `provide` da Dashboard, sem migrar DashboardBloc.
+Consome `IAudioRepository`, implementado por `AudioRepository`; infrastructure usa `IRecordingClient`
 do core, com um adapter compartilhado do plugin. A observação possui a captura
 e sua interrupção libera o recurso nativo. Apresentação não importa o plugin.
 
-Os arquivos de contrato contêm somente as interfaces. Eventos de reconhecimento
-do core e notificações de captura da Dashboard ficam em `application/events`
-dos respectivos contextos; modelos ficam em `application/models`, enums de falha em `application/enums` e exceções em
+Os arquivos de contrato contêm somente as interfaces. `RecordingEvent`, em
+`core/application/events`, é a única família de notificações de captura: início,
+amplitude normalizada e término. Repository, Bloc e previews usam esses mesmos
+tipos, sem eventos equivalentes da Dashboard ou mapper intermediário.
+Modelos ficam em `application/models`, enums de falha em `application/enums` e exceções em
 `application/exceptions` dos respectivos contextos. Os modelos de compartilhamento
 usam `ShareAttachmentModel` e `ShareOriginModel`, em arquivos `_model.dart`.
-`RecognitionClient` coordena
-inicialização, seleção de pt-BR e escuta em etapas explícitas; `RecognitionSessionModel`
-possui os recursos de uma captura e `RecognitionMapper` converte erros e níveis
-nativos. `SpeechMapper` mantém essa conversão fora do repository da
-Dashboard. Nenhum tipo do plugin atravessa o contrato do core.
+`RecordingClient` mantém as operações públicas no início do arquivo e separa
+preparação, permissão, início nativo, observação, amplitude, interrupção,
+finalização e limpeza em métodos de responsabilidade explícita.
+`AudioRepository` delega a captura ao client e traduz somente suas exceções
+esperadas, preservando erros inesperados. Não mantém outro controller, outra
+assinatura de stream ou estado paralelo da operação.
+Nenhum tipo do plugin atravessa o contrato do core. `finish` retorna
+bytes somente à infraestrutura, nunca ao estado do Bloc ou aos widgets.
 
-`RecognitionSessionModel` permanece em `infrastructure/clients/recognition/models`,
-no arquivo `recognition_session_model.dart`: seus controllers, completer e timer
-são recursos internos do adapter, não dados de application ou domínio.
+`RecordingModel` permanece em `infrastructure/clients/recording/models`:
+recorder, controllers, subscriptions, Futures e timer são recursos internos do
+adapter. Finalizações simultâneas compartilham o mesmo stop; descarte aguarda
+preparação/finalização pendentes antes de liberar o recorder e excluir somente
+o diretório temporário daquela captura. Nova captura aguarda a liberação anterior.
 
 Na apresentação, o widget de ação conecta o Bloc ao mixin de lifecycle/animação.
-`SpeechBarWidget` compõe a superfície e seus estados visuais;
+`AudioBarWidget` compõe a superfície e seus estados visuais;
 `ExpenseActionButtonWidget` mantém o gesto e a acessibilidade do botão recolhido.
 
-A pedido do usuário, a entrega é uma POC sem novos testes automatizados.
-`flutter analyze` passou durante a implementação. Gestos, microfone, permissões,
-animação e comportamento em Android/iOS reais ainda não foram homologados.
+Por solicitação explícita, o envio fica pendente na infraestrutura. A seta conclui
+a gravação local e retorna `AudioException(.sendingUnavailable)`, com feedback
+local e limpeza do temporário, sem falso sucesso remoto. Não há requests, polling
+ou retry automático. O futuro contrato acordado é POST
+`/api/collections/audio/process`, multipart com campo `file` (`audio/mp4`), usando
+a sessão compartilhada do PocketBase. `202` significa aceite para processamento,
+não conclusão; `415` deverá usar mensagem local de formato não suportado.
+O SDK atual exige `http.MultipartFile` para multipart; nenhuma dependência HTTP
+de produção foi adicionada, e essa integração não está implementada nem homologada.
+
+Testes unitários cobrem adapter, repository, Bloc, formatador e resolução do client
+pela DI, sem montar UI. Gestos, microfone, permissões, animação e comportamento em
+Android/iOS reais, assim como builds nativos, ainda precisam de validação.

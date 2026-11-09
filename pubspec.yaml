@@ -35,11 +35,11 @@ dependencies:
 
   csv: ^8.0.0
   intl: ^0.20.3
+  record: ^7.1.2
   share_plus: ^13.3.1
   pocketbase: ^0.25.3
   home_widget: ^0.10.0
   path_provider: ^2.1.5
-  speech_to_text: ^7.5.0
   flutter_modular: ^7.1.1
   flutter_secure_storage: ^11.2.0
 

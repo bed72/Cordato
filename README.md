@@ -1207,14 +1207,29 @@ Não adicione comentários ao código; decisões ficam em Markdown.
 Mudanças de arquitetura, testes ou estado do produto devem manter estes três
 documentos coerentes e registrar limitações reais, sem declarar migrações ou
 validações que ainda não ocorreram.
-## POC de fala na Dashboard
+## Gravação de áudio na Dashboard
 
-Mantenha o botão de adicionar gasto pressionado para abrir a captura em pt-BR.
+Mantenha o botão de adicionar gasto pressionado para abrir a gravação de áudio.
 Soltar mantém a captura; X descarta e a seta finaliza. O toque curto continua
-abrindo o formulário. Após silêncio, a barra aguarda seta ou X.
+abrindo o formulário. O widget e suas animações permanecem iguais. Ao atingir
+30 segundos, a gravação para e a barra aguarda seta ou X.
 
-É somente uma POC: não usa IA nem cadastra despesas. Apenas em debug, a seta
-permite imprimir a transcrição final após recolher a barra. Use frases fictícias.
-O reconhecedor do sistema pode usar rede e parar antes dos 30 segundos solicitados.
-Android/iOS reais e builds nativos ainda precisam de validação. A pedido do usuário,
-não foram mantidos testes automatizados novos para esta POC.
+Usa `record` para gravar AAC em arquivo `.m4a` temporário, sem transcrição nem
+logs de conteúdo. O áudio temporário é removido ao finalizar ou descartar o fluxo.
+Não interpreta nem cadastra despesas.
+
+O fluxo usa `AudioBloc` → `IAudioRepository` / `AudioRepository` →
+`RecordingClient`, com uma única família de eventos de captura, sem transcrição
+ou conversão intermediária de notificações. Os nomes de código usam áudio;
+o visual, os gestos e as animações da barra permanecem preservados.
+
+O envio está pendente na infraestrutura por solicitação explícita: a seta finaliza
+a gravação, recolhe a barra e informa que o envio ainda não está disponível.
+Nenhum áudio é enviado atualmente. O contrato previsto é POST
+`/api/collections/audio/process`, multipart no campo `file` (`audio/mp4`), com
+resposta `202` de aceite para processamento. A integração depende de uma decisão
+posterior sobre os tipos multipart exigidos pelo SDK; não foram adicionadas
+dependências HTTP de produção.
+
+Há testes unitários da captura e apresentação lógica, sem testes de UI.
+Android/iOS reais, builds nativos e o endpoint ainda precisam de validação.
