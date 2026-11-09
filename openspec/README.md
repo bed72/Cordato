@@ -68,9 +68,24 @@ endpoint, seção da Dashboard, previews ou testes próprios.
 | `specs/shared-error-screen/`, `specs/dart-primary-constructor-conventions/` | Requisitos visuais e de linguagem, subordinados às convenções atuais. |
 | `specs/settings-screen-ui/`, `specs/authentication-session-logout/` | Referência de UX; Authentication usa HTTP e Session é independente. Descrições Supabase são históricas. |
 | `specs/presentation-command-*`, `specs/expense-reactive-command-consumption/`, `specs/dashboard-reactive-command-coordination/`, `specs/insights-monthly-query/` | Intenções de UX/concorrência e regras de consulta continuam úteis; CommandIt/Either/data sources não são arquitetura atual. |
-| `changes/migrate-dashboard-to-bloc/` | Registro de uma migração anterior; resultados, contratos e política de recarga registrados na época não redefinem o checkout atual. |
+| `changes/archive/2026-11-09-migrate-dashboard-to-bloc/` | Registro de uma migração anterior; resultados, contratos e política de recarga registrados na época não redefinem o checkout atual. |
 | `changes/archive/` | Histórico imutável de decisões/resultados daquela etapa; nunca comprova execução atual. |
 
 Ao implementar uma spec antiga, preserve os requisitos de produto compatíveis,
 adapte o mecanismo à arquitetura canônica e registre conflitos reais. Não marque
 E2E aprovado nem enfraqueça testes para satisfazer uma descrição histórica.
+
+## Arquivamento de 09/11/2026
+
+Por solicitação explícita, as quatro changes ativas foram arquivadas sem sincronizar
+seus deltas com as specs principais. O arquivamento não declara implementação ou
+verificações pendentes como concluídas:
+
+- `add-pocketbase-audio-intake`: 19/19 tarefas concluídas.
+- `add-authenticated-password-change`: 26/27; revisão visual em dispositivo pendente.
+- `migrate-dashboard-to-bloc`: 39/40; validação visual histórica pendente, sem
+  autorização para restaurar Maestro ou testes de UI.
+- `add-pocketbase-family-memberships`: sem proposta, design, specs ou tarefas.
+
+Os diretórios estão em `changes/archive/2026-11-09-<nome>/`, com seus arquivos e
+checklists preservados. Família continua planejada, não implementada.

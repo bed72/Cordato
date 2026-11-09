@@ -386,7 +386,7 @@ problemas; 634 testes focados aprovados.
 A suíte completa teve 1277 aprovados e as cinco falhas já registradas nas descrições
 de categorias de Expense. O catálogo de previews compilou/serviu sem cliente
 conectado; revisão visual, teclado e fluxo real em dispositivo continuam pendentes.
-Detalhes em [verification.md](openspec/changes/add-authenticated-password-change/verification.md).
+Detalhes em [verification.md](openspec/changes/archive/2026-11-09-add-authenticated-password-change/verification.md).
 
 ## Cabeçalho Recolhível — Piloto
 
