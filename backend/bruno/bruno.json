@@ -1,0 +1,7 @@
+{
+  "version": "1",
+  "name": "Cordato — PocketBase",
+  "type": "collection",
+  "ignore": [".bruno", "private", "reports"],
+  "defaultEnvironment": "development"
+}

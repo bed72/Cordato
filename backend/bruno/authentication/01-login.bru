@@ -1,0 +1,60 @@
+meta {
+  name: Login local
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/collections/users/auth-with-password
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "identity": "{{email}}",
+    "password": "{{password}}"
+  }
+}
+
+script:pre-request {
+  bru.deleteVar("token");
+  const inputs = {
+    email: bru.getAllEnvVars().email || bru.getProcessEnv("CORDATO_DEVELOPMENT_EMAIL"),
+    password: bru.getAllEnvVars().password || bru.getProcessEnv("CORDATO_DEVELOPMENT_PASSWORD")
+  };
+  if (!inputs.email || !inputs.password) {
+    throw new Error("Preencha email e password no ambiente local selecionado.");
+  }
+  const raw = req.getBody({ raw: true });
+  const body = typeof raw === "string" ? JSON.parse(raw) : raw;
+  for (const field of ["identity", "password"]) {
+    if (typeof body[field] === "string") {
+      body[field] = body[field].replace(/\{\{(email|password)\}\}/g, (placeholder, name) => inputs[name]);
+    }
+  }
+  req.setBody(body);
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("token", res.getBody().token);
+  }
+}
+
+tests {
+  test("Login retorna token", function () {
+    expect(res.getStatus(), "Use uma conta users verificada do banco local.").to.equal(200);
+    expect(res.getBody().token).to.be.a("string").and.not.empty;
+    expect(res.getBody().record.collectionName).to.equal("users");
+  });
+}
+
+docs {
+  Preencha email/password no ambiente selecionado. Envie antes do upload.
+  Sucesso captura token apenas em memória. Não há login automático nem refresh.
+}

@@ -1,0 +1,16 @@
+auth {
+  mode: none
+}
+
+script:pre-request {
+  const baseUrl = bru.interpolate("{{baseUrl}}");
+  if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(baseUrl) || !req.getUrl().replace("{{baseUrl}}", baseUrl).startsWith(baseUrl + "/api/")) {
+    throw new Error("Esta coleção funciona somente no servidor local 127.0.0.1.");
+  }
+  req.setTimeout(10000);
+}
+
+docs {
+  Somente login de users e upload binário no servidor Go local.
+  Envie o login antes do upload. O token fica apenas em memória.
+}

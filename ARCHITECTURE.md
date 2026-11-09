@@ -417,10 +417,59 @@ uma feature para contornar imports proibidos.
 
 O backend adotado está em `backend/`, com PocketBase 0.41.1 e APIs nativas.
 Schema e regras ficam em `pb_migrations/`; empacotamento em `Dockerfile`,
-`compose.yml` e `docker/`. Não há suíte de testes do backend, hooks, worker ou runtime
-Node. Configuração operacional e evidências pertencem ao
+`compose.yml` e `docker/`. O runtime Docker permanece no executável oficial. O
+executável Go local em `cmd/cordato/` usa PocketBase como biblioteca, com composição
+em `internal/bootstrap/` e suporte às migrations JS. A saúde customizada da POC
+foi removida; a saúde pública `/api/health` permanece nativa. Testes em
+`tests/integration/` e `tests/e2e/` usam bancos temporários e
+e-mail simulado, sem dependência do Flutter. Não há hooks JavaScript, worker ou runtime
+Node. CRUD continua nativo, sem camadas de repasse. Essa validação local não
+substitui build/container, testes realtime ou homologação remota. Configuração
+operacional e evidências pertencem ao
 [README do backend](backend/README.md); suas regras de manutenção estão em
 [backend/AGENTS.md](backend/AGENTS.md).
+O detalhamento das camadas Go está em [backend/ARCHITECTURE.md](backend/ARCHITECTURE.md)
+e suas decisões em [backend/adrs/README.md](backend/adrs/README.md).
+
+O teste opcional `TestLocalServerLifecycle` compila e executa o binário em loopback,
+com bancos temporários e reinícios via SIGTERM, sem modificar o runtime Docker.
+Ele valida o ciclo HTTP/TCP local, não TLS, SMTP real ou comportamento visual do painel.
+
+O executável Go local também registra `POST /api/collections/audio/process`, operação
+customizada sem collection `audio`. Composição em `internal/bootstrap/`
+injeta `audio.UseCase`, definido em `internal/application/audio/usecase.go`, no handler de
+`internal/infrastructure/http/audio/`. Application recebe bytes próprios, define o
+teto único de 2.097.152 bytes e rejeita vazio/excesso, sem PocketBase, transporte,
+persistência ou suporte de testes. Não há domínio financeiro ou repositories de repasse.
+
+A rota exige token de `users` e e-mail verificado antes da leitura. Recebe body
+binário declarado `audio/mp4` (futuro M4A/AAC-LC finalizado), com parsing MIME padrão
+e parâmetros válidos, sem aliases, JSON ou multipart. Content-Encoding deve estar
+ausente ou ser `identity`. Autorização e headers precedem o limite público de body
+PocketBase; demais middlewares nativos permanecem. Leitura completa e limitada,
+independente de Content-Length, precede delegação única e `202` com
+`{"status":"accepted"}`. Vazio/leitura incompleta retornam `400`, token ausente/inválido
+`401`, outra coleção/não verificado `403`, excesso `413` e formato/codificação `415`,
+no envelope nativo seguro, sem conteúdo, credenciais ou erros brutos.
+
+Esse aceite preparatório descarta os bytes: não inspeciona container/codec/duração,
+não processa ou transcreve, não chama IA, não persiste arquivo/banco/storage, não
+cria despesa, fila, job, realtime ou acompanhamento/conclusão futura. Bytes sintéticos
+não decodificáveis também passam se satisfazem as validações declaradas. Testes de
+application, HTTP em memória, ausência de persistência e imports arquiteturais,
+além do smoke opcional em loopback, cobrem esse limite. Não houve integração Flutter,
+instalação de `record`, alteração de migrations/runtime Docker ou deploy desta rota.
+
+Os testes Go seguem as responsabilidades de produção: unitários junto de
+`internal/application/audio/` e `internal/bootstrap/`; integração em
+`tests/integration/bootstrap/`, `tests/integration/infrastructure/http/audio/` e
+`tests/integration/pocketbase/` para as APIs nativas sem camadas de repasse. O ciclo
+do executável pertence a `tests/e2e/server/`, opcional via `CORDATO_HTTP_SMOKE=1`.
+Helpers reutilizados ficam em `tests/support/pocketbase/`, separados por montagem
+da aplicação, HTTP, records, migrations e descoberta da raiz do backend, sem paths
+dependentes da profundidade de cada suíte. Fixtures/doubles locais têm arquivos
+próprios no pacote consumidor. `tests/architecture/` proíbe imports de suporte na
+produção e dependências de integração/E2E nos unitários de `internal/`.
 
 O escopo implementado é conta individual, CRUD de despesas próprias e métricas
 mensais por proprietário em View Collection. Login
