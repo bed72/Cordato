@@ -328,11 +328,6 @@ sem Node, hooks ou worker. No Dokploy, usar `backend/compose.yml` com contexto d
 build em `backend/`. Ele não depende do build Flutter e não deve receber arquivos
 ou segredos do aplicativo.
 
-O backend também possui um executável Go local em `backend/cmd/cordato/`, usando
-PocketBase 0.41.1 como biblioteca e preservando as migrations JavaScript. Requer Go
-1.27+, possui testes com bancos temporários e e-mail simulado e não substitui o
-runtime Docker atual. Instruções em [Executável Go Local](backend/README.md#executável-go-local).
-
 A configuração foi trazida do repositório backend anterior; nenhum banco, volume,
 segredo ou histórico Git foi transferido. A migração do aplicativo para PocketBase
 inclui Authentication, Session, User (consulta de perfil, nome, avatar e exclusão)

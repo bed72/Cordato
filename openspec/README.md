@@ -81,11 +81,11 @@ Por solicitação explícita, as quatro changes ativas foram arquivadas sem sinc
 seus deltas com as specs principais. O arquivamento não declara implementação ou
 verificações pendentes como concluídas:
 
-- `add-pocketbase-audio-intake`: 19/19 tarefas concluídas.
+- `add-pocketbase-audio-intake`: 19/19 tarefas concluídas; registro transferido para o projeto Go independente em `/Users/gabrielramos/Code/Me/BackEnd/Go/cordato`.
 - `add-authenticated-password-change`: 26/27; revisão visual em dispositivo pendente.
 - `migrate-dashboard-to-bloc`: 39/40; validação visual histórica pendente, sem
   autorização para restaurar Maestro ou testes de UI.
 - `add-pocketbase-family-memberships`: sem proposta, design, specs ou tarefas.
 
-Os diretórios estão em `changes/archive/2026-11-09-<nome>/`, com seus arquivos e
+Os demais diretórios estão em `changes/archive/2026-11-09-<nome>/`, com seus arquivos e
 checklists preservados. Família continua planejada, não implementada.

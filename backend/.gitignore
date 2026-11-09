@@ -2,7 +2,6 @@
 .env
 .env.*
 !.env.example
-!.env.*.example
 *.env
 *.pem
 *.key
@@ -34,9 +33,3 @@ pocketbase_*/
 .vscode/
 __pycache__/
 *.pyc
-
-/bruno/.bruno/
-/bruno/environments/*.local.bru
-/bruno/environments/development.bru
-/bruno/private/
-/bruno/reports/
