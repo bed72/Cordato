@@ -9,17 +9,17 @@ import 'package:cordato/features/user/application/repositories/interface_user_re
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
+import 'package:cordato/features/dashboard/presentation/screens/bloc/audio_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
-import 'package:cordato/features/dashboard/infrastructure/repositories/speech_repository.dart';
-import 'package:cordato/features/dashboard/presentation/screens/bloc/speech_bloc.dart';
-import 'package:cordato/features/dashboard/application/repositories/interface_speech_repository.dart';
+import 'package:cordato/features/dashboard/infrastructure/repositories/audio_repository.dart';
+import 'package:cordato/features/dashboard/application/repositories/interface_audio_repository.dart';
 
 final dashboardModule = createModule(
   path: RouteEnum.dashboard.path,
   register: (context) {
     context
-      ..add<ISpeechRepository>(SpeechRepository.new)
+      ..add<IAudioRepository>(AudioRepository.new)
       ..add<DashboardBloc>(
         () => DashboardBloc(
           userRepository: inject<IUserRepository>(),
@@ -29,12 +29,12 @@ final dashboardModule = createModule(
       )
       ..route(
         RouteEnum.app.path,
-        provide: (scope) => scope.addBloc<SpeechBloc>(SpeechBloc.new),
+        provide: (scope) => scope.addBloc<AudioBloc>(AudioBloc.new),
         child: (context, _) => DashboardScreen(
+          audioBloc: context.read<AudioBloc>(),
           dashboardBloc: inject<DashboardBloc>,
           dateFormatter: inject<IDateFormatter>(),
           moneyFormatter: inject<IMoneyFormatter>(),
-          speechBloc: context.read<SpeechBloc>(),
         ),
       );
   },

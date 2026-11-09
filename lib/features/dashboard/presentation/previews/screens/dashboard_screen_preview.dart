@@ -12,11 +12,11 @@ import 'package:cordato/features/metrics/presentation/previews/fakes/metrics_pre
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/presentation/previews/fakes/expenses_list_preview_repository.dart';
 
+import 'package:cordato/features/dashboard/presentation/screens/bloc/audio_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/previews/fakes/audio_preview_repository.dart';
 import 'package:cordato/features/dashboard/presentation/previews/fakes/dashboard_user_preview_repository.dart';
-import 'package:cordato/features/dashboard/presentation/screens/bloc/speech_bloc.dart';
-import 'package:cordato/features/dashboard/presentation/previews/fakes/speech_preview_repository.dart';
 
 @CordatoPreview(
   group: 'Dashboard / Telas',
@@ -114,11 +114,11 @@ Widget _screenPreview({
   final month = DateTime(today.year, today.month);
   final end = DateTime(today.year, today.month + 1, 0);
 
-  return PreviewResourceWidget<SpeechBloc>(
-    create: () => SpeechBloc(repository: SpeechPreviewRepository()),
+  return PreviewResourceWidget<AudioBloc>(
+    create: () => AudioBloc(repository: AudioPreviewRepository()),
     dispose: (bloc) => bloc.close(),
-    builder: (speechBloc) => DashboardScreen(
-      speechBloc: speechBloc,
+    builder: (audioBloc) => DashboardScreen(
+      audioBloc: audioBloc,
       dateFormatter: DateFormatter(),
       moneyFormatter: MoneyFormatter(),
       dashboardBloc: () => DashboardBloc(

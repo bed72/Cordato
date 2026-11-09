@@ -5,16 +5,16 @@ import 'package:cordato/features/core/presentation/screens/error/error_screen.da
 import 'package:cordato/features/core/presentation/widgets/empty_state_widget.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+
+import 'package:cordato/features/dashboard/presentation/screens/bloc/audio_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_event.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_state.dart';
-
 import 'package:cordato/features/dashboard/presentation/widgets/app_bar_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/action_button_dashboard_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/metrics/metrics_section_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/dashboard_month_selector_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_section_widget.dart';
-import 'package:cordato/features/dashboard/presentation/screens/bloc/speech_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/mixins/dashboard_screen_state_mixin.dart';
 
 final class const DashboardScreen({
@@ -22,7 +22,7 @@ final class const DashboardScreen({
   required final IDateFormatter dateFormatter,
   required final IMoneyFormatter moneyFormatter,
   required final DashboardBloc Function() dashboardBloc,
-  required final SpeechBloc speechBloc,
+  required final AudioBloc audioBloc,
 }) extends StatefulWidget {
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -131,7 +131,7 @@ final class _DashboardScreenState extends State<DashboardScreen>
                 ),
                 floatingActionButtonLocation: .endFloat,
                 floatingActionButton: ActionButtonDashboardWidget(
-                  bloc: widget.speechBloc,
+                  bloc: widget.audioBloc,
                 ),
               ),
       ),

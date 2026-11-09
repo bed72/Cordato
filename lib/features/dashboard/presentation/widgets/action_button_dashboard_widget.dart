@@ -1,14 +1,14 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:cordato/features/dashboard/presentation/widgets/speech_bar_widget.dart';
-import 'package:cordato/features/dashboard/presentation/screens/bloc/speech_bloc.dart';
-import 'package:cordato/features/dashboard/presentation/screens/bloc/speech_state.dart';
-import 'package:cordato/features/dashboard/presentation/widgets/mixins/dashboard_speech_state_mixin.dart';
+import 'package:cordato/features/dashboard/presentation/widgets/audio_bar_widget.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/audio_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/audio_state.dart';
+import 'package:cordato/features/dashboard/presentation/widgets/mixins/dashboard_audio_state_mixin.dart';
 
 final class const ActionButtonDashboardWidget({
   super.key,
-  required final SpeechBloc bloc,
+  required final AudioBloc bloc,
 }) extends StatefulWidget {
   @override
   State<ActionButtonDashboardWidget> createState() =>
@@ -20,25 +20,27 @@ final class _ActionButtonDashboardWidgetState
     with
         SingleTickerProviderStateMixin,
         WidgetsBindingObserver,
-        DashboardSpeechStateMixin {
+        DashboardAudioStateMixin {
   @override
-  Widget build(BuildContext context) => SafeArea(
-    top: false,
-    bottom: false,
-    child: BlocConsumer<SpeechBloc, SpeechState>(
-      bloc: widget.bloc,
-      listener: (_, state) => handleSpeechState(state),
-      builder: (context, state) => AnimatedBuilder(
-        animation: expansion,
-        builder: (context, _) => SpeechBarWidget(
-          expansion: expansion.value,
-          state: state,
-          onOpenExpense: openExpense,
-          onStartCapture: startSpeech,
-          onCancelCapture: cancelSpeech,
-          onSubmitCapture: submitSpeech,
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      bottom: false,
+      child: BlocConsumer<AudioBloc, AudioState>(
+        bloc: widget.bloc,
+        listener: (_, state) => handleAudioState(state),
+        builder: (context, state) => AnimatedBuilder(
+          animation: expansion,
+          builder: (context, _) => AudioBarWidget(
+            state: state,
+            expansion: expansion.value,
+            onOpenExpense: openExpense,
+            onStartCapture: startAudio,
+            onCancelCapture: cancelAudio,
+            onSubmitCapture: submitAudio,
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
