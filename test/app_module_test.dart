@@ -13,7 +13,11 @@ import 'package:cordato/features/core/application/clients/interface_home_widget_
 import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
 
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_bloc.dart';
+
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/infrastructure/repositories/audio_repository.dart';
+import 'package:cordato/features/dashboard/application/repositories/interface_audio_repository.dart';
+
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
@@ -98,6 +102,11 @@ void main() {
           (route) => route.path == RouteEnum.dashboard.path,
         );
         boot.manager.enter('dashboard', route.ownerTags);
+
+        final capture = boot.injector.get<IAudioRepository>();
+        expect(capture, isA<AudioRepository>());
+        expect(boot.injector.get<IAudioRepository>(), isNot(same(capture)));
+
         final first = boot.injector.get<DashboardBloc>();
         final second = boot.injector.get<DashboardBloc>();
 

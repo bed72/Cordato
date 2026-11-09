@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/core_module.dart';
+import 'package:cordato/features/core/application/clients/interface_recording_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/recording/recording_client.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_factory.dart';
 
@@ -84,6 +86,9 @@ void main() {
         );
         final formatter = boot.injector.get<IMoneyFormatter>();
         expect(boot.injector.get<IMoneyFormatter>(), same(formatter));
+        final recording = boot.injector.get<IRecordingClient>();
+        expect(recording, isA<RecordingClient>());
+        expect(boot.injector.get<IRecordingClient>(), same(recording));
         expect(client.authStore.token, 'stored-token');
         expect(client.authStore.record?.id, 'user-id');
         verifyNever(() => storage.read(key: '@cordato.pocketbase_auth'));

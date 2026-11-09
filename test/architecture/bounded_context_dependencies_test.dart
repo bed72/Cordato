@@ -8,6 +8,7 @@ final _importPattern = RegExp(
 
 const _financialContexts = {'expense', 'budget', 'family'};
 const _forbiddenDomainImports = {
+  'package:record/',
   'package:speech_to_text/',
   'package:pocketbase/',
   'package:csv/',
@@ -24,6 +25,7 @@ const _forbiddenDomainImports = {
   'package:flutter_secure_storage/',
 };
 const _forbiddenPresentationImports = {
+  'package:record/',
   'package:speech_to_text/',
   'package:share_plus/',
   'package:path_provider/',
@@ -163,7 +165,7 @@ void main() {
             final isApplicationContract =
                 (targetContext == 'dashboard' &&
                     targetPath ==
-                        'application/repositories/interface_speech_repository.dart') ||
+                        'application/repositories/interface_audio_repository.dart') ||
                 isFeatureRepositoryContract ||
                 isRootWidgetContract ||
                 (targetContext == 'settings' &&
