@@ -197,9 +197,10 @@ prevalecem estas regras e `ARCHITECTURE.md`; consulte `openspec/README.md`.
 Não restaure Supabase/RPC, commands ou ownership antigo por uma descrição histórica.
 
 O serviço Node-RED independente está isolado em `worker/`, com orientações em
-[worker/AGENTS.md](worker/AGENTS.md). O escopo atual é somente infraestrutura,
-sem integração de áudio/Gemini/PocketBase. Não alterar Flutter ou backend nem
-executar deploy incidentalmente ao manter esse serviço.
+[worker/AGENTS.md](worker/AGENTS.md). Inclui infraestrutura e flow importável de
+áudio → Gemini → despesa PocketBase, ainda sem homologação remota e sem integração
+do Flutter. Logs do worker são somente metadados, nunca conteúdo ou credenciais.
+Não alterar Flutter ou backend nem executar deploy incidentalmente ao manter esse serviço.
 
 ## Antes De Alterar
 

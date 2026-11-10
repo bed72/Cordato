@@ -427,10 +427,30 @@ imagem fixada por digest, Compose local/Dokploy, editor autenticado e volume em
 `/data`. Não adiciona Node ao runtime PocketBase. Configuração de segurança vem
 da imagem; flows versionados semeiam somente volumes sem `flows.json`, e alterações
 no painel exigem exportação/revisão para o Git. Não há sincronização automática.
-Endpoints de flows e instalação dinâmica de módulos estão desabilitados. Não há
-fluxo de áudio, integração Gemini/PocketBase ou alteração no contrato do Flutter.
-Build, autenticação em runtime, persistência e deploy ainda não foram verificados;
-operação e limites estão no [README do worker](worker/README.md).
+Instalação dinâmica de módulos está desabilitada. O usuário confirmou o painel e o
+Hello World anterior no Dokploy; isso não homologa processamento de áudio.
+
+`worker/flows/audio/flows.json` é um flow importável síncrono que recebe multipart
+em `/api/collections/audio/process` no host do worker, valida sessão por
+`users/auth-refresh`, envia áudio inline à Interactions API Gemini e cria uma
+despesa pela API nativa PocketBase usando o token original e owner autenticado.
+As etapas visuais usam nós HTTP nativos; validação, preparação e logs ficam em
+`flows/audio/audio.js`, incluído na imagem e exposto por `functionGlobalContext`.
+Não há SDK ou biblioteca adicional, transcrição separada, conta técnica, superusuário,
+fila, retry de escrita ou idempotência durável. Ambiguidade/múltiplas despesas
+são recusadas, e retorno 201 depende de cadastro confirmado. Perda de confirmação
+pode significar escrita já realizada; o consumidor deve conferir antes de reenviar.
+Logs contêm somente correlação, etapas, tempos, status, tamanho e códigos locais,
+nunca conteúdo de áudio, credenciais ou dados financeiros. A admissão limita o
+corpo antes do parser e quatro requisições simultâneas por processo; não substitui
+cotas/rate limiting por usuário ou validação de duração/codec. O módulo requer
+rebuild e importação manual, sem sobrescrever volume. A imagem habilita `/api`,
+separada de `/admin`; autenticação do envio é a sessão PocketBase, não o login
+administrativo. O endpoint não foi implantado/homologado nesta mudança e não está
+implementado dentro do PocketBase. Flutter continua sem envio e sem alteração de
+seu contrato previsto de aceite 202; adoção da resposta síncrona 201, atualização
+da UI e sincronização do widget exigem tarefa explícita. Operação e limites estão
+no [README do áudio](worker/flows/audio/README.md).
 
 O escopo implementado é conta individual, CRUD de despesas próprias e métricas
 mensais por proprietário em View Collection. Login

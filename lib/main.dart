@@ -21,7 +21,7 @@ Future<void> main() async {
       module: module,
       navigatorKey: navigatorKey,
       initialRoute: RouteEnum.app.path,
-      defaultTransition: TransitionType.none,
+      defaultTransition: TransitionType.fade,
       child: Builder(
         builder: (_) {
           return AppWidget(

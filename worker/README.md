@@ -8,8 +8,10 @@ Versão estável mais recente conferida no npm e Docker Hub em 10/11/2026. A ima
 selecionada contém Node.js 24.22.2, compatível com o mínimo 22.9 exigido pelo
 Node-RED 5. O manifesto oficial oferece Linux amd64 e arm64, sem suporte arm/v7.
 
-**Não implementa áudio, Gemini ou cadastro de despesas.** `flows.json` começa vazio
-e endpoints de nós HTTP estão desabilitados. Nenhum container ou deploy foi executado.
+O flow [Áudio → Despesa](flows/audio/README.md) recebe uma despesa por áudio,
+valida a sessão e usa Gemini + API nativa PocketBase, com logs somente de metadados.
+Código preparado, ainda sem homologação remota; Flutter não foi integrado.
+`worker/flows.json` começa vazio: o flow de áudio exige importação manual após rebuild.
 
 ## Estrutura
 
@@ -19,6 +21,7 @@ e endpoints de nós HTTP estão desabilitados. Nenhum container ou deploy foi ex
 - `compose.dokploy.yml`: rede externa `dokploy-network`, sem publicar porta no host.
 - `settings.js`: autenticação, criptografia e configuração do runtime.
 - `flows.json`: flows revisados, usados como base na primeira inicialização.
+- `flows/audio/`: export importável, implementação JavaScript e contrato do áudio.
 - `docker/entrypoint.sh`: valida configuração e semeia flows somente quando ausentes.
 
 ## Ambiente e credenciais
@@ -34,6 +37,9 @@ cp .env.example .env
 | `NODE_RED_ADMIN_USERNAME` | Usuário administrativo escolhido por você. |
 | `NODE_RED_ADMIN_PASSWORD_HASH` | Hash bcrypt da senha, nunca texto puro. |
 | `NODE_RED_CREDENTIAL_SECRET` | Chave aleatória estável com pelo menos 32 caracteres. |
+| `POCKETBASE_URL` | Raiz HTTPS do PocketBase, padrão `https://pocketbase.cordato.cloud`. |
+| `GEMINI_API_KEY` | Chave privada Google, obrigatória para processar áudio, não para abrir o painel. |
+| `GEMINI_MODEL` | Modelo com áudio e saída estruturada; padrão `gemini-3.8-flash`. |
 
 Para gerar o hash com a ferramenta oficial, o comando abaixo baixa a imagem e
 executa um container temporário interativo, sem iniciar o serviço. Digite a senha
@@ -55,7 +61,9 @@ restaurações: sua perda/troca impede recuperar credenciais criptografadas exis
 O startup recusa configuração ausente ou malformada, sem senha/chave padrão.
 A validação do hash verifica sintaxe, não a força da senha escolhida.
 
-Não há chave Gemini, token de usuário ou credencial PocketBase nesta etapa.
+O JWT do usuário chega somente na requisição e não é configurado no ambiente.
+Não há credencial administrativa PocketBase. Gemini recebe somente a chave Google;
+PocketBase recebe somente o token do usuário. Nunca conecte Debug à mensagem completa.
 `.env`, dados e backups ficam fora do Git e do contexto de build.
 
 ## Execução local
@@ -90,7 +98,8 @@ e publicar o serviço, o editor será acessível em
    `docker compose -f compose.yml -f compose.dokploy.yml`. Se os caminhos partirem
    da raiz do repositório, use os dois com prefixo `worker/`; o contexto de build
    deve continuar sendo `worker/`.
-3. Defina as três variáveis no ambiente privado do Dokploy.
+3. Defina as variáveis administrativas e, para áudio, as variáveis Gemini/PocketBase
+   no ambiente privado do Dokploy, conforme [configuração do áudio](flows/audio/README.md).
 4. Confirme a rede externa `dokploy-network` e preserve o identificador do
    projeto/volume entre implantações; trocar o projeto pode selecionar outro volume.
 5. Configure `worker.cordato.cloud` para o serviço **`node-red`**, porta interna
@@ -112,12 +121,14 @@ troca de senha não é garantia de revogação imediata dos tokens já emitidos.
 ## Flows no Git e persistência
 
 Os flows importáveis ficam separados por funcionalidade em `flows/<nome>/`, cada
-um com `flows.json` completo e README próprio. O primeiro exemplo é
-[Hello World](flows/hello-world/README.md), com disparo manual e saída no Debug,
-sem endpoints HTTP ou dependências. Esses arquivos não são carregados automaticamente.
+um com `flows.json` completo e README próprio. O flow disponível é
+[Áudio → Despesa](flows/audio/README.md), com helper próprio incluído na imagem e
+exposto aos Functions por `functionGlobalContext.cordatoAudio`. Esses arquivos não
+são carregados automaticamente. Hello World foi removido do Git; exclua sua aba
+manualmente na instância remota se ela ainda existir.
 
 O `worker/flows.json` da raiz continua sendo somente a base inicial do container,
-vazia nesta etapa; não é um agregado automático dos exemplos.
+vazia nesta etapa; não é um agregado automático das funcionalidades.
 
 O volume `node_red_data`, montado em `/data`, contém flows ativos, credenciais
 criptografadas e estado interno. A configuração de segurança vem da imagem em
@@ -153,8 +164,9 @@ O primeiro deploy no Dokploy falhou antes de iniciar o Node-RED com
 `exec /opt/cordato/entrypoint.sh failed: Permission denied`. O Dockerfile agora
 define explicitamente permissão de travessia em `/opt` e `/opt/cordato`, execução
 do entrypoint e verificações de acesso no build como `node-red`. Root é usado
-somente na construção da imagem; o runtime continua sem privilégios. A correção
-exige rebuild no Dokploy, sem apagar volumes; confirmação em runtime está pendente.
+somente na construção da imagem; o runtime continua sem privilégios. Após a correção,
+o usuário confirmou acesso ao painel e execução manual do Hello World. Isso não
+comprova homologação do flow de áudio, que exige novo rebuild e importação.
 
 Sem iniciar infraestrutura ou instalar dependências:
 
@@ -166,14 +178,16 @@ shellcheck docker/entrypoint.sh
 git diff --check
 ```
 
-Verificação desta implementação: **11 testes aprovados**, sintaxe JavaScript e
+Registro da infraestrutura inicial: **11 testes aprovados**, sintaxe JavaScript e
 shell válidas, ShellCheck e `git diff --check` sem problemas; `flows.json` também
 foi validado como JSON vazio. Testes cobrem configuração pura e recusa de variáveis
 ausentes/inválidas, sem UI, rede ou segredos reais.
 
-Docker não está disponível neste ambiente; build,
-validação Compose, login, persistência e Dokploy permanecem pendentes.
-Nenhum arquivo do aplicativo foi alterado; a suíte Flutter não foi executada.
+Na mudança de áudio, foram adicionados testes unitários e atualizada a configuração,
+mas a suíte não foi executada localmente, por orientação do usuário. Somente
+verificações estáticas de sintaxe/JSON e diff; sem Docker, build, serviços ou chamadas
+remotas. Validação operacional de áudio/Gemini/PocketBase permanece pendente no Dokploy.
+Nenhum arquivo do aplicativo foi alterado nesta mudança; a suíte Flutter não foi executada.
 
 Referências: [Docker oficial](https://nodered.org/docs/getting-started/docker),
 [segurança](https://nodered.org/docs/user-guide/runtime/securing-node-red) e

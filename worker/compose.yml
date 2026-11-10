@@ -9,6 +9,9 @@ services:
       NODE_RED_ADMIN_USERNAME: ${NODE_RED_ADMIN_USERNAME:?Configure o usuário do editor}
       NODE_RED_ADMIN_PASSWORD_HASH: ${NODE_RED_ADMIN_PASSWORD_HASH:?Configure o hash bcrypt da senha}
       NODE_RED_CREDENTIAL_SECRET: ${NODE_RED_CREDENTIAL_SECRET:?Configure a chave de criptografia}
+      POCKETBASE_URL: ${POCKETBASE_URL:-https://pocketbase.cordato.cloud}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
     expose:
       - "1880"
     volumes:

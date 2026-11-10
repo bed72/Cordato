@@ -2,5 +2,8 @@
 !Dockerfile
 !settings.js
 !flows.json
+!flows/
+!flows/audio/
+!flows/audio/audio.js
 !docker/
 !docker/entrypoint.sh

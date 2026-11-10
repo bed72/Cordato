@@ -35,7 +35,7 @@ test("configura autenticação obrigatória sem usuário anônimo", () => {
     assert.equal(settings.credentialSecret, fixtureEnvironment.NODE_RED_CREDENTIAL_SECRET);
 });
 
-test("mantém dados no volume e desabilita endpoints e instalações adicionais", () => {
+test("mantém dados no volume, habilita a API e desabilita instalações adicionais", () => {
     const execution = loadSettings(fixtureEnvironment);
     assert.equal(execution.status, 0);
 
@@ -43,7 +43,9 @@ test("mantém dados no volume e desabilita endpoints e instalações adicionais"
     assert.equal(settings.userDir, "/data");
     assert.equal(settings.flowFile, "flows.json");
     assert.equal(settings.httpAdminRoot, "/admin");
-    assert.equal(settings.httpNodeRoot, false);
+    assert.equal(settings.httpNodeRoot, "/api");
+    assert.deepEqual(settings.functionGlobalContext, { cordatoAudio: {} });
+    assert.equal(settings.exportGlobalContextKeys, false);
     assert.equal(settings.functionExternalModules, false);
     assert.equal(settings.externalModules.autoInstall, false);
     assert.deepEqual(settings.externalModules.palette, {

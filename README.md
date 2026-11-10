@@ -326,9 +326,13 @@ Leia [ARCHITECTURE.md](ARCHITECTURE.md) para decisões e fronteiras e
 A pasta [`worker/`](worker/README.md) contém a infraestrutura independente do
 Node-RED 5.0.9, preparada para Docker Compose local e deploy posterior no Dokploy.
 Editor com login obrigatório, segredos por ambiente, volume persistente e flows
-versionados; sem bibliotecas adicionais ou endpoints de flows habilitados.
-Áudio/Gemini/PocketBase não foram integrados. Não houve build de imagem, execução
-de containers ou deploy; Flutter e serviço PocketBase não foram alterados.
+versionados; sem bibliotecas adicionais. O flow importável em
+[`worker/flows/audio/`](worker/flows/audio/README.md) recebe uma despesa por áudio,
+valida sessão, interpreta com Gemini e cadastra pela API nativa PocketBase, com logs
+de metadados sem conteúdo pessoal. Exige rebuild da imagem e importação manual;
+integração de áudio ainda não homologada. O usuário confirmou o Hello World anterior
+no painel; isso não comprova áudio. Flutter e serviço PocketBase não foram alterados,
+e a seta do app continua com envio indisponível. Sem deploy nesta mudança.
 
 ## Backend PocketBase
 
