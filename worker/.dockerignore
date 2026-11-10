@@ -1,0 +1,6 @@
+**
+!Dockerfile
+!settings.js
+!flows.json
+!docker/
+!docker/entrypoint.sh

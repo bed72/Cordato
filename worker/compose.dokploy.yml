@@ -1,0 +1,9 @@
+services:
+  node-red:
+    networks:
+      - dokploy
+
+networks:
+  dokploy:
+    external: true
+    name: dokploy-network

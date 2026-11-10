@@ -196,6 +196,11 @@ Specs OpenSpec arquivadas e registros de execução são históricos. Em conflit
 prevalecem estas regras e `ARCHITECTURE.md`; consulte `openspec/README.md`.
 Não restaure Supabase/RPC, commands ou ownership antigo por uma descrição histórica.
 
+O serviço Node-RED independente está isolado em `worker/`, com orientações em
+[worker/AGENTS.md](worker/AGENTS.md). O escopo atual é somente infraestrutura,
+sem integração de áudio/Gemini/PocketBase. Não alterar Flutter ou backend nem
+executar deploy incidentalmente ao manter esse serviço.
+
 ## Antes De Alterar
 
 - Leia a feature afetada, os componentes compartilhados usados e seus testes.

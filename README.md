@@ -320,6 +320,15 @@ para código novo nem dependências a restaurar.
 Leia [ARCHITECTURE.md](ARCHITECTURE.md) para decisões e fronteiras e
 [AGENTS.md](AGENTS.md) para convenções de contribuição.
 
+## Worker Node-RED
+
+A pasta [`worker/`](worker/README.md) contém a infraestrutura independente do
+Node-RED 5.0.9, preparada para Docker Compose local e deploy posterior no Dokploy.
+Editor com login obrigatório, segredos por ambiente, volume persistente e flows
+versionados; sem bibliotecas adicionais ou endpoints de flows habilitados.
+Áudio/Gemini/PocketBase não foram integrados. Não houve build de imagem, execução
+de containers ou deploy; Flutter e serviço PocketBase não foram alterados.
+
 ## Backend PocketBase
 
 O backend adotado é **PocketBase 0.41.1**, isolado em [`backend/`](backend/README.md),

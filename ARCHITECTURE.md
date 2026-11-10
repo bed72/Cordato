@@ -422,6 +422,16 @@ Node. Configuração operacional e evidências pertencem ao
 [README do backend](backend/README.md); suas regras de manutenção estão em
 [backend/AGENTS.md](backend/AGENTS.md).
 
+`worker/` é um serviço separado com infraestrutura Node-RED 5.0.9 / Node.js 24,
+imagem fixada por digest, Compose local/Dokploy, editor autenticado e volume em
+`/data`. Não adiciona Node ao runtime PocketBase. Configuração de segurança vem
+da imagem; flows versionados semeiam somente volumes sem `flows.json`, e alterações
+no painel exigem exportação/revisão para o Git. Não há sincronização automática.
+Endpoints de flows e instalação dinâmica de módulos estão desabilitados. Não há
+fluxo de áudio, integração Gemini/PocketBase ou alteração no contrato do Flutter.
+Build, autenticação em runtime, persistência e deploy ainda não foram verificados;
+operação e limites estão no [README do worker](worker/README.md).
+
 O escopo implementado é conta individual, CRUD de despesas próprias e métricas
 mensais por proprietário em View Collection. Login
 exige e-mail verificado, exclusão da conta remove suas despesas e regras nativas
