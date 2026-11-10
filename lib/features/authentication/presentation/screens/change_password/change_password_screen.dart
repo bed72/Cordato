@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
@@ -56,22 +57,24 @@ final class _ChangePasswordScreenState extends State<ChangePasswordScreen>
     ),
     body: SafeArea(
       child: Padding(
-        padding: const .fromLTRB(16.0, 0.0, 16.0, 24.0),
+        padding: const .only(bottom: 24.0),
         child: Column(
           spacing: 16.0,
           crossAxisAlignment: .stretch,
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const .symmetric(vertical: 24.0),
+                keyboardDismissBehavior: .onDrag,
+                padding: const .fromLTRB(16.0, 24.0, 16.0, 24.0),
                 child: Column(
                   spacing: 24.0,
                   crossAxisAlignment: .stretch,
                   children: [
-                    const HeaderWidget(
-                      title: 'Altere sua senha',
-                      description: 'Após trocar a senha, você precisará entrar novamente.',
-                    ),
+                    if (!context.isKeyboardVisible)
+                      const HeaderWidget(
+                        title: 'Altere sua senha',
+                        description: 'Após trocar a senha, você precisará entrar novamente.',
+                      ),
                     PasswordFieldWidget(
                       inputAction: .next,
                       label: 'Senha atual',
@@ -111,10 +114,13 @@ final class _ChangePasswordScreenState extends State<ChangePasswordScreen>
                 ),
               ),
             ),
-            ElevatedButtonWidget(
-              label: 'Salvar senha',
-              isLoading: state.isBusy,
-              onTap: state.canSubmit ? submit : null,
+            Padding(
+              padding: const .symmetric(horizontal: 16.0),
+              child: ElevatedButtonWidget(
+                label: 'Salvar senha',
+                isLoading: state.isBusy,
+                onTap: state.canSubmit ? submit : null,
+              ),
             ),
           ],
         ),

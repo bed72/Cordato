@@ -32,19 +32,19 @@ data class WidgetDimensions(val width: Float, val height: Float) {
         else -> 16f
     }
     val actionHeight: Float = if (tight) 32f else 44f
-    val showAction: Boolean = !singleRow || width >= 300
-    val actionWidth: Float = 136f
-    val summaryWidth: Float = (width - horizontalPadding * 2 - if (horizontal && showAction) actionWidth + 12 else 0f)
+    val compactAction: Boolean = singleRow && width < 300
+    val actionWidth: Float = if (compactAction) actionHeight else 136f
+    val summaryWidth: Float = (width - horizontalPadding * 2 - if (horizontal) actionWidth + 12 else 0f)
         .coerceAtLeast(1f)
     val canSplitCurrency: Boolean = !singleRow && (!tight || horizontal)
     val preferredAmountFont: Float = when {
-        !showAction -> 15f
+        compactAction -> 15f
         singleRow -> 16f
         !horizontal -> 19f
         else -> 22f
     }
     val maximumAmountFont: Float = when {
-        !showAction -> 15f
+        compactAction -> 15f
         singleRow -> 16f
         !horizontal -> 21f
         else -> 26f

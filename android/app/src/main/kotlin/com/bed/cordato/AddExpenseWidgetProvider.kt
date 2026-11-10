@@ -119,6 +119,7 @@ class AddExpenseWidgetProvider : HomeWidgetProvider() {
     ): RemoteViews {
         val dimensions = WidgetDimensions(width, height)
         val layout = when {
+            dimensions.compactAction -> R.layout.add_expense_widget_compact
             dimensions.horizontal -> R.layout.add_expense_widget_wide
             dimensions.tight -> R.layout.add_expense_widget_short
             else -> R.layout.add_expense_widget
@@ -167,8 +168,7 @@ class AddExpenseWidgetProvider : HomeWidgetProvider() {
     }
 
     private fun RemoteViews.applyAction(context: Context, dimensions: WidgetDimensions) {
-        setViewVisibility(R.id.widget_action, if (dimensions.showAction) View.VISIBLE else View.GONE)
-        if (!dimensions.showAction) {
+        if (dimensions.compactAction) {
             return
         }
 

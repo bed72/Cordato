@@ -181,12 +181,13 @@ linha da grade. Abaixo de 150dp,
 usa espaçamentos e botão menores e exibe apenas o mês no título; o launcher
 continua decidindo os tamanhos finais segundo sua grade.
 Na composição de uma linha (menos de 96dp), a moeda permanece junto ao número.
-Se a largura também for menor que 300dp, o botão é ocultado e o resumo ocupa toda
-a largura interna; nos formatos baixos largos, resumo e ação ficam lado a lado.
-Tocar em qualquer área continua abrindo Nova despesa, inclusive sem botão visível.
+Se a largura também for menor que 300dp, a ação usa somente **+** em um botão
+quadrado de 32dp, com as mesmas cores, raio de 8dp, ícone vetorial centralizado e 12dp de distância
+do resumo. Os demais tamanhos preservam **+ Nova despesa**.
+Tocar em qualquer área continua abrindo Nova despesa.
 O padding horizontal permanece em 16dp, inclusive no formato baixo; somente o
 vertical diminui para caber em uma linha, sem encostar o resumo ou a ação nas
-bordas. Na variante estreita sem botão, a fonte parte de 15; o formato baixo largo
+bordas. Na variante estreita com botão compacto, a fonte parte de 15; o formato baixo largo
 preserva 16. Nas composições verticais, a fonte parte de 19 e tem limite de
 acessibilidade de 21, sem mudar o formato horizontal regular.
 Adicione **Adicionar despesa** pela galeria de widgets

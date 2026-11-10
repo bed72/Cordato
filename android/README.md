@@ -77,10 +77,12 @@ centered text and 14dp corners rather than a capsule. Resizing is enabled on bot
 axes, down to a requested height of 56dp, subject to the launcher's grid. Short
 widgets use tighter spacing; wide widgets place the action beside the summary.
 Below 96dp tall, the layout is horizontal with inline currency; below 300dp wide
-as well, the action is hidden and the summary uses the full inner width. The
+as well, the action becomes a square **+** button with 8dp corners and a centered
+vector icon in the same colors, reserving
+32dp plus 12dp spacing beside the summary. Other sizes keep **+ Nova despesa**. The
 whole widget remains tappable to open New expense, with its accessible description.
 Horizontal padding stays at 16dp even in a single row; vertical padding alone
-shrinks to 4dp. Narrow single-row money without an action starts at 15; wide single-row
+shrinks to 4dp. Narrow single-row money beside the compact action starts at 15; wide single-row
 money retains 16. Vertical layouts use 19, capped at 21 for accessibility, while
 regular horizontal layouts retain 22, capped at 26. Money can shrink further to
 keep all digits inside the padded summary rather than pressing against the edges.

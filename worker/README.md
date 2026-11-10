@@ -111,6 +111,14 @@ troca de senha não é garantia de revogação imediata dos tokens já emitidos.
 
 ## Flows no Git e persistência
 
+Os flows importáveis ficam separados por funcionalidade em `flows/<nome>/`, cada
+um com `flows.json` completo e README próprio. O primeiro exemplo é
+[Hello World](flows/hello-world/README.md), com disparo manual e saída no Debug,
+sem endpoints HTTP ou dependências. Esses arquivos não são carregados automaticamente.
+
+O `worker/flows.json` da raiz continua sendo somente a base inicial do container,
+vazia nesta etapa; não é um agregado automático dos exemplos.
+
 O volume `node_red_data`, montado em `/data`, contém flows ativos, credenciais
 criptografadas e estado interno. A configuração de segurança vem da imagem em
 `/opt/cordato/settings.js`, não de um arquivo antigo no volume.
@@ -118,9 +126,9 @@ criptografadas e estado interno. A configuração de segurança vem da imagem em
 A imagem copia os flows versionados somente quando `/data/flows.json` não existe.
 **Rebuild não substitui flows existentes.** Para versionar mudanças do painel:
 
-1. Use Export → todos os flows → JSON formatado.
+1. Use Export → current flow → JSON formatado para exportar somente a aba da funcionalidade.
 2. Revise para remover segredos, tokens, dados pessoais e payloads reais.
-3. Salve em `worker/flows.json` e revise o diff no Git.
+3. Salve em `worker/flows/<nome>/flows.json` e revise o diff no Git.
 
 Para aplicar uma versão do Git em uma instância com volume existente:
 
