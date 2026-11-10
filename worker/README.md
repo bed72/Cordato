@@ -141,6 +141,13 @@ Dependências futuras devem ser explícitas e fixadas na imagem. Contexto de Fun
 
 ## Verificação
 
+O primeiro deploy no Dokploy falhou antes de iniciar o Node-RED com
+`exec /opt/cordato/entrypoint.sh failed: Permission denied`. O Dockerfile agora
+define explicitamente permissão de travessia em `/opt` e `/opt/cordato`, execução
+do entrypoint e verificações de acesso no build como `node-red`. Root é usado
+somente na construção da imagem; o runtime continua sem privilégios. A correção
+exige rebuild no Dokploy, sem apagar volumes; confirmação em runtime está pendente.
+
 Sem iniciar infraestrutura ou instalar dependências:
 
 ```sh
