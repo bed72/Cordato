@@ -133,7 +133,9 @@ Após o aceite, códigos como `multiple_expenses`, `unclear_audio`, `not_expense
 logs, sem resposta HTTP adicional. O cadastro só é registrado como concluído
 quando a resposta do PocketBase confirma os campos persistidos.
 
-Timeouts: **10 s** para autenticação, **45 s** para Gemini e **10 s** para cadastro.
+Timeouts: **10 s** para autenticação, **300 s (5 minutos)** para Gemini e **10 s** para cadastro.
+O aceite `202` continua anterior à interpretação; o app não aguarda esses 5 minutos.
+A operação mantém sua vaga de concorrência durante essa espera, sem retry automático.
 Redirecionamentos e retries dos requests estão desabilitados. Cada header externo
 é reconstruído: o token PocketBase não é enviado ao Google, e a chave Gemini não
 é enviada ao PocketBase. Respostas remotas/credenciais não são repassadas em erros.

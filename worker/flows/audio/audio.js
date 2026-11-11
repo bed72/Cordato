@@ -379,7 +379,7 @@ function authenticated(msg, env) {
             },
         },
     };
-    msg.requestTimeout = 45000;
+    msg.requestTimeout = 300000;
     msg.followRedirects = false;
     const acceptance = {
         req: msg.req,

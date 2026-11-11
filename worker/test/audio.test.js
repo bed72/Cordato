@@ -163,7 +163,7 @@ describe("Gemini e validação financeira", () => {
         assert.equal(msg.req, undefined);
         assert.equal(msg.res, undefined);
         assert.equal(msg.audioFile, undefined);
-        assert.equal(msg.requestTimeout, 45000);
+        assert.equal(msg.requestTimeout, 300000);
     });
 
     test("usa thinking low compatível com Gemini 3.8 Flash, nunca minimal", () => {
