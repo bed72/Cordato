@@ -18,18 +18,18 @@ abstract final class AudioErrorFormatter {
   };
 
   static String description(AudioFailureEnum failure) => switch (failure) {
+    .busy => 'Tente novamente mais tarde.',
+    .tooLarge => 'O áudio deve ter até 2 MiB.',
     .permission => 'Permita o microfone nos ajustes.',
     .empty => 'Nenhum áudio foi gravado nesta captura.',
-    .unexpected => 'Não foi possível concluir a operação de áudio.',
+    .rejected => 'Não foi possível aceitar esta gravação.',
+    .unauthorized => 'Entre novamente para enviar o áudio.',
     .interrupted => 'A gravação foi encerrada antes da conclusão.',
+    .unexpected => 'Não foi possível concluir a operação de áudio.',
+    .unsupportedFormat => 'Envie uma gravação M4A com tipo audio/mp4.',
+    .forbidden => 'Sua conta não tem autorização para enviar este áudio.',
     .sendingUnavailable => 'O envio de áudio está indisponível no momento.',
     .unavailable => 'A gravação de áudio não está disponível neste aparelho.',
-    .unauthorized => 'Entre novamente para enviar o áudio.',
-    .forbidden => 'Sua conta não tem autorização para enviar este áudio.',
-    .tooLarge => 'O áudio deve ter até 2 MiB.',
-    .unsupportedFormat => 'Envie uma gravação M4A com tipo audio/mp4.',
-    .busy => 'Tente novamente mais tarde.',
-    .rejected => 'Não foi possível aceitar esta gravação.',
     .submissionUnknown => 'O áudio pode estar em processamento. Confira suas despesas antes de reenviar.',
   };
 }

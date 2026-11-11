@@ -12,6 +12,8 @@ O flow [Áudio → Despesa](flows/audio/README.md) recebe uma despesa por áudio
 valida a sessão e usa Gemini + API nativa PocketBase, com logs somente de metadados.
 Responde `202` após validar upload/sessão e continua em memória, sem fila persistente.
 Flutter possui envio, sem polling ou atualização automática; ainda sem homologação remota.
+Recusas do Gemini recebem diagnóstico por códigos locais sanitizados no log seguro,
+sem registrar corpo remoto, áudio ou credenciais; consulte o README do flow.
 `worker/flows.json` começa vazio: o flow de áudio exige importação manual após rebuild.
 
 ## Estrutura

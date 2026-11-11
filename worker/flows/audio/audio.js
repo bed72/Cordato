@@ -32,6 +32,37 @@ const EVENTS = new Set([
     "persistence.started", "persistence.completed", "request.completed",
     "request.failed", "request.aborted", "request.accepted",
 ]);
+const GEMINI_REASONS = new Map([
+    ["API_KEY_INVALID", "gemini_api_key_invalid"],
+    ["API_KEY_EXPIRED", "gemini_api_key_invalid"],
+    ["API_KEY_SERVICE_BLOCKED", "gemini_api_key_restricted"],
+    ["API_KEY_HTTP_REFERRER_BLOCKED", "gemini_api_key_restricted"],
+    ["API_KEY_IP_ADDRESS_BLOCKED", "gemini_api_key_restricted"],
+    ["SERVICE_DISABLED", "gemini_service_disabled"],
+    ["BILLING_DISABLED", "gemini_billing_required"],
+]);
+const GEMINI_STATUSES = new Map([
+    ["INVALID_ARGUMENT", "gemini_invalid_request"],
+    ["FAILED_PRECONDITION", "gemini_precondition_failed"],
+    ["UNAUTHENTICATED", "gemini_authentication_failed"],
+    ["PERMISSION_DENIED", "gemini_permission_denied"],
+    ["NOT_FOUND", "gemini_model_not_found"],
+    ["RESOURCE_EXHAUSTED", "gemini_quota_exceeded"],
+    ["UNAVAILABLE", "gemini_upstream_unavailable"],
+    ["INTERNAL", "gemini_upstream_unavailable"],
+    ["DEADLINE_EXCEEDED", "gemini_upstream_timeout"],
+]);
+const GEMINI_FIELDS = [
+    [/\b(?:response_format|response_schema|json_schema)\b|\bjson schema\b/i, "gemini_schema_request"],
+    [/\b(?:generation_config|thinking_level|max_output_tokens)\b/i, "gemini_generation_config"],
+    [/\b(?:mime_type|audio|inline_data)\b/i, "gemini_audio_request"],
+    [/\bmodel\b/i, "gemini_model_request"],
+];
+const GEMINI_DIAGNOSTICS = new Set([
+    ...GEMINI_REASONS.values(), ...GEMINI_STATUSES.values(),
+    ...GEMINI_FIELDS.map(([, diagnostic]) => diagnostic),
+    "gemini_transport_failure", "gemini_error_unclassified",
+]);
 let activeRequests = 0;
 
 function bearerToken(header) {
@@ -153,8 +184,11 @@ function response(msg, status, payload, logs) {
     return [null, msg, logs];
 }
 
-function failure(msg, status, code, logs = []) {
+function failure(msg, status, code, logs = [], diagnostic) {
     const details = { status, code, stage: msg.audio.stage || "upload" };
+    if (GEMINI_DIAGNOSTICS.has(diagnostic)) {
+        details.diagnostic = diagnostic;
+    }
     if (Number.isInteger(msg.statusCode) && msg.statusCode >= 100 && msg.statusCode <= 599) {
         details.upstream_status = msg.statusCode;
     }
@@ -371,6 +405,81 @@ function validExpense(expense) {
         && CATEGORIES.includes(expense.category) && validDate(expense.occurred_on);
 }
 
+function geminiDiagnostic(msg) {
+    const error = jsonResponse(msg)?.error;
+    const details = Array.isArray(error?.details) ? error.details : [];
+    for (const detail of details) {
+        if (detail?.["@type"] === "type.googleapis.com/google.rpc.ErrorInfo") {
+            const diagnostic = GEMINI_REASONS.get(detail.reason);
+            if (diagnostic) {
+                return diagnostic;
+            }
+        }
+    }
+
+    for (const detail of details) {
+        if (detail?.["@type"] !== "type.googleapis.com/google.rpc.BadRequest" || !Array.isArray(detail.fieldViolations)) {
+            continue;
+        }
+        for (const violation of detail.fieldViolations) {
+            const diagnostic = geminiFieldDiagnostic(violation?.field);
+            if (diagnostic) {
+                return diagnostic;
+            }
+        }
+    }
+
+    const statusDiagnostic = GEMINI_STATUSES.get(error?.status);
+    if (statusDiagnostic && error.status !== "INVALID_ARGUMENT") {
+        return statusDiagnostic;
+    }
+
+    if (msg.statusCode === 400 || error?.status === "INVALID_ARGUMENT") {
+        const messageDiagnostic = geminiFieldDiagnostic(error?.message);
+        if (messageDiagnostic) {
+            return messageDiagnostic;
+        }
+    }
+
+    if (statusDiagnostic) {
+        return statusDiagnostic;
+    }
+
+    switch (msg.statusCode) {
+        case 400:
+            return "gemini_invalid_request";
+        case 401:
+            return "gemini_authentication_failed";
+        case 403:
+            return "gemini_permission_denied";
+        case 404:
+            return "gemini_model_not_found";
+        case 429:
+            return "gemini_quota_exceeded";
+        case 500:
+        case 502:
+        case 503:
+            return "gemini_upstream_unavailable";
+        case 504:
+            return "gemini_upstream_timeout";
+        default:
+            return Number.isInteger(msg.statusCode) ? "gemini_error_unclassified" : "gemini_transport_failure";
+    }
+}
+
+function geminiFieldDiagnostic(value) {
+    if (typeof value !== "string" || value.length > 8192) {
+        return null;
+    }
+
+    for (const [pattern, diagnostic] of GEMINI_FIELDS) {
+        if (pattern.test(value)) {
+            return diagnostic;
+        }
+    }
+    return null;
+}
+
 function interpreted(msg) {
     const stopped = aborted(msg);
     if (stopped) {
@@ -378,7 +487,7 @@ function interpreted(msg) {
     }
 
     if (msg.statusCode !== 200) {
-        return failure(msg, 502, "interpretation_unavailable");
+        return failure(msg, 502, "interpretation_unavailable", [], geminiDiagnostic(msg));
     }
 
     const interaction = jsonResponse(msg);
@@ -473,7 +582,7 @@ function caught(msg) {
         case "authentication":
             return failure(msg, 503, "authentication_unavailable");
         case "interpretation":
-            return failure(msg, 502, "interpretation_unavailable");
+            return failure(msg, 502, "interpretation_unavailable", [], geminiDiagnostic(msg));
         case "persistence":
             return failure(msg, 502, "persistence_unknown");
         default:
@@ -498,6 +607,9 @@ function audit(msg, node) {
     }
     if (Object.hasOwn(MESSAGES, entry.code)) {
         safeEntry.code = entry.code;
+    }
+    if (entry.event === "request.failed" && entry.stage === "interpretation" && entry.code === "interpretation_unavailable" && GEMINI_DIAGNOSTICS.has(entry.diagnostic)) {
+        safeEntry.diagnostic = entry.diagnostic;
     }
 
     node.log(JSON.stringify(safeEntry));

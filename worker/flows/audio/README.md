@@ -140,7 +140,7 @@ Desconectar o cliente depois de iniciar o POST não desfaz um cadastro confirmad
 ## Logs
 
 Os nós de etapas geram eventos estruturados encaminhados exclusivamente ao nó
-**Logs: somente metadados**, que aplica uma allowlist, escreve no console do
+**Logs: metadados e diagnóstico seguro**, que aplica uma allowlist, escreve no console do
 Node-RED e entrega o objeto sanitizado ao Debug **Áudio: logs seguros**.
 
 Eventos: upload aceito; início/conclusão de autenticação; aceite HTTP 202; início/conclusão de
@@ -155,6 +155,43 @@ configurados não incluem áudio/base64, transcrição, nomes de arquivo, JWT,
 chave Gemini, proprietário, descrição, categoria, datas ou valores financeiros.
 O Catch não replica a mensagem remota do erro; somente gera código/etapa local.
 
+### Diagnóstico de recusas do Gemini
+
+Falhas HTTP/transporte na interpretação preservam `code: interpretation_unavailable`
+e acrescentam `diagnostic`, escolhido exclusivamente de uma allowlist de códigos
+locais. Isso vale tanto para a saída HTTP normal quanto para o Catch, sem segunda
+resposta após o aceite e sem retry/cadastro. O corpo remoto é descartado na limpeza.
+
+O classificador prioriza razões estruturadas `google.rpc.ErrorInfo`, depois campos
+de `google.rpc.BadRequest` e status canônicos. Em erros de argumento, pode reconhecer
+nomes técnicos fixos na mensagem somente em memória; não copia mensagem, campo,
+descrição, status textual remoto, metadata, chave, áudio ou valores para os logs.
+Menções a campos são pistas de área, não prova da causa exata. Se não houver detalhe
+reconhecido, usa o status HTTP ou um fallback; não inventa uma causa específica.
+
+| `diagnostic` | O que conferir |
+| --- | --- |
+| `gemini_api_key_invalid` | Validade/expiração da chave no ambiente privado. |
+| `gemini_api_key_restricted` | Restrições de API, origem ou IP da chave. |
+| `gemini_service_disabled` | Serviço Google habilitado no projeto. |
+| `gemini_billing_required` | Faturamento do projeto; sinalizado por razão estruturada. |
+| `gemini_schema_request` | `response_format`/schema JSON mencionado na recusa. |
+| `gemini_generation_config` | `generation_config`, `thinking_level` ou limite de saída mencionado. |
+| `gemini_audio_request` | Campo de áudio/MIME mencionado; conferir container e compatibilidade. |
+| `gemini_model_request` | Campo de modelo mencionado na recusa. |
+| `gemini_invalid_request` | Argumento inválido genérico, sem campo reconhecido. |
+| `gemini_precondition_failed` | Pré-condição da API; verificar requisitos de conta, região e faturamento. |
+| `gemini_authentication_failed` / `gemini_permission_denied` | Autenticação/permissões do projeto Google, não sessão PocketBase. |
+| `gemini_model_not_found` | Recurso/modelo não encontrado no endpoint fixo de interpretação. |
+| `gemini_quota_exceeded` | Limite/cota do provedor. |
+| `gemini_upstream_unavailable` / `gemini_upstream_timeout` | Serviço remoto indisponível/timeout. |
+| `gemini_transport_failure` / `gemini_error_unclassified` | Sem resposta HTTP reconhecida ou erro não classificado. |
+
+Para instalar esse diagnóstico, faça rebuild autorizado da imagem: somente importar
+o JSON não atualiza `audio.js`. A topologia do flow e o contrato do app não mudam.
+Na nova tentativa, consulte apenas **Áudio: logs seguros** e compartilhe `code`,
+`diagnostic`, `stage`, `status` e `upstream_status`, nunca a mensagem completa.
+
 ## Verificação e limites
 
 Foram adicionados testes unitários sem rede em `worker/test/audio.test.js`,
@@ -164,7 +201,7 @@ Testes locais não comprovam chamadas Gemini/PocketBase ou deploy.
 A homologação deve ocorrer no Dokploy, com áudio de teste e conta própria.
 
 Verificação local desta revisão (10/11/2026): `node --check settings.js`,
-`node --check flows/audio/audio.js`, `node --test test/*.test.js` (64 aprovados),
+`node --check flows/audio/audio.js`, `node --test test/*.test.js` (140 aprovados),
 `sh -n docker/entrypoint.sh`, `shellcheck docker/entrypoint.sh` e `git diff --check`
 concluídos sem falhas. Docker não está disponível neste ambiente; os dois pares
 Compose não foram revalidados. Sem build, container, deploy ou chamada remota.

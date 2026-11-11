@@ -232,6 +232,140 @@ describe("Gemini e validação financeira", () => {
     }
 });
 
+describe("diagnóstico sanitizado do Gemini", () => {
+    const privateFixture = "private-fixture:" + token + ":" + geminiKey;
+    const reasonDetail = reason => ({
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        reason,
+        metadata: { privateFixture },
+    });
+    const fieldDetail = field => ({
+        "@type": "type.googleapis.com/google.rpc.BadRequest",
+        fieldViolations: [{ field, description: privateFixture }],
+    });
+
+    for (const scenario of [
+        { name: "chave inválida", error: { details: [reasonDetail("API_KEY_INVALID")] }, diagnostic: "gemini_api_key_invalid" },
+        { name: "chave expirada", error: { details: [reasonDetail("API_KEY_EXPIRED")] }, diagnostic: "gemini_api_key_invalid" },
+        { name: "chave restrita por serviço", error: { details: [reasonDetail("API_KEY_SERVICE_BLOCKED")] }, diagnostic: "gemini_api_key_restricted" },
+        { name: "chave restrita por origem", error: { details: [reasonDetail("API_KEY_HTTP_REFERRER_BLOCKED")] }, diagnostic: "gemini_api_key_restricted" },
+        { name: "chave restrita por IP", error: { details: [reasonDetail("API_KEY_IP_ADDRESS_BLOCKED")] }, diagnostic: "gemini_api_key_restricted" },
+        { name: "serviço desabilitado", error: { details: [reasonDetail("SERVICE_DISABLED")] }, diagnostic: "gemini_service_disabled" },
+        { name: "faturamento desabilitado", error: { details: [reasonDetail("BILLING_DISABLED")] }, diagnostic: "gemini_billing_required" },
+        { name: "schema em campo estruturado", error: { details: [fieldDetail("response_format.schema.properties.expense")] }, diagnostic: "gemini_schema_request" },
+        { name: "configuração em campo estruturado", error: { details: [fieldDetail("generation_config.thinking_level")] }, diagnostic: "gemini_generation_config" },
+        { name: "áudio em campo estruturado", error: { details: [fieldDetail("input[0].mime_type")] }, diagnostic: "gemini_audio_request" },
+        { name: "modelo em campo estruturado", error: { details: [fieldDetail("model")] }, diagnostic: "gemini_model_request" },
+        { name: "schema mencionado na mensagem", error: { message: "Invalid JSON schema. " + privateFixture }, diagnostic: "gemini_schema_request" },
+        { name: "thinking mencionado na mensagem", error: { message: "Unsupported thinking_level. " + privateFixture }, diagnostic: "gemini_generation_config" },
+        { name: "áudio mencionado na mensagem", error: { message: "Invalid audio. " + privateFixture }, diagnostic: "gemini_audio_request" },
+        { name: "modelo mencionado na mensagem", error: { message: "Unsupported model. " + privateFixture }, diagnostic: "gemini_model_request" },
+        { name: "argumento inválido genérico", error: { status: "INVALID_ARGUMENT" }, diagnostic: "gemini_invalid_request" },
+        { name: "pré-condição", error: { status: "FAILED_PRECONDITION" }, diagnostic: "gemini_precondition_failed" },
+        { name: "autenticação", error: { status: "UNAUTHENTICATED" }, diagnostic: "gemini_authentication_failed" },
+        { name: "permissão", error: { status: "PERMISSION_DENIED" }, diagnostic: "gemini_permission_denied" },
+        { name: "modelo ausente", error: { status: "NOT_FOUND" }, diagnostic: "gemini_model_not_found" },
+        { name: "cota antes de menção a modelo", error: { status: "RESOURCE_EXHAUSTED", message: "Model quota. " + privateFixture }, diagnostic: "gemini_quota_exceeded" },
+        { name: "serviço indisponível", error: { status: "UNAVAILABLE" }, diagnostic: "gemini_upstream_unavailable" },
+        { name: "erro interno", error: { status: "INTERNAL" }, diagnostic: "gemini_upstream_unavailable" },
+        { name: "timeout remoto", error: { status: "DEADLINE_EXCEEDED" }, diagnostic: "gemini_upstream_timeout" },
+        { name: "estrutura inesperada", error: { details: [null, 7, { fieldViolations: privateFixture }], status: privateFixture }, diagnostic: "gemini_invalid_request" },
+        { name: "mensagem extensa ignorada", error: { message: "audio" + "x".repeat(8192) }, diagnostic: "gemini_invalid_request" },
+        { name: "razão desconhecida ignorada", error: { details: [reasonDetail(privateFixture)] }, diagnostic: "gemini_invalid_request" },
+        { name: "campo desconhecido ignorado", error: { details: [fieldDetail(privateFixture)] }, diagnostic: "gemini_invalid_request" },
+    ]) {
+        for (const handler of ["interpreted", "caught"]) {
+            test(`${handler}: ${scenario.name} sem ecoar conteúdo remoto`, () => {
+                const msg = authenticatedMessage();
+                msg.statusCode = 400;
+                msg.payload = JSON.stringify({ error: { message: privateFixture, ...scenario.error } });
+                msg.error = { message: privateFixture };
+
+                const [next, replied, logs] = audio[handler](msg);
+                const entries = [];
+                const safeLog = audio.audit(logs.at(-1), { log: entry => entries.push(entry) });
+
+                assert.equal(next, null);
+                assert.equal(replied, null);
+                assert.equal(safeLog.payload.diagnostic, scenario.diagnostic);
+                assert.equal(safeLog.payload.code, "interpretation_unavailable");
+                assert.equal(safeLog.payload.upstream_status, 400);
+                assert.equal(safeLog.payload.stage, "interpretation");
+                assert.equal(msg.payload, undefined);
+                assert.equal(msg.error, undefined);
+                assert.equal(msg.audioToken, undefined);
+                assert.equal(msg.audioConfiguration, undefined);
+                assert.equal(msg.url, undefined);
+                assert.ok(!JSON.stringify(logs).includes(privateFixture));
+                assert.ok(!entries[0].includes(token));
+                assert.ok(!entries[0].includes(geminiKey));
+            });
+        }
+    }
+
+    for (const [status, diagnostic] of [
+        [400, "gemini_invalid_request"],
+        [401, "gemini_authentication_failed"],
+        [403, "gemini_permission_denied"],
+        [404, "gemini_model_not_found"],
+        [429, "gemini_quota_exceeded"],
+        [500, "gemini_upstream_unavailable"],
+        [502, "gemini_upstream_unavailable"],
+        [503, "gemini_upstream_unavailable"],
+        [504, "gemini_upstream_timeout"],
+        [418, "gemini_error_unclassified"],
+        ["ETIMEDOUT", "gemini_transport_failure"],
+    ]) {
+        test(`fallback por HTTP/transporte: ${status}`, () => {
+            const msg = authenticatedMessage();
+            msg.statusCode = status;
+            msg.payload = privateFixture;
+
+            const [next, replied, logs] = audio.interpreted(msg);
+
+            assert.equal(next, null);
+            assert.equal(replied, null);
+            assert.equal(logs.at(-1).payload.diagnostic, diagnostic);
+            assert.ok(!JSON.stringify(logs).includes(privateFixture));
+        });
+    }
+
+    for (const payload of ["null", "[]", '{"error":null}', '{"error":{"details":[null,{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[null,{"field":{}}]}]}}', "x".repeat(262145)]) {
+        test(`corpo inesperado não interrompe limpeza: ${payload.length} bytes ${payload.slice(0, 12)}`, () => {
+            const msg = authenticatedMessage();
+            msg.statusCode = 400;
+            msg.payload = payload;
+
+            const [next, replied, logs] = audio.interpreted(msg);
+
+            assert.equal(next, null);
+            assert.equal(replied, null);
+            assert.equal(logs.at(-1).payload.diagnostic, "gemini_invalid_request");
+            assert.equal(msg.payload, undefined);
+        });
+    }
+
+    for (const diagnostic of [privateFixture, "gemini_audio_request " + privateFixture, { code: "gemini_audio_request" }]) {
+        test(`audit descarta diagnóstico fora da allowlist: ${typeof diagnostic}`, () => {
+            const safeLog = audio.audit({ payload: {
+                request_id: requestId, event: "request.failed", stage: "interpretation",
+                code: "interpretation_unavailable", diagnostic,
+            } }, { log: () => {} });
+
+            assert.equal(safeLog.payload.diagnostic, undefined);
+        });
+    }
+
+    test("audit descarta diagnóstico Gemini fora de falha de interpretação", () => {
+        const safeLog = audio.audit({ payload: {
+            request_id: requestId, event: "request.failed", stage: "persistence",
+            code: "persistence_unknown", diagnostic: "gemini_audio_request",
+        } }, { log: () => {} });
+
+        assert.equal(safeLog.payload.diagnostic, undefined);
+    });
+});
+
 describe("persistência, cancelamento e logs", () => {
     test("conclui cadastro sem segunda resposta e limpa credenciais transitórias", () => {
         const msg = pendingExpense();
