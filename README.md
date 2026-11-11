@@ -328,8 +328,10 @@ Node-RED 5.0.9, preparada para Docker Compose local e deploy posterior no Dokplo
 Editor com login obrigatório, segredos por ambiente, volume persistente e flows
 versionados; sem bibliotecas adicionais. O flow importável em
 [`worker/flows/audio/`](worker/flows/audio/README.md) recebe uma despesa por áudio,
-valida sessão, interpreta com Gemini e cadastra pela API nativa PocketBase, com logs
-de metadados sem conteúdo pessoal. Exige rebuild da imagem e importação manual;
+valida sessão, interpreta por IA Chat Completions e cadastra pela API nativa PocketBase, com logs
+de metadados sem conteúdo pessoal. A lógica pertence aos nós Function do JSON:
+importação/edição e Deploy no editor bastam; rebuild é só para infraestrutura.
+Exige infraestrutura de upload da imagem Cordato e importação manual;
 integração de áudio ainda não homologada. O usuário confirmou o Hello World anterior
 no painel; isso não comprova áudio. O flow responde `202` após validar upload/sessão
 e continua em memória, sem fila persistente. Flutter envia pela seta e informa somente
@@ -1263,4 +1265,5 @@ Android/iOS reais, builds nativos e o endpoint ainda precisam de validação.
 
 Verificação local da integração (10/11/2026): `flutter pub get` e `flutter analyze`
 concluídos, `flutter test --reporter failures-only` com 1.608 testes aprovados.
-O worker passou 64 testes unitários; detalhes e limites no seu README.
+O worker passou 192 testes locais com IA configurável por `AI_BASE_URL`, `AI_MODEL`
+e `AI_API_KEY`, usando OpenRouter por padrão; detalhes e limites no seu README.

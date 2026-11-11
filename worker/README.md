@@ -9,12 +9,15 @@ selecionada contém Node.js 24.22.2, compatível com o mínimo 22.9 exigido pelo
 Node-RED 5. O manifesto oficial oferece Linux amd64 e arm64, sem suporte arm/v7.
 
 O flow [Áudio → Despesa](flows/audio/README.md) recebe uma despesa por áudio,
-valida a sessão e usa Gemini + API nativa PocketBase, com logs somente de metadados.
+valida a sessão e usa IA por Chat Completions + API nativa PocketBase, com logs somente
+de metadados. O padrão é OpenRouter com `google/gemini-3.8-flash`.
 Responde `202` após validar upload/sessão e continua em memória, sem fila persistente.
 Flutter possui envio, sem polling ou atualização automática; ainda sem homologação remota.
-Recusas do Gemini recebem diagnóstico por códigos locais sanitizados no log seguro,
+Recusas da IA recebem diagnóstico por códigos locais sanitizados no log seguro,
 sem registrar corpo remoto, áudio ou credenciais; consulte o README do flow.
-`worker/flows.json` começa vazio: o flow de áudio exige importação manual após rebuild.
+`worker/flows.json` começa vazio: o flow de áudio exige importação manual.
+A lógica fica nos nós Function do JSON; editar/importar e usar Deploy basta para
+mudar timeout, payload ou validação. Rebuild é somente para infraestrutura/dependências.
 
 ## Estrutura
 
@@ -23,6 +26,7 @@ sem registrar corpo remoto, áudio ou credenciais; consulte o README do flow.
 - `compose.local.yml`: porta publicada somente em `127.0.0.1`.
 - `compose.dokploy.yml`: rede externa `dokploy-network`, sem publicar porta no host.
 - `settings.js`: autenticação, criptografia e configuração do runtime.
+- `middleware/audio_upload_gate.js`: proteção pré-parser, correlação e admissão de upload.
 - `flows.json`: flows revisados, usados como base na primeira inicialização.
 - `flows/audio/`: export importável, implementação JavaScript e contrato do áudio.
 - `docker/entrypoint.sh`: valida configuração e semeia flows somente quando ausentes.
@@ -41,8 +45,9 @@ cp .env.example .env
 | `NODE_RED_ADMIN_PASSWORD_HASH` | Hash bcrypt da senha, nunca texto puro. |
 | `NODE_RED_CREDENTIAL_SECRET` | Chave aleatória estável com pelo menos 32 caracteres. |
 | `POCKETBASE_URL` | Raiz HTTPS do PocketBase, padrão `https://pocketbase.cordato.cloud`. |
-| `GEMINI_API_KEY` | Chave privada Google, obrigatória para processar áudio, não para abrir o painel. |
-| `GEMINI_MODEL` | Modelo com áudio e saída estruturada; padrão `gemini-3.8-flash`. |
+| `AI_BASE_URL` | Base HTTPS Chat Completions, padrão `https://openrouter.ai/api/v1`, sem `/chat/completions`. |
+| `AI_MODEL` | Identificador do modelo, padrão `google/gemini-3.8-flash`; deve aceitar M4A, schema JSON e reasoning low. |
+| `AI_API_KEY` | Chave privada do endpoint de IA, obrigatória para áudio, não para abrir o painel. |
 
 Para gerar o hash com a ferramenta oficial, o comando abaixo baixa a imagem e
 executa um container temporário interativo, sem iniciar o serviço. Digite a senha
@@ -65,9 +70,22 @@ O startup recusa configuração ausente ou malformada, sem senha/chave padrão.
 A validação do hash verifica sintaxe, não a força da senha escolhida.
 
 O JWT do usuário chega somente na requisição e não é configurado no ambiente.
-Não há credencial administrativa PocketBase. Gemini recebe somente a chave Google;
+Não há credencial administrativa PocketBase. A IA recebe somente sua própria chave;
 PocketBase recebe somente o token do usuário. Nunca conecte Debug à mensagem completa.
 `.env`, dados e backups ficam fora do Git e do contexto de build.
+
+Substitua `GEMINI_MODEL`/`GEMINI_API_KEY` pelas três variáveis `AI_*`; não há leitura
+ou migração automática das chaves antigas. Use um endpoint confiável: ele recebe
+o áudio e a chave configurada. O formato é Chat Completions, não a API Interactions
+do Gemini. Para OpenRouter, configure créditos/permissões e privacidade na conta.
+`AI_API_KEY` deve ser uma chave OpenRouter, não a antiga chave Google.
+O flow desabilita fallback de provedor e filtra coleta de dados, sem prometer retenção zero.
+
+O Compose encaminha explicitamente `AI_*` ao serviço. Alterar essas variáveis exige
+recriar o container com o Compose atualizado e preservar `/data`, não rebuild da imagem.
+Uma instância antiga que encaminha só `GEMINI_*` não passa as novas variáveis apenas
+por adicioná-las ao ambiente de interpolação do Dokploy. A lógica do flow continua
+sendo publicada separadamente por importação e Deploy no editor.
 
 ## Execução local
 
@@ -125,9 +143,9 @@ troca de senha não é garantia de revogação imediata dos tokens já emitidos.
 
 Os flows importáveis ficam separados por funcionalidade em `flows/<nome>/`, cada
 um com `flows.json` completo e README próprio. O flow disponível é
-[Áudio → Despesa](flows/audio/README.md), com helper próprio incluído na imagem e
-exposto aos Functions por `functionGlobalContext.cordatoAudio`. Esses arquivos não
-são carregados automaticamente. Hello World foi removido do Git; exclua sua aba
+[Áudio → Despesa](flows/audio/README.md), com código completo nos próprios nós
+Function, sem helper global ou lógica de processamento na imagem. Esses arquivos
+não são carregados automaticamente. Hello World foi removido do Git; exclua sua aba
 manualmente na instância remota se ela ainda existir.
 
 O `worker/flows.json` da raiz continua sendo somente a base inicial do container,
@@ -156,6 +174,12 @@ entre painel e Git. Faça backup privado de `/data` com o serviço parado e guar
 a chave separadamente. Não versione `flows_cred.json`, volume ou backups.
 A restauração exige a mesma chave e conferência dos flows.
 
+Na migração do áudio antigo, importe e publique primeiro a aba autônoma. Ela é
+compatível com a admissão da imagem atual e dispensa rebuild. Atualizar a imagem
+posteriormente remove o helper global legado; essa imagem não executa flows antigos
+que ainda dependam dele. Alterar infraestrutura, bibliotecas ou segurança continua
+exigindo atualização da imagem, sem sobrescrever `/data`.
+
 Instalações pela paleta, módulos externos de Function e Projects estão desabilitados.
 Dependências futuras devem ser explícitas e fixadas na imagem. Contexto de Function
 é em memória por padrão; o volume não o transforma em fila durável. Não registre
@@ -169,12 +193,14 @@ define explicitamente permissão de travessia em `/opt` e `/opt/cordato`, execu�
 do entrypoint e verificações de acesso no build como `node-red`. Root é usado
 somente na construção da imagem; o runtime continua sem privilégios. Após a correção,
 o usuário confirmou acesso ao painel e execução manual do Hello World. Isso não
-comprova homologação do flow de áudio, que exige novo rebuild e importação.
+comprova homologação do flow de áudio. Na organização atual, a imagem fornece
+somente infraestrutura; mudanças de lógica são aplicadas por importação/Deploy.
 
 Sem iniciar infraestrutura ou instalar dependências:
 
 ```sh
 node --check settings.js
+node --check middleware/audio_upload_gate.js
 node --test test/*.test.js
 sh -n docker/entrypoint.sh
 shellcheck docker/entrypoint.sh
@@ -186,11 +212,14 @@ shell válidas, ShellCheck e `git diff --check` sem problemas; `flows.json` tamb
 foi validado como JSON vazio. Testes cobrem configuração pura e recusa de variáveis
 ausentes/inválidas, sem UI, rede ou segredos reais.
 
-Na mudança de áudio, foram adicionados testes unitários e atualizada a configuração,
-mas a suíte não foi executada localmente, por orientação do usuário. Somente
-verificações estáticas de sintaxe/JSON e diff; sem Docker, build, serviços ou chamadas
-remotas. Validação operacional de áudio/Gemini/PocketBase permanece pendente no Dokploy.
-Nenhum arquivo do aplicativo foi alterado nesta mudança; a suíte Flutter não foi executada.
+Na configuração genérica de IA/OpenRouter (11/11/2026), os 192 testes locais passaram,
+incluindo funções compiladas do JSON real, sandbox sem módulo da imagem, edição de
+timeout somente no flow, URL/modelo/chave configuráveis, Chat Completions, respostas
+incompletas, configuração, admissão e logs seguros. Sintaxe JavaScript,
+shell, ShellCheck e diff também foram verificados. Sem Docker disponível, os pares
+Compose e a imagem não foram revalidados; sem build, container, deploy ou chamadas
+remotas. Isso não comprova homologação de áudio/OpenRouter/PocketBase. Nenhum arquivo do
+aplicativo foi alterado nesta mudança; a suíte Flutter não foi executada.
 
 Referências: [Docker oficial](https://nodered.org/docs/getting-started/docker),
 [segurança](https://nodered.org/docs/user-guide/runtime/securing-node-red) e

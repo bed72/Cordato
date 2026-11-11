@@ -198,8 +198,10 @@ Não restaure Supabase/RPC, commands ou ownership antigo por uma descrição his
 
 O serviço Node-RED independente está isolado em `worker/`, com orientações em
 [worker/AGENTS.md](worker/AGENTS.md). Inclui infraestrutura e flow importável de
-áudio → Gemini → despesa PocketBase, ainda sem homologação remota e sem integração
-do Flutter. Logs do worker são somente metadados, nunca conteúdo ou credenciais.
+áudio → IA por Chat Completions → despesa PocketBase, configurado por `AI_BASE_URL`,
+`AI_MODEL` e `AI_API_KEY`, com OpenRouter como padrão e envio Flutter implementado,
+ainda sem homologação remota completa. Logs do worker são somente metadados,
+nunca conteúdo ou credenciais.
 Não alterar Flutter ou backend nem executar deploy incidentalmente ao manter esse serviço.
 
 ## Antes De Alterar

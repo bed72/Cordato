@@ -2,8 +2,7 @@
 !Dockerfile
 !settings.js
 !flows.json
-!flows/
-!flows/audio/
-!flows/audio/audio.js
+!middleware/
+!middleware/audio_upload_gate.js
 !docker/
 !docker/entrypoint.sh

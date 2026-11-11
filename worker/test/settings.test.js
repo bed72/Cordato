@@ -44,7 +44,7 @@ test("mantém dados no volume, habilita a API e desabilita instalações adicion
     assert.equal(settings.flowFile, "flows.json");
     assert.equal(settings.httpAdminRoot, "/admin");
     assert.equal(settings.httpNodeRoot, "/api");
-    assert.deepEqual(settings.functionGlobalContext, { cordatoAudio: {} });
+    assert.deepEqual(settings.functionGlobalContext, {});
     assert.equal(settings.exportGlobalContextKeys, false);
     assert.equal(settings.functionExternalModules, false);
     assert.equal(settings.externalModules.autoInstall, false);
@@ -56,6 +56,18 @@ test("mantém dados no volume, habilita a API e desabilita instalações adicion
     assert.equal(settings.externalModules.modules.allowInstall, false);
     assert.equal(settings.editorTheme.projects.enabled, false);
     assert.equal(settings.telemetry.enabled, false);
+});
+
+test("registra somente middleware de admissão sem expor implementação de flow", () => {
+    const execution = spawnSync(process.execPath, [
+        "-e",
+        "const settings = require(process.argv[1]); const gate = require(process.argv[2]); process.stdout.write(JSON.stringify({ middleware: settings.httpNodeMiddleware === gate, globals: Object.keys(settings.functionGlobalContext) }));",
+        settingsPath,
+        path.join(__dirname, "../middleware/audio_upload_gate.js"),
+    ], { env: fixtureEnvironment, encoding: "utf8" });
+
+    assert.equal(execution.status, 0);
+    assert.deepEqual(JSON.parse(execution.stdout), { middleware: true, globals: [] });
 });
 
 for (const variableName of Object.keys(fixtureEnvironment)) {

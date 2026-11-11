@@ -1,7 +1,7 @@
 const adminUsername = process.env.NODE_RED_ADMIN_USERNAME;
 const credentialSecret = process.env.NODE_RED_CREDENTIAL_SECRET;
 const adminPasswordHash = process.env.NODE_RED_ADMIN_PASSWORD_HASH;
-const audio = require("./flows/audio/audio.js");
+const audioUploadGate = require("./middleware/audio_upload_gate.js");
 
 if (!adminUsername || !adminUsername.trim()) {
     throw new Error("Configure NODE_RED_ADMIN_USERNAME.");
@@ -24,8 +24,8 @@ module.exports = {
     credentialSecret,
     httpAdminRoot: "/admin",
     httpNodeRoot: "/api",
-    httpNodeMiddleware: audio.requestGate,
-    functionGlobalContext: { cordatoAudio: audio },
+    httpNodeMiddleware: audioUploadGate,
+    functionGlobalContext: {},
     exportGlobalContextKeys: false,
     adminAuth: {
         type: "credentials",

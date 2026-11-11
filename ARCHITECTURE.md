@@ -432,10 +432,25 @@ Hello World anterior no Dokploy; isso não homologa processamento de áudio.
 
 `worker/flows/audio/flows.json` é um flow importável assíncrono em memória que recebe multipart
 em `/api/collections/audio/process` no host do worker, valida sessão por
-`users/auth-refresh`, envia áudio inline à Interactions API Gemini e cria uma
+`users/auth-refresh`, envia áudio inline à IA por Chat Completions e cria uma
 despesa pela API nativa PocketBase usando o token original e owner autenticado.
-As etapas visuais usam nós HTTP nativos; validação, preparação e logs ficam em
-`flows/audio/audio.js`, incluído na imagem e exposto por `functionGlobalContext`.
+As etapas visuais usam nós HTTP nativos; validação, preparação, timeout e logs ficam
+integralmente nos nós Function de `flows/audio/flows.json`, sem helper global ou
+módulo de processamento na imagem. Os testes executam o código desse JSON, inclusive
+em sandbox sem implementação externa. Alterações de lógica exigem somente Deploy
+no editor; exportação/revisão mantém o Git atualizado. A imagem contém segurança,
+runtime e `middleware/audio_upload_gate.js`, com admissão pré-parser e liberação
+idempotente de concorrência por `req.cordatoAudio`, não regras de interpretação.
+`AI_BASE_URL`, `AI_MODEL` e `AI_API_KEY` configuram o endpoint, sem fallback para
+`GEMINI_*`; o padrão é OpenRouter com `google/gemini-3.8-flash`. Base HTTPS é validada,
+com `/chat/completions` acrescentado ao caminho. A chave de IA e o JWT PocketBase
+nunca compartilham requests. A chamada usa `input_audio` M4A, schema JSON estrito,
+reasoning low e timeout de 300 s. OpenRouter recebe parâmetros de privacidade,
+suporte obrigatório e fallback desabilitado; outros hosts não recebem opções
+exclusivas dele e exigem conferência própria. A configuração não torna protocolos
+nativos equivalentes nem comprova compatibilidade remota ou retenção zero.
+Somente uma escolha assistant completa com JSON válido pode gerar escrita; recusa,
+truncamento, tools e envelopes de erro não cadastram. Diagnóstico local usa `ai_*`.
 Não há SDK ou biblioteca adicional, transcrição separada, conta técnica, superusuário,
 fila persistente, retry de escrita ou idempotência durável. Após validar upload,
 configuração e sessão verificada, retorna `202` com `request_id` e `status: processing`,
@@ -448,8 +463,8 @@ Logs contêm somente correlação, etapas, tempos, status, tamanho e códigos lo
 nunca conteúdo de áudio, credenciais ou dados financeiros. A admissão limita o
 corpo antes do parser e quatro operações simultâneas por processo, mantendo a vaga
 após `202` até o término; não substitui
-cotas/rate limiting por usuário ou validação de duração/codec. O módulo requer
-rebuild e importação manual, sem sobrescrever volume. A imagem habilita `/api`,
+cotas/rate limiting por usuário ou validação de duração/codec. O flow requer
+infraestrutura de upload e importação manual, sem sobrescrever volume. A imagem habilita `/api`,
 separada de `/admin`; autenticação do envio é a sessão PocketBase, não o login
 administrativo. O endpoint não foi implantado/homologado nesta mudança e não está
 implementado dentro do PocketBase. Flutter envia multipart ao worker e trata `202`
