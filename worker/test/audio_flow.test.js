@@ -43,6 +43,22 @@ test("export contém funções completas sem require, contexto global ou módulo
     }
 });
 
+test("todos os nós têm descrição curta em Markdown no campo info do editor", () => {
+    const nodes = loadAudioFlow().filter(node => node.type !== "tab");
+
+    for (const node of nodes) {
+        assert.equal(typeof node.info, "string", node.name);
+        assert.match(node.info, /^## /, node.name);
+        assert.ok(node.info.includes("**"), node.name);
+        assert.ok(node.info.length <= 600, node.name);
+    }
+
+    const response = nodes.find(node => node.type === "http response");
+    const debug = nodes.find(node => node.type === "debug");
+    assert.ok(response.info.includes("202 não significa despesa cadastrada"));
+    assert.ok(debug.info.includes("Nunca conecte"));
+});
+
 test("pipeline do JSON funciona em sandbox sem implementação na imagem", () => {
     const functions = compileAudioFlow(loadAudioFlow(), vm.createContext({ Buffer, URL }));
     let released = 0;

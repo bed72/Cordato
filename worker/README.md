@@ -212,10 +212,11 @@ shell válidas, ShellCheck e `git diff --check` sem problemas; `flows.json` tamb
 foi validado como JSON vazio. Testes cobrem configuração pura e recusa de variáveis
 ausentes/inválidas, sem UI, rede ou segredos reais.
 
-Na configuração genérica de IA/OpenRouter (11/11/2026), os 192 testes locais passaram,
+Na configuração genérica de IA/OpenRouter e documentação dos nós (11/11/2026), os 195 testes locais passaram,
 incluindo funções compiladas do JSON real, sandbox sem módulo da imagem, edição de
 timeout somente no flow, URL/modelo/chave configuráveis, Chat Completions, respostas
-incompletas, configuração, admissão e logs seguros. Sintaxe JavaScript,
+incompletas, orientação de inicial maiúscula, descrições Markdown dos nós,
+configuração, admissão e logs seguros. Sintaxe JavaScript,
 shell, ShellCheck e diff também foram verificados. Sem Docker disponível, os pares
 Compose e a imagem não foram revalidados; sem build, container, deploy ou chamadas
 remotas. Isso não comprova homologação de áudio/OpenRouter/PocketBase. Nenhum arquivo do

@@ -1265,5 +1265,5 @@ Android/iOS reais, builds nativos e o endpoint ainda precisam de validação.
 
 Verificação local da integração (10/11/2026): `flutter pub get` e `flutter analyze`
 concluídos, `flutter test --reporter failures-only` com 1.608 testes aprovados.
-O worker passou 192 testes locais com IA configurável por `AI_BASE_URL`, `AI_MODEL`
+O worker passou 195 testes locais com IA configurável por `AI_BASE_URL`, `AI_MODEL`
 e `AI_API_KEY`, usando OpenRouter por padrão; detalhes e limites no seu README.

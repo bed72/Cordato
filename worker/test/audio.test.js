@@ -260,6 +260,27 @@ describe("Chat Completions e validação financeira", () => {
         assert.equal(msg.payload.generation_config, undefined);
     });
 
+    test("orienta descrição com inicial maiúscula sem aplicar title case a marcas", () => {
+        const msg = authenticatedMessage();
+        const instructions = msg.payload.messages[0].content;
+
+        assert.ok(instructions.includes("Escreva description com a primeira letra em maiúscula"));
+        assert.ok(instructions.includes("Preserve a grafia de marcas, siglas e nomes próprios"));
+        assert.ok(instructions.includes("não use maiúscula em todas as palavras"));
+        assert.ok(instructions.includes("créditos no OpenRouter → Créditos no OpenRouter"));
+    });
+
+    test("preserva descrição da IA com inicial maiúscula e marca na escrita", () => {
+        const msg = authenticatedMessage();
+        aiResponse(msg, extraction({ description: "Créditos no OpenRouter" }));
+
+        const [next, replied] = audio.interpreted(msg);
+
+        assert.equal(next, msg);
+        assert.equal(replied, null);
+        assert.equal(msg.payload.description, "Créditos no OpenRouter");
+    });
+
     test("monta somente campos aprovados e usa proprietário autenticado", () => {
         const msg = pendingExpense();
 

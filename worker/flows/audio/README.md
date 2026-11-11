@@ -14,6 +14,10 @@ Não há módulo de processamento na imagem, `require`, biblioteca externa ou ch
 a `global.get('cordatoAudio')`. Os testes compilam e executam o código desse JSON.
 Alterar timeout, payload, validação ou diagnóstico exige somente **Deploy no editor**.
 
+Cada nó possui uma descrição curta em Markdown no campo **Description** do editor:
+título, finalidade e destaques de entrada, saída ou segurança. Esses textos ficam
+no `info` do próprio JSON, sem comentários no código das funções.
+
 A infraestrutura continua separada: autenticação do editor, raiz `/api`, proteção
 de upload antes do parser e limite de concorrência pertencem à imagem. O middleware
 `middleware/audio_upload_gate.js` fornece `req.cordatoAudio` com correlação e liberação
@@ -136,6 +140,10 @@ as referências ao upload após preparar a chamada. Nenhuma chave vai ao Git ou 
 A IA recebe schema restrito, categorias nativas e data de referência. Áudio é
 tratado no prompt como conteúdo não confiável; não há ferramentas ou URLs escolhidas
 pelo modelo. Isso reduz a superfície, mas não elimina alucinações/prompt injection.
+O prompt pede descrição com a primeira letra em maiúscula, preservando marcas,
+siglas e nomes próprios, sem title case: “créditos no OpenRouter” → “Créditos no OpenRouter”.
+É uma orientação ao modelo, não uma normalização local ou garantia determinística.
+Não altera despesas existentes nem aplica pós-processamento à resposta.
 A saída passa por validação própria antes de qualquer escrita:
 
 - Uma única escolha, `finish_reason: stop`, mensagem assistant com conteúdo JSON textual.
@@ -260,7 +268,7 @@ Testes locais não comprovam chamadas OpenRouter/PocketBase ou deploy.
 A homologação deve ocorrer no Dokploy, com áudio de teste e conta própria.
 
 Verificação local desta revisão (11/11/2026): `node --check settings.js`,
-`node --check middleware/audio_upload_gate.js`, `node --test test/*.test.js` (192 aprovados),
+`node --check middleware/audio_upload_gate.js`, `node --test test/*.test.js` (195 aprovados),
 `sh -n docker/entrypoint.sh`, `shellcheck docker/entrypoint.sh` e `git diff --check`
 concluídos sem falhas. Docker não está disponível neste ambiente; os dois pares
 Compose não foram revalidados. Sem build, container, deploy ou chamada remota.
