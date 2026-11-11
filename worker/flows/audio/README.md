@@ -43,7 +43,13 @@ ou configuração inválida retorna `503 unavailable` sem chamar serviços exter
 O modelo foi escolhido com base na documentação oficial de áudio em 10/11/2026.
 Disponibilidade, cotas, faturamento e permissões da chave precisam ser conferidos
 na sua conta Google. Trocar `GEMINI_MODEL` não garante compatibilidade: o modelo
-precisa aceitar áudio, Interactions API, saída estruturada e thinking minimal.
+precisa aceitar áudio, Interactions API, saída estruturada e thinking `low`.
+O worker usa `generation_config.thinking_level: low`: a documentação específica
+do Gemini 3.8 Flash permite `low`, `medium` e `high`, mas informa que `minimal`
+não é suportado e retorna erro. A configuração anterior com `minimal` era
+incompatível com o modelo padrão; sua correção exige rebuild da imagem, não
+mudança no app nem nova importação do flow, cujas funções delegadas permanecem iguais.
+Isso corrige uma incompatibilidade documentada, sem comprovar sucesso remoto.
 
 ## Endpoint
 
@@ -201,7 +207,7 @@ Testes locais não comprovam chamadas Gemini/PocketBase ou deploy.
 A homologação deve ocorrer no Dokploy, com áudio de teste e conta própria.
 
 Verificação local desta revisão (10/11/2026): `node --check settings.js`,
-`node --check flows/audio/audio.js`, `node --test test/*.test.js` (140 aprovados),
+`node --check flows/audio/audio.js`, `node --test test/*.test.js` (141 aprovados),
 `sh -n docker/entrypoint.sh`, `shellcheck docker/entrypoint.sh` e `git diff --check`
 concluídos sem falhas. Docker não está disponível neste ambiente; os dois pares
 Compose não foram revalidados. Sem build, container, deploy ou chamada remota.
@@ -212,6 +218,7 @@ retry ou atualização automática da Dashboard/widget. Timeout ou perda de resp
 orienta conferir despesas antes de reenviar. `WORKER_URL` é separado de `BASE_URL`.
 Este endpoint não pertence ao PocketBase; a integração ainda exige homologação remota.
 
-Referências: [áudio Gemini](https://ai.google.dev/gemini-api/docs/audio),
+Referências: [Gemini 3.8 Flash e níveis de thinking](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash),
+[áudio Gemini](https://ai.google.dev/gemini-api/docs/audio),
 [saída estruturada](https://ai.google.dev/gemini-api/docs/structured-output) e
 [Interactions API](https://ai.google.dev/api/interactions-api).

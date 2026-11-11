@@ -166,6 +166,16 @@ describe("Gemini e validação financeira", () => {
         assert.equal(msg.requestTimeout, 45000);
     });
 
+    test("usa thinking low compatível com Gemini 3.8 Flash, nunca minimal", () => {
+        const msg = authenticatedMessage();
+
+        assert.equal(msg.payload.model, "gemini-3.8-flash");
+        assert.deepEqual(msg.payload.generation_config, {
+            max_output_tokens: 1024,
+            thinking_level: "low",
+        });
+    });
+
     test("monta somente campos aprovados e usa proprietário autenticado", () => {
         const msg = pendingExpense();
 

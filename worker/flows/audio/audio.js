@@ -354,7 +354,7 @@ function authenticated(msg, env) {
             "A data de referência é " + msg.audio.referenceDate + ". Sem data no áudio, use essa data; resolva ontem/anteontem em relação a ela.",
         ].join(" "),
         input: [{ type: "audio", data: encodedAudio, mime_type: "audio/m4a" }],
-        generation_config: { max_output_tokens: 1024, thinking_level: "minimal" },
+        generation_config: { max_output_tokens: 1024, thinking_level: "low" },
         response_format: {
             type: "text",
             mime_type: "application/json",
