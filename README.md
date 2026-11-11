@@ -331,8 +331,9 @@ versionados; sem bibliotecas adicionais. O flow importável em
 valida sessão, interpreta com Gemini e cadastra pela API nativa PocketBase, com logs
 de metadados sem conteúdo pessoal. Exige rebuild da imagem e importação manual;
 integração de áudio ainda não homologada. O usuário confirmou o Hello World anterior
-no painel; isso não comprova áudio. Flutter e serviço PocketBase não foram alterados,
-e a seta do app continua com envio indisponível. Sem deploy nesta mudança.
+no painel; isso não comprova áudio. O flow responde `202` após validar upload/sessão
+e continua em memória, sem fila persistente. Flutter envia pela seta e informa somente
+o aceite; o usuário recarrega as despesas depois. Sem deploy nesta mudança.
 
 ## Backend PocketBase
 
@@ -967,6 +968,16 @@ Não acrescente `/api/`: esse trecho pertence ao SDK. `BASE_URL` é definido no 
 encerre a execução e inicie novamente após alterá-lo, sem depender de hot reload.
 Confira também os overrides locais de `.vscode/launch.json`, ignorados pelo Git.
 
+O envio de áudio usa outra origem HTTPS, `WORKER_URL`, com padrão
+`https://worker.cordato.cloud`. Para configurar ambos no build:
+
+```bash
+flutter run --dart-define=BASE_URL=https://pocketbase.exemplo.com --dart-define=WORKER_URL=https://worker.exemplo.com
+```
+
+Informe somente as origens, sem `/api`, credenciais ou query. Configure um worker
+confiável ligado à mesma instância PocketBase: o app envia a ele o JWT do usuário.
+
 ### Backend Local
 
 Consulte [`backend/README.md`](backend/README.md) para configuração e verificação
@@ -1230,20 +1241,26 @@ abrindo o formulário. O widget e suas animações permanecem iguais. Ao atingir
 
 Usa `record` para gravar AAC em arquivo `.m4a` temporário, sem transcrição nem
 logs de conteúdo. O áudio temporário é removido ao finalizar ou descartar o fluxo.
-Não interpreta nem cadastra despesas.
+O app não interpreta nem cadastra despesas; isso pertence ao worker.
 
 O fluxo usa `AudioBloc` → `IAudioRepository` / `AudioRepository` →
 `RecordingClient`, com uma única família de eventos de captura, sem transcrição
 ou conversão intermediária de notificações. Os nomes de código usam áudio;
 o visual, os gestos e as animações da barra permanecem preservados.
 
-O envio está pendente na infraestrutura por solicitação explícita: a seta finaliza
-a gravação, recolhe a barra e informa que o envio ainda não está disponível.
-Nenhum áudio é enviado atualmente. O contrato previsto é POST
-`/api/collections/audio/process`, multipart no campo `file` (`audio/mp4`), com
-resposta `202` de aceite para processamento. A integração depende de uma decisão
-posterior sobre os tipos multipart exigidos pelo SDK; não foram adicionadas
-dependências HTTP de produção.
+A seta finaliza e envia o áudio ao worker, usando multipart no campo `file`
+(`audio/mp4`, até 2 MiB), data civil local e JWT atual. Usa `http`/`http_parser`
+somente na infraestrutura desse envio, sem client HTTP genérico.
+Após validar upload e sessão, o worker retorna `202`; o app mostra
+“Áudio recebido para processamento”, não “Despesa cadastrada”.
+Não há polling, retry ou atualização automática: recarregue as despesas depois.
+O processamento é em memória; reinícios podem perder áudios já aceitos e falhas
+posteriores ficam somente nos logs seguros. Se o envio ficar sem confirmação,
+confira suas despesas antes de reenviar para evitar duplicação.
 
 Há testes unitários da captura e apresentação lógica, sem testes de UI.
 Android/iOS reais, builds nativos e o endpoint ainda precisam de validação.
+
+Verificação local da integração (10/11/2026): `flutter pub get` e `flutter analyze`
+concluídos, `flutter test --reporter failures-only` com 1.608 testes aprovados.
+O worker passou 64 testes unitários; detalhes e limites no seu README.

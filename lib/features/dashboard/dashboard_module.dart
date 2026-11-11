@@ -1,4 +1,7 @@
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:pocketbase/pocketbase.dart';
+
+import 'package:cordato/features/core/application/clients/interface_recording_client.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/bloc_scoped_extension.dart';
@@ -19,7 +22,12 @@ final dashboardModule = createModule(
   path: RouteEnum.dashboard.path,
   register: (context) {
     context
-      ..add<IAudioRepository>(AudioRepository.new)
+      ..add<IAudioRepository>(
+        () => AudioRepository(
+          pocketBase: inject<PocketBase>(),
+          client: inject<IRecordingClient>(),
+        ),
+      )
       ..add<DashboardBloc>(
         () => DashboardBloc(
           userRepository: inject<IUserRepository>(),

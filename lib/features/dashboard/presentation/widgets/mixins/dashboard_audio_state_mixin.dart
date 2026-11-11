@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
-import 'package:cordato/features/core/presentation/widgets/toast/toast.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
@@ -36,7 +35,7 @@ mixin DashboardAudioStateMixin
   void didChangeDependencies() {
     super.didChangeDependencies();
     expansion.duration = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
+        ? .zero
         : const Duration(milliseconds: 240);
 
     if (ModalRoute.of(context)?.isCurrent == false) {
@@ -48,9 +47,7 @@ mixin DashboardAudioStateMixin
   void didUpdateWidget(covariant ActionButtonDashboardWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (identical(oldWidget.bloc, widget.bloc)) {
-      return;
-    }
+    if (identical(oldWidget.bloc, widget.bloc)) return;
 
     if (!oldWidget.bloc.isClosed) {
       oldWidget.bloc.add(const AudioCancelled(lifecycle: true));
@@ -70,9 +67,9 @@ mixin DashboardAudioStateMixin
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
-      case AppLifecycleState.resumed:
+      case .resumed:
         return;
-      case AppLifecycleState.inactive when widget.bloc.state is AudioPreparing:
+      case .inactive when widget.bloc.state is AudioPreparing:
         return;
       default:
         _discardForLifecycle();
@@ -96,19 +93,28 @@ mixin DashboardAudioStateMixin
 
   void handleAudioState(AudioState state) {
     switch (state) {
+      case AudioAccepted():
+        _showAcceptance();
+        _collapseBar();
       case AudioCollapsing(:final failure):
-        if (failure != null) {
-          _showCaptureFailure(failure);
-        }
+        if (failure != null) _showCaptureFailure(failure);
 
         _collapseBar();
       case AudioIdle():
         expansion.value = 0;
       default:
-        if (state.expanded) {
-          expansion.forward();
-        }
+        if (state.expanded) expansion.forward();
     }
+  }
+
+  void _showAcceptance() {
+    if (ModalRoute.of(context)?.isCurrent == false) return;
+
+    context.showToast(
+      variant: .success,
+      title: 'Áudio recebido para processamento',
+      description: 'Recarregue suas despesas mais tarde para conferir.',
+    );
   }
 
   void _showCaptureFailure(AudioFailureEnum failure) {
@@ -138,13 +144,15 @@ mixin DashboardAudioStateMixin
     if (!mounted || widget.bloc.isClosed) return;
 
     final captureState = widget.bloc.state;
+    final operation = captureState.operation;
 
-    if (captureState is! AudioCollapsing ||
+    if ((captureState is! AudioCollapsing && captureState is! AudioAccepted) ||
+        operation == null ||
         ModalRoute.of(context)?.isCurrent == false) {
       return;
     }
 
-    widget.bloc.add(AudioCollapsed(captureState.operation));
+    widget.bloc.add(AudioCollapsed(operation));
   }
 
   Future<void> openExpense() async {

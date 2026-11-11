@@ -12,6 +12,7 @@
 - Uma despesa por áudio; ambiguidade/múltiplas despesas não geram escrita. Validar centavos inteiros seguros, categoria e data civil antes de criar. O owner vem somente do auth-refresh de users, nunca do cliente/modelo. Usar token do usuário nas regras nativas, nunca superusuário.
 - Logs usam somente allowlist de ID de correlação, eventos, tempos, status, tamanho e códigos locais. Não registrar áudio, base64, transcrição, arquivo, tokens, chaves, usuário ou dados financeiros. Não conectar Debug à mensagem completa nem registrar erros remotos brutos.
 - Sem retry de criação ou idempotência durável: perda de confirmação pode representar cadastro já realizado. Preservar `persistence_unknown` e os limites de upload/concorrência; desconexão não cancela automaticamente HTTP ou desfaz escrita.
+- Áudio responde `202` após validar upload/configuração/sessão e continua em memória, sem fila persistente, polling ou notificação de conclusão. Reinícios podem perder trabalho aceito. Após aceite, desconexão não interrompe o processamento; manter vaga de concorrência até concluir/falhar e nunca emitir segunda resposta. Falhas posteriores aparecem somente nos logs seguros.
 - Não instalar módulos pela paleta ou Function sem tarefa explícita. Dependências futuras exigem versões fixadas na imagem.
 - Não executar deploy, push, build, containers ou mudanças remotas sem autorização específica.
 - Verificações desta pasta: `node --check settings.js`, `node --test test/*.test.js`, `sh -n docker/entrypoint.sh`, `shellcheck docker/entrypoint.sh` e `git diff --check`.

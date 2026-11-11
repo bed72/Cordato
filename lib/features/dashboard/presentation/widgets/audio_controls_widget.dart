@@ -62,7 +62,7 @@ final class const AudioControlsWidget({
       child: Text(
         switch (state) {
           AudioPreparing() => 'Preparando…',
-          AudioFinalizing() => 'Finalizando…',
+          AudioFinalizing() => 'Enviando…',
           AudioReady() => 'Fala concluída. Toque na seta.',
           _ => 'Concluindo…',
         },

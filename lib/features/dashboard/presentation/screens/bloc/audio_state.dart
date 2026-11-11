@@ -3,9 +3,9 @@ import 'package:cordato/features/dashboard/application/enums/audio_failure_enum.
 sealed class const AudioState() {
   int? get operation => null;
   bool get expanded =>
+      this is AudioReady ||
       this is AudioPreparing ||
       this is AudioListening ||
-      this is AudioReady ||
       this is AudioFinalizing;
   bool get canCancel =>
       this is AudioPreparing || this is AudioListening || this is AudioReady;
@@ -28,6 +28,9 @@ final class const AudioReady({@override required final int operation})
     extends AudioState;
 
 final class const AudioFinalizing({@override required final int operation})
+    extends AudioState;
+
+final class const AudioAccepted({@override required final int operation})
     extends AudioState;
 
 final class const AudioCollapsing({

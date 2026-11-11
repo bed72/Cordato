@@ -131,6 +131,21 @@ describe("recebimento e autenticação", () => {
         assert.equal(next, null);
         assert.equal(rejected.statusCode, 502);
     });
+
+    test("não aceita sessão não verificada nem inicia interpretação", () => {
+        const msg = message();
+        audio.receive(msg, environment);
+        msg.statusCode = 200;
+        msg.payload = JSON.stringify({ record: { id: owner, collectionName: "users", verified: false } });
+
+        const [next, rejected, logs] = audio.authenticated(msg, environment);
+
+        assert.equal(next, null);
+        assert.equal(rejected.statusCode, 502);
+        assert.equal(msg.audio.accepted, undefined);
+        assert.equal(msg.audioFile, undefined);
+        assert.ok(!logs.some(entry => entry.payload.event === "request.accepted"));
+    });
 });
 
 describe("Gemini e validação financeira", () => {
@@ -145,7 +160,8 @@ describe("Gemini e validação financeira", () => {
         assert.equal(msg.payload.input[0].mime_type, "audio/m4a");
         assert.ok(!JSON.stringify(msg.payload).includes(token));
         assert.ok(!JSON.stringify(msg.payload).includes(owner));
-        assert.deepEqual(msg.req.files, []);
+        assert.equal(msg.req, undefined);
+        assert.equal(msg.res, undefined);
         assert.equal(msg.audioFile, undefined);
         assert.equal(msg.requestTimeout, 45000);
     });
@@ -179,10 +195,11 @@ describe("Gemini e validação financeira", () => {
             const msg = authenticatedMessage();
             geminiResponse(msg, extraction(scenario.fields));
 
-            const [next, rejected] = audio.interpreted(msg);
+            const [next, replied, logs] = audio.interpreted(msg);
 
             assert.equal(next, null);
-            assert.equal(rejected.payload.error.code, "invalid_interpretation");
+            assert.equal(replied, null);
+            assert.equal(logs.at(-1).payload.code, "invalid_interpretation");
         });
     }
 
@@ -191,11 +208,12 @@ describe("Gemini e validação financeira", () => {
             const msg = authenticatedMessage();
             geminiResponse(msg, { decision, expense: null });
 
-            const [next, rejected] = audio.interpreted(msg);
+            const [next, replied, logs] = audio.interpreted(msg);
 
             assert.equal(next, null);
-            assert.equal(rejected.statusCode, 422);
-            assert.equal(rejected.payload.error.code, decision);
+            assert.equal(replied, null);
+            assert.equal(logs.at(-1).payload.status, 422);
+            assert.equal(logs.at(-1).payload.code, decision);
         });
     }
 
@@ -205,16 +223,17 @@ describe("Gemini e validação financeira", () => {
             msg.statusCode = 200;
             msg.payload = payload;
 
-            const [next, rejected] = audio.interpreted(msg);
+            const [next, replied, logs] = audio.interpreted(msg);
 
             assert.equal(next, null);
-            assert.equal(rejected.statusCode, 502);
+            assert.equal(replied, null);
+            assert.equal(logs.at(-1).payload.status, 502);
         });
     }
 });
 
 describe("persistência, cancelamento e logs", () => {
-    test("responde 201 somente com cadastro confirmado e limpa credenciais transitórias", () => {
+    test("conclui cadastro sem segunda resposta e limpa credenciais transitórias", () => {
         const msg = pendingExpense();
         msg.statusCode = 200;
         msg.payload = JSON.stringify({ id: "fixtureexpense1", ...msg.audioExpense });
@@ -222,12 +241,11 @@ describe("persistência, cancelamento e logs", () => {
         const [next, completed, logs] = audio.persisted(msg);
 
         assert.equal(next, null);
-        assert.equal(completed.statusCode, 201);
-        assert.equal(completed.payload.expense.amount, 1250);
-        assert.equal(completed.payload.expense.owner, owner);
-        assert.equal(completed.audioToken, undefined);
-        assert.equal(completed.audioConfiguration, undefined);
-        assert.equal(completed.headers.Authorization, undefined);
+        assert.equal(completed, null);
+        assert.equal(msg.payload, undefined);
+        assert.equal(msg.audioToken, undefined);
+        assert.equal(msg.audioConfiguration, undefined);
+        assert.equal(msg.headers, undefined);
         assert.equal(logs.at(-1).payload.event, "request.completed");
     });
 
@@ -236,36 +254,67 @@ describe("persistência, cancelamento e logs", () => {
         msg.statusCode = 200;
         msg.payload = "{}";
 
-        const [next, rejected] = audio.persisted(msg);
+        const [next, replied, logs] = audio.persisted(msg);
 
         assert.equal(next, null);
-        assert.equal(rejected.statusCode, 502);
-        assert.equal(rejected.payload.error.code, "persistence_unknown");
+        assert.equal(replied, null);
+        assert.equal(logs.at(-1).payload.status, 502);
+        assert.equal(logs.at(-1).payload.code, "persistence_unknown");
     });
 
     test("timeout de persistência não repete o POST nem revela erro remoto", () => {
         const msg = pendingExpense();
         msg.error = { message: token + geminiKey };
 
-        const [next, rejected, logs] = audio.caught(msg);
+        const [next, replied, logs] = audio.caught(msg);
 
         assert.equal(next, null);
-        assert.equal(rejected.payload.error.code, "persistence_unknown");
-        assert.equal(rejected.error, undefined);
+        assert.equal(replied, null);
+        assert.equal(logs.at(-1).payload.code, "persistence_unknown");
+        assert.equal(msg.error, undefined);
         assert.ok(!JSON.stringify(logs).includes(token));
         assert.ok(!JSON.stringify(logs).includes(geminiKey));
     });
 
     test("não chama próximo serviço após desconexão do cliente", () => {
-        const msg = authenticatedMessage();
+        const msg = message();
+        audio.receive(msg, environment);
         msg.res._res.destroyed = true;
 
-        const [next, replied, logs] = audio.interpreted(msg);
+        const [next, replied, logs] = audio.authenticated(msg, environment);
 
         assert.equal(next, null);
         assert.equal(replied, null);
         assert.equal(logs[0].payload.event, "request.aborted");
         assert.equal(msg.audioToken, undefined);
+    });
+
+    test("responde 202 após autenticação sem expor dados e continua sem conexão HTTP", () => {
+        const msg = message();
+        audio.receive(msg, environment);
+        msg.statusCode = 200;
+        msg.payload = JSON.stringify({ record: { id: owner, collectionName: "users", verified: true } });
+
+        const [next, accepted, logs] = audio.authenticated(msg, environment);
+
+        assert.equal(next, msg);
+        assert.equal(accepted.statusCode, 202);
+        assert.deepEqual(accepted.payload, { request_id: requestId, status: "processing" });
+        assert.deepEqual(Object.keys(accepted).sort(), ["headers", "payload", "req", "res", "statusCode"]);
+        assert.deepEqual(accepted.req.files, []);
+        assert.deepEqual(accepted.req.body, {});
+        assert.equal(msg.req, undefined);
+        assert.equal(msg.res, undefined);
+        assert.equal(msg.audio.accepted, true);
+        assert.ok(logs.some(entry => entry.payload.event === "request.accepted"));
+
+        accepted.res._res.destroyed = true;
+        geminiResponse(msg, extraction());
+        const [persistence, replied] = audio.interpreted(msg);
+
+        assert.equal(persistence, msg);
+        assert.equal(replied, null);
+        assert.equal(msg.audio.stage, "persistence");
     });
 
     test("logger remove todo conteúdo fora da allowlist", () => {
@@ -299,7 +348,7 @@ describe("admissão antes de carregar multipart", () => {
         res.setHeader = () => {};
         res.status = status => { res.statusCode = status; return res; };
         res.json = payload => { res.payload = payload; };
-        t.after(() => res.emit("finish"));
+        t.after(() => req.cordatoAudio.release?.());
         let admitted = false;
         audio.requestGate(req, res, () => { admitted = true; });
         return { req, res, admitted };
@@ -324,6 +373,7 @@ describe("admissão antes de carregar multipart", () => {
         const requests = Array.from({ length: 4 }, () => admission(t));
         assert.ok(requests.every(request => request.admitted));
         requests[0].req.cordatoAudio.processing = true;
+        requests[0].res.emit("finish");
         requests[0].res.emit("close");
 
         const blocked = admission(t);
@@ -333,6 +383,40 @@ describe("admissão antes de carregar multipart", () => {
         requests[0].req.cordatoAudio.release();
         assert.equal(admission(t).admitted, true);
     });
+
+    for (const outcome of ["success", "interpretation_failure", "persistence_failure"]) {
+        test(`mantém vaga após 202 e libera uma vez ao terminar: ${outcome}`, t => {
+            const request = admission(t);
+            const msg = message();
+            msg.req.cordatoAudio = request.req.cordatoAudio;
+            audio.receive(msg, environment);
+            msg.statusCode = 200;
+            msg.payload = JSON.stringify({ record: { id: owner, collectionName: "users", verified: true } });
+            audio.authenticated(msg, environment);
+            request.res.emit("finish");
+            const others = Array.from({ length: 3 }, () => admission(t));
+            assert.ok(others.every(entry => entry.admitted));
+            assert.equal(admission(t).admitted, false);
+
+            if (outcome === "interpretation_failure") {
+                audio.caught(msg);
+            } else {
+                geminiResponse(msg, extraction());
+                audio.interpreted(msg);
+                if (outcome === "success") {
+                    msg.statusCode = 200;
+                    msg.payload = JSON.stringify({ id: "fixtureexpense1", ...msg.audioExpense });
+                    audio.persisted(msg);
+                } else {
+                    audio.caught(msg);
+                }
+            }
+
+            assert.equal(admission(t).admitted, true);
+            request.req.cordatoAudio.release();
+            assert.equal(admission(t).admitted, false);
+        });
+    }
 });
 
 test("export completo usa nós nativos, saídas válidas e catch sem resposta duplicada", () => {
@@ -352,4 +436,9 @@ test("export completo usa nós nativos, saídas válidas e catch sem resposta du
             assert.equal(node.complete, "payload");
         }
     }
+    const authentication = nodes.find(node => node.func?.includes(".authenticated("));
+    const interpretation = nodes.find(node => node.type === "http request" && node.name.startsWith("Gemini:"));
+    const response = nodes.find(node => node.type === "http response");
+    assert.deepEqual(authentication.wires[0], [interpretation.id]);
+    assert.deepEqual(authentication.wires[1], [response.id]);
 });

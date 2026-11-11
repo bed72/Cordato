@@ -10,7 +10,8 @@ Node-RED 5. O manifesto oficial oferece Linux amd64 e arm64, sem suporte arm/v7.
 
 O flow [Áudio → Despesa](flows/audio/README.md) recebe uma despesa por áudio,
 valida a sessão e usa Gemini + API nativa PocketBase, com logs somente de metadados.
-Código preparado, ainda sem homologação remota; Flutter não foi integrado.
+Responde `202` após validar upload/sessão e continua em memória, sem fila persistente.
+Flutter possui envio, sem polling ou atualização automática; ainda sem homologação remota.
 `worker/flows.json` começa vazio: o flow de áudio exige importação manual após rebuild.
 
 ## Estrutura

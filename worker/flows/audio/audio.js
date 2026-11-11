@@ -30,7 +30,7 @@ const EVENTS = new Set([
     "upload.accepted", "authentication.started", "authentication.completed",
     "interpretation.started", "interpretation.completed", "expense.validated",
     "persistence.started", "persistence.completed", "request.completed",
-    "request.failed", "request.aborted",
+    "request.failed", "request.aborted", "request.accepted",
 ]);
 let activeRequests = 0;
 
@@ -90,7 +90,11 @@ function requestGate(req, res, next) {
     }
 
     req.cordatoAudio.release = release;
-    res.once("finish", release);
+    res.once("finish", () => {
+        if (!req.cordatoAudio.processing) {
+            release();
+        }
+    });
     res.once("close", () => {
         if (!req.cordatoAudio.processing) {
             release();
@@ -131,8 +135,13 @@ function response(msg, status, payload, logs) {
     delete msg.audioExpense;
     delete msg.audioOwner;
     delete msg.audioConfiguration;
-    if (typeof msg.req?.cordatoAudio?.release === "function") {
-        msg.req.cordatoAudio.release();
+    if (typeof msg.audio.release === "function") {
+        msg.audio.release();
+        delete msg.audio.release;
+    }
+    if (msg.audio.accepted) {
+        delete msg.payload;
+        return [null, null, logs];
     }
     msg.statusCode = status;
     msg.headers = {
@@ -157,7 +166,7 @@ function failure(msg, status, code, logs = []) {
 }
 
 function aborted(msg) {
-    if (!msg.res?._res?.destroyed) {
+    if (msg.audio.accepted || !msg.res?._res?.destroyed) {
         return null;
     }
 
@@ -204,7 +213,7 @@ function configuration(env) {
 function receive(msg, env) {
     const admission = msg.req.cordatoAudio;
     admission.processing = true;
-    msg.audio = { requestId: admission.requestId, startedAt: admission.startedAt, stage: "upload" };
+    msg.audio = { requestId: admission.requestId, startedAt: admission.startedAt, stage: "upload", release: admission.release };
     const stopped = aborted(msg);
     if (stopped) {
         return stopped;
@@ -338,8 +347,19 @@ function authenticated(msg, env) {
     };
     msg.requestTimeout = 45000;
     msg.followRedirects = false;
+    const acceptance = {
+        req: msg.req,
+        res: msg.res,
+        statusCode: 202,
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "X-Request-Id": msg.audio.requestId },
+        payload: { request_id: msg.audio.requestId, status: "processing" },
+    };
+    msg.audio.accepted = true;
+    delete msg.req;
+    delete msg.res;
+    logs.push(event(msg, "request.accepted", { status: 202 }));
     logs.push(event(msg, "interpretation.started"));
-    return [msg, null, logs];
+    return [msg, acceptance, logs];
 }
 
 function validExpense(expense) {
@@ -417,7 +437,7 @@ function persisted(msg) {
         && expected && Object.keys(expected).every(key => savedExpense[key] === expected[key])) {
         const logs = [
             event(msg, "persistence.completed", { status: 200, stage_ms: Date.now() - msg.audio.stageStartedAt }),
-            event(msg, "request.completed", { status: 201 }),
+            event(msg, "request.completed"),
         ];
         const stopped = aborted(msg);
         if (stopped) {
@@ -441,7 +461,7 @@ function persisted(msg) {
 
 function caught(msg) {
     if (!msg.audio) {
-        msg.audio = { requestId: msg.req?.cordatoAudio?.requestId || randomUUID(), startedAt: Date.now(), stage: "upload" };
+        msg.audio = { requestId: msg.req?.cordatoAudio?.requestId || randomUUID(), startedAt: Date.now(), stage: "upload", release: msg.req?.cordatoAudio?.release };
     }
 
     const stopped = aborted(msg);

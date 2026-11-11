@@ -18,14 +18,21 @@ void main() {
     );
   }
 
-  test('makes the unimplemented sending boundary explicit', () {
+  test('describes temporary sending unavailability', () {
     expect(
       AudioErrorFormatter.title(.sendingUnavailable),
       'Envio indisponível',
     );
     expect(
       AudioErrorFormatter.description(.sendingUnavailable),
-      'O envio de áudio ainda não está disponível.',
+      'O envio de áudio está indisponível no momento.',
+    );
+  });
+
+  test('uncertain upload warns against duplicate submission', () {
+    expect(
+      AudioErrorFormatter.description(.submissionUnknown),
+      contains('Confira suas despesas antes de reenviar'),
     );
   });
 }

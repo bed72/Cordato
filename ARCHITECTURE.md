@@ -430,26 +430,31 @@ no painel exigem exportação/revisão para o Git. Não há sincronização auto
 Instalação dinâmica de módulos está desabilitada. O usuário confirmou o painel e o
 Hello World anterior no Dokploy; isso não homologa processamento de áudio.
 
-`worker/flows/audio/flows.json` é um flow importável síncrono que recebe multipart
+`worker/flows/audio/flows.json` é um flow importável assíncrono em memória que recebe multipart
 em `/api/collections/audio/process` no host do worker, valida sessão por
 `users/auth-refresh`, envia áudio inline à Interactions API Gemini e cria uma
 despesa pela API nativa PocketBase usando o token original e owner autenticado.
 As etapas visuais usam nós HTTP nativos; validação, preparação e logs ficam em
 `flows/audio/audio.js`, incluído na imagem e exposto por `functionGlobalContext`.
 Não há SDK ou biblioteca adicional, transcrição separada, conta técnica, superusuário,
-fila, retry de escrita ou idempotência durável. Ambiguidade/múltiplas despesas
-são recusadas, e retorno 201 depende de cadastro confirmado. Perda de confirmação
-pode significar escrita já realizada; o consumidor deve conferir antes de reenviar.
+fila persistente, retry de escrita ou idempotência durável. Após validar upload,
+configuração e sessão verificada, retorna `202` com `request_id` e `status: processing`,
+sem confirmar cadastro. O ramo de processamento perde as referências HTTP e continua
+até concluir ou falhar; não responde novamente. Reinícios podem perder trabalho aceito.
+Ambiguidade/múltiplas despesas não geram escrita. Falhas posteriores ao aceite ficam
+somente nos logs seguros, sem endpoint de status ou notificação ao usuário. Perda de
+confirmação pode significar escrita já realizada; o consumidor deve conferir antes de reenviar.
 Logs contêm somente correlação, etapas, tempos, status, tamanho e códigos locais,
 nunca conteúdo de áudio, credenciais ou dados financeiros. A admissão limita o
-corpo antes do parser e quatro requisições simultâneas por processo; não substitui
+corpo antes do parser e quatro operações simultâneas por processo, mantendo a vaga
+após `202` até o término; não substitui
 cotas/rate limiting por usuário ou validação de duração/codec. O módulo requer
 rebuild e importação manual, sem sobrescrever volume. A imagem habilita `/api`,
 separada de `/admin`; autenticação do envio é a sessão PocketBase, não o login
 administrativo. O endpoint não foi implantado/homologado nesta mudança e não está
-implementado dentro do PocketBase. Flutter continua sem envio e sem alteração de
-seu contrato previsto de aceite 202; adoção da resposta síncrona 201, atualização
-da UI e sincronização do widget exigem tarefa explícita. Operação e limites estão
+implementado dentro do PocketBase. Flutter envia multipart ao worker e trata `202`
+somente como aceite, sem polling, retry ou atualização automática de UI/widget.
+O usuário recarrega as despesas depois. Operação e limites estão
 no [README do áudio](worker/flows/audio/README.md).
 
 O escopo implementado é conta individual, CRUD de despesas próprias e métricas
@@ -2014,7 +2019,8 @@ com X, onda e seta. Soltar não confirma. Os widgets, gestos e animações perma
 inalterados. A captura usa `record`, grava AAC mono em arquivo `.m4a` temporário
 por até 30 segundos e alimenta a onda existente com amplitude normalizada de dBFS.
 Ao atingir o limite, encerra a gravação e aguarda seta ou X, sem reinício automático.
-Não há transcrição, diagnóstico de conteúdo, interpretação ou cadastro financeiro.
+No Flutter não há transcrição, diagnóstico de conteúdo, interpretação ou cadastro financeiro;
+interpretação e cadastro pertencem exclusivamente ao worker após o aceite.
 
 `AudioBloc` pertence ao `provide` da Dashboard, sem migrar DashboardBloc.
 Consome `IAudioRepository`, implementado por `AudioRepository`; infrastructure usa `IRecordingClient`
@@ -2031,8 +2037,8 @@ usam `ShareAttachmentModel` e `ShareOriginModel`, em arquivos `_model.dart`.
 `RecordingClient` mantém as operações públicas no início do arquivo e separa
 preparação, permissão, início nativo, observação, amplitude, interrupção,
 finalização e limpeza em métodos de responsabilidade explícita.
-`AudioRepository` delega a captura ao client e traduz somente suas exceções
-esperadas, preservando erros inesperados. Não mantém outro controller, outra
+`AudioRepository` delega a captura ao client, traduz falhas esperadas de captura/envio
+e preserva erros inesperados. Não mantém outro controller, outra
 assinatura de stream ou estado paralelo da operação.
 Nenhum tipo do plugin atravessa o contrato do core. `finish` retorna
 bytes somente à infraestrutura, nunca ao estado do Bloc ou aos widgets.
@@ -2047,15 +2053,27 @@ Na apresentação, o widget de ação conecta o Bloc ao mixin de lifecycle/anima
 `AudioBarWidget` compõe a superfície e seus estados visuais;
 `ExpenseActionButtonWidget` mantém o gesto e a acessibilidade do botão recolhido.
 
-Por solicitação explícita, o envio fica pendente na infraestrutura. A seta conclui
-a gravação local e retorna `AudioException(.sendingUnavailable)`, com feedback
-local e limpeza do temporário, sem falso sucesso remoto. Não há requests, polling
-ou retry automático. O futuro contrato acordado é POST
-`/api/collections/audio/process`, multipart com campo `file` (`audio/mp4`), usando
-a sessão compartilhada do PocketBase. `202` significa aceite para processamento,
-não conclusão; `415` deverá usar mensagem local de formato não suportado.
-O SDK atual exige `http.MultipartFile` para multipart; nenhuma dependência HTTP
-de produção foi adicionada, e essa integração não está implementada nem homologada.
+A seta conclui a captura e envia POST `/api/collections/audio/process` ao host HTTPS
+de `WORKER_URL` (padrão `https://worker.cordato.cloud`), separado da origem PocketBase.
+`AudioRepository` usa `http` diretamente, sem restaurar client HTTP genérico ou wrapper
+CRUD. `http_parser` define somente o MIME do arquivo multipart `file` (`audio/mp4`,
+nome técnico `audio.m4a`); `reference_date` contém a data civil local. O corpo possui
+tamanho conhecido, até 2 MiB de áudio. O JWT atual vem do AuthStore compartilhado e
+vai apenas à origem configurada do worker, sem redirecionamentos ou retries.
+Um client por envio é fechado ao concluir/falhar/atingir timeout de 30 segundos.
+O SDK PocketBase não é usado como transporte para essa outra origem.
+O temporário e o recorder são liberados antes de iniciar o POST; a cópia dos bytes
+fica somente na infraestrutura durante o envio. Falha de limpeza impede iniciar o
+request, sem transformar um aceite remoto já recebido em falha de limpeza local.
+
+Somente `202` com `request_id` não vazio e `status: processing` publica `AudioAccepted`;
+o listener mostra “Áudio recebido para processamento” e recolhe a barra, sem confirmar
+cadastro ou atualizar Dashboard/widget. Não há polling: o usuário recarrega depois.
+HTTPs de recusa usam mensagens locais, sem expor texto remoto ou limpar a sessão.
+Timeout, falha de transporte ou resposta inválida/incerta orienta conferir despesas
+antes de reenviar, sem retry automático. Lifecycle/fechamento bloqueiam publicação
+tardia e removem temporários, mas não desfazem processamento remoto já aceito.
+A integração está implementada localmente, ainda sem homologação remota.
 
 Testes unitários cobrem adapter, repository, Bloc, formatador e resolução do client
 pela DI, sem montar UI. Gestos, microfone, permissões, animação e comportamento em

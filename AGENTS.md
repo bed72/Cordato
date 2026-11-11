@@ -219,18 +219,25 @@ A captura de áudio na Dashboard usa `record`, sem transcrição ou logs de cont
 inclusive em debug. O widget, seus gestos e animações permanecem preservados.
 O adapter grava AAC em `.m4a` temporário por até 30 segundos; X, lifecycle e
 cancelamento da observação liberam o microfone e removem o arquivo. A seta finaliza
-a captura, mas o envio está deliberadamente pendente na infraestrutura e retorna
-falha esperada de envio indisponível, sem indicar aceite remoto.
+a captura e envia multipart ao worker. Somente `202` válido confirma aceite para
+processamento, nunca cadastro da despesa; não há polling ou atualização automática.
+O usuário recarrega as despesas depois. O worker processa em memória, sem fila
+persistente; reinícios podem perder áudios aceitos e falhas posteriores ficam nos logs.
 O fluxo usa `IAudioRepository` → `AudioRepository` → `IRecordingClient` /
 `RecordingClient`. `RecordingEvent` é a única família de notificações de captura,
 repassada sem duplicação ou mapper; o Bloc e os tipos da Dashboard usam `Audio`,
 não `Speech`. O client separa preparação, observação, finalização e limpeza, sem
-misturar essas responsabilidades em callbacks extensos. Não adicionar
-`http` ou `http_parser` às dependências de produção sem autorização explícita.
-O contrato remoto previsto é POST `/api/collections/audio/process`, multipart
+misturar essas responsabilidades em callbacks extensos. O uso de `http` e
+`http_parser` em produção foi explicitamente autorizado para esse envio, diretamente
+no repository, sem restaurar o client HTTP genérico removido. `WORKER_URL` é uma
+origem HTTPS separada da `BASE_URL`; o JWT atual vai somente ao worker configurado,
+sem redirecionamentos, retries ou gestão da sessão nesse fluxo.
+O contrato remoto é POST `/api/collections/audio/process`, multipart
 com campo `file` de tipo `audio/mp4`; `202` representa somente aceite para
-processamento e `415` formato não suportado. Isso não comprova integração ou
-homologação do endpoint. Não interpretar nem cadastrar despesas neste fluxo.
+processamento e `415` formato não suportado. A resposta `202` exige `request_id`
+não vazio e `status: processing`. Falha de transporte/timeout/resposta incerta
+orienta conferir despesas antes de reenviar. Isso não comprova homologação remota.
+Não interpretar nem cadastrar despesas no Flutter neste fluxo.
 
 Cordato é um aplicativo de finanças pessoais e familiares. Cada pessoa é dona
 dos próprios dados; família é uma lente autorizada de leitura, não dona do dinheiro.

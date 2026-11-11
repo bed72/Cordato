@@ -1,8 +1,15 @@
 enum AudioFailureEnum {
+  busy,
   empty,
+  rejected,
+  tooLarge,
+  forbidden,
   permission,
   unexpected,
   unavailable,
   interrupted,
+  unauthorized,
+  unsupportedFormat,
+  submissionUnknown,
   sendingUnavailable,
 }

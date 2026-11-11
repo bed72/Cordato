@@ -1,13 +1,12 @@
 # Áudio → Despesa
 
-Fluxo síncrono com nós nativos e JavaScript próprio, sem SDKs ou bibliotecas npm
+Fluxo assíncrono em memória com nós nativos e JavaScript próprio, sem SDKs ou bibliotecas npm
 adicionais. Recebe **uma despesa por áudio**, valida a sessão, envia o arquivo
 diretamente ao Gemini e cadastra a despesa na API nativa do PocketBase.
 
 ```text
-POST multipart → validar upload → PocketBase auth-refresh
-    → Gemini (áudio + schema JSON) → validar despesa → PocketBase create
-    → HTTP 201 somente após confirmação do cadastro
+POST multipart → validar upload → PocketBase auth-refresh → HTTP 202
+    → Gemini (áudio + schema JSON) → validar despesa → PocketBase create → log seguro
 ```
 
 `flows.json` contém a aba completa para importação. As funções chamam
@@ -33,7 +32,7 @@ o módulo e as configurações de upload também precisam estar instalados.
    do repositório não remove o exemplo do volume remoto.
 5. Importe `worker/flows/audio/flows.json`, confira os nós e use **Deploy** no editor.
 6. Preserve o domínio HTTPS apontando ao serviço `node-red`, porta interna 1880,
-   caminho `/`, sem remover prefixos. Configure timeout do proxy maior que 75 segundos
+   caminho `/`, sem remover prefixos. Configure timeout do proxy maior que 30 segundos
    e limite de upload coerente com os valores abaixo.
 
 Nenhum desses passos foi executado remotamente nesta mudança. Rebuild não importa
@@ -65,8 +64,9 @@ original e as regras nativas do PocketBase, sem conta técnica/superusuário.
 
 O corpo multipart inteiro tem limite de **2 MiB + 64 KiB**, verificado antes do
 parser. São admitidas no máximo **quatro requisições simultâneas por processo**.
-Uma desconexão não libera uma operação externa ainda em andamento: ela encerra
-na próxima etapa ou no timeout. Isso não substitui rate limiting no proxy nem
+O `202` não libera a vaga: ela permanece ocupada até concluir ou falhar o processamento.
+Antes do aceite, uma desconexão encerra na próxima etapa ou timeout; após o aceite,
+o processamento continua independente da conexão. Isso não substitui rate limiting no proxy nem
 cotas por usuário para proteger o custo do Gemini.
 
 A verificação `ftyp` identifica um container ISO-BMFF, mas **não comprova codec,
@@ -98,23 +98,34 @@ O modelo não pode indicar outro proprietário nem substituir o endpoint de escr
 Datas por voz e descrição/categoria inferidas ainda podem estar semanticamente
 erradas: nesta versão o cadastro é direto, sem confirmação humana.
 
-Sucesso retorna **201**, com `request_id` e `expense` contendo os campos confirmados
-e o ID do PocketBase. Não retorna `202`, pois não existe fila ou aceite assíncrono.
-Falhas devolvem `request_id` e `error: { code, message }`, com mensagem local segura:
+Após validar upload, configuração e sessão verificada, retorna **202**, com
+`{ "request_id": "…", "status": "processing" }`, sem despesa nem credenciais.
+Esse aceite **não confirma cadastro**. O ramo de Gemini/PocketBase continua em memória,
+sem reter a conexão HTTP nem emitir uma segunda resposta.
+
+Não há fila persistente: reinício, rebuild, deploy ou encerramento do processo pode
+perder áudios já aceitos. Não há endpoint de status, polling ou notificação ao app.
+O usuário recarrega suas despesas posteriormente. Falhas de interpretação/cadastro
+após `202` aparecem somente nos logs seguros; não são comunicadas ao usuário.
+
+Falhas **anteriores ao aceite** devolvem `request_id` e `error: { code, message }`, com mensagem local segura:
 
 | HTTP | Situação |
 | --- | --- |
-| 400 | Upload/campos/data de referência inválidos ou criação recusada por validação nativa. |
+| 400 | Upload/campos/data de referência inválidos. |
 | 401 | Token ausente/inválido ou sessão recusada. |
-| 403 | PocketBase recusou autorização para cadastrar. |
 | 411 | Upload sem `Content-Length`. |
 | 413 | Limite de tamanho excedido. |
 | 415 | MIME/container incompatível. |
-| 422 | Mais de uma despesa, áudio ambíguo ou conteúdo que não descreve um gasto realizado. |
-| 429 | Capacidade local ocupada ou limitação do PocketBase ao cadastrar. |
+| 429 | Capacidade local ocupada. |
 | 500 | Falha interna inesperada antes das chamadas externas. |
-| 502 | Falha externa/interpretação inválida ou persistência sem confirmação. |
+| 502 | Resposta de autenticação inválida. |
 | 503 | Configuração ausente ou validação de sessão indisponível. |
+
+Após o aceite, códigos como `multiple_expenses`, `unclear_audio`, `not_expense`,
+`invalid_interpretation`, `persistence_rejected` e `persistence_unknown` ficam nos
+logs, sem resposta HTTP adicional. O cadastro só é registrado como concluído
+quando a resposta do PocketBase confirma os campos persistidos.
 
 Timeouts: **10 s** para autenticação, **45 s** para Gemini e **10 s** para cadastro.
 Redirecionamentos e retries dos requests estão desabilitados. Cada header externo
@@ -123,7 +134,7 @@ Redirecionamentos e retries dos requests estão desabilitados. Cada header exter
 
 **Não há idempotência durável nesta versão.** Reenviar um áudio pode criar outra
 despesa. Se o POST chegar ao PocketBase mas a resposta se perder, retorna
-`persistence_unknown`, sem repetir a escrita. Confira as despesas antes de reenviar.
+`persistence_unknown` nos logs, sem repetir a escrita. Confira as despesas antes de reenviar.
 Desconectar o cliente depois de iniciar o POST não desfaz um cadastro confirmado.
 
 ## Logs
@@ -132,7 +143,7 @@ Os nós de etapas geram eventos estruturados encaminhados exclusivamente ao nó
 **Logs: somente metadados**, que aplica uma allowlist, escreve no console do
 Node-RED e entrega o objeto sanitizado ao Debug **Áudio: logs seguros**.
 
-Eventos: upload aceito; início/conclusão de autenticação; início/conclusão de
+Eventos: upload aceito; início/conclusão de autenticação; aceite HTTP 202; início/conclusão de
 interpretação; despesa validada; início/conclusão de persistência; conclusão,
 falha ou abandono da requisição. Incluem ID de correlação, duração total/da etapa,
 status HTTP, etapa/código local de erro e tamanho do áudio quando aplicável.
@@ -149,13 +160,20 @@ O Catch não replica a mensagem remota do erro; somente gera código/etapa local
 Foram adicionados testes unitários sem rede em `worker/test/audio.test.js`,
 cobrindo payloads, limites, validação, limpeza, erros, cancelamento, concorrência
 de admissão, export e sanitização. Não montam o editor e não iniciam containers.
-Nesta tarefa não foram executados testes locais, builds, chamadas Gemini/PocketBase
-ou deploy. A homologação deve ocorrer no Dokploy, com áudio de teste e conta própria.
+Testes locais não comprovam chamadas Gemini/PocketBase ou deploy.
+A homologação deve ocorrer no Dokploy, com áudio de teste e conta própria.
 
-O Flutter não foi alterado: a seta ainda retorna envio indisponível. Este endpoint
-do worker não é um endpoint implantado no PocketBase nem comprova integração do app.
-O cliente futuro precisará tratar a resposta síncrona, recarregar despesas/métricas
-e solicitar atualização do widget após cadastro confirmado, em tarefa separada.
+Verificação local desta revisão (10/11/2026): `node --check settings.js`,
+`node --check flows/audio/audio.js`, `node --test test/*.test.js` (64 aprovados),
+`sh -n docker/entrypoint.sh`, `shellcheck docker/entrypoint.sh` e `git diff --check`
+concluídos sem falhas. Docker não está disponível neste ambiente; os dois pares
+Compose não foram revalidados. Sem build, container, deploy ou chamada remota.
+
+O Flutter envia multipart com JWT atual, MIME `audio/mp4` e data civil local.
+Após `202` válido, mostra “Áudio recebido para processamento”, sem polling,
+retry ou atualização automática da Dashboard/widget. Timeout ou perda de resposta
+orienta conferir despesas antes de reenviar. `WORKER_URL` é separado de `BASE_URL`.
+Este endpoint não pertence ao PocketBase; a integração ainda exige homologação remota.
 
 Referências: [áudio Gemini](https://ai.google.dev/gemini-api/docs/audio),
 [saída estruturada](https://ai.google.dev/gemini-api/docs/structured-output) e

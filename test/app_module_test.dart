@@ -1,3 +1,4 @@
+import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -9,6 +10,7 @@ import 'package:cordato/features/root/presentation/bloc/home_widget_sync_bloc.da
 import 'package:cordato/features/root/presentation/bloc/home_widget_launch_bloc.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/core/application/clients/interface_recording_client.dart';
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
 
@@ -104,7 +106,20 @@ void main() {
         boot.manager.enter('dashboard', route.ownerTags);
 
         final capture = boot.injector.get<IAudioRepository>();
-        expect(capture, isA<AudioRepository>());
+        expect(
+          capture,
+          isA<AudioRepository>()
+              .having(
+                (repository) => repository.pocketBase,
+                'shared session',
+                same(boot.injector.get<PocketBase>()),
+              )
+              .having(
+                (repository) => repository.client,
+                'shared recorder',
+                same(boot.injector.get<IRecordingClient>()),
+              ),
+        );
         expect(boot.injector.get<IAudioRepository>(), isNot(same(capture)));
 
         final first = boot.injector.get<DashboardBloc>();

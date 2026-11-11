@@ -51,7 +51,9 @@ final class AudioBloc({required final IAudioRepository repository})
     RecordingEvent update,
     Emitter<AudioState> emit,
   ) {
-    if (state.operation != operation || !state.canCancel) return;
+    if (state.operation != operation || !state.canCancel) {
+      return;
+    }
 
     switch (update) {
       case RecordingListening():
@@ -87,7 +89,9 @@ final class AudioBloc({required final IAudioRepository repository})
     StackTrace stackTrace,
     Emitter<AudioState> emit,
   ) {
-    if (state.operation != operation || state is AudioCollapsing) return;
+    if (state.operation != operation || !state.canCancel) {
+      return;
+    }
 
     emit(
       AudioCollapsing(
@@ -124,7 +128,7 @@ final class AudioBloc({required final IAudioRepository repository})
 
     if (!_canCompleteSubmission(operation, emit)) return;
 
-    emit(AudioCollapsing(operation: operation));
+    emit(AudioAccepted(operation: operation));
   }
 
   bool _canCompleteSubmission(int operation, Emitter<AudioState> emit) =>
@@ -156,7 +160,7 @@ final class AudioBloc({required final IAudioRepository repository})
   ) async {
     final currentState = state;
 
-    if (currentState is! AudioCollapsing ||
+    if ((currentState is! AudioCollapsing && currentState is! AudioAccepted) ||
         currentState.operation != event.operation) {
       return;
     }

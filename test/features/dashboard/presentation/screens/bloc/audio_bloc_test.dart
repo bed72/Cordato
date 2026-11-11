@@ -79,7 +79,7 @@ void main() {
   );
 
   blocTest<AudioBloc, AudioState>(
-    'submits once while pending and collapses only after repository completion',
+    'submits once while pending and publishes acceptance only after repository completion',
     build: () => AudioBloc(repository: repository),
     act: (bloc) async {
       await startListening(bloc);
@@ -89,8 +89,8 @@ void main() {
         started.complete();
         return finished.future;
       });
-      final collapsing = bloc.stream.firstWhere(
-        (state) => state is AudioCollapsing,
+      final accepted = bloc.stream.firstWhere(
+        (state) => state is AudioAccepted,
       );
 
       bloc
@@ -99,23 +99,19 @@ void main() {
       await started.future;
       expect(bloc.state, isA<AudioFinalizing>());
       finished.complete();
-      await collapsing;
+      await accepted;
     },
     expect: () => [
       isA<AudioPreparing>(),
       isA<AudioListening>(),
       isA<AudioFinalizing>(),
-      isA<AudioCollapsing>().having(
-        (state) => state.failure,
-        'failure',
-        isNull,
-      ),
+      isA<AudioAccepted>(),
     ],
     verify: (_) => verify(() => repository.finish(operation: 1)).called(1),
   );
 
   blocTest<AudioBloc, AudioState>(
-    'pending upload infrastructure produces expected feedback rather than success',
+    'unavailable worker produces expected feedback rather than acceptance',
     build: () {
       when(() => repository.finish(operation: 1))
           .thenThrow(const AudioException(.sendingUnavailable));
@@ -144,6 +140,95 @@ void main() {
       isA<AudioIdle>(),
     ],
     verify: (_) => verify(() => repository.discard(operation: 1)).called(1),
+  );
+
+  blocTest<AudioBloc, AudioState>(
+    'accepted upload collapses to idle without submitting again',
+    build: () => AudioBloc(repository: repository),
+    act: (bloc) async {
+      await startListening(bloc);
+      final accepted = bloc.stream.firstWhere(
+        (state) => state is AudioAccepted,
+      );
+      bloc.add(const AudioSubmitted());
+      await accepted;
+      final idle = bloc.stream.firstWhere((state) => state is AudioIdle);
+      bloc
+        ..add(const AudioSubmitted())
+        ..add(const AudioCollapsed(1));
+      await idle;
+    },
+    expect: () => [
+      isA<AudioPreparing>(),
+      isA<AudioListening>(),
+      isA<AudioFinalizing>(),
+      isA<AudioAccepted>(),
+      isA<AudioIdle>(),
+    ],
+    verify: (_) => verify(() => repository.finish(operation: 1)).called(1),
+  );
+
+  test('lifecycle cancellation suppresses late upload acceptance', () async {
+    final bloc = AudioBloc(repository: repository);
+    await startListening(bloc);
+    final upload = Completer<void>();
+    final started = Completer<void>();
+    when(() => repository.finish(operation: 1)).thenAnswer((_) {
+      started.complete();
+      return upload.future;
+    });
+    bloc.add(const AudioSubmitted());
+    await started.future;
+    final idle = bloc.stream.firstWhere((state) => state is AudioIdle);
+    bloc.add(const AudioCancelled(lifecycle: true));
+    await idle;
+
+    upload.complete();
+    await bloc.close();
+
+    expect(bloc.state, isA<AudioIdle>());
+    verify(() => repository.finish(operation: 1)).called(1);
+    verify(() => repository.discard(operation: 1)).called(1);
+  });
+
+  blocTest<AudioBloc, AudioState>(
+    'uncertain upload permits a new recording only after collapse and manual action',
+    build: () {
+      when(() => repository.start(operation: 2))
+          .thenAnswer((_) => const Stream<RecordingEvent>.empty());
+      when(() => repository.finish(operation: 1))
+          .thenThrow(const AudioException(.submissionUnknown));
+      return AudioBloc(repository: repository);
+    },
+    act: (bloc) async {
+      await startListening(bloc);
+      final failure = bloc.stream.firstWhere(
+        (state) => state is AudioCollapsing,
+      );
+      bloc.add(const AudioSubmitted());
+      await failure;
+      final idle = bloc.stream.firstWhere((state) => state is AudioIdle);
+      bloc.add(const AudioCollapsed(1));
+      await idle;
+      final preparing = bloc.stream.firstWhere(
+        (state) => state is AudioPreparing,
+      );
+      bloc.add(const AudioStarted());
+      await preparing;
+    },
+    expect: () => [
+      isA<AudioPreparing>(),
+      isA<AudioListening>(),
+      isA<AudioFinalizing>(),
+      isA<AudioCollapsing>().having(
+        (state) => state.failure,
+        'failure',
+        AudioFailureEnum.submissionUnknown,
+      ),
+      isA<AudioIdle>(),
+      isA<AudioPreparing>().having((state) => state.operation, 'operation', 2),
+    ],
+    verify: (_) => verify(() => repository.finish(operation: 1)).called(1),
   );
 
   blocTest<AudioBloc, AudioState>(
