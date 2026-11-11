@@ -5,6 +5,8 @@ Aplicativo Flutter de finanças pessoais e familiares.
 Configurações inclui a tela “Pague-me um café”, em `/settings/support`, com
 mensagem de apoio voluntário e QR Code Pix estático de valor livre na própria tela,
 renderizado com `pretty_qr_code`. “Copiar Pix” copia o código para pagar no banco.
+O título e a descrição rolam com o conteúdo, sem recolher ao lado do botão de voltar;
+voltar e “Copiar Pix” permanecem fixos.
 Não há confirmação de pagamento
 ou consulta bancária no app; a chave e o destinatário exigem conferência no banco.
 

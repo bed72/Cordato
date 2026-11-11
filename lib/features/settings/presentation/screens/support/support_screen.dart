@@ -1,10 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
 
+import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/cards/summary_card_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/headers/collapsible_header_widget.dart';
 
 import 'package:cordato/features/settings/presentation/screens/support/widgets/support_pix_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/support/mixins/support_screen_state_mixin.dart';
@@ -19,6 +19,10 @@ final class _SupportScreenState extends State<SupportScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        leadingWidth: 72.0,
+        leading: BackButtonWidget(onPress: () => context.pop()),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: .stretch,
@@ -26,10 +30,14 @@ final class _SupportScreenState extends State<SupportScreen>
             Expanded(
               child: CustomScrollView(
                 slivers: [
-                  CollapsibleHeaderWidget(
-                    title: 'Gostou do Cordato?',
-                    description: 'Nos ajude a manter o app funcionando.',
-                    leading: BackButtonWidget(onPress: () => context.pop()),
+                  const SliverPadding(
+                    padding: .fromLTRB(16.0, 24.0, 16.0, 16.0),
+                    sliver: SliverToBoxAdapter(
+                      child: HeaderWidget(
+                        title: 'Gostou do Cordato?',
+                        description: 'Nos ajude a manter o app funcionando.',
+                      ),
+                    ),
                   ),
                   const SliverPadding(
                     padding: .fromLTRB(16.0, 16.0, 16.0, 32.0),
