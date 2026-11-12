@@ -35,9 +35,9 @@ void main() {
     test('starts ready without logging out automatically', () async {
       final bloc = LogoutBloc(repository: repository);
       addTearDown(bloc.close);
-      expect(bloc.state, isA<LogoutInitial>());
       expect(bloc.state.canSubmit, isTrue);
       expect(bloc.state.isSubmitting, isFalse);
+      expect(bloc.state, isA<LogoutInitial>());
       verifyZeroInteractions(repository);
     });
 
