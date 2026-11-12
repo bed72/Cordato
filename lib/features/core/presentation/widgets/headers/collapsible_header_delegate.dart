@@ -44,7 +44,7 @@ final class const CollapsibleHeaderDelegate({
       transition.fraction,
     )!;
     final titleStart = transition.interpolate(
-      collapsed: 72.0,
+      collapsed: 80.0,
       expanded: expandedInset,
     );
     final titleEnd = transition.interpolate(
@@ -61,7 +61,7 @@ final class const CollapsibleHeaderDelegate({
     final extent = (maxExtent - shrinkOffset).clamp(minExtent, maxExtent);
     final titleTop = math.min(
       transition.interpolate(
-        expanded: minExtent + 24.0,
+        expanded: minExtent + 16.0,
         collapsed: (minExtent - titleHeight) / 2.0,
       ),
       math.max(0.0, extent - titleHeight),

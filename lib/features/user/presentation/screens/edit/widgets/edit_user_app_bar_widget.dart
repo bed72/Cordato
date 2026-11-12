@@ -11,7 +11,7 @@ final class const EditUserAppBarWidget({
 
   @override
   Widget build(BuildContext context) => AppBar(
-    leadingWidth: 72.0,
+    leadingWidth: 80.0,
     leading: BackButtonWidget(onPress: () => onBackPressed(context)),
   );
 }

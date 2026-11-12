@@ -59,7 +59,7 @@ final class _DashboardScreenState extends State<DashboardScreen>
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
                         SliverPadding(
-                          padding: const .only(top: 20.0),
+                          padding: const .only(top: 16.0),
                           sliver: SliverToBoxAdapter(
                             child: DashboardMonthSelectorWidget(
                               isLoading: state.isLoading,

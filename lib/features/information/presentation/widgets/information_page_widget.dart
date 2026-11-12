@@ -29,7 +29,7 @@ final class const InformationPageWidget({
                   16.0,
                   8.0,
                   16.0,
-                  32.0 + MediaQuery.paddingOf(context).bottom,
+                  16.0 + MediaQuery.paddingOf(context).bottom,
                 ),
                 sliver: SliverToBoxAdapter(
                   child: Center(

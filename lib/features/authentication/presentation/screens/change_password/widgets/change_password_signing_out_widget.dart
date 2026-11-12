@@ -9,7 +9,7 @@ final class const ChangePasswordSigningOutWidget({super.key})
     body: SafeArea(
       child: Center(
         child: Padding(
-          padding: .all(24.0),
+          padding: .all(16.0),
           child: Column(
             spacing: 24.0,
             mainAxisSize: .min,

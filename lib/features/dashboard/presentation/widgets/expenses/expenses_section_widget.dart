@@ -50,7 +50,7 @@ final class const ExpensesSectionWidget({
     crossAxisAlignment: .start,
     children: [
       Padding(
-        padding: const .symmetric(horizontal: 20.0),
+        padding: const .symmetric(horizontal: 16.0),
         child: Row(
           mainAxisAlignment: .spaceBetween,
           children: [

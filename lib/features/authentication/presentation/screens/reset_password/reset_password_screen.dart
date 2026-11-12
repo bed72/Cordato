@@ -40,9 +40,9 @@ final class _ResetPasswordScreenState extends State<ResetPasswordScreen>
             )
           : Scaffold(
               appBar: AppBar(
-                leadingWidth: 72.0,
+                leadingWidth: 80.0,
                 leading: Padding(
-                  padding: const .only(left: 16.0),
+                  padding: const .symmetric(horizontal: 16.0),
                   child: BackButtonWidget(
                     onPress: state.canSubmit ? goToSignIn : null,
                   ),
@@ -50,7 +50,7 @@ final class _ResetPasswordScreenState extends State<ResetPasswordScreen>
               ),
               body: SafeArea(
                 child: Padding(
-                  padding: const .fromLTRB(16.0, 0.0, 16.0, 24.0),
+                  padding: const .fromLTRB(16.0, 0.0, 16.0, 16.0),
                   child: Column(
                     spacing: 16.0,
                     crossAxisAlignment: .stretch,
@@ -58,7 +58,7 @@ final class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                       Expanded(
                         child: Center(
                           child: SingleChildScrollView(
-                            padding: const .symmetric(vertical: 24.0),
+                            padding: const .symmetric(vertical: 16.0),
                             child: Column(
                               spacing: 24.0,
                               crossAxisAlignment: .stretch,

@@ -66,7 +66,7 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
     bool isLoading = false,
     ExpenseEntity? createdExpense,
   }) => Padding(
-    padding: const .only(bottom: 24.0),
+    padding: const .only(bottom: 16.0),
     child: Column(
       crossAxisAlignment: .stretch,
       children: [
@@ -85,7 +85,7 @@ final class _ExpenseFormWidgetState extends State<ExpenseFormWidget>
               else
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const .fromLTRB(16.0, 24.0, 16.0, 16.0),
+                    padding: const .all(16.0),
                     child: HeaderWidget(
                       title: _title,
                       description: _description,

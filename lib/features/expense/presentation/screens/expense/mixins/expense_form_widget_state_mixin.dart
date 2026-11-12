@@ -193,7 +193,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
         context: context,
         title: 'Categoria do gasto',
         subtitle: 'Escolha onde esse gasto se encaixa.',
-        contentPadding: const .fromLTRB(16.0, 20.0, 16.0, 32.0),
+        contentPadding: const .all(16.0),
         child: ExpenseCategoryPickerWidget(value: category),
       );
       if (!mounted) {

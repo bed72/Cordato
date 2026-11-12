@@ -12,9 +12,9 @@ final class const AppBarSignInWidget({super.key})
 
   @override
   Widget build(BuildContext context) => AppBar(
-    leadingWidth: 72.0,
+    leadingWidth: 80.0,
     leading: Padding(
-      padding: const .only(left: 16.0),
+      padding: const .symmetric(horizontal: 16.0),
       child: BackButtonWidget(onPress: () => _goBack(context)),
     ),
   );

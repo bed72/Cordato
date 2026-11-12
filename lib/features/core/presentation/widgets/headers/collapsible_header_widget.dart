@@ -51,11 +51,11 @@ final class const CollapsibleHeaderWidget({
 
       final collapsedExtent = math.max(
         kToolbarHeight,
-        textHeight(title, collapsedStyle, width - 88.0) + 16.0,
+        textHeight(title, collapsedStyle, width - 96.0) + 16.0,
       );
       final expandedExtent =
           collapsedExtent +
-          24.0 +
+          16.0 +
           textHeight(title, expandedStyle, width - expandedInset * 2.0) +
           6.0 +
           textHeight(

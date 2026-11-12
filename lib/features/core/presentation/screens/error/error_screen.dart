@@ -28,7 +28,7 @@ final class const ErrorScreen({
             SliverFillRemaining(
               hasScrollBody: false,
               child: Padding(
-                padding: const .all(20.0),
+                padding: const .all(16.0),
                 child: Column(
                   crossAxisAlignment: .stretch,
                   children: [

@@ -13,7 +13,7 @@ final class const EmptyStateWidget({
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const .all(24.0),
+        padding: const .all(16.0),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 320.0),
           child: MergeSemantics(

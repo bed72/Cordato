@@ -32,7 +32,7 @@ final class _MetricsSectionWidgetState extends State<MetricsSectionWidget>
         crossAxisAlignment: .start,
         children: [
           Padding(
-            padding: const .symmetric(horizontal: 20.0),
+            padding: const .symmetric(horizontal: 16.0),
             child: AnimatedExpenseTotalWidget(
               key: ObjectKey(metrics),
               isLoading: metrics == null,
@@ -49,7 +49,7 @@ final class _MetricsSectionWidgetState extends State<MetricsSectionWidget>
   Widget _buildDistribution({required ExpenseMetricsEntity? metrics}) {
     if (metrics == null) {
       return const Padding(
-        padding: .symmetric(horizontal: 20.0),
+        padding: .symmetric(horizontal: 16.0),
         child: ExpenseMetricsSkeletonWidget(showTotal: false),
       );
     }
@@ -74,7 +74,7 @@ final class _MetricsSectionWidgetState extends State<MetricsSectionWidget>
   }
 
   Padding _buildMessage({required String message}) => Padding(
-    padding: const .symmetric(vertical: 12.0, horizontal: 20.0),
+    padding: const .symmetric(vertical: 12.0, horizontal: 16.0),
     child: Text(
       message,
       style: context.typography.bodyMedium?.copyWith(

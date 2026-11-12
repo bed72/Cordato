@@ -12,7 +12,7 @@ final class const SettingsAppBarWidget({
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      leadingWidth: 72.0,
+      leadingWidth: 80.0,
       leading: BackButtonWidget(onPress: () => onBackPressed(context)),
     );
   }

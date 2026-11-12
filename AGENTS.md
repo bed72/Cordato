@@ -500,6 +500,11 @@ placeholders posicionais.
   para animar ícones. Preserve semântica, cores do tema e estado desabilitado.
 - Use `context.colors`, `context.typography` e `context.radius`; não duplique
   extensões ou tokens. Scaffold herda o tema; não fixe fundo sem necessidade.
+- Recuos externos de telas e bottom sheets usam 16 pixels lógicos, além dos
+  insets seguros e do teclado. O botão de voltar de 48 ocupa uma área leading
+  de 80, centralizado ou com padding horizontal simétrico de 16. Cabeçalhos
+  expandidos começam 16 abaixo da toolbar. Preserve espaçamentos internos dos
+  componentes, reservas para ações flutuantes e limites de largura de leitura.
 - Animações customizadas respeitam `MediaQuery.disableAnimationsOf` (Android)
   ou `MediaQuery.reduceMotionOf` (iOS), sem substituir uma preferência pela outra.
   Os contratos de configuração do SDK, imports de design e leitura dessas

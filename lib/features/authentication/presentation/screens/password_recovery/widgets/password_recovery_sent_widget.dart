@@ -24,7 +24,7 @@ final class const PasswordRecoverySentWidget({
         Expanded(
           child: Center(
             child: SingleChildScrollView(
-              padding: const .symmetric(vertical: 24.0),
+              padding: const .symmetric(vertical: 16.0),
               child: Column(
                 spacing: 24.0,
                 crossAxisAlignment: .stretch,

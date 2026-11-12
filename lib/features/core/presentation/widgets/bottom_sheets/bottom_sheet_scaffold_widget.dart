@@ -22,8 +22,7 @@ final class const BottomSheetScaffoldWidget({
         ),
       ),
       child: Padding(
-        padding:
-            contentPadding ?? const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 32.0),
+        padding: contentPadding ?? const EdgeInsets.all(16.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

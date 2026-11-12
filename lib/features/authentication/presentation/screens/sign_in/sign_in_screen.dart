@@ -36,14 +36,14 @@ final class _SignInScreenState extends State<SignInScreen>
         appBar: const AppBarSignInWidget(),
         body: SafeArea(
           child: Padding(
-            padding: const .fromLTRB(16.0, 0.0, 16.0, 24.0),
+            padding: const .fromLTRB(16.0, 0.0, 16.0, 16.0),
             child: Column(
               crossAxisAlignment: .stretch,
               children: [
                 Expanded(
                   child: Center(
                     child: SingleChildScrollView(
-                      padding: const .symmetric(vertical: 24.0),
+                      padding: const .symmetric(vertical: 16.0),
                       child: Column(
                         spacing: 24.0,
                         crossAxisAlignment: .stretch,

@@ -12,7 +12,7 @@ final class const ExpensesFeedbackWidget({
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const .all(24.0),
+      padding: const .all(16.0),
       child: Column(
         spacing: 12.0,
         mainAxisSize: .min,

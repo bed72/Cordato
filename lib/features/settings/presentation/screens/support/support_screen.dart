@@ -20,55 +20,69 @@ final class _SupportScreenState extends State<SupportScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leadingWidth: 72.0,
+        leadingWidth: 80.0,
         leading: BackButtonWidget(onPress: () => context.pop()),
       ),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: .stretch,
-          children: [
-            Expanded(
-              child: CustomScrollView(
-                slivers: [
-                  const SliverPadding(
-                    padding: .fromLTRB(16.0, 24.0, 16.0, 16.0),
-                    sliver: SliverToBoxAdapter(
-                      child: HeaderWidget(
-                        title: 'Gostou do Cordato?',
-                        description: 'Nos ajude a manter o app funcionando.',
+        child: Padding(
+          padding: const .all(16.0),
+          child: Column(
+            spacing: 16.0,
+            crossAxisAlignment: .stretch,
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Column(
+                    spacing: 16.0,
+                    crossAxisAlignment: .stretch,
+                    children: [
+                      Expanded(
+                        child: CustomScrollView(
+                          slivers: [
+                            const SliverToBoxAdapter(
+                              child: HeaderWidget(
+                                title: 'Gostou do Cordato?',
+                                description:
+                                    'Nos ajude a manter o app funcionando.',
+                              ),
+                            ),
+                            SliverLayoutBuilder(
+                              builder: (context, constraints) =>
+                                  SliverToBoxAdapter(
+                                    child: Padding(
+                                      padding: const .only(top: 16.0),
+                                      child: SupportPixWidget(
+                                        availableHeight:
+                                            constraints.remainingPaintExtent -
+                                            16.0,
+                                      ),
+                                    ),
+                                  ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Padding(
-                      padding: .fromLTRB(16.0, 16.0, 16.0, 32.0),
-                      child: Column(
-                        crossAxisAlignment: .stretch,
-                        children: [
-                          Spacer(),
-                          SupportPixWidget(),
-                          SizedBox(height: 32.0),
-                          Spacer(),
-                          SummaryCardWidget(
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: constraints.maxHeight * 0.6,
+                        ),
+                        child: const SingleChildScrollView(
+                          child: SummaryCardWidget(
                             title: 'Seu apoio faz a diferença',
                             summary:
                                 'O valor é livre. No aplicativo do seu banco, use Pix Copia e Cola '
                                 'ou escaneie o QR Code com outro aparelho. Confira o destinatário '
                                 'antes de confirmar. O Cordato não confirma pagamentos.',
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const .fromLTRB(16.0, 0.0, 16.0, 24.0),
-              child: ElevatedButtonWidget(label: 'Copiar Pix', onTap: copyPix),
-            ),
-          ],
+              ElevatedButtonWidget(label: 'Copiar Pix', onTap: copyPix),
+            ],
+          ),
         ),
       ),
     );

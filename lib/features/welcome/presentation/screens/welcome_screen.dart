@@ -14,7 +14,7 @@ class const WelcomeScreen({
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Padding(
-          padding: const .symmetric(horizontal: 16.0, vertical: 32.0),
+          padding: const .all(16.0),
           child: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
               child: ConstrainedBox(

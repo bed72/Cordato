@@ -6,10 +6,12 @@ Configurações inclui a tela “Pague-me um café”, em `/settings/support`, c
 mensagem de apoio voluntário e QR Code Pix estático de valor livre na própria tela,
 renderizado com `pretty_qr_code`. “Copiar Pix” copia o código para pagar no banco.
 O título e a descrição rolam com o conteúdo, sem recolher ao lado do botão de voltar;
-voltar e “Copiar Pix” permanecem fixos.
-A tela não acrescenta espaço rolável quando o conteúdo cabe: o padding do bloco
-final fica dentro de `SliverFillRemaining`. Telas menores e texto ampliado
-continuam permitindo rolagem para acessar todo o conteúdo.
+voltar, o card de apoio e “Copiar Pix” permanecem fixos.
+O QR Code se adapta ao espaço disponível entre 144 e 220 pixels lógicos,
+limitado também pela largura, para reduzir a necessidade de rolagem.
+Telas menores e texto ampliado continuam permitindo rolar o conteúdo superior;
+se o card exceder 60% da área acima do botão, seu texto pode rolar separadamente,
+mantendo “Copiar Pix” acessível.
 Não há confirmação de pagamento
 ou consulta bancária no app; a chave e o destinatário exigem conferência no banco.
 

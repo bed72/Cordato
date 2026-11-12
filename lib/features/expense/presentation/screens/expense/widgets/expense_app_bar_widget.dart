@@ -13,9 +13,9 @@ final class const ExpenseAppBarWidget({
 
   @override
   Widget build(BuildContext context) => AppBar(
-    leadingWidth: 72.0,
+    leadingWidth: 80.0,
     leading: Padding(
-      padding: const EdgeInsets.only(left: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: BackButtonWidget(onPress: () => context.pop(createdExpense)),
     ),
   );

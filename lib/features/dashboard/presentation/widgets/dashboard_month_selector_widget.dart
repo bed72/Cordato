@@ -17,7 +17,7 @@ final class const DashboardMonthSelectorWidget({
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const .symmetric(horizontal: 20.0),
+      padding: const .symmetric(horizontal: 16.0),
       child: Row(
         children: [
           Expanded(

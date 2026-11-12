@@ -49,15 +49,15 @@ final class _ChangePasswordScreenState extends State<ChangePasswordScreen>
 
   Widget _buildForm(ChangePasswordState state) => Scaffold(
     appBar: AppBar(
-      leadingWidth: 72.0,
+      leadingWidth: 80.0,
       leading: Padding(
-        padding: const .only(left: 16.0),
+        padding: const .symmetric(horizontal: 16.0),
         child: BackButtonWidget(onPress: state.canSubmit ? goBack : null),
       ),
     ),
     body: SafeArea(
       child: Padding(
-        padding: const .only(bottom: 24.0),
+        padding: const .only(bottom: 16.0),
         child: Column(
           spacing: 16.0,
           crossAxisAlignment: .stretch,
@@ -65,7 +65,7 @@ final class _ChangePasswordScreenState extends State<ChangePasswordScreen>
             Expanded(
               child: SingleChildScrollView(
                 keyboardDismissBehavior: .onDrag,
-                padding: const .fromLTRB(16.0, 24.0, 16.0, 24.0),
+                padding: const .all(16.0),
                 child: Column(
                   spacing: 24.0,
                   crossAxisAlignment: .stretch,

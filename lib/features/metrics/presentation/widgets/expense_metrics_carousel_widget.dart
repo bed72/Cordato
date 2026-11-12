@@ -30,7 +30,7 @@ final class _ExpenseMetricsCarouselWidgetState
     return LayoutBuilder(
       builder: (context, constraints) {
         configureViewport(constraints.maxWidth);
-        final pageWidth = constraints.maxWidth - 40.0;
+        final pageWidth = constraints.maxWidth - 32.0;
         final layouts = widget.pages.indexed
             .map(
               (entry) => ExpenseMetricsGridWidget(

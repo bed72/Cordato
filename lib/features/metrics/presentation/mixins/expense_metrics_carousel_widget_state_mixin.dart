@@ -9,7 +9,7 @@ mixin ExpenseMetricsCarouselWidgetStateMixin
   int currentPage = 0;
 
   void configureViewport(double width) {
-    final viewportFraction = (width - 28.0) / width;
+    final viewportFraction = (width - 20.0) / width;
     if (pageController.viewportFraction == viewportFraction) return;
     final previousController = pageController;
     pageController = PageController(
