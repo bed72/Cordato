@@ -60,8 +60,10 @@ void main() {
         await firstChange.future;
 
         expect(changes, [true]);
-        expect(fixture.requests, hasLength(2));
+        expect(fixture.requests, hasLength(1));
+
         expect(await repository.loadSession(), isTrue);
+        expect(fixture.requests, hasLength(2));
       },
     );
 
