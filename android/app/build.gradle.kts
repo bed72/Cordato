@@ -53,11 +53,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.bed.cordato"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        applicationId = "com.bed.cordato"
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        targetSdk = flutter.targetSdkVersion
     }
 
     signingConfigs {

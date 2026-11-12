@@ -283,7 +283,7 @@ completa não foi repetida nessa rodada focada. O atalho de troca de tamanho
 do SpringBoard permanece sem correção confirmada; adicionar o médio pela
 galeria foi confirmado pelo usuário.
 Android habilita Kotlin integrado do AGP e acesso nativo nas JVMs do wrapper e
-do daemon. O Flutter 3.47.9 ainda emite um aviso sobre KGP no `home_widget` 0.10.0
+do daemon. O Flutter 3.50.0 ainda emite um aviso sobre KGP no `home_widget` 0.10.0
 por detectar a declaração por regex, mesmo no ramo condicional desativado.
 A inspeção dos plugins em runtime confirmou KGP externo ausente; o aviso restante
 é um falso positivo do tooling, sem bloqueio de compilação. Não foi alterado o
@@ -918,7 +918,7 @@ As descrições dos fluxos Flutter acima não comprovam suporte pelo novo backen
 
 ## Stack
 
-- Flutter com Dart `^3.13.2` e primary constructors.
+- Flutter `>=3.50.0` com Dart `^3.14.0` e primary constructors.
 - `bloc`, `flutter_bloc` e `bloc_concurrency` para apresentação assíncrona.
 - `flutter_modular` 7 para composição, DI e rotas.
 - Material 3 via `material_ui`, fonte Inter e localização pt-BR.
@@ -928,6 +928,34 @@ As descrições dos fluxos Flutter acima não comprovam suporte pelo novo backen
 - `flutter_test`, `bloc_test`, `mocktail` e `fake_async` para testes sem UI.
 
 ## Desenvolvimento
+
+### Atualização para Flutter 3.50
+
+O mínimo do projeto é Flutter 3.50.0/Dart 3.14.0, com a mesma versão Flutter
+fixada no release do GitHub. Material/Cupertino e seus delegates vêm dos pacotes
+standalone; `flutter_localizations` não é dependência direta do app, mas ainda
+aparece transitivamente no lockfile. Animações customizadas respeitam tanto
+`disableAnimations` do Android quanto `reduceMotion` do iOS.
+
+O SDK PocketBase 0.26 limpa o AuthStore automaticamente por padrão. A factory
+desativa essa opção por `autoClearAuthStore(false)` para preservar os contratos
+existentes de sessão, sem alterar repositories ou restaurar interceptors.
+O SDK não envia token localmente expirado no header de autenticação; isso não
+altera a presença local da sessão nem adiciona retry ou refresh automático.
+
+Verificação desta atualização: `flutter pub get --enforce-lockfile`,
+`flutter analyze` sem problemas, `flutter test --reporter failures-only`
+com 1620 testes aprovados e `flutter test test/architecture --reporter failures-only`
+com 70 testes aprovados. `actionlint .github/workflows/android-release.yml`
+e `git diff --check` passaram. `dart run tool/test_home_widget_native.dart`
+passou com 39 testes JUnit e 27 XCTest. Builds
+`flutter build apk --release --dart-define=BASE_URL=https://pocketbase.cordato.cloud`
+e `flutter build ios --simulator --debug --no-codesign` passaram.
+As 19 falhas iniciais de sessão com PocketBase 0.26 foram resolvidas pela
+configuração nativa, preservando as expectativas existentes dos testes.
+Permanecem avisos Android de DSL legada e KGP no `home_widget`.
+Não foram executados o workflow remoto, build iOS de distribuição nem
+homologação em aparelho de áudio, acessibilidade, widget e callbacks em release.
 
 ### Build Android assinado no GitHub
 

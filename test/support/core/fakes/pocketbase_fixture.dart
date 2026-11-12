@@ -20,7 +20,7 @@ final class PocketBaseFixture {
       requests.add(request);
       return await respond(request);
     }),
-  );
+  )..autoClearAuthStore(false);
 
   static http.Response jsonResponse(
     Map<String, dynamic> body, {

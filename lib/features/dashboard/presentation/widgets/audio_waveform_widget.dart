@@ -27,7 +27,9 @@ final class const AudioWaveformWidget({
               children: .generate(
                 barCount,
                 (index) => AnimatedContainer(
-                  duration: MediaQuery.disableAnimationsOf(context)
+                  duration:
+                      MediaQuery.disableAnimationsOf(context) ||
+                          MediaQuery.reduceMotionOf(context)
                       ? .zero
                       : const Duration(milliseconds: 80),
                   width: 3,

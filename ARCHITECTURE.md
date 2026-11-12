@@ -29,6 +29,10 @@ módulo ----------------------> contratos + implementações + apresentação
 
 O SDK PocketBase pode ser usado diretamente pelos repositories em infrastructure,
 sem wrapper de CRUD. Seus tipos não chegam aos contratos, Blocs ou domínio.
+Na versão 0.26, a factory configura `autoClearAuthStore(false)` pela API nativa:
+expiração local e HTTP 401 comum não alteram a sessão automaticamente. A limpeza
+explícita de Session em 401 de refresh e os efeitos nativos de update/delete
+permanecem preservados, sem interceptors ou snapshots próprios.
 
 Não há data source obrigatório entre repository e client, nem command ou use
 case obrigatório entre tela e repository. Não adicione abstrações que apenas
@@ -1575,7 +1579,7 @@ Dashboard, permissão Android e configuração iOS.
 
 ## Interface, Dart E Previews
 
-- Dart `^3.13.2`, primary constructors para declarações elegíveis, campos
+- Flutter `>=3.50.0` e Dart `^3.14.0`, primary constructors para declarações elegíveis, campos
   imutáveis com tipo explícito e `final`, preservando `const` e super parameters.
   Construtores com lifecycle exigem avaliação semântica, não conversão mecânica.
 - Imports da aplicação usam `package:cordato/`; UI usa `material_ui`, não novos
@@ -1618,8 +1622,13 @@ Bloc, repositories ou resultados de operações. Não cria ScrollController,
 AnimationController ou estado global. A matemática de progresso fica em
 `CollapsibleHeaderTransition`, Dart puro em `core/presentation/animations/`, com
 limites para overscroll e movimento reduzido. A preferência `disableAnimations`
+do Android ou `reduceMotion` do iOS
 seleciona os extremos da interpolação, sem animações intermediárias de título
 ou opacidade. A rolagem nativa continua funcionando.
+
+As animações customizadas de autenticação, toast, total mensal, áudio e bounce
+também respeitam ambas as preferências. O bounce retorna à escala neutra ao
+ativar qualquer uma delas, inclusive durante uma animação em andamento.
 
 As extensões expandida e recolhida consideram largura disponível, tipografia,
 direção do texto e TextScaler. Fontes grandes podem aumentar a altura da barra

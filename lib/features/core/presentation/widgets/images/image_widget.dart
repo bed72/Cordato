@@ -2,7 +2,7 @@ import 'package:cordato/features/core/presentation/widgets/images/strategy/asset
 import 'package:cordato/features/core/presentation/widgets/images/strategy/empty_image_strategy.dart';
 import 'package:cordato/features/core/presentation/widgets/images/strategy/image_strategy.dart';
 import 'package:cordato/features/core/presentation/widgets/images/strategy/network_image_strategy.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class const ImageWidget({
   super.key,

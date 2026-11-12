@@ -10,11 +10,12 @@ final class PocketBaseFactory {
     const storage = FlutterSecureStorage();
 
     final authStore = AsyncAuthStore(
-      initial: await storage.read(key: _key),
       clear: () => storage.delete(key: _key),
+      initial: await storage.read(key: _key),
       save: (value) => storage.write(key: _key, value: value),
     );
 
-    return PocketBase(url, lang: 'pt-BR', authStore: authStore);
+    return PocketBase(url, lang: 'pt-BR', authStore: authStore)
+      ..autoClearAuthStore(false);
   }
 }

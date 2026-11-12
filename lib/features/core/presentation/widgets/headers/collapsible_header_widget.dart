@@ -80,7 +80,9 @@ final class const CollapsibleHeaderWidget({
           expandedTitleStyle: expandedStyle,
           descriptionStyle: descriptionStyle,
           collapsedTitleStyle: collapsedStyle,
-          reduceMotion: MediaQuery.disableAnimationsOf(context),
+          reduceMotion:
+              MediaQuery.disableAnimationsOf(context) ||
+              MediaQuery.reduceMotionOf(context),
         ),
       );
     },

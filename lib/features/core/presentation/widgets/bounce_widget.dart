@@ -5,8 +5,8 @@ const _upScale = 1.0;
 const _downScale = 0.96;
 const _springMass = 0.5;
 const _pressInDamping = 16.0;
-const _pressInStiffness = 320.0;
 const _pressOutDamping = 14.0;
+const _pressInStiffness = 320.0;
 const _pressOutStiffness = 280.0;
 
 abstract base class const BounceWidget({super.key, required final Widget child})
@@ -60,6 +60,16 @@ final class _BounceWithoutPressWidgetState
       AnimationController.unbounded(vsync: this, value: _upScale);
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (MediaQuery.disableAnimationsOf(context) ||
+        MediaQuery.reduceMotionOf(context)) {
+      _scaleController.value = _upScale;
+    }
+  }
+
+  @override
   void dispose() {
     _scaleController.dispose();
     super.dispose();
@@ -89,6 +99,12 @@ final class _BounceWithoutPressWidgetState
     required double stiffness,
   }) {
     if (!mounted) return;
+
+    if (MediaQuery.disableAnimationsOf(context) ||
+        MediaQuery.reduceMotionOf(context)) {
+      _scaleController.value = _upScale;
+      return;
+    }
 
     _scaleController.animateWith(
       SpringSimulation(

@@ -34,7 +34,9 @@ mixin DashboardAudioStateMixin
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    expansion.duration = MediaQuery.disableAnimationsOf(context)
+    expansion.duration =
+        MediaQuery.disableAnimationsOf(context) ||
+            MediaQuery.reduceMotionOf(context)
         ? .zero
         : const Duration(milliseconds: 240);
 

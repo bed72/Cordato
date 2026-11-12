@@ -28,6 +28,11 @@ da infraestrutura disponível. Homologação remota é uma verificação separad
 `PocketBaseFactory.create` configura o `AsyncAuthStore` oficial com callbacks do
 `FlutterSecureStorage` diretamente, sem `IStorageClient`, classe AuthStore própria
 ou bind separado na DI. O storage não é exposto pelos módulos.
+No SDK PocketBase 0.26, a factory desativa `autoClearAuthStore` pela API nativa
+para preservar a política existente: expiração local e 401 de requests comuns
+não limpam a sessão. Session continua limpando explicitamente em 401 de refresh.
+Fixtures do SDK usam a mesma configuração, coberta por testes da factory com
+transporte mockado e storage pelo canal simulado.
 Expense não usa mais o storage legado. A única
 chave nova é `@cordato.pocketbase_auth`; não há leitura, cópia ou migração das
 chaves antigas. Sessões anteriores exigirão novo login.
@@ -473,7 +478,7 @@ placeholders posicionais.
   consumidores; não mova complexidade para outro arquivo nem enfraqueça testes
   para apenas aparentar conformidade.
 
-- SDK Dart `^3.13.2`; use primary constructors em declarações novas elegíveis.
+- Flutter `>=3.50.0` e SDK Dart `^3.14.0`; use primary constructors em declarações novas elegíveis.
   Campos induzidos imutáveis têm tipo explícito e `final`; preserve `const`.
 - Parâmetros usados só para inicialização não induzem campos. Construtores com
   lifecycle ou múltiplos caminhos generativos exigem avaliação semântica.
@@ -492,6 +497,10 @@ placeholders posicionais.
   para animar ícones. Preserve semântica, cores do tema e estado desabilitado.
 - Use `context.colors`, `context.typography` e `context.radius`; não duplique
   extensões ou tokens. Scaffold herda o tema; não fixe fundo sem necessidade.
+- Animações customizadas respeitam `MediaQuery.disableAnimationsOf` (Android)
+  ou `MediaQuery.reduceMotionOf` (iOS), sem substituir uma preferência pela outra.
+  Os contratos de configuração do SDK, imports de design e leitura dessas
+  preferências são verificados em `test/architecture/`, sem montar UI.
 - Assets ficam em `AssetEnum` e `pubspec.yaml`; use `ImageWidget` para imagens.
 - Reutilize `ErrorScreen` para erro de tela; preserve acessibilidade, rolagem,
   textos ampliados e exclusão semântica de imagens decorativas e skeletons.

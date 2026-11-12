@@ -50,17 +50,17 @@ Widget previewCollapsedLargeTextHeader() =>
 Widget previewReducedMotionHeader() => _headerPreview(reduceMotion: true);
 
 Widget _headerPreview({
-  double initialOffset = 0.0,
   double textScale = 1.0,
   bool reduceMotion = false,
+  double initialOffset = 0.0,
 }) => PreviewResourceWidget<ScrollController>(
-  create: () => ScrollController(initialScrollOffset: initialOffset),
   dispose: (controller) => controller.dispose(),
+  create: () => ScrollController(initialScrollOffset: initialOffset),
   builder: (controller) => Builder(
     builder: (context) => MediaQuery(
       data: MediaQuery.of(context).copyWith(
         textScaler: TextScaler.linear(textScale),
-        disableAnimations: reduceMotion,
+        reduceMotion: reduceMotion,
       ),
       child: Scaffold(
         body: SafeArea(

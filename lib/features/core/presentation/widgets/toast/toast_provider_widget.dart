@@ -50,7 +50,8 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
         final background = toast == null
             ? context.colors.surface
             : getToastPalette(context, toast.variant).background;
-        final navigationBarBackground = Theme.of(context).scaffoldBackgroundColor;
+        final navigationBarBackground = Theme.of(context)
+            .scaffoldBackgroundColor;
         final iconBrightness = background.computeLuminance() > .5
             ? Brightness.dark
             : Brightness.light;
@@ -58,12 +59,14 @@ final class _ToastProviderWidgetState extends State<ToastProviderWidget> {
             navigationBarBackground.computeLuminance() > .5
             ? Brightness.dark
             : Brightness.light;
-        final animationsDisabled = MediaQuery.disableAnimationsOf(context);
-        final animationDuration = animationsDisabled
-            ? Duration.zero
-            : toast == null
-            ? _hideDuration
-            : _showDuration;
+        final animationsDisabled =
+            MediaQuery.disableAnimationsOf(context) ||
+            MediaQuery.reduceMotionOf(context);
+        final animationDuration = switch (toast) {
+          _ when animationsDisabled => Duration.zero,
+          null => _hideDuration,
+          _ => _showDuration,
+        };
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,

@@ -34,6 +34,62 @@ void main() {
   });
 
   group('configuration', () {
+    for (final session in [
+      (
+        description: 'locally expired token',
+        token: 'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjF9.signature',
+        authorization: null,
+      ),
+      (
+        description: 'remotely invalidated token',
+        token: 'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjQxMDI0NDQ4MDB9.signature',
+        authorization:
+            'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjQxMDI0NDQ4MDB9.signature',
+      ),
+    ]) {
+      test('preserves ${session.description} on HTTP 401', () async {
+        when(() => storage.read(key: key)).thenAnswer(
+          (_) async => jsonEncode({
+            'token': session.token,
+            'model': {'id': 'user-id', 'collectionName': 'users'},
+          }),
+        );
+        final client = await PocketBaseFactory.create(
+          url: 'https://example.com',
+        );
+        addTearDown(client.close);
+        final changes = <AuthStoreEvent>[];
+        final subscription = client.authStore.onChange.listen(changes.add);
+        addTearDown(subscription.cancel);
+
+        await http.runWithClient(
+          () async {
+            await expectLater(
+              client.collection('expenses').getList(),
+              throwsA(
+                isA<ClientException>().having(
+                  (exception) => exception.statusCode,
+                  'statusCode',
+                  401,
+                ),
+              ),
+            );
+          },
+          () => MockClient((request) async {
+            expect(request.headers['Authorization'], session.authorization);
+            expect(client.authStore.token, session.token);
+
+            return http.Response('{}', 401);
+          }),
+        );
+
+        expect(client.authStore.token, session.token);
+        expect(client.authStore.record?.id, 'user-id');
+        expect(changes, isEmpty);
+        verifyNever(() => storage.delete(key: key));
+      });
+    }
+
     for (final url in [
       'https://example.com',
       'https://example.com/backend',

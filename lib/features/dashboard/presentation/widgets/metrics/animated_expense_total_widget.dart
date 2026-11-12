@@ -14,7 +14,9 @@ final class const AnimatedExpenseTotalWidget({
     final Widget value;
     final totalCents = cents;
 
-    final animationsDisabled = MediaQuery.disableAnimationsOf(context);
+    final animationsDisabled =
+        MediaQuery.disableAnimationsOf(context) ||
+        MediaQuery.reduceMotionOf(context);
     final style = context.typography.headlineMedium?.copyWith(
       fontWeight: .w600,
       letterSpacing: -1.0,

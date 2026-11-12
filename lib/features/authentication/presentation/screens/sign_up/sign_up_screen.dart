@@ -73,7 +73,9 @@ final class _SignUpScreenState extends State<SignUpScreen>
                   ),
                 ),
                 AnimatedSize(
-                  duration: MediaQuery.disableAnimationsOf(context)
+                  duration:
+                      MediaQuery.disableAnimationsOf(context) ||
+                          MediaQuery.reduceMotionOf(context)
                       ? Duration.zero
                       : const Duration(milliseconds: 200),
                   curve: Curves.easeOut,

@@ -162,13 +162,20 @@ suppressing warnings or changing the machine-wide JDK configuration.
 external KGP, and `home_widget` 0.10.0 supports this flag without modifying the
 pub cache. `android.newDsl=false` remains for existing DSL compatibility.
 
-Flutter 3.47.9 scans dependency build scripts using regex and still warns about
+Flutter 3.50.0 scans dependency build scripts using regex and still warns about
 `home_widget` because the inactive conditional branch contains `apply plugin:
 'kotlin-android'`. Runtime inspection confirmed that neither `kotlin-android`
 nor `org.jetbrains.kotlin.android` is applied to that subproject with built-in
 Kotlin enabled. Eliminating that remaining false positive requires an upstream
 tooling/package fix; do not hide it by disabling dependency validation or editing
 the pub cache.
+
+After the Flutter 3.50 upgrade, Android unit tests and the release APK build
+passed with the current AGP 9.5.1 and Gradle 9.6.0 configuration. The legacy DSL
+deprecation and the known `home_widget` KGP warning remain; no validation was
+disabled. Keep `android.newDsl=false` until plugin compatibility is verified.
+The GitHub workflow itself and release-mode widget/app-link behavior on a
+device still require validation.
 
 Messages about engine flags passed via Intent are emitted by Flutter's Android
 embedding during CLI debug launches. Impeller, viewport and VM Service messages
@@ -262,7 +269,7 @@ Não é necessário cadastrar conta de serviço Google, JSON ou credenciais do P
 Depois que o workflow estiver na `main`, abrir Actions → **Android release** →
 **Run workflow**, selecionar `main` e executar. Outras branches são ignoradas.
 O job usa Ubuntu 24.04, Java 21, Android SDK 37 (pacote
-`platforms;android-37.0`), Build Tools 37.0.0 e Flutter **3.47.9 stable**.
+`platforms;android-37.0`), Build Tools 37.0.0 e Flutter **3.50.0 stable**.
 Instala dependências com o lockfile obrigatório, executa `flutter analyze` e a
 suíte Flutter unitária completa antes de acessar os secrets de assinatura.
 
