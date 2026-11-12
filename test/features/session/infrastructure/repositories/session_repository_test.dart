@@ -1,16 +1,16 @@
-import 'dart:async';
 import 'dart:io';
+import 'dart:async';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:pocketbase/pocketbase.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/session/application/exceptions/session_exception.dart';
 import 'package:cordato/features/session/infrastructure/repositories/session_repository.dart';
 
-import '../../../../support/core/fakes/pocketbase_fixture.dart';
 import '../../../../support/core/mocks/auth_store_mock.dart';
+import '../../../../support/core/fakes/pocketbase_fixture.dart';
 
 void main() {
   late PocketBaseFixture fixture;
@@ -60,8 +60,8 @@ void main() {
         await firstChange.future;
 
         expect(changes, [true]);
-        expect(await repository.loadSession(), isTrue);
         expect(fixture.requests, hasLength(2));
+        expect(await repository.loadSession(), isTrue);
       },
     );
 
@@ -70,20 +70,20 @@ void main() {
       () async {
         fixture.authenticate();
         fixture.respond = (_) => PocketBaseFixture.authResponse(
-          authToken: 'refreshed-token',
           id: 'refreshed-user',
+          authToken: 'refreshed-token',
         );
 
         expect(await repository.loadSession(), isTrue);
 
         final request = fixture.requests.single;
-        expect(request.method, 'POST');
-        expect(request.url.path, '/api/collections/users/auth-refresh');
         expect(request.body, isEmpty);
-        expect(request.headers['Authorization'], PocketBaseFixture.token);
+        expect(request.method, 'POST');
         expect(request.headers['Accept-Language'], 'pt-BR');
         expect(fixture.client.authStore.token, 'refreshed-token');
         expect(fixture.client.authStore.record?.id, 'refreshed-user');
+        expect(request.url.path, '/api/collections/users/auth-refresh');
+        expect(request.headers['Authorization'], PocketBaseFixture.token);
       },
     );
 
@@ -91,8 +91,8 @@ void main() {
       'shares concurrent requests and does not publish until refresh completes',
       () async {
         fixture.authenticate();
-        final response = Completer<http.Response>();
         final started = Completer<void>();
+        final response = Completer<http.Response>();
         fixture.respond = (_) {
           started.complete();
           return response.future;
@@ -100,6 +100,7 @@ void main() {
 
         final first = repository.loadSession();
         final second = repository.loadSession();
+
         await started.future;
         expect(second, same(first));
         expect(fixture.requests, hasLength(1));
@@ -115,7 +116,7 @@ void main() {
     );
   });
 
-  group('native refresh concurrency semantics', () {
+  group('refresh session isolation', () {
     for (final replacement in [
       'logout',
       'new-login',
@@ -144,52 +145,47 @@ void main() {
         return (pending, response);
       }
 
-      test('SDK saves a late refresh after $replacement', () async {
+      test('discards a late refresh after $replacement', () async {
         final (pending, response) = await startRefreshAfterReplacement();
+        final currentToken = fixture.client.authStore.token;
+        final hasSession = currentToken.isNotEmpty;
+        final currentRecord = fixture.client.authStore.record;
 
         response.complete(
           PocketBaseFixture.authResponse(
-            authToken: 'obsolete-token',
             id: 'obsolete-user',
+            authToken: 'obsolete-token',
           ),
         );
 
-        expect(await pending, isTrue);
-        expect(fixture.client.authStore.token, 'obsolete-token');
-        expect(fixture.client.authStore.record?.id, 'obsolete-user');
+        expect(await pending, hasSession);
+        expect(fixture.client.authStore.token, currentToken);
+        expect(fixture.client.authStore.record, same(currentRecord));
       });
 
       test(
-        'a late 401 clears the current AuthStore after $replacement',
+        'a late 401 preserves the current AuthStore after $replacement',
         () async {
           final (pending, response) = await startRefreshAfterReplacement();
+          final currentToken = fixture.client.authStore.token;
+          final currentRecord = fixture.client.authStore.record;
 
           response.complete(PocketBaseFixture.jsonResponse({}, status: 401));
 
-          expect(await pending, isFalse);
-          expect(fixture.client.authStore.token, isEmpty);
-          expect(fixture.client.authStore.record, isNull);
+          expect(await pending, currentToken.isNotEmpty);
+          expect(fixture.client.authStore.token, currentToken);
+          expect(fixture.client.authStore.record, same(currentRecord));
         },
       );
 
       for (final status in [403, 500]) {
-        test('a late HTTP $status still fails after $replacement', () async {
+        test('ignores stale HTTP $status after $replacement', () async {
           final (pending, response) = await startRefreshAfterReplacement();
           final currentToken = fixture.client.authStore.token;
           final currentRecord = fixture.client.authStore.record;
-          final assertion = expectLater(
-            pending,
-            throwsA(
-              isA<SessionException>().having(
-                (failure) => failure.errors.errors.single.status,
-                'status',
-                '$status',
-              ),
-            ),
-          );
-
           response.complete(PocketBaseFixture.jsonResponse({}, status: status));
-          await assertion;
+
+          expect(await pending, currentToken.isNotEmpty);
 
           expect(fixture.client.authStore.token, currentToken);
           expect(fixture.client.authStore.record, same(currentRecord));
@@ -197,7 +193,27 @@ void main() {
       }
     }
 
-    test('propagates a late transport failure after logout', () async {
+    test('does not hide an unexpected late failure after logout', () async {
+      fixture.authenticate();
+      final response = Completer<http.Response>();
+      final started = Completer<void>();
+      fixture.respond = (_) {
+        started.complete();
+        return response.future;
+      };
+      final failure = StateError('unexpected');
+
+      final pending = repository.loadSession();
+      final assertion = expectLater(pending, throwsA(same(failure)));
+      await started.future;
+      fixture.client.authStore.clear();
+      response.completeError(failure);
+      await assertion;
+
+      expect(fixture.client.authStore.token, isEmpty);
+    });
+
+    test('ignores a late transport failure after logout', () async {
       fixture.authenticate();
       final response = Completer<http.Response>();
       final started = Completer<void>();
@@ -207,14 +223,82 @@ void main() {
       };
 
       final pending = repository.loadSession();
-      final assertion = expectLater(pending, throwsA(isA<SessionException>()));
       await started.future;
       fixture.client.authStore.clear();
       response.completeError(const SocketException('offline'));
 
-      await assertion;
+      expect(await pending, isFalse);
       expect(fixture.client.authStore.token, isEmpty);
     });
+
+    test(
+      'detects logout and restoration of the same token and record',
+      () async {
+        fixture.authenticate();
+        final token = fixture.client.authStore.token;
+        final record = fixture.client.authStore.record;
+        final response = Completer<http.Response>();
+        final started = Completer<void>();
+        fixture.respond = (_) {
+          started.complete();
+          return response.future;
+        };
+
+        final pending = repository.loadSession();
+        await started.future;
+        fixture.client.authStore.clear();
+        fixture.client.authStore.save(token, record);
+        response.complete(
+          PocketBaseFixture.authResponse(authToken: 'obsolete-token'),
+        );
+
+        expect(await pending, isTrue);
+        expect(fixture.client.authStore.token, token);
+        expect(fixture.client.authStore.record, same(record));
+      },
+    );
+
+    test(
+      'refreshes a replacement session without sharing an older request',
+      () async {
+        fixture.authenticate();
+        final firstResponse = Completer<http.Response>();
+        final firstStarted = Completer<void>();
+        final secondResponse = Completer<http.Response>();
+        final secondStarted = Completer<void>();
+        fixture.respond = (request) {
+          if (request.headers['Authorization'] == PocketBaseFixture.token) {
+            firstStarted.complete();
+            return firstResponse.future;
+          }
+
+          secondStarted.complete();
+          return secondResponse.future;
+        };
+
+        final first = repository.loadSession();
+        await firstStarted.future;
+        fixture.authenticate(authToken: 'new-login-token', id: 'new-user');
+        final second = repository.loadSession();
+        await secondStarted.future;
+        expect(second, isNot(same(first)));
+
+        firstResponse.complete(PocketBaseFixture.authResponse());
+        expect(await first, isTrue);
+        expect(repository.loadSession(), same(second));
+
+        secondResponse.complete(
+          PocketBaseFixture.authResponse(
+            authToken: 'new-refreshed-token',
+            id: 'new-user',
+          ),
+        );
+        expect(await second, isTrue);
+        expect(fixture.client.authStore.token, 'new-refreshed-token');
+        expect(fixture.client.authStore.record?.id, 'new-user');
+        expect(fixture.requests, hasLength(2));
+      },
+    );
   });
 
   group('failures', () {

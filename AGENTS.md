@@ -54,12 +54,13 @@ contratos; repositories não reimplementam validação de status 2xx específico
 `PocketBaseMapper` preserva status, ordem, code, pointer e parameter nativos
 em `ErrorsEntity`, com fallback de transporte e propagação de Error/FormatException
 encapsulados pelo SDK. Tipos e mensagens remotas não chegam diretamente à UI.
-Session compartilha refresh pendente e observa `authStore.onChange`. Por
-simplificação explicitamente aprovada, chama `authRefresh` diretamente no PocketBase
-compartilhado e deixa o SDK salvar a resposta no AuthStore, sem client temporário,
-snapshots, validação adicional de token/record ou descarte de respostas antigas.
-Um refresh tardio pode sobrescrever logout ou novo login. HTTP 401 limpa o AuthStore
-atual, inclusive após troca de sessão; 403/rede preservam o AuthStore e falham.
+Session compartilha refresh pendente da mesma sessão e observa `authStore.onChange`.
+Por solicitação explícita de segurança, usa `send<Map<String, dynamic>>` do SDK
+compartilhado no endpoint nativo de auth-refresh e parsing por `RecordAuth`.
+Compara token, identidade do record e mudanças do AuthStore durante a operação
+antes de salvar ou limpar. Respostas e falhas esperadas obsoletas são descartadas;
+um refresh tardio não restaura logout nem substitui login novo. HTTP 401 limpa
+somente a sessão de origem ainda atual; 403/rede atuais preservam o AuthStore e falham.
 `PocketBaseExtension.hasSession` lê somente a presença local de token, sem validar
 JWT ou autorização. Parsing e defaults da resposta seguem o SDK.
 Não há refresh periódico nem retry automático. DTOs próprios de sign-in/refresh
@@ -97,7 +98,8 @@ usam os endpoints nativos `collections/users/auth-with-password`,
 `collections/users/records`, `collections/users/request-verification` e
 `collections/users/confirm-verification`.
 Sign-out é local: chama `authStore.clear()`, sem endpoint HTTP ou revogação do JWT
-no servidor. A persistência assíncrona segue as limitações descritas acima.
+no servidor. Por solicitação explícita, não há saída global nem hook customizado
+de logout. A persistência assíncrona segue as limitações descritas acima.
 Expense usa o SDK compartilhado diretamente em `collections/expenses/records`
 para CRUD e sugestões por histórico, com JSON plano e paginação nativa.
 Criação lê `owner` por `pocketBase.userId()`; ausência propaga a exceção compartilhada
@@ -402,13 +404,14 @@ Dashboard, previews e testes próprios. Não restaurá-la a partir de specs hist
   `AppScreen` é apenas visual; não cria, compartilha por singleton ou fecha outro
   Bloc. A leitura inicial não sobrescreve eventos de token/watch mais recentes;
   falha de storage não é ausência confirmada nem deve apagar o token.
-- Session valida o token inicial com `authRefresh` diretamente no SDK compartilhado,
-  com auto-save nativo no AuthStore. Sem token não há request.
-  Chamadas simultâneas compartilham a operação; não há retry automático.
-  Erros esperados preservam `ErrorsEntity` em `SessionException`/`SessionFailure`;
-  403/rede não apagam a sessão. HTTP 401 limpa o AuthStore atual sem comparar
-  snapshots. Por simplificação aprovada, refresh tardio pode substituir logout ou
-  login novo; não recrie isolamento ou proteção própria contra respostas antigas.
+- Session valida o token inicial pelo endpoint nativo de auth-refresh via `send`
+  do SDK compartilhado e `RecordAuth`, salvando somente se a sessão de origem
+  continuar atual. Sem token não há request. Chamadas da mesma sessão compartilham
+  a operação; sessão substituta pode iniciar outra. Não há retry automático.
+  Respostas/falhas esperadas obsoletas não alteram o AuthStore; a observação temporária
+  é cancelada ao concluir. Erros atuais preservam `ErrorsEntity` em
+  `SessionException`/`SessionFailure`; 403/rede não apagam a sessão e 401 limpa
+  somente a sessão de origem. Não criar wrapper HTTP, AuthStore próprio ou DTO de refresh.
 - Não restaure o interceptor HTTP antigo. Autenticação dos requests pertence ao
   SDK, que deve ser usado somente para a origem configurada do PocketBase.
 - Formulário mantém entrada, validação e erros por campo localmente. No sign-in,

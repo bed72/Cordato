@@ -1,14 +1,15 @@
 import 'dart:async';
 
+import 'package:mocktail/mocktail.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 
-import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_bloc.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_event.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_state.dart';
+
+import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 
 import '../../../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
@@ -18,10 +19,10 @@ void main() {
     errors: [
       ErrorEntity(
         status: '403',
-        title: 'Não autorizado',
-        detail: 'Tente novamente.',
         pointer: '/status',
         parameter: 'status',
+        title: 'Não autorizado',
+        detail: 'Tente novamente.',
       ),
       ErrorEntity(detail: 'Outra falha'),
     ],
@@ -115,7 +116,7 @@ void main() {
     blocTest<LogoutBloc, LogoutState>(
       'allows only manual retry after failure',
       build: () {
-        var attempts = 0;
+        int attempts = 0;
         when(() => repository.signOut()).thenAnswer((_) async {
           if (++attempts == 1) throw AuthenticationException(errors: errors);
         });

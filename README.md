@@ -73,13 +73,24 @@ de login/logout nem propagação dessas falhas ao Future de autenticação. Veja
 
 Authentication usa os métodos nativos para login, cadastro, verificação,
 recuperação e troca de senha, mantendo os contratos da apresentação. Session
-valida por auth-refresh diretamente no SDK compartilhado e observa o AuthStore.
-Por simplificação aprovada, um refresh tardio pode sobrescrever logout/novo login
-e um 401 limpa o AuthStore atual. Erros nativos preservam campos e status para
+valida pelo endpoint nativo de auth-refresh via `send` e `RecordAuth` do SDK
+compartilhado e observa o AuthStore. Refresh tardio não restaura logout nem
+sobrescreve login novo: token, record e mudanças da sessão são verificados antes
+de salvar ou limpar. Um 401 limpa somente a sessão de origem ainda atual.
+Erros nativos preservam campos e status para
 os formatadores locais. Essa etapa não altera UI, navegação ou backend.
 Troca de senha lê a identidade por `pocketBase.userId()`, sem validação duplicada,
 snapshots ou limpeza em 401. Ausência de identidade é falha esperada no Bloc;
 o logout explícito permanece separado e ocorre após sucesso da alteração.
+
+Configurações mantém somente “Sair”, pelo `authStore.clear()` nativo. Não há
+saída global, endpoint customizado ou hook de logout. A limpeza local não revoga
+cópias do JWT no servidor nem confirma exclusão durável no storage. A proteção
+contra refresh tardio permanece no Flutter, sem alteração do backend ou deploy.
+
+Verificação local: `flutter pub get`, `flutter analyze` sem problemas e
+`flutter test --reporter failures-only` com **1629 testes aprovados**. Não houve
+build nativo ou homologação remota.
 
 User usa `getOne`, `update` e `delete` nativos com o ID do auth record atual,
 sem storage próprio. Nome/avatar continuam mapeados para entidades puras.
@@ -500,7 +511,7 @@ Alterações editoriais devem atualizar versão/data e manter consistência entr
 documentos, ajuda, comportamento real e futura versão web.
 
 Premissas informadas pelo responsável: Hostinger no Brasil, Resend para mensagens
-transacionais, sem backups próprios do banco, anúncios, analytics ou assinatura.
+transacionais, sem anúncios, analytics ou assinatura.
 O conteúdo distingue os resumos financeiros do próprio usuário de analytics de
 comportamento e não declara ausência de logs técnicos ou de retenção em terceiros.
 Conforme a [documentação do Resend](https://resend.com/security/gdpr), seus dados
@@ -508,16 +519,30 @@ são armazenados nos EUA; mensagens/logs têm retenção de 30 dias nos planos F
 Pro e Scale e backups próprios de 7 dias. Configuração da conta, provedores de
 hospedagem e eventuais exceções precisam ser conferidos antes da publicação.
 
+A versão 1.1 dos documentos, de 12/11/2026, inclui o envio opcional de áudio,
+o worker e o processamento por IA, com OpenRouter e Gemini como configuração
+padrão, possível transferência internacional e ausência de garantia de retenção
+zero. Explica a limpeza temporária local, processamento em memória e que aceite
+não comprova cadastro. Não confirma qual configuração está publicada.
+Termos, política e ajuda deixam de afirmar ausência de backups: a migration inicial
+prevê backups semanais com até três cópias; execução, retenção efetiva e recuperação
+continuam dependendo de conferência operacional, sem alteração do backend.
+
 Pendências de lançamento, não resolvidas pelas telas:
 
 - Revisar juridicamente os documentos e as bases legais, incluindo tratamento
-  de adolescentes e mecanismo aplicável à transferência internacional do Resend.
+  de adolescentes e mecanismo aplicável à transferência internacional do Resend
+  e dos operadores de IA. Confirmar endpoint, modelo, provedores, países,
+  retenção e configurações de privacidade efetivos antes de publicar o recurso
+  de áudio; a descrição da configuração padrão não substitui essa conferência.
   O DPA europeu do provedor não comprova, por si só, atendimento à LGPD/ANPD.
 - Confirmar faixas de público-alvo no Play Console, sem direcionamento a crianças;
   isso não equivale a declarar automaticamente classificação indicativa ou idade mínima.
 - Auditar retenção de logs da hospedagem, atendimento de suporte e controles de
   rastreamento de e-mails no Resend; a ausência de analytics no app não comprova
   que rastreamento de aberturas/cliques esteja desativado no provedor.
+- Conferir agendamento, execução, retenção e exclusão nos backups em operação,
+  incluindo cópias dos provedores; homologar restauração antes de prometer recuperação.
 - Homologar exclusão de conta/despesas e definir o procedimento operacional de
   verificação de identidade, prazos e atendimento das solicitações por e-mail.
 - Publicar as páginas Angular em outro projeto e cadastrar as URLs de privacidade

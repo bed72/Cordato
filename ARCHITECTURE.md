@@ -31,8 +31,8 @@ O SDK PocketBase pode ser usado diretamente pelos repositories em infrastructure
 sem wrapper de CRUD. Seus tipos não chegam aos contratos, Blocs ou domínio.
 Na versão 0.26, a factory configura `autoClearAuthStore(false)` pela API nativa:
 expiração local e HTTP 401 comum não alteram a sessão automaticamente. A limpeza
-explícita de Session em 401 de refresh e os efeitos nativos de update/delete
-permanecem preservados, sem interceptors ou snapshots próprios.
+explícita de Session em 401 de refresh da sessão ainda atual e os efeitos nativos
+de update/delete permanecem preservados, sem interceptors.
 
 Não há data source obrigatório entre repository e client, nem command ou use
 case obrigatório entre tela e repository. Não adicione abstrações que apenas
@@ -861,17 +861,21 @@ Testes de tela/rota e flows de logout foram removidos.
 `Future<bool> loadSession()` e `Stream<bool> sessionChanges`. A implementação em
 `session/infrastructure/repositories/` recebe o SDK inicializado, sem data source
 ou dependência de Authentication. `loadSession` lê o AuthStore; token vazio retorna
-ausência sem request. Com token, usa `authRefresh` diretamente no PocketBase
-compartilhado, com auto-save nativo no AuthStore. Chamadas simultâneas
-compartilham o Future pendente; uma chamada posterior explícita pode validar de novo.
+ausência sem request. Com token, chama o endpoint nativo de auth-refresh por
+`send<Map<String, dynamic>>` no PocketBase compartilhado e converte por `RecordAuth`.
+Chamadas simultâneas da mesma sessão compartilham o Future pendente; uma sessão
+substituta pode iniciar outro refresh sem esperar o anterior.
 
-Por simplificação explicitamente aprovada, não há client temporário, comparação
-de snapshots ou descarte de respostas antigas. Um sucesso tardio pode sobrescrever
-logout ou novo login. HTTP 401 limpa o AuthStore atual, mesmo após troca de sessão; 403, demais
-erros HTTP e transporte lançam `SessionException` sem limpar a sessão. Parsing
-inválido rejeitado pelo SDK propaga; valores ausentes seguem seus defaults, sem
-validação própria de token/ID. O retorno indica a presença local de token após o
-refresh, por `PocketBaseExtension.hasSession`, não autorização. Não há DTO de refresh, escritas separadas,
+Por solicitação explícita de segurança, token, identidade do record e mudanças do
+AuthStore durante o request são verificados antes de salvar ou limpar. A observação
+temporária é cancelada em `finally`; logout seguido de restauração do mesmo token
+e record também invalida a resposta antiga. Não há client temporário, AuthStore
+próprio ou wrapper HTTP. Sucesso e falhas esperadas obsoletas são descartados,
+retornando presença local atual; não sobrescrevem logout ou login novo.
+HTTP 401 atual limpa a sessão de origem; 403, demais erros HTTP e transporte atuais
+lançam `SessionException` sem limpar. Falhas inesperadas continuam propagando.
+Parsing/defaults seguem `RecordAuth`, sem validação própria de token/ID. O retorno
+usa `PocketBaseExtension.hasSession`, não autorização. Não há DTO de refresh,
 espera por persistência durável ou atomicidade entre HTTP e storage.
 
 `sessionChanges` continua observando presença local sem expor o token nem executar
@@ -1430,14 +1434,13 @@ status real, ordem e code dos campos, pointer escapado e parameter original.
 Falhas sem status recebem fallback seguro; Error e FormatException encapsulados
 pelo SDK são propagados. A apresentação continua usando suas mensagens locais.
 
-Session consulta presença no AuthStore e valida no servidor por `authRefresh`.
-O método é chamado diretamente no PocketBase compartilhado e faz auto-save nativo.
-Por simplificação aprovada, não há client temporário nem proteção contra respostas
-tardias: sucesso pode sobrescrever logout ou novo login, e HTTP 401 limpa o AuthStore
-atual. Requests simultâneos compartilham o mesmo Future de refresh; não há retry
-automático. HTTP 403 e falhas de rede preservam o AuthStore e lançam SessionException,
-inclusive quando tardios. Parsing/defaults seguem o SDK sem validação adicional de
-token/ID; o retorno consulta a presença local do token por `hasSession`.
+Session consulta presença no AuthStore e valida pelo endpoint nativo de auth-refresh
+via `send` e `RecordAuth` do SDK compartilhado. A resposta só é salva se a sessão
+de origem continuar atual; respostas e falhas esperadas obsoletas não alteram o
+AuthStore. HTTP 401 atual limpa somente a sessão de origem. Requests da mesma
+sessão compartilham o Future; não há retry automático. HTTP 403 e falhas de rede
+atuais preservam o AuthStore e lançam SessionException. Parsing/defaults seguem
+o SDK sem validação adicional de token/ID; o retorno usa `hasSession`.
 A observação usa `authStore.onChange` e sua
 assinatura é cancelada pelo lifecycle já existente do SessionBloc.
 

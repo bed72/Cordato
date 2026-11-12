@@ -1,19 +1,22 @@
+import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
+import 'package:cordato/features/session/infrastructure/repositories/session_repository.dart';
+
 import 'package:cordato/features/authentication/domain/enums/email_status_enum.dart';
+import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 import 'package:cordato/features/authentication/infrastructure/repositories/authentication_repository.dart';
 
 import '../../../../support/core/fakes/pocketbase_fixture.dart';
 
 void main() {
-  const email = ' Person@Example.com ';
   const password = ' Secret1 ';
+  const email = ' Person@Example.com ';
+
   late PocketBaseFixture fixture;
   late AuthenticationRepository repository;
 
@@ -52,9 +55,9 @@ void main() {
                 repository.signUp(email: email, password: password),
           ),
           (
+            body: {'email': email},
             name: 'verification request',
             path: 'request-verification',
-            body: {'email': email},
             execute: (repository) => repository.resendEmail(email: email),
           ),
         ];
@@ -68,9 +71,9 @@ void main() {
 
           final request = fixture.requests.single;
           expect(request.method, 'POST');
-          expect(request.url.path, '/api/collections/users/${operation.path}');
           expect(jsonDecode(request.body), operation.body);
           expect(request.headers['Authorization'], isNull);
+          expect(request.url.path, '/api/collections/users/${operation.path}');
         });
 
         test('awaits remote completion', () async {
@@ -80,7 +83,7 @@ void main() {
             started.complete();
             return response.future;
           };
-          var completed = false;
+          bool completed = false;
 
           final pending = operation
               .execute(repository)
@@ -98,8 +101,8 @@ void main() {
               'message': 'Remote validation',
               'data': {
                 'identity': {
-                  'code': 'validation_required',
                   'message': 'Required',
+                  'code': 'validation_required',
                 },
                 'password': {'code': 'validation_length', 'message': 'Invalid'},
               },
@@ -205,6 +208,32 @@ void main() {
         throwsA(isA<TypeError>()),
       );
       expect(fixture.client.authStore.token, isEmpty);
+    });
+  });
+
+  group('local logout during refresh', () {
+    test('a late refresh cannot restore the logged-out session', () async {
+      fixture.authenticate();
+      final response = Completer<http.Response>();
+      final started = Completer<void>();
+      fixture.respond = (_) {
+        started.complete();
+        return response.future;
+      };
+      final session = SessionRepository(pocketBase: fixture.client);
+
+      final refresh = session.loadSession();
+      await started.future;
+      await repository.signOut();
+      response.complete(PocketBaseFixture.authResponse());
+
+      expect(await refresh, isFalse);
+      expect(fixture.requests, hasLength(1));
+      expect(fixture.client.authStore.token, isEmpty);
+      expect(
+        fixture.requests.single.url.path,
+        '/api/collections/users/auth-refresh',
+      );
     });
   });
 

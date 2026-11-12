@@ -32,22 +32,26 @@ dependencies:
   flutter:
     sdk: flutter
 
-  csv: ^8.0.0
-  http: ^1.6.0
-  intl: ^0.20.3
-  record: ^7.2.0
-  share_plus: ^13.3.1
-  pocketbase: ^0.26.0
-  http_parser: ^4.1.2
-  home_widget: ^0.10.0
-  path_provider: ^2.1.6
-  flutter_modular: ^7.1.1
-  flutter_secure_storage: ^11.2.0
-
   bloc: ^9.2.1
   flutter_bloc: ^9.1.1
   bloc_concurrency: ^0.3.0
 
+  talker: ^5.2.0
+  talker_logger: ^5.2.0
+  talker_bloc_logger: ^5.2.0
+
+  csv: ^8.0.0
+  http: ^1.6.0
+  intl: ^0.20.3
+  record: ^7.2.0
+  pocketbase: ^0.26.0
+  http_parser: ^4.1.2
+  path_provider: ^2.1.6
+  flutter_modular: ^7.1.1
+  flutter_secure_storage: ^11.2.0
+
+  share_plus: ^13.3.1
+  home_widget: ^0.10.0
   material_ui: ^1.11.0
   cupertino_ui: ^1.1.6
   skeletonizer: ^3.0.0
@@ -55,10 +59,6 @@ dependencies:
   flutter_boring_avatars: ^2.1.0
   flutter_staggered_grid_view: ^0.7.0
   syncfusion_flutter_datepicker: ^35.1.46
-
-  talker: ^5.2.0
-  talker_logger: ^5.2.0
-  talker_bloc_logger: ^5.2.0
 
 dev_dependencies:
   flutter_test:
@@ -87,12 +87,12 @@ flutter:
 
     # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/images/logo.webp
-    - assets/images/splash_android.png
-    - assets/images/splash_ios.png
-    
     - assets/images/errors/
     - assets/images/categories/
+
+    - assets/images/logo.webp
+    - assets/images/splash_ios.png
+    - assets/images/splash_android.png
     
   # An image asset can refer to one or more resolution-specific 'variants', see
   # https://flutter.dev/to/resolution-aware-images

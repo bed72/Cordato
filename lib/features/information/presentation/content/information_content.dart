@@ -1,6 +1,6 @@
 abstract final class InformationContent {
-  static const version = '1.0';
-  static const updatedAt = '04/11/2026';
+  static const version = '1.1';
+  static const updatedAt = '12/11/2026';
   static const responsible = 'Gabriel Ramos';
   static const email = 'developer.bed@gmail.com';
 
@@ -48,6 +48,11 @@ abstract final class InformationContent {
             'as datas e as categorias antes de tomar decisões. Os totais '
             'apresentados dependem desses registros e não substituem extratos '
             'bancários ou orientação profissional.',
+        'O envio de áudio é opcional e usa inteligência artificial para '
+            'interpretar uma despesa e tentar cadastrá-la na sua conta. '
+            'O aceite do envio não confirma o cadastro. A interpretação pode '
+            'conter erros ou falhar; confira suas despesas antes de reenviar '
+            'um áudio para evitar duplicações.',
         'Você continua sendo titular dos seus dados. Não use o aplicativo para '
             'atividades ilícitas, tentar acessar contas de outras pessoas ou '
             'comprometer a segurança e o funcionamento do serviço.',
@@ -62,7 +67,7 @@ abstract final class InformationContent {
             'de conexão com a internet. Manutenções, falhas e interrupções '
             'podem ocorrer. Não prometemos disponibilidade ininterrupta '
             'ou recuperação de registros excluídos ou perdidos.',
-        'Não mantemos backups próprios do banco de dados do Cordato. '
+        'Backups não garantem a recuperação de registros excluídos ou perdidos. '
             'Não utilize o aplicativo como a única cópia de informações '
             'financeiras que você precise preservar.',
       ],
@@ -104,7 +109,9 @@ abstract final class InformationContent {
 
   static const privacySummary =
       'Usamos os dados da sua conta e das suas despesas para fazer o Cordato '
-      'funcionar. Não vendemos seus dados nem usamos ferramentas de publicidade '
+      'funcionar. Se você enviar áudio, ele será processado por serviços de '
+      'inteligência artificial para registrar uma despesa. '
+      'Não vendemos seus dados nem usamos ferramentas de publicidade '
       'ou análise de comportamento no aplicativo. Você pode pedir acesso, '
       'correção ou exclusão pelo nosso contato.';
 
@@ -128,6 +135,11 @@ abstract final class InformationContent {
         'Despesas: descrição, valor, data, categoria e vínculo com sua conta. '
             'Os resumos mensais são derivados desses registros. Não solicitamos '
             'senha bancária, número de cartão ou conexão com sua instituição financeira.',
+        'Áudio: quando você grava e aciona o envio, tratamos sua voz, o conteúdo '
+            'da gravação e a data de referência do dispositivo para interpretar '
+            'a despesa. O conteúdo pode incluir dados pessoais e financeiros '
+            'que você mencionar. O uso desse recurso é opcional; você pode '
+            'continuar cadastrando despesas pelo formulário.',
         'Comunicações: endereço de e-mail, conteúdo e registros de entrega '
             'das mensagens de confirmação de conta e recuperação de senha. '
             'Se você entrar em contato, também trataremos o que enviar '
@@ -146,6 +158,11 @@ abstract final class InformationContent {
             'apresentar sugestões do seu próprio histórico e calcular '
             'resumos mensais. Também os usamos para atender solicitações '
             'e investigar problemas de segurança ou funcionamento.',
+        'No recurso de áudio, nosso serviço de processamento (worker) verifica '
+            'sua sessão e encaminha a gravação à inteligência artificial. '
+            'Os dados extraídos, como descrição, valor, data e categoria, '
+            'são validados para tentar cadastrar uma despesa na sua conta. '
+            'Sua senha e sua credencial de sessão não são enviadas à IA.',
         'O tratamento necessário ao serviço se relaciona à execução da relação '
             'de uso e às etapas solicitadas por você. Outras bases legais, '
             'como cumprimento de obrigação legal ou exercício regular '
@@ -171,6 +188,22 @@ abstract final class InformationContent {
             'tratamento internacional, mesmo com o banco principal no Brasil. '
             'Informações do provedor estão disponíveis em '
             'https://resend.com/security/gdpr e https://resend.com/legal/dpa.',
+        'Para interpretar áudios, a configuração padrão utiliza o OpenRouter '
+            'como intermediário de acesso a modelos de IA, com um modelo '
+            'da família Gemini, do Google. O áudio e a data de referência '
+            'são enviados ao serviço de IA configurado e aos provedores '
+            'envolvidos no processamento. Esse tratamento pode ocorrer '
+            'fora do Brasil, mesmo com o banco principal hospedado no país. '
+            'O modelo e o provedor efetivamente utilizados dependem da '
+            'configuração do serviço; informações sobre os operadores '
+            'aplicáveis podem ser solicitadas pelo nosso contato.',
+        'O processamento de IA está sujeito às políticas e às configurações '
+            'do intermediário e do provedor. No OpenRouter, a integração '
+            'solicita provedores que não coletem dados e desativa fallback '
+            'automático. Isso não garante retenção zero nem comprova que '
+            'todo provedor tenha as mesmas condições. Consulte '
+            'https://openrouter.ai/privacy e solicite esclarecimentos '
+            'pelo nosso contato antes de enviar conteúdo sensível.',
         'Não vendemos dados pessoais. Além dos provedores necessários '
             'à operação, dados podem ser apresentados às autoridades '
             'quando houver obrigação legal aplicável.',
@@ -185,7 +218,10 @@ abstract final class InformationContent {
             'pelo sistema operacional. Nenhum serviço é isento de riscos.',
         'Não compartilhe sua senha nem links recebidos por e-mail. Evite '
             'registrar dados pessoais desnecessários, especialmente de '
-            'outras pessoas, no campo de descrição das despesas.',
+            'outras pessoas, no campo de descrição das despesas ou nas '
+            'gravações. O microfone é usado mediante permissão para a captura '
+            'iniciada por você; a gravação tem limite de 30 segundos. '
+            'A permissão de microfone não autoriza outros usos dos seus dados.',
       ],
     ),
     (
@@ -193,13 +229,27 @@ abstract final class InformationContent {
       paragraphs: [
         'Os dados da conta e as despesas permanecem no banco enquanto '
             'sua conta existir, até que você exclua os registros ou solicite '
-            'a exclusão da conta. Não mantemos backups próprios desse banco.',
+            'a exclusão da conta.',
+        'A configuração inicial do banco prevê backups semanais e até três '
+            'cópias automáticas. Esse agendamento não comprova execução ou '
+            'recuperação e pode diferir da configuração em operação. '
+            'Cópias existentes podem conservar registros excluídos até sua '
+            'substituição ou remoção. Para conhecer a situação e os prazos '
+            'efetivos dos backups, entre em contato; não prometemos '
+            'recuperação de dados nem eliminação imediata das cópias.',
+        'A gravação usa um arquivo temporário no dispositivo, removido pelo '
+            'fluxo de finalização ou cancelamento. O worker processa o áudio '
+            'em memória, sem arquivo ou fila persistente; reinícios podem '
+            'perder envios aceitos. Os logs desse processamento não incluem '
+            'áudio, conteúdo interpretado ou credenciais. Isso não elimina '
+            'a possibilidade de retenção nos serviços de IA: os prazos e '
+            'as condições dependem dos operadores e da configuração contratada. '
+            'Não prometemos retenção zero nem exclusão instantânea nesses serviços.',
         'A exclusão da conta remove seu cadastro e as despesas associadas '
             'do banco do Cordato. Sair da sessão ou desinstalar o app '
             'não produz essa exclusão. Mensagens já entregues permanecem '
             'na sua caixa de e-mail conforme o controle do seu provedor.',
-        'A ausência de backups próprios não significa ausência de retenção '
-            'pelos provedores. O Resend informa retenção de conteúdo e '
+        'Os provedores também podem conservar dados. O Resend informa retenção de conteúdo e '
             'registros de e-mail por 30 dias nos planos Free, Pro e Scale, '
             'com condições diferentes no Enterprise, e backups próprios '
             'por 7 dias. Esses prazos não representam o tempo de exclusão '
@@ -284,6 +334,15 @@ abstract final class InformationContent {
               'se existe uma conta para aquele endereço. Se o link '
               'estiver inválido ou expirado, solicite outro.',
         ),
+        (
+          question: 'O que acontece quando saio da conta?',
+          answer:
+              'Em Configurações, Sair remove a sessão deste dispositivo, '
+              'sem invalidar cópias da credencial no servidor ou encerrar '
+              'o acesso em outros dispositivos. Essa ação não exclui sua '
+              'conta ou suas despesas. Se suspeitar de acesso indevido, '
+              'redefina sua senha e entre em contato com o suporte.',
+        ),
       ],
     ),
     (
@@ -312,10 +371,24 @@ abstract final class InformationContent {
           answer:
               'Você precisa de internet para acessar a conta, consultar '
               'e salvar despesas. As páginas de Termos de uso, Política '
-              'de Privacidade e Ajuda ficam no próprio app. Não mantemos '
-              'backups próprios do banco do Cordato nem prometemos '
-              'recuperar registros excluídos ou perdidos. Preserve '
+              'de Privacidade e Ajuda ficam no próprio app. A configuração '
+              'inicial prevê backups semanais e até três cópias automáticas, '
+              'mas isso não comprova sua execução nem garante recuperação. '
+              'Consulte nosso contato sobre os backups em operação. Preserve '
               'separadamente as informações que forem importantes.',
+        ),
+        (
+          question: 'O que acontece quando envio um áudio?',
+          answer:
+              'O envio é opcional. A gravação passa pelo nosso serviço de '
+              'processamento e por serviços de inteligência artificial para '
+              'interpretar e tentar cadastrar uma despesa. A configuração '
+              'padrão usa OpenRouter e um modelo Gemini, do Google, e pode '
+              'envolver processamento fora do Brasil. Não grave senhas nem '
+              'dados desnecessários de terceiros. O aceite não confirma o '
+              'cadastro: recarregue e confira suas despesas antes de reenviar '
+              'para evitar duplicações. Consulte a Política de Privacidade '
+              'sobre compartilhamento e retenção ou use o formulário manual.',
         ),
       ],
     ),
