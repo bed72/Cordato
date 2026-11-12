@@ -7,6 +7,9 @@ mensagem de apoio voluntário e QR Code Pix estático de valor livre na própria
 renderizado com `pretty_qr_code`. “Copiar Pix” copia o código para pagar no banco.
 O título e a descrição rolam com o conteúdo, sem recolher ao lado do botão de voltar;
 voltar e “Copiar Pix” permanecem fixos.
+A tela não acrescenta espaço rolável quando o conteúdo cabe: o padding do bloco
+final fica dentro de `SliverFillRemaining`. Telas menores e texto ampliado
+continuam permitindo rolagem para acessar todo o conteúdo.
 Não há confirmação de pagamento
 ou consulta bancária no app; a chave e o destinatário exigem conferência no banco.
 

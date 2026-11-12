@@ -39,10 +39,10 @@ final class _SupportScreenState extends State<SupportScreen>
                       ),
                     ),
                   ),
-                  const SliverPadding(
-                    padding: .fromLTRB(16.0, 16.0, 16.0, 32.0),
-                    sliver: SliverFillRemaining(
-                      hasScrollBody: false,
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Padding(
+                      padding: .fromLTRB(16.0, 16.0, 16.0, 32.0),
                       child: Column(
                         crossAxisAlignment: .stretch,
                         children: [

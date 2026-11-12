@@ -15,4 +15,22 @@ import 'package:cordato/features/settings/presentation/screens/support/support_s
   size: cordatoPhonePreviewSize,
   brightness: Brightness.dark,
 )
+@CordatoPreview(
+  group: 'Settings / Telas',
+  name: 'Apoio / Tela compacta',
+  size: Size(320.0, 568.0),
+)
 Widget previewSupportScreen() => const SupportScreen();
+
+@CordatoPreview(
+  group: 'Settings / Telas',
+  name: 'Apoio / Texto ampliado',
+  size: cordatoPhonePreviewSize,
+)
+Widget previewSupportScreenLargeText() => Builder(
+  builder: (context) => MediaQuery(
+    data: MediaQuery.of(context)
+        .copyWith(textScaler: const TextScaler.linear(2)),
+    child: const SupportScreen(),
+  ),
+);
