@@ -213,6 +213,21 @@ Widget previewFilteredMetricsCategories() => _sectionPreview(
 
 @CordatoPreview(
   group: 'Metrics / Cards',
+  name: 'Valores altos / Estreito / Claro',
+  size: Size(320, 844),
+  brightness: Brightness.light,
+)
+@CordatoPreview(
+  group: 'Metrics / Cards',
+  name: 'Valores altos / Estreito / Escuro',
+  size: Size(320, 844),
+  brightness: Brightness.dark,
+)
+Widget previewHighAmountMetricsCards() =>
+    _sectionPreview(data: _categoriesResult(7, large: true));
+
+@CordatoPreview(
+  group: 'Metrics / Cards',
   name: 'Texto ampliado / Escuro',
   size: Size(320, 844),
   brightness: Brightness.dark,

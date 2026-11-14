@@ -110,7 +110,7 @@ final class const ExpenseCategoryCardWidget({
                         const SizedBox(width: 8.0),
                         Expanded(
                           child: Align(
-                            alignment: Alignment.topRight,
+                            alignment: .topRight,
                             child: Container(
                               padding: const .symmetric(
                                 vertical: 4.0,
@@ -131,7 +131,7 @@ final class const ExpenseCategoryCardWidget({
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12.0),
+                    const Spacer(),
                     Text(
                       category.label,
                       maxLines: 1,
@@ -139,11 +139,24 @@ final class const ExpenseCategoryCardWidget({
                       style: context.typography.titleSmall,
                     ),
                     const SizedBox(height: 8.0),
-                    Text(
-                      amount,
-                      style: buildAmountStyle(
+                    SizedBox(
+                      width: double.infinity,
+                      height: _buildTextHeight(
                         context: context,
-                        highlighted: highlighted,
+                        maxLines: 1,
+                        text: amount,
+                        width: .infinity,
+                        style: buildAmountStyle(context: context),
+                      ),
+                      child: FittedBox(
+                        fit: .scaleDown,
+                        alignment: .bottomLeft,
+                        child: Text(
+                          amount,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: buildAmountStyle(context: context),
+                        ),
                       ),
                     ),
                   ],
@@ -160,14 +173,12 @@ final class const ExpenseCategoryCardWidget({
         : BounceWidget.withOnPress(onPress: onTap, child: card);
   }
 
-  TextStyle? buildAmountStyle({
-    required BuildContext context,
-    required bool highlighted,
-  }) => context.typography.titleLarge?.copyWith(
-    fontWeight: .w600,
-    color: context.colors.onSurface,
-    fontSize: highlighted ? 24.0 : 18.0,
-  );
+  TextStyle? buildAmountStyle({required BuildContext context}) =>
+      context.typography.titleLarge?.copyWith(
+        fontWeight: .w600,
+        color: context.colors.onSurface,
+        fontSize: 16.0,
+      );
 
   double buildHeightFor({
     required BuildContext context,
@@ -187,7 +198,7 @@ final class const ExpenseCategoryCardWidget({
             style: context.typography.labelSmall,
             width: math.max(1.0, contentWidth - 64.0),
           ) +
-          24.0,
+          8.0,
     );
 
     return 34.0 +
@@ -204,8 +215,9 @@ final class const ExpenseCategoryCardWidget({
         _buildTextHeight(
           context: context,
           text: formatter.formatCents(category.totalAmount),
-          style: buildAmountStyle(context: context, highlighted: highlighted),
-          width: contentWidth,
+          style: buildAmountStyle(context: context),
+          width: double.infinity,
+          maxLines: 1,
         ) +
         (highlighted || illustrated ? illustrationHeight : 0.0);
   }

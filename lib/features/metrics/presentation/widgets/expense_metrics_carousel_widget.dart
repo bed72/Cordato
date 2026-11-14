@@ -43,14 +43,12 @@ final class _ExpenseMetricsCarouselWidgetState
         final upperHeight = layouts
             .map((layout) => layout.upperHeight)
             .reduce(math.max);
-        final lowerHeight = layouts
-            .map((layout) => layout.lowerHeight)
-            .reduce(math.max);
+        final lowerHeight = layouts[currentPage].lowerHeight;
         final pageHeight =
             upperHeight + (lowerHeight > 0 ? 12.0 + lowerHeight : 0.0);
 
         return Column(
-          spacing: 12.0,
+          spacing: 24.0,
           children: [
             SizedBox(
               height: pageHeight,
@@ -60,16 +58,20 @@ final class _ExpenseMetricsCarouselWidgetState
                 itemCount: widget.pages.length,
                 itemBuilder: (_, index) => ExcludeSemantics(
                   excluding: index != currentPage,
-                  child: Padding(
-                    padding: const .symmetric(horizontal: 6.0),
-                    child: ExpenseMetricsGridWidget(
-                      period: widget.period,
-                      upperHeight: upperHeight,
-                      lowerHeight: lowerHeight,
-                      categories: widget.pages[index],
-                      moneyFormatter: widget.moneyFormatter,
-                      onExpensesChanged: widget.onExpensesChanged,
-                      showCategoryTip: widget.pages.showsCategoryTipAt(index),
+                  child: OverflowBox(
+                    minHeight: 0.0,
+                    maxHeight: .infinity,
+                    alignment: .topCenter,
+                    child: Padding(
+                      padding: const .symmetric(horizontal: 6.0),
+                      child: ExpenseMetricsGridWidget(
+                        period: widget.period,
+                        upperHeight: upperHeight,
+                        categories: widget.pages[index],
+                        moneyFormatter: widget.moneyFormatter,
+                        onExpensesChanged: widget.onExpensesChanged,
+                        showCategoryTip: widget.pages.showsCategoryTipAt(index),
+                      ),
                     ),
                   ),
                 ),
@@ -80,25 +82,22 @@ final class _ExpenseMetricsCarouselWidgetState
                 liveRegion: true,
                 label:
                     'Página ${currentPage + 1} de ${widget.pages.length} de categorias',
-                child: Padding(
-                  padding: const .only(top: 8.0),
-                  child: Row(
-                    spacing: 6.0,
-                    mainAxisAlignment: .center,
-                    children: [
-                      for (int index = 0; index < widget.pages.length; index++)
-                        Container(
-                          height: 6.0,
-                          width: index == currentPage ? 16.0 : 6.0,
-                          decoration: BoxDecoration(
-                            borderRadius: context.radius.cornerRadiusFull,
-                            color: index == currentPage
-                                ? context.colors.primary
-                                : context.colors.outlineVariant,
-                          ),
+                child: Row(
+                  spacing: 6.0,
+                  mainAxisAlignment: .center,
+                  children: [
+                    for (int index = 0; index < widget.pages.length; index++)
+                      Container(
+                        height: 6.0,
+                        width: index == currentPage ? 16.0 : 6.0,
+                        decoration: BoxDecoration(
+                          borderRadius: context.radius.cornerRadiusFull,
+                          color: index == currentPage
+                              ? context.colors.primary
+                              : context.colors.outlineVariant,
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
           ],

@@ -5,15 +5,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
-import 'package:cordato/features/metrics/presentation/widgets/expense_metrics_tip_card_widget.dart';
 import 'package:cordato/features/metrics/presentation/widgets/expense_category_card_widget.dart';
+import 'package:cordato/features/metrics/presentation/widgets/expense_metrics_tip_card_widget.dart';
 
 final class const ExpenseMetricsGridWidget({
   super.key,
   required final IMoneyFormatter moneyFormatter,
   required final List<ExpenseCategoryMetricsEntity> categories,
   final double? upperHeight,
-  final double? lowerHeight,
   final VoidCallback? onExpensesChanged,
   final ({DateTime from, DateTime to})? period,
   final bool showCategoryTip = false,
@@ -26,7 +25,7 @@ final class const ExpenseMetricsGridWidget({
       builder: (context, constraints) {
         final layout = buildLayout(context, constraints.maxWidth);
         final topHeight = math.max(layout.upperHeight, upperHeight ?? 0.0);
-        final bottomHeight = math.max(layout.lowerHeight, lowerHeight ?? 0.0);
+        final bottomHeight = layout.lowerHeight;
 
         return Column(
           spacing: 12.0,
@@ -39,8 +38,8 @@ final class const ExpenseMetricsGridWidget({
                 compact: true,
                 period: period,
                 highlighted: true,
-                category: categories.first,
                 formatter: moneyFormatter,
+                category: categories.first,
                 onExpensesChanged: onExpensesChanged,
               ),
             ),
@@ -98,9 +97,12 @@ final class const ExpenseMetricsGridWidget({
     ];
     final topHeight = heights.first;
     final bottomHeight = hasCategoryTip
-        ? const ExpenseMetricsTipCardWidget().buildHeightFor(
-            context: context,
-            width: width,
+        ? math.max(
+            topHeight,
+            const ExpenseMetricsTipCardWidget().buildHeightFor(
+              context: context,
+              width: width,
+            ),
           )
         : heights.skip(1).fold(0.0, math.max);
 
