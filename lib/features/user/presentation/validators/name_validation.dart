@@ -6,13 +6,11 @@ final class const NameValidation() implements Validation<String> {
   ValidationResult<String> call(String value) {
     final normalized = value.trim();
     final length = normalized.runes.length;
-    if (length < 2 || length > 32) {
-      return const Invalid('O nome deve ter entre 2 e 32 caracteres.');
-    }
-    return Valid(normalized);
+    return (length < 2 || length > 32)
+        ? const Invalid('O nome deve ter entre 2 e 32 caracteres.')
+        : Valid(normalized);
   }
 
-  // TODO UIS KNOWS STATUS CODE???
   bool isFieldError(ErrorEntity error) =>
       (error.status == '400' && error.pointer == '/name') ||
       (error.status == '422' && error.pointer == '/data/attributes/name');

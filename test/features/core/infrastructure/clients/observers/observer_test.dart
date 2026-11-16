@@ -5,7 +5,7 @@ import 'package:talker_bloc_logger/talker_bloc_logger.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/core/infrastructure/clients/observers/observer.dart';
+import 'package:cordato/features/core/infrastructure/observers/observer.dart';
 
 import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_bloc.dart';

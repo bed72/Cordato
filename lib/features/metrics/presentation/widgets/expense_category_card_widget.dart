@@ -73,7 +73,7 @@ final class const ExpenseCategoryCardWidget({
               if (highlighted || illustrated)
                 Positioned(
                   right: -32.0,
-                  bottom: -44.0,
+                  bottom: -60.0,
                   width: illustrationSize,
                   height: illustrationSize,
                   child: Skeleton.ignore(

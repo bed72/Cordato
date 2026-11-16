@@ -14,8 +14,8 @@ import 'package:cordato/features/dashboard/application/exceptions/audio_exceptio
 import 'package:cordato/features/dashboard/application/repositories/interface_audio_repository.dart';
 
 final class AudioRepository({
-  required final IRecordingClient client,
   required final PocketBase pocketBase,
+  required final IRecordingClient client,
   String workerUrl = const String.fromEnvironment(
     'WORKER_URL',
     defaultValue: 'https://worker.cordato.cloud',
@@ -57,9 +57,7 @@ final class AudioRepository({
 
   Future<void> _send(Uint8List audio) async {
     final token = pocketBase.authStore.token;
-    if (token.isEmpty) {
-      throw const AudioException(.unauthorized);
-    }
+    if (token.isEmpty) throw const AudioException(.unauthorized);
 
     final today = DateTime.now();
     final referenceDate =

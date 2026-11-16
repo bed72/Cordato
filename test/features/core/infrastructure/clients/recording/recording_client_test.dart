@@ -46,8 +46,8 @@ void main() {
     when(() => recorder.cancel()).thenAnswer((_) async {});
     when(() => recorder.dispose()).thenAnswer((_) async {});
     client = RecordingClient(
-      createRecorder: () => recorder,
-      temporaryDirectory: () async => temporaryRoot,
+      recorder: () => recorder,
+      directory: () async => temporaryRoot,
     );
   });
 

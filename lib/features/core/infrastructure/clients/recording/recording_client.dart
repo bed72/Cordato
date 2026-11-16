@@ -11,8 +11,8 @@ import 'package:cordato/features/core/application/clients/interface_recording_cl
 import 'package:cordato/features/core/infrastructure/clients/recording/models/recording_model.dart';
 
 final class RecordingClient({
-  final AudioRecorder Function() createRecorder = AudioRecorder.new,
-  final Future<Directory> Function() temporaryDirectory = getTemporaryDirectory,
+  final AudioRecorder Function() recorder = AudioRecorder.new,
+  final Future<Directory> Function() directory = getTemporaryDirectory,
 }) implements IRecordingClient {
   int? _releasingOperation;
   RecordingModel? _activeRecording;
@@ -27,8 +27,8 @@ final class RecordingClient({
     );
     recording = RecordingModel(
       events: events,
+      recorder: recorder(),
       operation: operation,
-      recorder: createRecorder(),
     );
 
     return events.stream;
@@ -58,6 +58,7 @@ final class RecordingClient({
 
     _activeRecording = null;
     _releasingOperation = operation;
+
     recording.limit?.cancel();
     _pendingRelease = _release(recording);
 
@@ -98,13 +99,11 @@ final class RecordingClient({
 
   Future<void> _requestPermission(RecordingModel recording) async {
     final permitted = await recording.recorder.hasPermission();
-    if (!permitted) {
-      throw const RecordingException(.permission);
-    }
+    if (!permitted) throw const RecordingException(.permission);
   }
 
   Future<void> _startRecorder(RecordingModel recording) async {
-    final root = await temporaryDirectory();
+    final root = await directory();
     recording.directory = await root.createTemp('cordato_audio_');
     if (!_isActive(recording)) return;
 
@@ -146,11 +145,7 @@ final class RecordingClient({
       return;
     }
 
-    _fail(
-      recording,
-      const RecordingException(.interrupted),
-      StackTrace.current,
-    );
+    _fail(recording, const RecordingException(.interrupted), .current);
   }
 
   Future<Uint8List> _stop(RecordingModel recording) async {
@@ -160,9 +155,7 @@ final class RecordingClient({
     try {
       final path = await recording.recorder.stop();
       _requireActive(recording);
-      if (path == null) {
-        throw const RecordingException(.empty);
-      }
+      if (path == null) throw const RecordingException(.empty);
 
       final audio = await File(path).readAsBytes();
       _requireActive(recording);

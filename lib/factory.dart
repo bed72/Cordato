@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/app_module.dart';
-import 'package:cordato/features/core/infrastructure/clients/observers/observer.dart';
+import 'package:cordato/features/core/infrastructure/observers/observer.dart';
 import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_factory.dart';
 
 Future<Module> createDependencies() async {

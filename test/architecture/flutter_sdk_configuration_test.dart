@@ -7,7 +7,7 @@ void main() {
     final pubspec = File('pubspec.yaml').readAsStringSync();
     final workflow = File('.github/workflows/android-release.yml')
         .readAsStringSync();
-    final minimumFlutter = RegExp(r"flutter: '>=([0-9.]+)'")
+    final minimumFlutter = RegExp(r'''flutter: ["']>=([0-9.]+)["']''')
         .firstMatch(pubspec)!
         .group(1)!;
 
