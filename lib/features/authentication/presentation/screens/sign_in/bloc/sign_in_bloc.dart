@@ -21,11 +21,11 @@ final class SignInBloc({required final IAuthenticationRepository repository})
     emit(const SignInSubmitting());
 
     try {
-      await repository.signIn(email: event.email, password: event.password);
+      final userId = await repository.requestCode(email: event.email);
 
       if (isClosed || emit.isDone) return;
 
-      emit(const SignInSuccess());
+      emit(SignInSuccess(userId: userId));
     } on AuthenticationException catch (error) {
       if (isClosed || emit.isDone) return;
 

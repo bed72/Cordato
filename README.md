@@ -58,7 +58,8 @@ contrato único `IAuthenticationRepository` com solicitação de código de e-ma
 confirmação e logout. O core registra ISessionClient com SessionClient; os módulos
 existentes registram IAuthenticationRepository e ISessionRepository como lazy singletons,
 compartilhando essa coordenação sem depender de visitar rotas;
-a apresentação continua sem migração e não há login OTP utilizável nas telas.
+somente os Blocs de solicitação, reenvio e confirmação foram migrados; não há
+login OTP utilizável nas telas.
 Não houve envio de e-mail, alteração remota ou importação de dados nesta etapa.
 
 HttpClient recebe Dio obrigatório por construtor, sem create ou fallback interno.
@@ -121,6 +122,27 @@ Os testes da infraestrutura atual usam Dio e cookies reais com transporte fake,
 sem rede ou UI. Não houve build nativo, homologação
 remota, deploy ou importação de dados. Backend/worker isolados não foram alterados.
 Os resultados e descrições PocketBase abaixo são históricos, não estado atual.
+
+### Blocs por código — etapa sem UI
+
+SignInBloc solicita código com email e publica o userId em SignInSuccess, sem
+autenticar. ResendEmailBloc inicia somente o cooldown do código já solicitado,
+sem duplicar a emissão; o reenvio explícito retorna o novo userId e reinicia
+os 60 segundos após sucesso. ConfirmCodeBloc confirma userId/code,
+sem armazenar código nos estados. Todos usam o contrato de aplicação, descartam
+submissões concorrentes e permitem retry manual após falhas.
+
+Telas, rotas, previews, DI e infraestrutura não foram alterados nesta etapa.
+ConfirmCodeBloc ainda não tem tela ou binding; a tela antiga de sign-in continua
+enviando password e requer migração própria. Os demais Blocs de senha ainda consumidos
+foram preservados. SessionBloc e LogoutBloc permanecem sem alterações.
+
+Verificação em 17/11/2026: `flutter pub get` concluído; análise focada sem issues;
+44 testes dos três Blocs e 435 testes na seleção ampliada aprovados. Globalmente,
+`flutter analyze` aponta 74 issues e `flutter test --reporter failures-only` tem
+1218 aprovações e 11 falhas de compilação/carregamento do legado. Esses resultados
+incluem as incompatibilidades dos mixins antigos com os eventos/estados novos e
+não comprovam integração visual, build nativo ou homologação remota.
 
 ### Integração PocketBase anterior
 

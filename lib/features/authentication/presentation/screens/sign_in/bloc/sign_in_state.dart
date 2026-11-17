@@ -10,7 +10,8 @@ sealed class SignInState {
 
 final class const SignInInitial() extends SignInState {}
 
-final class const SignInSuccess() extends SignInState {}
+final class const SignInSuccess({required final String userId})
+    extends SignInState {}
 
 final class const SignInSubmitting() extends SignInState {}
 

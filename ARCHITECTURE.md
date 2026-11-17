@@ -104,7 +104,8 @@ métodos removidos são incompatíveis: a análise e a suíte global ficam bloqu
 até sua migração ou remoção. Não há stubs, sucesso fictício nem exclusão de testes
 para esconder essa lacuna. Settings preserva `signOut` e passa a ter o contrato
 registrado, mas seu fluxo visual não foi homologado nem o app completo compila.
-Telas, Blocs, rotas, navegação e o contrato `ISessionRepository` não foram alterados aqui.
+Telas, rotas, navegação e o contrato `ISessionRepository` não foram alterados na
+entrega da infraestrutura. A migração posterior dos Blocs está descrita abaixo.
 
 `authentication/infrastructure/repositories/authentication_repository.dart`
 implementa somente esse contrato, recebendo IHttpClient e ISessionClient. `requestCode`
@@ -115,6 +116,48 @@ entidade wrapper, DTO público, cadastro separado, timers ou retries.
 ou políticas de cookies. Cada método converte HttpClientException por ResponseMapper
 para AuthenticationException; erros inesperados e parsing inválido propagam,
 sem captura genérica ou mensagens remotas. O repository não recebe UI ou navega.
+
+### Blocs de autenticação por código
+
+A migração posterior foi limitada aos Blocs, eventos, estados e testes unitários:
+
+- SignInBloc recebe SignInSubmittedEvent somente com email, delega requestCode sem
+  normalização e emite SignInSuccess com o userId retornado. Sucesso significa
+  emissão do código, nunca autenticação; o Bloc não confirma código nem gerencia sessão.
+- ResendEmailBloc também chama requestCode e inclui o novo userId em ResendEmailSuccess.
+  ResendEmailStartedEvent sem parâmetros sinaliza que o código inicial já foi solicitado
+  e inicia somente seu cooldown de 60 segundos, sem duplicar a emissão de SignInBloc.
+  Submissões explícitas reenviam após o prazo e reiniciam o cooldown somente em sucesso.
+  Não há emissão automática ao construir o Bloc ou ao terminar o cooldown. Um consumidor
+  futuro deve usar o userId do sucesso
+  mais recente na confirmação, não reutilizar o identificador de uma emissão anterior.
+- ConfirmCodeBloc recebe userId e code no evento de submissão e aguarda somente
+  confirmCode. Seus estados sealed são Initial, Submitting, Success e Failure, sem
+  código ou credencial armazenada. O sucesso não navega; a observação global de sessão
+  permanece responsável pelo redirecionamento depois da integração visual futura.
+
+Os três dependem somente de IAuthenticationRepository e AuthenticationException.
+Usam droppable, bloqueiam submissões conforme o estado e permitem retry manual após
+falha. Eventos descartados durante um request não viram retries ao falhar. Erros
+esperados preservam a mesma ErrorsEntity; erros inesperados usam fallback seguro e
+addError com stack trace. Após await verificam isClosed/emit.isDone, sem reproduzir
+lifecycle ou cancelamento de HTTP. O fechamento do reenvio cancela o timer nativo do Bloc.
+
+Não foram alterados telas, formulários, mixins, previews, rotas, módulos, transporte,
+SessionBloc ou LogoutBloc. ConfirmCodeBloc ainda não possui bind/tela. Os Blocs de
+cadastro, links e senha não foram apagados enquanto consumidos. A tela antiga de
+sign-in ainda envia password e os consumidores antigos de reenvio ainda usam os
+parâmetros/estados de verificação removidos; não há compatibilidade
+artificial. Esta etapa não entrega login utilizável na interface ou app compilável.
+
+Testes dos três Blocs usam contratos mockados, Completer e fake_async, sem rede,
+UI ou sleeps. Cobrem estados, delegação inalterada, userId retornado no envio/reenvio,
+erros, retry, concorrência, fechamento pendente e descarte do cooldown. Verificação:
+44 testes dos três Blocs aprovados; 435 na seleção ampliada com arquitetura, core,
+Session, contratos/infraestrutura Authentication e Logout. Análise focada sem issues.
+Globalmente, há 74 issues e 11 falhas de compilação/carregamento dos consumidores
+legados; isso inclui as novas incompatibilidades dos mixins de sign-in/reenvio com
+os eventos/estados migrados. A suíte global teve 1218 aprovações. Sem build ou homologação.
 
 ### Coordenação de sessão
 
@@ -682,7 +725,11 @@ restaurar o client HTTP antigo. Alterações futuras devem atualizar implementa�
 consumidores e testes juntos, sem apresentar fixtures como homologação do serviço.
 Não há migração de dados, contas ou sessões do backend anterior neste trabalho.
 
-## Referência Executável: Authentication/Sign-in
+## Histórico: Authentication/Sign-in Por Senha
+
+Esta seção descreve o fluxo anterior. Os Blocs atuais por código estão na seção
+de transição Appwrite acima; a tela de senha ainda não foi migrada e não é executável
+com o contrato atual. Não restaurar APIs removidas a partir desta descrição.
 
 ### Caminho De Uma Tentativa
 

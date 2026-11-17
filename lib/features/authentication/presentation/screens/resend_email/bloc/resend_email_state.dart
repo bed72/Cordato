@@ -11,13 +11,13 @@ sealed class ResendEmailState {
   Duration get remaining => switch (this) {
     ResendEmailSuccess() => EmailCooldown.duration,
     ResendEmailCooldown(:final timeLeft) => timeLeft,
-    _ => Duration.zero,
+    _ => .zero,
   };
 }
 
 final class const ResendEmailInitial() extends ResendEmailState {}
 
-final class const ResendEmailSuccess({final bool isInitialRequest = false})
+final class const ResendEmailSuccess({required final String userId})
     extends ResendEmailState {}
 
 final class const ResendEmailCooldown({required final Duration timeLeft})
@@ -27,7 +27,5 @@ final class const ResendEmailReady() extends ResendEmailState {}
 
 final class const ResendEmailSubmitting() extends ResendEmailState {}
 
-final class const ResendEmailFailure({
-  required final ErrorsEntity errors,
-  final bool isInitialRequest = false,
-}) extends ResendEmailState {}
+final class const ResendEmailFailure({required final ErrorsEntity errors})
+    extends ResendEmailState {}

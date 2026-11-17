@@ -45,6 +45,19 @@ dependem de ISessionClient, não da implementação concreta em infrastructure.
 Não restaure o refresh/AuthStore anterior nem conecte os consumidores de senha
 artificialmente ao novo fluxo. Os contratos de Session e seu Bloc não mudaram.
 
+Por solicitação posterior restrita a Blocs e testes, SignInBloc agora solicita
+requestCode com evento contendo somente email e emite SignInSuccess(userId:).
+Esse sucesso significa código solicitado, não sessão autenticada. ResendEmailBloc
+também usa requestCode e emite o novo userId em cada sucesso. ResendEmailStartedEvent
+sem parâmetros inicia somente o cooldown do código já solicitado, sem outro request;
+submissões explícitas reenviam após o prazo e reiniciam os 60 segundos após sucesso.
+ConfirmCodeBloc recebe userId/code somente no evento, aguarda confirmCode e não
+armazena código nos estados. Os três usam droppable, erros originais e retry manual.
+ConfirmCodeBloc ainda não tem bind ou tela; não conecte a navegação de senha a
+esses estados incidentalmente. Telas, rotas, previews e os outros Blocs de senha
+continuam pendentes e incompatíveis. SessionBloc e LogoutBloc não foram alterados
+nessa etapa; os Blocs antigos ainda consumidos não foram apagados.
+
 Para continuar esta migração, siga os contratos existentes: IHttpClient fica
 junto de HttpClient no transporte histórico; ISessionClient fica em application
 do core. A composição importa implementações e registra pelos contratos.
@@ -84,8 +97,8 @@ preservados. Authentication e Session têm adapters de produção registrados ne
 Os contratos de User, Expense, exportação de Expense, Metrics e áudio ainda não têm adapters.
 Não crie implementações vazias, retornos de sucesso ou ausência de sessão
 presumida para esconder essa lacuna. O app completo exige a migração desses
-adapters e da composição: OTP existe somente em infraestrutura com bindings,
-sem telas; métricas e envio de áudio Appwrite continuam ausentes.
+adapters e da composição: OTP existe em infraestrutura com bindings e nos Blocs,
+sem telas migradas; métricas e envio de áudio Appwrite continuam ausentes.
 Cookies são arquivos no diretório de suporte, sem criptografia adicional por
 decisão explícita; melhorias de persistência segura ficam adiadas.
 `ResponseMapper` usa exceções próprias e preserva status/type Appwrite sem

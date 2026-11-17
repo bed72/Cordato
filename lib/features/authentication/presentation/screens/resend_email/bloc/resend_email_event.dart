@@ -1,7 +1,8 @@
-sealed class const ResendEmailEvent({required final String email});
+sealed class ResendEmailEvent {
+  const ResendEmailEvent();
+}
 
-final class const ResendEmailStartedEvent({required super.email})
-    extends ResendEmailEvent;
+final class const ResendEmailStartedEvent() extends ResendEmailEvent {}
 
-final class const ResendEmailSubmittedEvent({required super.email})
+final class const ResendEmailSubmittedEvent({required final String email})
     extends ResendEmailEvent {}

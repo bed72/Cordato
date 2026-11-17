@@ -19,50 +19,56 @@ final class ResendEmailBloc({
     ResendEmailEvent event,
     Emitter<ResendEmailState> emit,
   ) async {
-    final isInitialRequest = event is ResendEmailStartedEvent;
-    if (event.email.isEmpty) return;
-    if (isInitialRequest ? state is! ResendEmailInitial : !state.canSubmit) {
-      return;
+    switch (event) {
+      case ResendEmailStartedEvent():
+        if (state is! ResendEmailInitial) return;
+
+        emit(const ResendEmailCooldown(timeLeft: EmailCooldown.duration));
+        await _cooldown(emit);
+      case ResendEmailSubmittedEvent():
+        await _requestCode(event, emit);
     }
+  }
+
+  Future<void> _requestCode(
+    ResendEmailSubmittedEvent event,
+    Emitter<ResendEmailState> emit,
+  ) async {
+    if (!state.canSubmit || event.email.isEmpty) return;
 
     emit(const ResendEmailSubmitting());
 
+    final String userId;
     try {
-      await repository.resendEmail(email: event.email);
+      userId = await repository.requestCode(email: event.email);
     } on AuthenticationException catch (error) {
       if (isClosed || emit.isDone) return;
 
-      emit(
-        ResendEmailFailure(
-          errors: error.errors,
-          isInitialRequest: isInitialRequest,
-        ),
-      );
+      emit(ResendEmailFailure(errors: error.errors));
+
       return;
     } catch (error, stackTrace) {
       if (isClosed || emit.isDone) return;
 
       addError(error, stackTrace);
 
-      emit(
-        ResendEmailFailure(
-          errors: .unknown(),
-          isInitialRequest: isInitialRequest,
-        ),
-      );
+      emit(ResendEmailFailure(errors: .unknown()));
+
       return;
     }
 
     if (isClosed || emit.isDone) return;
 
-    emit(ResendEmailSuccess(isInitialRequest: isInitialRequest));
-    await emit.forEach<int>(
-      EmailCooldown.ticks(),
-      onData: (seconds) => seconds >= EmailCooldown.duration.inSeconds
-          ? const ResendEmailReady()
-          : ResendEmailCooldown(
-              timeLeft: EmailCooldown.duration - Duration(seconds: seconds),
-            ),
-    );
+    emit(ResendEmailSuccess(userId: userId));
+    await _cooldown(emit);
   }
+
+  Future<void> _cooldown(Emitter<ResendEmailState> emit) => emit.forEach<int>(
+    EmailCooldown.ticks(),
+    onData: (seconds) => seconds >= EmailCooldown.duration.inSeconds
+        ? const ResendEmailReady()
+        : ResendEmailCooldown(
+            timeLeft: EmailCooldown.duration - Duration(seconds: seconds),
+          ),
+  );
 }

@@ -5,15 +5,15 @@ import 'package:cordato/features/core/infrastructure/clients/http/exceptions/htt
 import 'package:cordato/features/session/application/exceptions/session_exception.dart';
 import 'package:cordato/features/session/application/repositories/interface_session_repository.dart';
 
-final class SessionRepository({required final ISessionClient _sessionClient})
+final class SessionRepository({required final ISessionClient _client})
     implements ISessionRepository {
   @override
-  Stream<bool> get session => _sessionClient.session;
+  Stream<bool> get session => _client.session;
 
   @override
   Future<bool> loadSession() async {
     try {
-      return await _sessionClient.loadSession();
+      return await _client.loadSession();
     } on HttpClientException catch (exception) {
       throw SessionException(errors: ResponseMapper.fromException(exception));
     }

@@ -18,7 +18,7 @@ void main() {
 
   setUp(() {
     client = SessionClientMock();
-    repository = SessionRepository(sessionClient: client);
+    repository = SessionRepository(client: client);
   });
 
   group('loadSession', () {
