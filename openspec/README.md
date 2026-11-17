@@ -22,8 +22,10 @@ configurado na DI, sem create ou fallback interno. Repositories não usam Dio.
 ISessionClient é o contrato puro da coordenação compartilhada e já tem bind no
 core; expõe o stream `session`. AuthenticationRepository usa IHttpClient e
 ISessionClient e tem bind no módulo de Authentication. SessionRepository implementa
-ISessionRepository, preserva `sessionChanges` e tem bind no módulo de Session. A apresentação
-de senha não foi migrada e ainda bloqueia análise e suíte globais.
+ISessionRepository, expõe `session` e tem bind no módulo de Session. O fluxo visual
+por código foi reaproveitado do histórico 4d8837f com Blocs de escopo de página;
+senha/cadastro/recuperação e callbacks antigos foram removidos. Análise e suíte
+globais estão aprovadas; isso não comprova homologação remota ou os demais adapters.
 
 As regras atuais estão na [arquitetura](../ARCHITECTURE.md). A infraestrutura foi
 concluída e suas specs sincronizadas; o registro está em

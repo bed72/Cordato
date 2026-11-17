@@ -58,8 +58,8 @@ contrato único `IAuthenticationRepository` com solicitação de código de e-ma
 confirmação e logout. O core registra ISessionClient com SessionClient; os módulos
 existentes registram IAuthenticationRepository e ISessionRepository como lazy singletons,
 compartilhando essa coordenação sem depender de visitar rotas;
-somente os Blocs de solicitação, reenvio e confirmação foram migrados; não há
-login OTP utilizável nas telas.
+as telas de entrada por e-mail e confirmação de código estão conectadas aos Blocs.
+O mesmo fluxo atende contas novas e existentes, sem senha ou cadastro separado.
 Não houve envio de e-mail, alteração remota ou importação de dados nesta etapa.
 
 HttpClient recebe Dio obrigatório por construtor, sem create ou fallback interno.
@@ -78,7 +78,7 @@ sem criptografia adicional nesta etapa. Não passe API keys administrativas ao a
 
 Padrão a seguir: repositories recebem IHttpClient/ISessionClient, enquanto a DI
 compõe HttpClient/SessionClient. O stream do client é `ISessionClient.session`;
-SessionRepository o expõe como `ISessionRepository.sessionChanges`, sem alterar o Bloc.
+SessionRepository o expõe como `ISessionRepository.session`.
 Não criar factories de HTTP, fallback de Dio ou implementações paralelas.
 
 PocketBase foi removido de todo o Flutter: código, bindings, testes exclusivos e
@@ -104,18 +104,19 @@ expor mensagens remotas. Não há métodos de senha ou adapter legado paralelo.
 Os repositories anteriores foram removidos, não substituídos por sucessos
 fictícios. Authentication e Session têm adapters registrados; User e os adapters
 financeiros/áudio continuam pendentes. O app completo ainda não executa esses fluxos;
-Settings não foi migrada ou homologada visualmente. Os consumidores antigos de senha
-continuam incompatíveis com o contrato novo. Testes de Session e infraestrutura usam
+Settings usa signOut pelo contrato existente; não houve homologação visual/remota.
+Os consumidores antigos de senha, cadastro e recuperação foram removidos.
+Testes de Session e infraestrutura usam
 o core real com transporte fake, inclusive em uma composição nova sobre os cookies
-persistidos; a resolução do módulo Authentication continua bloqueada por seus imports
-de Blocs de senha. Testes globais de composição substituem contratos por mocks explicitamente.
+persistidos; a resolução real do módulo Authentication também é verificada sem rede.
+Testes globais de composição substituem contratos por mocks explicitamente.
 
 Baseline da remoção anterior: `flutter pub get`, `flutter analyze` sem problemas
 e 1157 testes aprovados, sem rede ou UI. Após substituir o contrato de
-Authentication, consumidores antigos de senha permanecem incompatíveis e
-bloqueiam análise/suíte globais até sua migração; não foram mascarados com stubs.
+Authentication, consumidores antigos de senha ficaram incompatíveis e
+bloquearam análise/suíte globais até a remoção solicitada abaixo; não houve stubs.
 Verificação da infraestrutura concluída em 17/11/2026: `flutter pub get` concluído,
-380 testes focados aprovados e análise focada sem issues. A análise global mantém
+380 testes focados aprovados e análise focada sem issues. Naquela etapa, a análise global mantinha
 93 issues conhecidos; a suíte global teve 1174 aprovações e 13 falhas de
 compilação/carregamento dos consumidores antigos, incluindo composição de Authentication.
 Os testes da infraestrutura atual usam Dio e cookies reais com transporte fake,
@@ -123,7 +124,7 @@ sem rede ou UI. Não houve build nativo, homologação
 remota, deploy ou importação de dados. Backend/worker isolados não foram alterados.
 Os resultados e descrições PocketBase abaixo são históricos, não estado atual.
 
-### Blocs por código — etapa sem UI
+### Entrada por e-mail e código
 
 SignInBloc solicita código com email e publica o userId em SignInSuccess, sem
 autenticar. ResendEmailBloc inicia somente o cooldown do código já solicitado,
@@ -132,17 +133,33 @@ os 60 segundos após sucesso. ConfirmCodeBloc confirma userId/code,
 sem armazenar código nos estados. Todos usam o contrato de aplicação, descartam
 submissões concorrentes e permitem retry manual após falhas.
 
-Telas, rotas, previews, DI e infraestrutura não foram alterados nesta etapa.
-ConfirmCodeBloc ainda não tem tela ou binding; a tela antiga de sign-in continua
-enviando password e requer migração própria. Os demais Blocs de senha ainda consumidos
-foram preservados. SessionBloc e LogoutBloc permanecem sem alterações.
+O fluxo visual do histórico `4d8837f` foi reaproveitado com os componentes atuais:
+informe e-mail, solicite o código e confirme seus seis dígitos. O preenchimento do
+código pode confirmar automaticamente; também há botão Confirmar. Reenvio respeita
+60 segundos e atualiza o identificador usado na confirmação. Alterar e-mail permite
+iniciar outra solicitação. Código e credenciais não passam pela URL ou pelo estado do Bloc.
 
-Verificação em 17/11/2026: `flutter pub get` concluído; análise focada sem issues;
-44 testes dos três Blocs e 435 testes na seleção ampliada aprovados. Globalmente,
-`flutter analyze` aponta 74 issues e `flutter test --reporter failures-only` tem
-1218 aprovações e 11 falhas de compilação/carregamento do legado. Esses resultados
-incluem as incompatibilidades dos mixins antigos com os eventos/estados novos e
-não comprovam integração visual, build nativo ou homologação remota.
+SignInBloc pertence ao escopo da rota de entrada; ConfirmCodeBloc e ResendEmailBloc
+pertencem ao escopo da confirmação. As telas não fecham essas instâncias; a sessão
+global redireciona após autenticação. Previews manuais de entrada, confirmação,
+loading e erro estão em authentication/presentation/previews. Não houve restauração
+de Supabase, Commands ou pinput, nem mudança no transporte HTTP.
+
+Removidos senha, criação separada de conta, recuperação/troca de senha, confirmação
+por link e seus testes exclusivos. A opção Alterar senha em Dados pessoais e os
+app links nativos antigos também foram retirados; o widget mantém seu scheme e
+App Group. Textos de ajuda/privacidade refletem a entrada por código. Backend,
+worker e artefatos OpenSpec arquivados não foram alterados.
+
+Verificação em 17/11/2026: `flutter pub get` concluído, `flutter analyze` sem issues
+e `flutter test --reporter failures-only` com **1225 testes aprovados**, sem rede
+ou UI. Os bloqueios anteriores dos consumidores de senha foram resolvidos pela
+remoção solicitada dos fluxos, sem stubs ou remoção de cobertura independente.
+`dart run tool/widget_preview.dart` compilou e serviu o catálogo até o timeout
+de 60 segundos, sem cliente conectado ou inspeção visual. XML Android e plists
+iOS passaram em xmllint/plutil. Não houve build nativo, validação visual, envio real de e-mail ou homologação
+remota. User, Expense, Metrics, áudio e os demais adapters pendentes ainda impedem
+de declarar o app completo funcional.
 
 ### Integração PocketBase anterior
 
@@ -685,7 +702,12 @@ e foram servidos até o timeout de 60 segundos, sem cliente conectado ou inspeç
 visual. A suíte completa não foi repetida neste refinamento; as cinco falhas
 anteriores de Expense permanecem fora do escopo.
 
-## Estado Do Projeto
+## Histórico Anterior À Migração Appwrite
+
+As descrições abaixo são históricas. Senha, cadastro separado, recuperação, links
+de confirmação/reset e `tool/app_links.dart` foram removidos do Flutter. O estado
+vigente está em Client e verificação atual, acima; não execute estas instruções
+para restaurar os fluxos antigos ou os serviços isolados incidentalmente.
 
 **O transporte das features existentes usa o SDK PocketBase. A adoção de escopo
 de página para Blocs continua parcial; testes de composição não substituem
@@ -1029,8 +1051,8 @@ serviu; a execução foi encerrada por timeout sem cliente conectado, sem valida
 visual do catálogo.
 Os detalhes estão em [Estado atual e migração](ARCHITECTURE.md#estado-atual-e-migração).
 
-O código existente inclui os seguintes fluxos, com rotas e dependências compostas;
-a operação contra o serviço real ainda exige homologação:
+Na implementação histórica anterior, os seguintes fluxos tinham rotas e dependências
+compostas; esta lista não representa os adapters ou telas atuais:
 
 - Boas-vindas, validação inicial de token persistido via auth-refresh e observação da sessão.
 - Entrada/cadastro com e-mail e senha, confirmação por link e reenvio com cooldown.

@@ -16,9 +16,9 @@ Por solicitação explícita posterior, `IAuthenticationRepository` agora conté
 somente `requestCode(email:)`, `confirmCode(userId:, code:)` e `signOut()`.
 O contrato antigo de senha/cadastro/recuperação/verificação foi removido, sem
 interface paralela ou contrato legado. Os nomes públicos não usam `Otp`:
-`requestCode` retorna `Future<String>` com o userId, sem entidade wrapper. Consumidores antigos ainda
-não migrados apresentam incompatibilidades de compilação; não restaure métodos
-removidos, crie stubs ou apague testes para mascará-las. Esta decisão prevalece
+`requestCode` retorna `Future<String>` com o userId, sem entidade wrapper. Os consumidores
+de senha/cadastro/recuperação foram removidos por solicitação explícita junto dos
+testes exclusivos desses fluxos. Não restaure métodos removidos ou crie stubs. Esta decisão prevalece
 sobre as referências à preservação do contrato antigo abaixo.
 
 A única coordenação de sessão é `SessionClient` em
@@ -33,7 +33,7 @@ Falhas de transporte/storage não são convertidas em ausência.
 ISessionClient é o contrato puro em core/application/clients/interface_session_client.dart.
 SessionClient implementa esse contrato e o core o registra como lazy singleton.
 Expõe `session` (Stream<bool>), `loadSession`, `confirmCode`, `signOut` e `close`.
-O adapter SessionRepository expõe esse mesmo stream como `sessionChanges`,
+O adapter SessionRepository expõe esse mesmo stream como `session`,
 preservando o contrato de aplicação existente sem depender da classe concreta.
 AuthenticationRepository é o primeiro consumidor: recebe IHttpClient e ISessionClient,
 solicita código por REST retornando userId como String e delega confirmação/logout.
@@ -53,18 +53,30 @@ sem parâmetros inicia somente o cooldown do código já solicitado, sem outro r
 submissões explícitas reenviam após o prazo e reiniciam os 60 segundos após sucesso.
 ConfirmCodeBloc recebe userId/code somente no evento, aguarda confirmCode e não
 armazena código nos estados. Os três usam droppable, erros originais e retry manual.
-ConfirmCodeBloc ainda não tem bind ou tela; não conecte a navegação de senha a
-esses estados incidentalmente. Telas, rotas, previews e os outros Blocs de senha
-continuam pendentes e incompatíveis. SessionBloc e LogoutBloc não foram alterados
-nessa etapa; os Blocs antigos ainda consumidos não foram apagados.
+Por solicitação posterior, o fluxo visual do histórico 4d8837f foi reaproveitado
+com os Blocs atuais, sem Supabase, Commands ou pinput. As únicas rotas de Authentication
+são sign-in (email) e confirm (código). SignInSuccess substitui a rota por confirmação,
+levando ConfirmCodeArguments com email/userId, nunca o código. A confirmação recebe
+ConfirmCodeBloc e ResendEmailBloc pelo provide/addBloc da rota e não fecha essas instâncias.
+O mixin possui o controller, valida seis dígitos, usa o userId mais recente após reenvio
+e deixa o redirecionamento autenticado à composição global de Session. Alterar e-mail
+substitui a rota para criar um novo SignInBloc. Não duplicar o primeiro request.
+Cadastro separado, senha, recuperação, troca de senha, verificação por link, seus
+previews, callbacks nativos e testes exclusivos foram removidos; cobertura de domínio,
+infraestrutura, composição, sessão, logout e outras features foi preservada.
+SessionRedirectDeferral e seu scope foram removidos com a troca de senha; a política
+global reconhece a confirmação como entrada pública e redireciona após autenticação.
+Os app links antigos e o gerador de associações foram removidos, preservando o scheme
+cordato e o App Group usados pelo widget. Backend/worker e arquivos OpenSpec arquivados
+não foram alterados. Previews manuais usam contracts fake e ownership externo explícito.
 
 Para continuar esta migração, siga os contratos existentes: IHttpClient fica
 junto de HttpClient no transporte histórico; ISessionClient fica em application
 do core. A composição importa implementações e registra pelos contratos.
 Não injete Dio ou SessionClient concreto nos repositories, crie wrappers extras
 ou restaure variantes paralelas. AuthenticationRepository e SessionRepository estão
-registrados pelos contratos nos respectivos módulos; as telas de senha
-continuam incompatíveis e não devem ser atendidas por stubs.
+registrados pelos contratos nos respectivos módulos; as telas antigas de senha
+foram removidas e não devem ser restauradas por stubs.
 
 Por solicitação explícita, PocketBase foi removido de todo o Flutter, não apenas
 do core: repositories concretos, bindings, testes exclusivos, fixtures e mocks.
@@ -92,13 +104,14 @@ PocketBase no Flutter atual. O Modular cria um
 validação própria de endpoint/projeto.
 `OriginInterceptor` restringe a origem. O client não acessa diretórios nem resolve
 dependências globalmente; Authentication é seu primeiro consumidor em infrastructure.
-Contratos, domínio, Blocs, telas, rotas, serialização pura e seus testes foram
+Contratos, domínio, serialização e cobertura independente dos fluxos removidos foram
 preservados. Authentication e Session têm adapters de produção registrados nesta fase.
 Os contratos de User, Expense, exportação de Expense, Metrics e áudio ainda não têm adapters.
 Não crie implementações vazias, retornos de sucesso ou ausência de sessão
 presumida para esconder essa lacuna. O app completo exige a migração desses
-adapters e da composição: OTP existe em infraestrutura com bindings e nos Blocs,
-sem telas migradas; métricas e envio de áudio Appwrite continuam ausentes.
+adapters e da composição: OTP existe em infraestrutura, Blocs, telas e bindings;
+métricas e envio de áudio Appwrite continuam ausentes. Análise e testes aprovados
+não comprovam homologação de e-mail/cookies remotos nem app completo funcional.
 Cookies são arquivos no diretório de suporte, sem criptografia adicional por
 decisão explícita; melhorias de persistência segura ficam adiadas.
 `ResponseMapper` usa exceções próprias e preserva status/type Appwrite sem
@@ -111,8 +124,8 @@ sem rede ou UI. Testes de composição, incluindo `test/app_module_test.dart`,
 fornecem mocks dos contratos de aplicação, sem fixture/backend anterior.
 Isso comprova composição e comportamento com contratos fornecidos, não uma
 integração Appwrite funcional. Os testes de Session também usam o core real com
-adapter HTTP fake; os do módulo Authentication continuam bloqueados pelos imports
-dos Blocs de senha. Para substituir um repository já registrado em testes de
+adapter HTTP fake; os do módulo Authentication agora resolvem a composição real
+e verificam o fluxo por cookies sem rede. Para substituir um repository já registrado em testes de
 composição, use replaceInstance após bootstrap, sem duplicar o registro do contrato.
 Não apague cobertura independente do backend.
 Um teste de arquitetura bloqueia a reintrodução do SDK/adapters removidos em

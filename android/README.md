@@ -46,11 +46,11 @@ strings with colors, styles or other resource types.
 | `action_` | Buttons and other action text | `action_home_widget_add_expense` |
 | `cd_` | Accessibility descriptions | `cd_home_widget_monthly_summary` |
 | `msg_` | General messages, hints, toasts and snackbars | `msg_home_widget_update_required` |
-| `config_` | Technical configuration, not user-facing text | `config_authentication_link_host` |
+| `config_` | Technical configuration, not user-facing text | `config_home_widget_currency_symbol` |
 
-Current contexts are `app`, `authentication`, `common` and `home_widget`. Use
-`common` only for truly shared text, not as a catch-all. Keep authentication URL
-components together, with `translatable="false"`; the same applies to invariant
+Current contexts are `app`, `common` and `home_widget`. Use
+`common` only for truly shared text, not as a catch-all. Technical values use
+`translatable="false"`; the same applies to invariant
 brand names, currency symbols and symbol-only actions. Preserve numbered format
 arguments such as `%1$s` and `%2$s` when renaming or translating resources.
 Accessibility descriptions have their own `cd_` resources rather than borrowing
@@ -61,7 +61,7 @@ names and context filenames as their default counterparts.
 
 `test/architecture/android_string_resources_test.dart` checks naming, context
 separation, duplicate declarations, non-translatable technical values and native
-references. App-link contract tests also verify the exact paths and host.
+references. Authentication architecture tests reject the removed callback registrations.
 
 Verification after the resource reorganization: `flutter pub get` succeeded,
 `flutter analyze` reported no issues, `flutter test --reporter failures-only`
@@ -92,7 +92,8 @@ Install a fresh
 build and add **Adicionar despesa** from the launcher's widget picker. Its single
 tap action is delivered through `home_widget`, not Flutter's automatic deep-link
 handler. `MainActivity` disables automatic deep linking only for that plugin
-action; verification and password-reset app links keep their existing handling.
+action. Verification/password-reset app-link registrations were removed with the
+password flows; email-code authentication does not require an external callback.
 
 Before release, manually verify cold/warm launches, logged-out continuation after
 sign-in, creation form deduplication with unsaved input, editing versus creation,
@@ -119,11 +120,11 @@ zero, signed cents, 15-million boundaries, Long limits, short/wide/tall dimensio
 and measured-width font adaptation. Manually check rendering with long amounts,
 large accessibility text and the stale-summary hint before distribution.
 
-The default production PocketBase root is `https://pocketbase.cordato.cloud`, without
-`/api/`; the SDK adds that path. To explicitly pin it when building an APK:
+The Appwrite REST endpoint defaults to `https://console.cordato.cloud/v1`.
+To explicitly pin it when building an APK:
 
 ```bash
-flutter build apk --release --dart-define=BASE_URL=https://pocketbase.cordato.cloud
+flutter build apk --release --dart-define=APPWRITE_ENDPOINT=https://console.cordato.cloud/v1
 ```
 
 Android builds require JDK 21. Confirm that Flutter and Gradle are using it:
@@ -340,15 +341,17 @@ sign-in failure was not reproduced before the change; this is not verification
 of every device or the Google Play release. The previously generated build 5 AAB
 predates these focus/splash changes and must not be presented as containing them.
 
-## App Links
+## Authentication Links Removed
 
-Para App Links, publique o SHA-256 do certificado efetivo de distribuição em
-`https://app.cordato.cloud/.well-known/assetlinks.json`, associado ao pacote
-`com.bed.cordato` pela relação `delegate_permission/common.handle_all_urls`.
-Para Google Play, usar o certificado de App Signing, não apenas o de upload.
-O manifest já declara `autoVerify` para `/authentication/confirm-email`.
-Geração dos arquivos públicos, configuração iOS, ordem de ativação do template
-PocketBase e homologação estão em [app_links/README.md](../app_links/README.md).
+Authentication now uses email codes entered inside the app. The Android
+verification/reset intent filters, their string resources, the iOS associated
+domain and legacy `trocado` scheme, and the association-file generator were
+removed. The `cordato` scheme and App Group used by the iOS home widget remain.
+No server configuration, association-file deployment or backend migration was
+performed. Existing externally published files are not removed by this local change.
+Local verification: Flutter analysis clean, 1225 non-UI tests passed, Android XML
+and iOS plist syntax validated. No native build or device app-link/widget validation
+was performed for this removal.
 
 ## Key Rotation
 
