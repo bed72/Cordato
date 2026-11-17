@@ -2,7 +2,13 @@
 
 ## Context
 
-Veja `proposal.md` para a motivação. O checkout atual não tem repositories nem bindings PocketBase; os contratos e a apresentação anteriores continuam preservados. Dio e `PersistCookieJar` já são lazy singletons no core sem `path`, e `ResponseMapper` preserva status e `type` sem expor mensagens remotas.
+Veja proposal.md para a motivação. Não há repositories ou bindings PocketBase.
+Por correção explícita do usuário, o transporte segue o histórico 019734f:
+IHttpClient/HttpClient, Requests, Responses e exceções próprias, sem Either ou
+PocketBase. IHttpClient, Dio e PersistCookieJar são lazy singletons no core sem
+path. A composição configura Dio e o injeta obrigatoriamente em HttpClient.new;
+não há create ou Dio opcional no client. Os consumidores usam somente IHttpClient.
+ResponseMapper preserva status/type Appwrite sem conteúdo remoto.
 
 O contrato antigo exigia senha, cadastro, recuperação e verificação por link. Por correção explícita do usuário na step 1, ele foi removido e substituído pelo único `IAuthenticationRepository` descrito abaixo. Os consumidores visuais antigos não foram migrados nesta etapa e permanecem incompatíveis com os métodos removidos.
 
@@ -26,7 +32,12 @@ Manter `ISessionRepository.loadSession()` e `sessionChanges`, compatíveis com a
 
 Solicitar código com `POST account/tokens/email`, corpo `userId: unique()` e `email`, conforme o contrato da versão instalada; `unique()` é o sentinela REST, não uma dependência do SDK. Reenvio é uma nova chamada explícita, com retorno do novo desafio. Não inferir se a conta já existia. Não pedir security phrase nesta primeira versão.
 
-Confirmar com `POST account/sessions/token`, corpo `userId` e `secret` recebido do parâmetro `code`. A resposta não deve produzir um DTO público de sessão. Após cookies processados, executar `GET account` antes de publicar autenticação. Por solicitação de simplificação, usar sucesso HTTP do Dio sem parsing da conta ou validação adicional de status específicos. Restauração usa o mesmo GET. Logout usa `DELETE account/sessions/current`; não usar exclusão de todas as sessões.
+Confirmar com POST account/sessions/token, corpo userId e secret recebido de code.
+Após cookies processados, consultar GET account antes de publicar autenticação.
+Usar sucesso HTTP 2xx do HttpClient, sem parsing de campos da conta nem status
+específicos. O envelope segue Responses: objeto JSON ou corpo vazio; outros
+corpos de sucesso falham visivelmente. Restauração usa o mesmo GET. Logout exclui
+somente account/sessions/current.
 
 Os caminhos devem compor `/v1/account/...` preservando o prefixo do endpoint mesmo sem barra final. Verificar a resolução de URI do Dio em testes, em vez de assumir que a concatenação é correta. Confirmar status, payloads e cookies com documentação compatível com a versão instalada antes de fixar fixtures. Acesso remoto de escrita, disparo de e-mail ou alteração de configuração não fazem parte desta criação de spec nem são necessários para testes automatizados.
 
@@ -73,9 +84,27 @@ autenticado da instância; isso continua sendo verificação separada.
 
 ### 3. Coordenação compartilhada específica de sessão
 
-`SessionClient`, em `core/infrastructure/clients/session/`, recebe somente o Dio existente. Faz requests diretos de conta/sessão e publica booleanos por stream broadcast, sem replay. Cookies ficam com CookieManager/jar, sem SDK, AuthStore, contrato paralelo ou persistência própria. Não havia adapter de sessão atual em produção a preservar. Repositories e bindings seguem nas steps 3 e 4.
+ISessionClient é um contrato puro em core/application/clients, implementado por
+SessionClient e registrado no core como lazy singleton. Consumidores dependem
+da interface, sem importar a implementação concreta.
+O stream é ISessionClient.session. O futuro SessionRepository o repassa como
+ISessionRepository.sessionChanges, sem alterar o contrato usado pelo Bloc.
+SessionClient recebe somente IHttpClient e usa Requests/Responses e
+HttpResponseException, sem Dio. Publica booleanos em stream broadcast sem replay.
+Cookies ficam com o transporte existente, sem SDK, AuthStore ou persistência
+paralela. AuthenticationRepository usa a mesma fronteira. SessionRepository e
+seus bindings seguem na step 4.
 
-Authentication solicita o código pelo Dio e delega confirmação/logout à capacidade; Session delega restauração/observação. Tipos Dio ficam em infrastructure, com mapeamento remoto nos repositories por ResponseMapper. Não há import entre Authentication e Session, interpretação da conta, perfil ou entidade adicional.
+Authentication solicita o código por IHttpClient e delega confirmação/logout à
+coordenação; Session delega restauração/observação. Tipos Dio ficam somente em
+core/infrastructure/clients/http e na composição core_module.dart. Não há import entre Authentication e Session,
+interpretação de campos da conta, perfil ou entidade adicional.
+
+`AuthenticationRepository` recebe IHttpClient e ISessionClient. A solicitação usa POST
+com `userId: unique()` e e-mail original, lê somente `userId` como String não
+vazio e retorna esse valor sem wrapper. Confirmação e saída delegam à coordenação
+existente. Os três métodos capturam somente HttpClientException e usam ResponseMapper;
+não há helper genérico, data source ou validação da conta adicionada ao repository.
 
 Alternativas rejeitadas: evento global vindo de interceptor HTTP, reuso de AuthStore removido ou importação de Session por Authentication. Todas ampliam acoplamento ou reintroduzem mecanismos abandonados.
 
@@ -89,9 +118,17 @@ Esta escolha evita que um simples contador descarte eventos mas deixe `CookieMan
 
 ### 5. Políticas de ausência, falha e logout
 
-`GET /account` com sucesso HTTP confirma sessão sem validar campos. HTTP 401 de resposta confirma ausência; rede, 403, 5xx e erros locais não publicam logout. Falha de cookies encapsulada por Dio não é confundida com 401 de resposta.
+GET account com sucesso HTTP confirma sessão sem validar campos. Somente
+HttpResponseException 401 confirma ausência; rede, 403, 5xx e erros locais não
+publicam logout. Erros de cookies viram HttpUnexpectedException no transporte,
+não HttpResponseException, e não são confundidos com ausência.
 
-Por solicitação explícita de simplificação, removidos limpeza manual, tombstones e desembrulhamento próprio de exceções. Cookies, expiração e falhas seguem CookieManager/jar. Sem Set-Cookie remoto de expiração, 401 ou logout não prometem exclusão local de cookies. Não há garantia adicional de retry de limpeza incompleta.
+Mantida a simplificação: sem limpeza manual, tombstones ou desembrulhamento
+nativo nos consumidores. HttpClient normaliza falhas para exceções próprias,
+preservando Error/FormatException inesperados. ResponseMapper usa status/type de
+HttpResponseException e fallback local para rede/erro local; envelope inválido
+vira FormatException visível. Sem Set-Cookie de expiração, não se promete
+exclusão local ou retry de persistência incompleta.
 
 Política adotada como recomendação conservadora: falha remota de logout não inicia limpeza local nem publica saída. Isso não promete que um request com timeout não revogou a sessão no servidor. A resposta futura de restauração reconcilia a realidade. Um POST de confirmação aceito seguido de GET falho também é incerto: não publicar sucesso nem repetir POST automaticamente; permitir restauração explícita posterior.
 

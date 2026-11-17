@@ -4,10 +4,11 @@ import 'dart:io' hide HttpClient;
 
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/http/http_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 import 'package:cordato/features/core/infrastructure/clients/session/session_client.dart';
 
 import '../../../../../support/core/fakes/cookie_storage_fake.dart';
@@ -20,7 +21,8 @@ void main() {
     'a_session_project_legacy=; Domain=.appwrite.example; Path=/; Max-Age=0',
   ];
 
-  late Dio client;
+  late Dio transport;
+  late HttpClient client;
   late List<bool> changes;
   late Directory directory;
   late SessionClient session;
@@ -63,18 +65,20 @@ void main() {
       persistSession: true,
     );
 
-    client = HttpClient.create(
-      cookies: cookies,
-      projectId: 'project',
-      endpoint: 'https://appwrite.example/v1',
-    );
+    transport = Dio(
+      BaseOptions(
+        baseUrl: 'https://appwrite.example/v1',
+        headers: {'X-Appwrite-Project': 'project'},
+      ),
+    )..interceptors.add(CookieManager(cookies));
+    client = HttpClient(dio: transport);
 
     adapter = HttpClientAdapterFake()..respond = (_) => respond();
-    client.httpClientAdapter = adapter;
+    transport.httpClientAdapter = adapter;
     session = SessionClient(client: client);
     changes = [];
 
-    final subscription = session.sessionChanges.listen(changes.add);
+    final subscription = session.session.listen(changes.add);
     addTearDown(() async {
       await subscription.cancel();
       await session.close();
@@ -90,11 +94,11 @@ void main() {
     ]) {
       test('queries account with cookies and preserves $endpoint', () async {
         await seedSession();
-        client.options.baseUrl = endpoint;
-        final observed = session.sessionChanges.first;
+        transport.options.baseUrl = endpoint;
+        final observed = session.session.first;
 
-        expect(await observed, isTrue);
         expect(await session.loadSession(), isTrue);
+        expect(await observed, isTrue);
 
         final request = adapter.requests.single;
         expect(request.uri, account);
@@ -113,10 +117,10 @@ void main() {
 
     test('uses HTTP success without interpreting account fields', () async {
       adapter.respond = (_) => respond(body: {r'$id': ''});
-      final observed = session.sessionChanges.first;
+      final observed = session.session.first;
 
-      expect(await observed, isTrue);
       expect(await session.loadSession(), isTrue);
+      expect(await observed, isTrue);
       expect(adapter.requests, hasLength(1));
     });
 
@@ -124,20 +128,20 @@ void main() {
       'uses the Dio success policy instead of enforcing a specific status',
       () async {
         adapter.respond = (_) => respond(status: 204, body: null);
-        final observed = session.sessionChanges.first;
+        final observed = session.session.first;
 
-        expect(await observed, isTrue);
         expect(await session.loadSession(), isTrue);
+        expect(await observed, isTrue);
       },
     );
 
     test('401 publishes absence without manually deleting cookies', () async {
       await seedSession();
       adapter.respond = (_) => respond(status: 401);
-      final observed = session.sessionChanges.first;
+      final observed = session.session.first;
 
-      expect(await observed, isFalse);
       expect(await session.loadSession(), isFalse);
+      expect(await observed, isFalse);
 
       expect(changes, [false]);
       expect(await persistedCookies(account), hasLength(2));
@@ -149,7 +153,7 @@ void main() {
         () async {
           await seedSession();
 
-          final authenticated = session.sessionChanges.first;
+          final authenticated = session.session.first;
           await session.loadSession();
           await authenticated;
 
@@ -158,8 +162,8 @@ void main() {
           await expectLater(
             session.loadSession(),
             throwsA(
-              isA<DioException>().having(
-                (exception) => exception.response?.statusCode,
+              isA<HttpResponseException>().having(
+                (exception) => exception.response.status,
                 'status',
                 status,
               ),
@@ -181,7 +185,10 @@ void main() {
         adapter.respond = (request) =>
             throw DioException(requestOptions: request, type: type);
 
-        await expectLater(session.loadSession(), throwsA(isA<DioException>()));
+        await expectLater(
+          session.loadSession(),
+          throwsA(isA<HttpTransportException>()),
+        );
 
         expect(changes, isEmpty);
         expect(adapter.requests, hasLength(1));
@@ -192,15 +199,15 @@ void main() {
   group('Observation and cookies managed by the transport', () {
     test('cancelling one subscriber does not affect the others', () async {
       final cancelledChanges = <bool>[];
-      final cancelled = session.sessionChanges.listen(cancelledChanges.add);
-      final first = session.sessionChanges.first;
+      final cancelled = session.session.listen(cancelledChanges.add);
+      final first = session.session.first;
 
       await session.loadSession();
       await first;
       await cancelled.cancel();
 
       adapter.respond = (_) => respond(status: 401);
-      final second = session.sessionChanges.first;
+      final second = session.session.first;
 
       await session.loadSession();
       expect(await second, isFalse);
@@ -221,7 +228,7 @@ void main() {
         ]);
 
         adapter.respond = (_) => respond(status: 204, setCookies: expired);
-        final observed = session.sessionChanges.first;
+        final observed = session.session.first;
 
         await session.signOut();
         expect(await observed, isFalse);
@@ -238,7 +245,7 @@ void main() {
     test('logout without Set-Cookie does not invent local cleanup', () async {
       await seedSession();
       adapter.respond = (_) => respond(status: 204);
-      final observed = session.sessionChanges.first;
+      final observed = session.session.first;
 
       await session.signOut();
       expect(await observed, isFalse);
@@ -254,17 +261,7 @@ void main() {
 
         await expectLater(
           session.loadSession(),
-          throwsA(
-            isA<DioException>().having(
-              (exception) => exception.error,
-              'cookie error',
-              isA<CookieManagerLoadException>().having(
-                (exception) => exception.error,
-                'cause',
-                same(failure),
-              ),
-            ),
-          ),
+          throwsA(isA<HttpUnexpectedException>()),
         );
 
         expect(changes, isEmpty);
@@ -282,17 +279,7 @@ void main() {
 
         await expectLater(
           session.loadSession(),
-          throwsA(
-            isA<DioException>().having(
-              (exception) => exception.error,
-              'cookie error',
-              isA<CookieManagerSaveException>().having(
-                (exception) => exception.error,
-                'cause',
-                same(failure),
-              ),
-            ),
-          ),
+          throwsA(isA<HttpUnexpectedException>()),
         );
 
         expect(changes, isEmpty);
@@ -316,7 +303,7 @@ void main() {
           getStarted.complete();
           return getResponse.future;
         };
-        final observed = session.sessionChanges.first;
+        final observed = session.session.first;
         final confirmation = session.confirmCode(
           code: ' 012345 ',
           userId: ' user-id ',
@@ -357,16 +344,16 @@ void main() {
 
         await expectLater(
           session.confirmCode(userId: 'user-id', code: '012345'),
-          throwsA(isA<DioException>()),
+          throwsA(isA<HttpResponseException>()),
         );
 
         expect(changes, isEmpty);
         expect((await persistedCookies(account)).single.value, 'uncertain');
         adapter.respond = (_) => respond();
-        final observed = session.sessionChanges.first;
+        final observed = session.session.first;
 
-        expect(await observed, isTrue);
         expect(await session.loadSession(), isTrue);
+        expect(await observed, isTrue);
         expect(adapter.requests.map((request) => request.method), [
           'POST',
           'GET',
@@ -382,14 +369,14 @@ void main() {
 
         await expectLater(
           session.confirmCode(userId: 'user-id', code: '012345'),
-          throwsA(isA<DioException>()),
+          throwsA(isA<HttpResponseException>()),
         );
 
         expect(changes, isEmpty);
         expect(adapter.requests, hasLength(1));
         adapter.respond = (request) =>
             respond(status: request.method == 'POST' ? 201 : 200);
-        final observed = session.sessionChanges.first;
+        final observed = session.session.first;
 
         await session.confirmCode(userId: 'user-id', code: '654321');
 
@@ -404,7 +391,7 @@ void main() {
 
     test('logout 401 means the current session is already absent', () async {
       adapter.respond = (_) => respond(status: 401);
-      final observed = session.sessionChanges.first;
+      final observed = session.session.first;
 
       await session.signOut();
 
@@ -418,7 +405,10 @@ void main() {
         await seedSession();
         adapter.respond = (_) => respond(status: 503);
 
-        await expectLater(session.signOut(), throwsA(isA<DioException>()));
+        await expectLater(
+          session.signOut(),
+          throwsA(isA<HttpResponseException>()),
+        );
 
         expect(changes, isEmpty);
         expect(await persistedCookies(account), hasLength(2));
@@ -481,7 +471,7 @@ void main() {
             );
           };
 
-          final observed = session.sessionChanges.take(3).toList();
+          final observed = session.session.take(3).toList();
           final Future<Object?> first = switch (scenario.name) {
             'restore' => session.loadSession(),
             _ => session.confirmCode(userId: 'user-id', code: '012345'),
@@ -529,10 +519,10 @@ void main() {
         return respond(status: 204);
       };
       final load = session.loadSession();
-      final failure = expectLater(load, throwsA(isA<DioException>()));
+      final failure = expectLater(load, throwsA(isA<HttpResponseException>()));
       await started.future;
       final logout = session.signOut();
-      final observed = session.sessionChanges.first;
+      final observed = session.session.first;
 
       response.complete(respond(status: 500));
       await failure;
@@ -565,7 +555,7 @@ void main() {
           'DELETE' => respond(status: 204, setCookies: expired),
           _ => respond(),
         };
-        final observed = session.sessionChanges.take(2).toList();
+        final observed = session.session.take(2).toList();
         final confirmation = session.confirmCode(
           userId: 'user-id',
           code: '012345',

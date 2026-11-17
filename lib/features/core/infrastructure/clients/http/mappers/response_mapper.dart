@@ -1,26 +1,20 @@
-import 'package:dio/dio.dart';
-
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/infrastructure/clients/http/exceptions/http_client_exception.dart';
 
 abstract final class ResponseMapper {
-  static ErrorsEntity fromException(DioException exception) {
-    switch (exception.error) {
-      case final Error error:
-        throw error;
-      case final FormatException error:
-        throw error;
-    }
-
-    final response = exception.response;
-    if (response == null) return .unknown();
-
-    final body = response.data;
-    final code = body is Map<String, dynamic> ? body['type'] as String? : null;
-
-    return ErrorsEntity(
-      errors: [
-        ErrorEntity(status: response.statusCode?.toString(), code: code),
-      ],
-    );
-  }
+  static ErrorsEntity fromException(HttpClientException exception) =>
+      switch (exception) {
+        HttpResponseException(:final response) => ErrorsEntity(
+          errors: [
+            ErrorEntity(
+              status: response.status.toString(),
+              code: response.body['type'] as String?,
+            ),
+          ],
+        ),
+        HttpInvalidResponseException() => throw const FormatException(
+          'Resposta HTTP inválida',
+        ),
+        HttpTransportException() || HttpUnexpectedException() => .unknown(),
+      };
 }

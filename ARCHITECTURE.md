@@ -10,12 +10,15 @@ intermediário. O módulo raiz registra o `Directory` e inclui os módulos de fe
 `lib/factory.dart`, o observer customizado e Talker foram removidos; o bootstrap
 não inicializa nem registra PocketBase.
 `final coreModule = createModule(...)` não recebe parâmetros nem tem
-`path`: registra `PersistCookieJar` e Dio como lazy singletons. Modular injeta o
-diretório nos cookies e resolve os cookies ao construir Dio, sem resolução global
+`path`: registra PersistCookieJar, Dio e IHttpClient como lazy singletons. Modular injeta o
+diretório nos cookies, cookies no Dio e Dio no HttpClient, sem resolução global
 de dependências pelo client e sem bind de caminho como `String` genérica.
 
-`HttpClient.create` é síncrono e recebe cookies, endpoint e projeto. Configura Dio
-diretamente, com header de projeto, JSON, timeouts e redirects desabilitados.
+HttpClient recebe Dio obrigatório por construtor, sem create, parâmetro opcional
+ou criação interna de transporte. core_module.dart configura Dio com header de
+projeto, JSON, timeouts, redirects desabilitados e interceptors e registra
+IHttpClient por HttpClient.new. Os testes fornecem Dio real com adapter fake;
+a composição real também verifica configuração e cookies sem rede.
 `OriginInterceptor` restringe os requests à origem configurada. Não há factories
 auxiliares nem validação própria do endpoint/projeto. Não usa API key administrativa, SDK
 Appwrite, logger HTTP, retry ou interceptor de gestão de sessão.
@@ -26,10 +29,18 @@ suporte do app; os testes registram um `Directory` temporário na composição r
 Os arquivos não têm criptografia adicional, conforme simplificação aprovada.
 O jar carrega cookies sob demanda, não restaura/valida sessão no bootstrap.
 O transporte é root-owned e não fecha ao sair de rotas. A API funcional do
-Modular 7.1.1 não expõe callback de descarte por bind; registrar Dio não executa
+Modular 7.1.1 não expõe callback de descarte por bind; registrar IHttpClient não executa
 automaticamente `close()`. Os testes fecham explicitamente as instâncias usadas.
-`ResponseMapper` converte status HTTP e `type` nativo em `ErrorsEntity`, omite a
-mensagem remota e propaga erros inesperados de parsing/programação.
+O desenho segue o histórico `019734f`: IHttpClient, get/put/post/patch/delete,
+Requests (path/body/query/headers), Responses (status/body) e exceções próprias.
+Não restaura Either, PocketBase ou modelos de erro JSON:API. Dio e DioException
+ficam somente no transporte HTTP e composição do core, sem imports nos consumidores. Error e
+FormatException inesperados propagam, enquanto rede usa HttpTransportException
+e erros locais de CookieManager usam HttpUnexpectedException, nunca 401 remoto.
+HttpResponseException preserva status e corpo HTTP, inclusive status sem objeto.
+Sucesso vazio vira objeto vazio; corpo não vazio/não objeto gera
+HttpInvalidResponseException. ResponseMapper lê status/type das exceções
+próprias, omite mensagem remota e mantém parsing inválido como FormatException.
 
 Por solicitação explícita, não há SDK, AuthStore, adapters ou consumidores
 PocketBase em `lib/` nem fixtures/mocks desse backend em `test/`.
@@ -38,11 +49,35 @@ User, Expense, exportação de Expense, Metrics e áudio, seus bindings e os tes
 exclusivos desse transporte. `flutter_secure_storage` não tem mais consumidores
 e também foi retirado. Não foram criados adapters substitutos vazios.
 
-Domínio, contratos, Blocs, telas, rotas e serialização pura permanecem. Os módulos
-registram apresentação e capacidades atuais; os contratos de backend acima
-ainda não têm implementação de produção. O app completo não pode executar esses
-fluxos até sua migração para Appwrite. A suíte passa com mocks explícitos dos
-contratos em composição, não com uma integração remota fictícia.
+Domínio, Blocs, telas, rotas e serialização pura permanecem. Os módulos registram
+apresentação e capacidades atuais; ainda não registram os adapters de backend.
+Authentication agora tem implementação REST isolada, descrita abaixo, sem bind.
+Os demais adapters seguem ausentes. O app completo não pode executar esses
+fluxos e os consumidores de senha são incompatíveis com o contrato substituído.
+Mocks explícitos em composição não comprovam integração remota funcional.
+
+### Fronteiras e composição atuais
+
+```text
+AuthenticationRepository -> IHttpClient -> HttpClient -> Dio
+                         -> ISessionClient -> SessionClient -> IHttpClient
+```
+
+Dio é obrigatório no construtor de HttpClient e configurado exclusivamente pela
+DI do core, sem create/fallback. Os repositories usam contratos, não classes
+concretas de clients ou tipos Dio. IHttpClient permanece junto de HttpClient,
+conforme a referência histórica; ISessionClient é puro e pertence a application.
+
+| Contrato/capacidade | Estado atual |
+| --- | --- |
+| PersistCookieJar e Dio | Configurados no core como lazy singletons |
+| IHttpClient | Bind para HttpClient.new, com Dio injetado |
+| ISessionClient | Bind para SessionClient.new, com IHttpClient injetado |
+| IAuthenticationRepository | AuthenticationRepository implementado, sem bind |
+| ISessionRepository | Contrato preservado; adapter e bind pendentes |
+
+Essas capacidades disponíveis não significam migração de UI nem funcionamento
+do app completo. Não adicionar adapters fictícios ou caminhos legados paralelos.
 
 ### Contrato de autenticação e fronteira temporária de apresentação
 
@@ -56,26 +91,42 @@ Authentication possui somente `IAuthenticationRepository` em
 O identificador é retornado diretamente como `String`, sem entidade wrapper.
 Não são retornados código, secret, cookies ou respostas remotas.
 O contrato não exige senha nem cadastro separado e não
-normaliza e-mail ou código. Falhas remotas esperadas usarão
+normaliza e-mail ou código. Falhas remotas esperadas usam
 `AuthenticationException` com o `ErrorsEntity` original; parsing e storage não
 devem ser mascarados como erro de credenciais.
 
 Por solicitação explícita, o contrato anterior de senha, cadastro, recuperação e
 verificação por link foi removido, sem interface paralela ou contrato legado.
 Os nomes públicos de autenticação não especificam o mecanismo OTP. Nesta etapa
-somente os tipos e o contrato estão disponíveis, sem adapter ou bind de produção.
+o contrato tem implementação REST, ainda sem bind de produção.
 Os consumidores antigos de senha ainda não foram migrados e suas chamadas aos
 métodos removidos são incompatíveis: a análise e a suíte global ficam bloqueadas
 até sua migração ou remoção. Não há stubs, sucesso fictício nem exclusão de testes
 para esconder essa lacuna. Settings preserva `signOut`, mas continua sem adapter.
 Telas, Blocs, rotas, navegação e `ISessionRepository` não foram alterados aqui.
 
+`authentication/infrastructure/repositories/authentication_repository.dart`
+implementa somente esse contrato, recebendo IHttpClient e ISessionClient. `requestCode`
+envia `userId: unique()` e o e-mail original, retorna o `userId` textual não vazio
+da resposta e não publica sessão. Reenvio é outra chamada explícita. Não cria
+entidade wrapper, DTO público, cadastro separado, timers ou retries.
+`confirmCode` e `signOut` delegam à coordenação existente, sem duplicar requests
+ou políticas de cookies. Cada método converte HttpClientException por ResponseMapper
+para AuthenticationException; erros inesperados e parsing inválido propagam,
+sem captura genérica ou mensagens remotas. O repository não recebe UI ou navega.
+
 ### Coordenação de sessão
 
 `core/infrastructure/clients/session/session_client.dart` contém a única
-coordenação de sessão, `SessionClient`, recebendo somente o Dio existente.
+coordenação de sessão, SessionClient, recebendo somente IHttpClient e implementando
+ISessionClient, contrato puro em core/application/clients/interface_session_client.dart.
+Core registra ISessionClient por SessionClient.new como lazy singleton. Repositories
+dependem dessa interface, sem importar a implementação concreta.
+ISessionClient expõe `session` como Stream<bool>, além de loadSession,
+confirmCode, signOut e close. O adapter futuro de ISessionRepository deve
+repassar `session` pelo getter `sessionChanges` já consumido pelo SessionBloc.
 Por solicitação explícita de simplificação, usa requests diretos e a política
-padrão de sucesso HTTP do Dio, sem validação de status específicos, parsing de
+padrão de sucesso HTTP 2xx do transporte, sem validação de status específicos, parsing de
 conta, SDK, AuthStore ou implementação paralela.
 
 `loadSession()` consulta `/account`: sucesso publica/retorna `true`; HTTP 401
@@ -88,16 +139,17 @@ e publicação. Não há cache, deduplicação ou compartilhamento de restauraç
 cada chamada faz sua consulta. A fila continua após erros, sem retry automático;
 logout aguarda operações anteriores, inclusive seu timeout. O stream é broadcast,
 sem replay; cancelar uma assinatura não afeta as demais. `close()` aguarda a fila
-e fecha somente o stream, não o Dio injetado.
+e fecha somente o stream, não o IHttpClient injetado.
 
 Cookies ficam exclusivamente com CookieManager/PersistCookieJar. Não há limpeza
 manual, tombstones, controle adicional de persistência ou desembrulhamento de
-exceções. Sem `Set-Cookie` remoto de expiração, não se promete remoção local dos
+exceções nativas na sessão. Sem `Set-Cookie` remoto de expiração, não se promete remoção local dos
 cookies ao receber 401 ou concluir logout. Sucesso HTTP da conta não valida seus
 campos nem comprova permissões financeiras. Falhas de cookies seguem o erro do
 transporte e não são consideradas 401 de sessão.
 
-Repositories e bindings continuam nas próximas steps, sem migração visual.
+AuthenticationRepository é o primeiro consumidor dessa coordenação. O adapter
+de Session e os bindings dos repositories continuam na próxima step, sem migração visual.
 Testes usam Dio/jar reais, adapter fake e diretório temporário, sem rede ou UI;
 isso não homologa o serviço nem torna o app completo funcional.
 

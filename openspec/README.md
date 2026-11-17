@@ -12,17 +12,24 @@ Atualizar documentação não executa migrações, não conclui tarefas de chang
 antigas e não comprova DI, build ou E2E. O histórico de `changes/archive/` é
 preservado como registro temporal, não como guia de implementação vigente.
 
-## Backend Adotado E Integração Pendente
+## Transição Appwrite E Integração Pendente
 
-O serviço atual é PocketBase 0.41.1 em [`backend/`](../backend/README.md), com
-coleções `users` e `expenses` e APIs nativas. O cliente Flutter ainda usa o
-contrato HTTP anterior. Specs que descrevem JSON:API, revogação de token,
-confirmação por URL assinada ou endpoints de métricas/insights/sugestões não
-comprovam suporte desses contratos pelo PocketBase nem autorizam recriá-los.
+O Flutter migra para Appwrite por IHttpClient/HttpClient, Requests/Responses e
+exceções próprias, tomando o histórico 019734f como referência de transporte,
+sem Either, PocketBase ou erros JSON:API. Dio é obrigatório no construtor e
+configurado na DI, sem create ou fallback interno. Repositories não usam Dio.
 
-Consulte os [limites de integração](../ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração)
-antes de implementar. Esta revisão é documental: não conclui a migração do
-cliente, não altera schema e não migra dados. Specs arquivadas permanecem intactas.
+ISessionClient é o contrato puro da coordenação compartilhada e já tem bind no
+core; expõe o stream `session`. AuthenticationRepository usa IHttpClient e
+ISessionClient, mas ainda não tem bind. ISessionRepository preserva
+`sessionChanges`; seu adapter e composição permanecem pendentes. A apresentação
+de senha não foi migrada e ainda bloqueia análise e suíte globais.
+
+As regras atuais estão na [arquitetura](../ARCHITECTURE.md). A change ativa é
+[add-appwrite-otp-session-infrastructure](changes/add-appwrite-otp-session-infrastructure/).
+As descrições antigas de backend abaixo e os serviços em backend/ e worker/ são
+históricos ou isolados, não autorização para restaurar esse SDK no Flutter.
+Specs arquivadas permanecem intactas; não houve schema, deploy ou migração de dados.
 
 ## Arquitetura Vigente
 
@@ -45,8 +52,8 @@ rota. Authentication e Expense usam um módulo sem path por feature, com URLs
 completas e binds root-owned. Não fragmente em dependencies/form/list nem monte
 features irmãs em `/`, pois o Modular indexa seus binds pelo path. Factories
 continuam factories; ownership de página continua independente do módulo.
-O teste global de logout e a abertura de cadastro/edição/listagem/Settings na
-composição real passaram após essa correção.
+O resultado de composição global registrado após essa correção é histórico;
+hoje os consumidores antigos de senha ainda impedem essa verificação completa.
 
 Navegação ocorre pelo BuildContext do widget/mixin responsável. Argumentos levam
 dados, não funções. Edição devolve a entidade confirmada; ExpensesScreen não

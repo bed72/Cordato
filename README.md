@@ -49,16 +49,24 @@ remota nesta implementação.
 
 ### Preparação para Appwrite
 
-O client REST preparatório usa Dio, `CookieManager` e `PersistCookieJar`, sem SDK
-Appwrite. O transporte está registrado na DI, mas ainda não é consumido pelas
-features: OTP, repositories, Metrics, áudio e importação dos dados ficam para
-depois. Não há alteração remota nesta etapa.
+O client REST segue o histórico `019734f`: IHttpClient/HttpClient, Requests,
+Responses e exceções próprias, encapsulando Dio, CookieManager e PersistCookieJar.
+Não usa Either, PocketBase ou SDK Appwrite. A DI configura Dio e o injeta em
+IHttpClient; as features recebem somente a fronteira IHttpClient.
+`AuthenticationRepository` implementa o
+contrato único `IAuthenticationRepository` com solicitação de código de e-mail,
+confirmação e logout. O core já registra ISessionClient com SessionClient; o
+repository depende da interface de sessão e ainda não tem binding próprio;
+a apresentação continua sem migração e não há login OTP utilizável nas telas.
+Não houve envio de e-mail, alteração remota ou importação de dados nesta etapa.
 
-`HttpClient.create()` em `clients/http/http_client.dart` é síncrono e recebe
-`cookies`, `endpoint` e `projectId`. `main.dart` obtém o diretório de suporte e
+HttpClient recebe Dio obrigatório por construtor, sem create ou fallback interno.
+Endpoint, projeto, timeouts, CookieManager e OriginInterceptor são configurados
+em core_module.dart; IHttpClient é registrado com HttpClient.new.
+`main.dart` obtém o diretório de suporte e
 monta `ModularApp` com `appModule(directory: directory)`, sem módulo intermediário.
 O módulo raiz registra o `Directory`; `coreModule` permanece sem parâmetros e
-registra cookies e Dio como lazy singletons no Modular. `lib/factory.dart`,
+registra cookies, Dio, IHttpClient e ISessionClient como lazy singletons no Modular. `lib/factory.dart`,
 Talker e o observer customizado foram removidos. O bootstrap não inicializa
 PocketBase. A restrição de origem fica em `OriginInterceptor`.
 O módulo usa `APPWRITE_ENDPOINT` (padrão `https://console.cordato.cloud/v1`) e
@@ -66,18 +74,42 @@ O módulo usa `APPWRITE_ENDPOINT` (padrão `https://console.cordato.cloud/v1`) e
 Cookies ficam no diretório de suporte do app,
 sem criptografia adicional nesta etapa. Não passe API keys administrativas ao app.
 
+Padrão a seguir: repositories recebem IHttpClient/ISessionClient, enquanto a DI
+compõe HttpClient/SessionClient. O stream do client é `ISessionClient.session`;
+o adapter futuro de Session o exporá como `ISessionRepository.sessionChanges`.
+Não criar factories de HTTP, fallback de Dio ou implementações paralelas.
+
 PocketBase foi removido de todo o Flutter: código, bindings, testes exclusivos e
 fixtures, incluindo `test/app_module_test.dart`. As dependências diretas
 `pocketbase`, `http`, `http_parser` e `flutter_secure_storage` não fazem parte do
 app. Domínio, contratos, Blocs, rotas, telas, serialização e seus testes continuam.
 
-Os repositories anteriores foram removidos, não migrados nem substituídos por
-sucessos fictícios. Authentication, Session, User, Expense, exportação, Metrics
-e áudio precisam dos adapters Appwrite antes de o app completo poder executar
-esses fluxos. Testes de composição usam mocks de contratos explicitamente.
+`requestCode(email:)` faz POST em `/account/tokens/email` com `userId: unique()` e
+retorna somente o `userId` da resposta como String. Uma nova chamada solicita um
+novo código, sem retry, cooldown ou autenticação antecipada. `confirmCode` delega
+ao SessionClient o POST de sessão e GET de conta antes de publicar autenticação.
+Se o POST for aceito mas a consulta falhar, o estado remoto é incerto: não há
+sucesso nem repetição automática; uma restauração explícita pode reconciliá-lo.
 
-Verificação: `flutter pub get`, `flutter analyze` sem problemas e suíte global
-com 1157 testes aprovados, sem rede ou UI. Não houve build nativo, homologação
+Logout revoga somente `/account/sessions/current`: sucesso ou 401 de sessão já
+ausente publica saída. Falha/timeout não publica saída e não comprova que a
+revogação não ocorreu. Cookies são geridos apenas por CookieManager/jar; sem
+Set-Cookie de expiração, não se promete exclusão local, rollback ou recuperação
+de escrita incompleta. HttpClient traduz falhas de Dio para exceções próprias;
+o repository preserva status/type via ResponseMapper sem
+expor mensagens remotas. Não há métodos de senha ou adapter legado paralelo.
+
+Os repositories anteriores foram removidos, não substituídos por sucessos
+fictícios. O adapter de Session e os demais adapters financeiros/áudio continuam
+pendentes. O app completo ainda não executa esses fluxos; Settings não foi
+conectada ao novo repository. Testes de composição usam mocks explicitamente.
+
+Baseline da remoção anterior: `flutter pub get`, `flutter analyze` sem problemas
+e 1157 testes aprovados, sem rede ou UI. Após substituir o contrato de
+Authentication, consumidores antigos de senha permanecem incompatíveis e
+bloqueiam análise/suíte globais até sua migração; não foram mascarados com stubs.
+Os testes da infraestrutura atual usam Dio e cookies reais com transporte fake,
+sem rede ou UI. Não houve build nativo, homologação
 remota, deploy ou importação de dados. Backend/worker isolados não foram alterados.
 Os resultados e descrições PocketBase abaixo são históricos, não estado atual.
 

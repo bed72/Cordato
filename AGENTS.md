@@ -2,6 +2,16 @@
 
 ## Migração Appwrite: Remoção Completa Do Client Anterior
 
+Por correção explícita do usuário, o transporte segue o client do histórico
+`019734f`: `IHttpClient`/`HttpClient`, `Requests`, `Responses` e exceções HTTP
+próprias, sem Either, PocketBase ou envelope de erros JSON:API. Dio fica privado
+em HttpClient. Core configura e registra Dio com CookieManager/jar e restrição
+de origem, e injeta essa instância obrigatória em IHttpClient por HttpClient.new.
+Não há create, Dio opcional ou criação de transporte dentro de HttpClient.
+SessionClient e repositories não importam Dio nem capturam DioException.
+Esta decisão substitui as instruções
+anteriores de consumir Dio diretamente ou não restaurar a fronteira HTTP própria.
+
 Por solicitação explícita posterior, `IAuthenticationRepository` agora contém
 somente `requestCode(email:)`, `confirmCode(userId:, code:)` e `signOut()`.
 O contrato antigo de senha/cadastro/recuperação/verificação foi removido, sem
@@ -12,17 +22,36 @@ removidos, crie stubs ou apague testes para mascará-las. Esta decisão prevalec
 sobre as referências à preservação do contrato antigo abaixo.
 
 A única coordenação de sessão é `SessionClient` em
-`core/infrastructure/clients/session/`, recebendo somente o Dio existente.
+`core/infrastructure/clients/session/`, recebendo somente IHttpClient.
 Por solicitação explícita de simplificação, usa o sucesso HTTP de `/account`,
 sem parsing ou validação própria da conta. Uma fila simples ordena cada chamada,
 sem cache/compartilhamento de restaurações, retries ou implementação paralela.
-Cookies e suas falhas seguem o CookieManager/jar existentes: não há limpeza
-manual, tombstones ou desembrulhamento próprio de exceções. HTTP 401 de conta ou
+Cookies e suas falhas seguem o transporte existente: não há limpeza
+manual ou tombstones. Somente HttpResponseException 401 de conta ou
 logout confirma ausência, mas não promete remoção local sem Set-Cookie remoto.
 Falhas de transporte/storage não são convertidas em ausência.
-Ainda não há binding dessa capacidade ou repositories consumidores nesta step.
+ISessionClient é o contrato puro em core/application/clients/interface_session_client.dart.
+SessionClient implementa esse contrato e o core o registra como lazy singleton.
+Expõe `session` (Stream<bool>), `loadSession`, `confirmCode`, `signOut` e `close`.
+O futuro adapter ISessionRepository deve expor esse stream como `sessionChanges`,
+preservando o contrato de aplicação existente sem depender da classe concreta.
+AuthenticationRepository é o primeiro consumidor: recebe IHttpClient e ISessionClient,
+solicita código por REST retornando userId como String e delega confirmação/logout.
+Não há wrapper de desafio, métodos de senha, retry ou implementação paralela.
+HttpClientException passa por ResponseMapper para AuthenticationException, sem conteúdo
+remoto; parsing e erros inesperados não são convertidos em sucesso.
+O repository ainda não tem binding; SessionRepository segue pendente. Consumidores
+dependem de ISessionClient, não da implementação concreta em infrastructure.
 Não restaure o refresh/AuthStore anterior nem conecte os consumidores de senha
 artificialmente ao novo fluxo. Os contratos de Session e seu Bloc não mudaram.
+
+Para continuar esta migração, siga os contratos existentes: IHttpClient fica
+junto de HttpClient no transporte histórico; ISessionClient fica em application
+do core. A composição importa implementações e registra pelos contratos.
+Não injete Dio ou SessionClient concreto nos repositories, crie wrappers extras
+ou restaure variantes paralelas. AuthenticationRepository existe, mas seu bind
+e o adapter ISessionRepository pertencem à próxima etapa; as telas de senha
+continuam incompatíveis e não devem ser atendidas por stubs.
 
 Por solicitação explícita, PocketBase foi removido de todo o Flutter, não apenas
 do core: repositories concretos, bindings, testes exclusivos, fixtures e mocks.
@@ -32,9 +61,10 @@ Os serviços independentes em `backend/` e `worker/` e documentos arquivados nã
 foram alterados: são históricos/isolados, não dependências do Flutter atual.
 
 O transporte preparatório Appwrite segue sem SDK:
-`HttpClient.create` em `clients/http/http_client.dart` configura Dio síncrono com
-o `PersistCookieJar` recebido e `CookieManager`, sem SDK Appwrite, wrapper de CRUD,
-logger HTTP ou restauração do client HTTP histórico.
+HttpClient recebe Dio obrigatório por construtor e somente executa requests e
+traduz respostas/falhas. Endpoint, projeto, timeouts e interceptors pertencem
+à composição em core_module.dart, sem factory auxiliar, SDK Appwrite, wrapper
+de CRUD, logger HTTP ou dependências do backend removido.
 Esta é uma exceção localizada às referências abaixo sobre ausência de Dio.
 `main.dart` obtém o diretório de suporte e chama
 `appModule(directory: directory)`, sem criar módulo intermediário.
@@ -44,20 +74,25 @@ O core é
 `final coreModule = createModule(...)`, sem parâmetros e sem `path`, como os
 demais módulos compartilhados. Não há inicialização, bind ou consumidor
 PocketBase no Flutter atual. O Modular cria um
-`PersistCookieJar` e um Dio por `addLazySingleton`, compartilhados no core sem
+`PersistCookieJar`, um Dio e um IHttpClient por `addLazySingleton`, compartilhados no core sem
 `path`, injetando o `Directory` nos cookies. Não há factories auxiliares nem
 validação própria de endpoint/projeto.
 `OriginInterceptor` restringe a origem. O client não acessa diretórios nem resolve
-dependências globalmente; não tem consumidores nas features ainda.
+dependências globalmente; Authentication é seu primeiro consumidor em infrastructure.
 Contratos, domínio, Blocs, telas, rotas, serialização pura e seus testes foram
 preservados. Os contratos de Authentication, Session, User, Expense, exportação
 de Expense, Metrics e áudio não têm adapters de produção registrados nesta fase.
 Não crie implementações vazias, retornos de sucesso ou ausência de sessão
 presumida para esconder essa lacuna. O app completo exige a migração desses
-adapters, que ainda não implementa OTP, métricas ou envio de áudio Appwrite.
+adapters e da composição: OTP existe somente em infraestrutura, sem telas ou
+bindings; métricas e envio de áudio Appwrite continuam ausentes.
 Cookies são arquivos no diretório de suporte, sem criptografia adicional por
 decisão explícita; melhorias de persistência segura ficam adiadas.
-`ResponseMapper` preserva status/tipo para mensagens locais, sem conteúdo remoto.
+`ResponseMapper` usa exceções próprias e preserva status/type Appwrite sem
+conteúdo remoto. Error/FormatException encapsulados por Dio propagam no
+transporte; falhas de cookies viram HttpUnexpectedException, nunca 401 remoto.
+Sucesso com corpo não vazio/não objeto gera HttpInvalidResponseException, que
+o mapper mantém como FormatException visível, sem fingir autenticação.
 Os testes do transporte usam Dio real com adapter fake e diretório temporário,
 sem rede ou UI. Testes de composição, incluindo `test/app_module_test.dart`,
 fornecem mocks dos contratos de aplicação, sem fixture/backend anterior.

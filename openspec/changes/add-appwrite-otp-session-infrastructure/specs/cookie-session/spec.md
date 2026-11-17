@@ -19,11 +19,11 @@ The application SHALL establish the initial session state by querying the authen
 - **AND** no manual cookie cleanup or local removal guarantee is introduced
 
 #### Scenario: Successful account response
-- **WHEN** the account request succeeds according to the Dio HTTP success policy
+- **WHEN** the account request succeeds according to the IHttpClient 2xx policy with an object or empty HTTP body
 - **THEN** session loading returns authenticated without parsing or validating account fields
 
 ### Requirement: Validation failure is not logout
-Account-query failures other than confirmed unauthorized access SHALL preserve the last confirmed session state and propagate. Cookie-storage errors MUST NOT become successful absence of session. The session client SHALL retain the transport's exception wrapping rather than introducing its own unwrapping policy.
+Account-query failures other than confirmed unauthorized access SHALL preserve the last confirmed session state and propagate. Cookie-storage errors MUST NOT become successful absence of session. SessionClient SHALL use IHttpClient and its own HTTP exception types, without importing Dio or adding native exception handling.
 
 #### Scenario: Network or server failure
 - **WHEN** restoration encounters a timeout, connectivity failure, 403 or server error
