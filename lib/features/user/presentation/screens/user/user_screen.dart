@@ -1,7 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_modular/flutter_modular.dart';
-import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
@@ -134,17 +132,6 @@ final class _UserScreenState extends State<UserScreen>
                   showChevron: false,
                   disabledOpacity: 0.5,
                   icon: Icons.mark_email_read_outlined,
-                ),
-                MenuItemWidget(
-                  height: 64.0,
-                  spacing: 12.0,
-                  label: 'Alterar senha',
-                  icon: Icons.lock_outline,
-                  onPressed: state.canEdit
-                      ? () => context.pushNamed(
-                          RouteEnum.authenticationChangePassword.path,
-                        )
-                      : null,
                 ),
               ],
             ),

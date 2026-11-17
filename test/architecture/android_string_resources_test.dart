@@ -52,21 +52,22 @@ void main() {
       expect(declaredNames, isNotEmpty);
     });
 
-    test('technical authentication values are explicitly non-translatable', () {
-      final source = File(
-        '${resourcesDirectory.path}/strings_authentication.xml',
-      ).readAsStringSync();
-      final declarations = stringDeclaration.allMatches(source);
-
-      expect(declarations, isNotEmpty);
-
-      for (final declaration in declarations) {
-        expect(declaration.group(1), startsWith('config_authentication_'));
-        expect(
-          declaration.group(2),
-          contains('translatable="false"'),
-          reason: declaration.group(1),
-        );
+    test('technical values are explicitly non-translatable', () {
+      for (final file in resourcesDirectory.listSync().whereType<File>()) {
+        if (!file.path.endsWith('.xml')) {
+          continue;
+        }
+        for (final declaration in stringDeclaration.allMatches(
+          file.readAsStringSync(),
+        )) {
+          if (declaration.group(1)!.startsWith('config_')) {
+            expect(
+              declaration.group(2),
+              contains('translatable="false"'),
+              reason: declaration.group(1),
+            );
+          }
+        }
       }
     });
 

@@ -1,6 +1,6 @@
 abstract final class InformationContent {
-  static const version = '1.1';
-  static const updatedAt = '12/11/2026';
+  static const version = '1.2';
+  static const updatedAt = '17/11/2026';
   static const responsible = 'Gabriel Ramos';
   static const email = 'developer.bed@gmail.com';
 
@@ -33,12 +33,12 @@ abstract final class InformationContent {
     (
       title: 'Sua conta e sua segurança',
       paragraphs: [
-        'Para utilizar os recursos pessoais, crie uma conta com um e-mail ao '
-            'qual você tenha acesso, confirme esse endereço e escolha uma senha. '
-            'Mantenha seus dados corretos e sua senha em sigilo.',
-        'Não compartilhe senhas, códigos ou links de confirmação e recuperação. '
-            'Se suspeitar de acesso indevido, redefina sua senha e fale com '
-            '$email. Nunca pedimos sua senha por e-mail.',
+        'Para utilizar os recursos pessoais, informe um e-mail ao qual você '
+            'tenha acesso e confirme o código recebido. O mesmo fluxo atende '
+            'contas novas e existentes, sem senha ou cadastro separado.',
+        'Não compartilhe códigos de acesso. Proteja o acesso ao seu e-mail. '
+            'Se suspeitar de acesso indevido, proteja sua caixa de e-mail e '
+            'fale com $email. Nunca pedimos seu código por e-mail.',
       ],
     ),
     (
@@ -80,7 +80,7 @@ abstract final class InformationContent {
             'Dados pessoais → Excluir conta e confirme a ação.',
         'Sem acesso ao aplicativo, solicite a exclusão pelo e-mail $email, '
             'com o assunto "Exclusão de conta Cordato". Informe o e-mail '
-            'cadastrado, sem enviar sua senha. Podemos confirmar sua identidade '
+            'cadastrado, sem enviar códigos de acesso. Podemos confirmar sua identidade '
             'para proteger a conta. Desinstalar o aplicativo ou sair da sessão '
             'não exclui os dados armazenados no serviço.',
       ],
@@ -128,10 +128,9 @@ abstract final class InformationContent {
       title: 'Quais dados são tratados',
       paragraphs: [
         'Conta: e-mail, nome quando informado, identificação da conta, '
-            'representação do avatar, senha protegida pelo mecanismo de '
-            'autenticação e situação da confirmação do e-mail. No dispositivo, '
-            'armazenamos a identificação da conta e a credencial de sessão '
-            'para manter seu acesso.',
+            'representação do avatar e registros de autenticação por código. '
+            'No dispositivo, persistimos cookies de sessão para manter seu acesso. '
+            'Não é necessário criar uma senha no Cordato.',
         'Despesas: descrição, valor, data, categoria e vínculo com sua conta. '
             'Os resumos mensais são derivados desses registros. Não solicitamos '
             'senha bancária, número de cartão ou conexão com sua instituição financeira.',
@@ -141,7 +140,7 @@ abstract final class InformationContent {
             'que você mencionar. O uso desse recurso é opcional; você pode '
             'continuar cadastrando despesas pelo formulário.',
         'Comunicações: endereço de e-mail, conteúdo e registros de entrega '
-            'das mensagens de confirmação de conta e recuperação de senha. '
+            'das mensagens com códigos de acesso. '
             'Se você entrar em contato, também trataremos o que enviar '
             'para responder à solicitação.',
         'A operação da infraestrutura pode gerar registros técnicos, como '
@@ -162,7 +161,7 @@ abstract final class InformationContent {
             'sua sessão e encaminha a gravação à inteligência artificial. '
             'Os dados extraídos, como descrição, valor, data e categoria, '
             'são validados para tentar cadastrar uma despesa na sua conta. '
-            'Sua senha e sua credencial de sessão não são enviadas à IA.',
+            'Seu código de acesso e sua credencial de sessão não são enviadas à IA.',
         'O tratamento necessário ao serviço se relaciona à execução da relação '
             'de uso e às etapas solicitadas por você. Outras bases legais, '
             'como cumprimento de obrigação legal ou exercício regular '
@@ -181,7 +180,7 @@ abstract final class InformationContent {
         'Usamos o Resend para enviar e-mails transacionais. Para isso, '
             'ele recebe o endereço do destinatário, o conteúdo da mensagem '
             'e os dados técnicos necessários à entrega. Os e-mails de '
-            'confirmação e recuperação incluem links de uso restrito; '
+            'acesso incluem códigos de uso restrito; '
             'não enviamos suas despesas nessas mensagens.',
         'O Resend informa que armazena dados nos Estados Unidos e utiliza '
             'suboperadores. Portanto, o envio dessas mensagens envolve '
@@ -214,9 +213,9 @@ abstract final class InformationContent {
       paragraphs: [
         'O acesso aos seus registros depende de autenticação e das regras '
             'de autorização do serviço. No dispositivo, as credenciais '
-            'de sessão usam o armazenamento seguro disponibilizado '
-            'pelo sistema operacional. Nenhum serviço é isento de riscos.',
-        'Não compartilhe sua senha nem links recebidos por e-mail. Evite '
+            'de sessão ficam em arquivos no diretório de suporte do aplicativo, '
+            'sem criptografia adicional do Cordato. Nenhum serviço é isento de riscos.',
+        'Não compartilhe códigos recebidos por e-mail. Evite '
             'registrar dados pessoais desnecessários, especialmente de '
             'outras pessoas, no campo de descrição das despesas ou nas '
             'gravações. O microfone é usado mediante permissão para a captura '
@@ -273,7 +272,7 @@ abstract final class InformationContent {
         'Para excluir a conta no app, vá a Configurações → Dados pessoais '
             '→ Excluir conta. Sem acesso ao app, escreva para $email '
             'com o assunto "Exclusão de conta Cordato" e informe o '
-            'e-mail cadastrado. Não envie sua senha. Podemos solicitar '
+            'e-mail cadastrado. Não envie códigos de acesso. Podemos solicitar '
             'confirmação de identidade para evitar exclusões indevidas '
             'e informaremos as etapas necessárias no atendimento.',
         'Para os demais direitos, use o mesmo contato e descreva o pedido. '
@@ -312,12 +311,12 @@ abstract final class InformationContent {
         (
           question: 'Como começo a usar o Cordato?',
           answer:
-              'Na tela inicial, toque em Continuar e depois em Crie uma. '
-              'Cadastre seu e-mail e uma senha, confirme o e-mail pelo '
-              'link recebido e entre na sua conta.',
+              'Na tela inicial, toque em Continuar, informe seu e-mail e '
+              'toque em Enviar código. Digite os seis dígitos recebidos por '
+              'e-mail. Não há senha ou formulário de criação de conta separado.',
         ),
         (
-          question: 'Não recebi o e-mail de confirmação. E agora?',
+          question: 'Não recebi o código de acesso. E agora?',
           answer:
               'Confira o endereço informado e as pastas de spam e lixo '
               'eletrônico. Use Reenviar na tela de confirmação. Após um '
@@ -326,22 +325,21 @@ abstract final class InformationContent {
               'entre em contato pelo e-mail de suporte abaixo.',
         ),
         (
-          question: 'Como recupero minha senha?',
+          question: 'Como volto a acessar minha conta?',
           answer:
-              'Na tela de entrada, toque em recupere sua senha. '
-              'Informe seu e-mail e siga o link recebido para definir uma '
-              'nova senha. A mensagem de solicitação não confirma '
-              'se existe uma conta para aquele endereço. Se o link '
-              'estiver inválido ou expirado, solicite outro.',
+              'Informe o mesmo e-mail usado anteriormente e solicite um novo '
+              'código. Se perdeu acesso ao e-mail, procure seu provedor de '
+              'e-mail e entre em contato com o suporte. Não há recuperação '
+              'de senha no Cordato.',
         ),
         (
           question: 'O que acontece quando saio da conta?',
           answer:
-              'Em Configurações, Sair remove a sessão deste dispositivo, '
-              'sem invalidar cópias da credencial no servidor ou encerrar '
-              'o acesso em outros dispositivos. Essa ação não exclui sua '
-              'conta ou suas despesas. Se suspeitar de acesso indevido, '
-              'redefina sua senha e entre em contato com o suporte.',
+              'Em Configurações, Sair solicita a revogação da sessão atual '
+              'no serviço, sem encerrar o acesso em outros dispositivos. '
+              'Uma falha de conexão pode deixar o resultado incerto. '
+              'Essa ação não exclui sua conta ou suas despesas. Se suspeitar '
+              'de acesso indevido, proteja seu e-mail e fale com o suporte.',
         ),
       ],
     ),
@@ -418,7 +416,7 @@ abstract final class InformationContent {
               'Escreva para $email com o assunto "Exclusão de conta '
               'Cordato". Informe o e-mail cadastrado, de preferência '
               'enviando a solicitação por ele. Não envie senhas ou '
-              'links de recuperação. Podemos confirmar sua identidade '
+              'códigos de acesso. Podemos confirmar sua identidade '
               'antes de atender ao pedido. Você não precisa '
               'reinstalar o aplicativo para solicitar a exclusão.',
         ),

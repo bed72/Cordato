@@ -6,15 +6,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:cordato/features/authentication/application/exceptions/authentication_exception.dart';
-import 'package:cordato/features/authentication/presentation/screens/confirm_code/bloc/confirm_code_bloc.dart';
-import 'package:cordato/features/authentication/presentation/screens/confirm_code/bloc/confirm_code_event.dart';
-import 'package:cordato/features/authentication/presentation/screens/confirm_code/bloc/confirm_code_state.dart';
+import 'package:cordato/features/authentication/presentation/screens/code/bloc/code_bloc.dart';
+import 'package:cordato/features/authentication/presentation/screens/code/bloc/code_event.dart';
+import 'package:cordato/features/authentication/presentation/screens/code/bloc/code_state.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import '../../../../../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
-  const submitted = ConfirmCodeSubmittedEvent(
+  const submitted = CodeSubmittedEvent(
     userId: ' service-user ',
     code: ' 012345 ',
   );
@@ -44,27 +44,27 @@ void main() {
 
   group('Initial state and confirmation', () {
     test('starts ready without confirming or requesting a code', () async {
-      final bloc = ConfirmCodeBloc(repository: repository);
+      final bloc = CodeBloc(repository: repository);
       addTearDown(bloc.close);
 
-      expect(bloc.state, isA<ConfirmCodeInitial>());
+      expect(bloc.state, isA<CodeInitial>());
       expect(bloc.state.canSubmit, isTrue);
       expect(bloc.state.isSubmitting, isFalse);
       verifyZeroInteractions(repository);
     });
 
-    blocTest<ConfirmCodeBloc, ConfirmCodeState>(
+    blocTest<CodeBloc, CodeState>(
       'delegates unchanged userId/code and completes without storing them in state',
       build: () {
         stub(() async {});
-        return ConfirmCodeBloc(repository: repository);
+        return CodeBloc(repository: repository);
       },
       act: (bloc) => bloc.add(submitted),
       expect: () => [
-        isA<ConfirmCodeSubmitting>()
+        isA<CodeSubmitting>()
             .having((state) => state.canSubmit, 'canSubmit', isFalse)
             .having((state) => state.isSubmitting, 'isSubmitting', isTrue),
-        isA<ConfirmCodeSuccess>()
+        isA<CodeSuccess>()
             .having((state) => state.canSubmit, 'canSubmit', isFalse)
             .having((state) => state.isSubmitting, 'isSubmitting', isFalse),
       ],
@@ -82,16 +82,16 @@ void main() {
 
   group('Failures and manual retry', () {
     for (final failure in [errors, const ErrorsEntity(errors: [])]) {
-      blocTest<ConfirmCodeBloc, ConfirmCodeState>(
+      blocTest<CodeBloc, CodeState>(
         'preserves ${failure.errors.length} application errors without reporting or retrying',
         build: () {
           stub(() async => throw AuthenticationException(errors: failure));
-          return ConfirmCodeBloc(repository: repository);
+          return CodeBloc(repository: repository);
         },
         act: (bloc) => bloc.add(submitted),
         expect: () => [
-          isA<ConfirmCodeSubmitting>(),
-          isA<ConfirmCodeFailure>()
+          isA<CodeSubmitting>(),
+          isA<CodeFailure>()
               .having((state) => state.errors, 'errors', same(failure))
               .having((state) => state.canSubmit, 'canSubmit', isTrue)
               .having((state) => state.isSubmitting, 'isSubmitting', isFalse),
@@ -109,29 +109,25 @@ void main() {
       );
     }
 
-    blocTest<ConfirmCodeBloc, ConfirmCodeState>(
+    blocTest<CodeBloc, CodeState>(
       'allows manual retry using a new userId and code after failure',
       build: () {
         stub(() async => throw AuthenticationException(errors: errors));
         when(() => repository.confirmCode(userId: 'new-user', code: '654321'))
             .thenAnswer((_) async {});
-        return ConfirmCodeBloc(repository: repository);
+        return CodeBloc(repository: repository);
       },
       act: (bloc) async {
-        final failed = bloc.stream.firstWhere(
-          (state) => state is ConfirmCodeFailure,
-        );
+        final failed = bloc.stream.firstWhere((state) => state is CodeFailure);
         bloc.add(submitted);
         await failed;
-        bloc.add(
-          const ConfirmCodeSubmittedEvent(userId: 'new-user', code: '654321'),
-        );
+        bloc.add(const CodeSubmittedEvent(userId: 'new-user', code: '654321'));
       },
       expect: () => [
-        isA<ConfirmCodeSubmitting>(),
-        isA<ConfirmCodeFailure>(),
-        isA<ConfirmCodeSubmitting>(),
-        isA<ConfirmCodeSuccess>(),
+        isA<CodeSubmitting>(),
+        isA<CodeFailure>(),
+        isA<CodeSubmitting>(),
+        isA<CodeSuccess>(),
       ],
       verify: (_) {
         verifyInOrder([
@@ -149,16 +145,16 @@ void main() {
       StateError('private failure'),
       const FormatException('private payload'),
     ]) {
-      blocTest<ConfirmCodeBloc, ConfirmCodeState>(
+      blocTest<CodeBloc, CodeState>(
         'reports ${unexpected.runtimeType} with a safe retryable fallback',
         build: () {
           stub(() async => throw unexpected);
-          return ConfirmCodeBloc(repository: repository);
+          return CodeBloc(repository: repository);
         },
         act: (bloc) => bloc.add(submitted),
         expect: () => [
-          isA<ConfirmCodeSubmitting>(),
-          isA<ConfirmCodeFailure>()
+          isA<CodeSubmitting>(),
+          isA<CodeFailure>()
               .having(
                 (state) => state.errors.errors.single.title,
                 'title',
@@ -181,19 +177,19 @@ void main() {
       fakeAsync((async) {
         final pending = Completer<void>();
         stub(() => pending.future);
-        final bloc = ConfirmCodeBloc(repository: repository);
+        final bloc = CodeBloc(repository: repository);
         bloc.add(submitted);
         async.flushMicrotasks();
         bloc.add(submitted);
         bloc.add(
-          const ConfirmCodeSubmittedEvent(userId: 'other-user', code: '654321'),
+          const CodeSubmittedEvent(userId: 'other-user', code: '654321'),
         );
         async.flushMicrotasks();
         stub(() async {});
         pending.completeError(AuthenticationException(errors: errors));
         async.flushMicrotasks();
 
-        expect(bloc.state, isA<ConfirmCodeFailure>());
+        expect(bloc.state, isA<CodeFailure>());
         verify(
           () => repository.confirmCode(
             userId: submitted.userId,
@@ -203,7 +199,7 @@ void main() {
         verifyNoMoreInteractions(repository);
         bloc.add(submitted);
         async.flushMicrotasks();
-        expect(bloc.state, isA<ConfirmCodeSuccess>());
+        expect(bloc.state, isA<CodeSuccess>());
         verify(
           () => repository.confirmCode(
             userId: submitted.userId,
@@ -222,21 +218,18 @@ void main() {
         fakeAsync((async) {
           final pending = Completer<void>();
           stub(() => pending.future);
-          final bloc = ConfirmCodeBloc(repository: repository);
-          final states = <ConfirmCodeState>[];
+          final bloc = CodeBloc(repository: repository);
+          final states = <CodeState>[];
           final subscription = bloc.stream.listen(states.add);
           bloc.add(submitted);
           async.flushMicrotasks();
           bloc.add(submitted);
           bloc.add(
-            const ConfirmCodeSubmittedEvent(
-              userId: 'other-user',
-              code: '654321',
-            ),
+            const CodeSubmittedEvent(userId: 'other-user', code: '654321'),
           );
           async.flushMicrotasks();
 
-          expect(bloc.state, isA<ConfirmCodeSubmitting>());
+          expect(bloc.state, isA<CodeSubmitting>());
           verify(
             () => repository.confirmCode(
               userId: submitted.userId,
@@ -248,10 +241,7 @@ void main() {
           bloc.add(submitted);
           async.flushMicrotasks();
 
-          expect(states, [
-            isA<ConfirmCodeSubmitting>(),
-            isA<ConfirmCodeSuccess>(),
-          ]);
+          expect(states, [isA<CodeSubmitting>(), isA<CodeSuccess>()]);
           verifyNoMoreInteractions(repository);
           unawaited(subscription.cancel());
           unawaited(bloc.close());
@@ -268,13 +258,13 @@ void main() {
       test('closing during $outcome prevents late states', () async {
         final pending = Completer<void>();
         stub(() => pending.future);
-        final bloc = ConfirmCodeBloc(repository: repository);
+        final bloc = CodeBloc(repository: repository);
         addTearDown(bloc.close);
-        final states = <ConfirmCodeState>[];
+        final states = <CodeState>[];
         final subscription = bloc.stream.listen(states.add);
         addTearDown(subscription.cancel);
         final running = bloc.stream.firstWhere(
-          (state) => state is ConfirmCodeSubmitting,
+          (state) => state is CodeSubmitting,
         );
 
         bloc.add(submitted);
@@ -291,24 +281,22 @@ void main() {
         await closing;
 
         expect(bloc.isClosed, isTrue);
-        expect(states, [isA<ConfirmCodeSubmitting>()]);
+        expect(states, [isA<CodeSubmitting>()]);
       });
     }
 
     test('keeps externally owned instances independent', () async {
       stub(() async {});
-      final first = ConfirmCodeBloc(repository: repository);
-      final second = ConfirmCodeBloc(repository: repository);
+      final first = CodeBloc(repository: repository);
+      final second = CodeBloc(repository: repository);
       addTearDown(first.close);
       addTearDown(second.close);
-      final finished = first.stream.firstWhere(
-        (state) => state is ConfirmCodeSuccess,
-      );
+      final finished = first.stream.firstWhere((state) => state is CodeSuccess);
 
       first.add(submitted);
       await finished;
 
-      expect(second.state, isA<ConfirmCodeInitial>());
+      expect(second.state, isA<CodeInitial>());
       verify(
         () => repository.confirmCode(
           userId: submitted.userId,

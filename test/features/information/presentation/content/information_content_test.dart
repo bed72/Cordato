@@ -158,21 +158,35 @@ void main() {
       expect(answer, contains('confira suas despesas antes de reenviar'));
     });
 
-    test('explains local logout without promising remote revocation', () {
-      final answer = InformationContent.helpSections
-          .expand((section) => section.questions)
-          .singleWhere(
-            (item) => item.question == 'O que acontece quando saio da conta?',
-          )
-          .answer;
+    test(
+      'explains current-session revocation and uncertain transport outcomes',
+      () {
+        final answer = InformationContent.helpSections
+            .expand((section) => section.questions)
+            .singleWhere(
+              (item) => item.question == 'O que acontece quando saio da conta?',
+            )
+            .answer;
 
-      expect(
-        answer,
-        contains('sem invalidar cópias da credencial no servidor'),
-      );
-      expect(answer, contains('redefina sua senha'));
-      expect(answer, contains('Essa ação não exclui sua conta'));
-    });
+        expect(answer, contains('revogação da sessão atual'));
+        expect(answer, contains('resultado incerto'));
+        expect(answer, contains('outros dispositivos'));
+        expect(answer, contains('Essa ação não exclui sua conta'));
+      },
+    );
+
+    test(
+      'public access instructions use email codes instead of password flows',
+      () {
+        final access = InformationContent.helpSections.first.questions
+            .map((question) => question.answer)
+            .join('\n');
+        expect(access, contains('Enviar código'));
+        expect(access, contains('seis dígitos'));
+        expect(access, isNot(contains('Crie uma')));
+        expect(access, isNot(contains('redefina sua senha')));
+      },
+    );
 
     test('groups unique questions with nonempty answers', () {
       expect(InformationContent.helpSections, isNotEmpty);

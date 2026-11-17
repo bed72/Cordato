@@ -128,7 +128,7 @@ Os Blocs disponíveis são:
   Não há emissão automática ao construir o Bloc ou ao terminar o cooldown. Um consumidor
   usa o userId do sucesso
   mais recente na confirmação, não reutilizar o identificador de uma emissão anterior.
-- ConfirmCodeBloc recebe userId e code no evento de submissão e aguarda somente
+- CodeBloc recebe userId e code no evento de submissão e aguarda somente
   confirmCode. Seus estados sealed são Initial, Submitting, Success e Failure, sem
   código ou credencial armazenada. O sucesso não navega; a observação global de sessão
   permanece responsável pelo redirecionamento da confirmação à Dashboard.
@@ -152,13 +152,16 @@ de formulário ou dependência pinput. PinFieldWidget usa TextFieldWidget compar
 seis dígitos ASCII, preenchimento oneTimeCode e confirmação ao completar o campo
 ou pelo botão. CodeValidation normaliza somente o formulário, nunca o repository.
 
+Os arquivos da etapa estão em authentication/presentation/screens/code/ (CodeScreen,
+CodeBloc, CodeEvent, CodeState, CodeArguments e CodeScreenStateMixin), com testes
+correspondentes em screens/code/. A operação de aplicação continua confirmCode.
 As únicas rotas são /authentication/sign-in e /authentication/confirm. A primeira
 recebe SignInBloc de provide/addBloc. Após requestCode, o mixin substitui a rota
-levando ConfirmCodeArguments(email, userId); esse objeto é somente dado de navegação,
+levando CodeArguments(email, userId); esse objeto é somente dado de navegação,
 não desafio/wrapper retornado pelo repository. Entrada ausente ou incompleta mostra
 ErrorScreen para solicitar outro código. Não há código na URL ou nos argumentos.
 
-A rota de confirmação possui ConfirmCodeBloc e ResendEmailBloc pelo mesmo escopo de
+A rota de confirmação possui CodeBloc e ResendEmailBloc pelo mesmo escopo de
 página. A screen recebe ambos, não os cria/fecha. O mixin possui/descarta o controller,
 inicia somente o cooldown do código já enviado e atualiza userId após cada reenvio,
 limpando o código anterior. Confirmação e reenvio desabilitam ações concorrentes;

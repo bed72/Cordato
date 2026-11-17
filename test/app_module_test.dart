@@ -31,8 +31,6 @@ import 'package:cordato/features/user/application/repositories/interface_user_re
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
-import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
-
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_form_validator.dart';
@@ -172,32 +170,27 @@ void main() {
       }
     });
 
-    test(
-      'expense and authentication factories resolve without activating routes',
-      () async {
-        final signUp = boot.injector.get<SignUpBloc>();
-        final expense = boot.injector.get<ExpenseBloc>();
-        final expenses = boot.injector.get<ExpensesBloc>();
-        final validator = boot.injector.get<ExpenseFormValidator>();
-        expect(
-          validator(
-            cents: 100,
-            description: 'Mercado',
-            occurredOn: DateTime.now(),
-          ),
-          isNotNull,
-        );
-        await signUp.close();
-        expect(
-          boot.injector.get<ExpenseFormValidator>(),
-          isA<ExpenseFormValidator>(),
-        );
-        await expense.close();
-        final otherList = boot.injector.get<ExpensesBloc>();
-        expect(otherList, isNot(same(expenses)));
-        await expenses.close();
-        await otherList.close();
-      },
-    );
+    test('expense factories resolve without activating routes', () async {
+      final expense = boot.injector.get<ExpenseBloc>();
+      final expenses = boot.injector.get<ExpensesBloc>();
+      final validator = boot.injector.get<ExpenseFormValidator>();
+      expect(
+        validator(
+          cents: 100,
+          description: 'Mercado',
+          occurredOn: DateTime.now(),
+        ),
+        isNotNull,
+      );
+      expect(
+        boot.injector.get<ExpenseFormValidator>(),
+        isA<ExpenseFormValidator>(),
+      );
+      await expense.close();
+      final otherList = boot.injector.get<ExpensesBloc>();
+      expect(otherList, isNot(same(expenses)));
+      await expenses.close();
+      await otherList.close();
+    });
   });
 }

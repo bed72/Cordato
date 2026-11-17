@@ -1,190 +1,135 @@
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 
 void main() {
-  const fallback = 'Não foi possível concluir a operação.';
-
-  group('Authentication field messages', () {
-    const scenarios = [
-      (
-        pointer: '/identity',
-        code: 'validation_required',
-        message: 'Informe seu e-mail.',
-      ),
-      (
-        pointer: '/email',
-        code: 'validation_required',
-        message: 'Informe seu e-mail.',
-      ),
-      (
-        pointer: '/email',
-        code: 'validation_invalid_email',
-        message: 'Informe um e-mail válido.',
-      ),
-      (
-        pointer: '/email',
-        code: 'validation_not_unique',
-        message: 'Este e-mail já está em uso.',
-      ),
-      (
-        pointer: '/password',
-        code: 'validation_required',
-        message: 'Informe sua senha.',
-      ),
-      (
-        pointer: '/password',
-        code: 'validation_length',
-        message: 'A senha deve ter entre 6 e 16 caracteres.',
-      ),
-      (
-        pointer: '/password',
-        code: 'validation_length_out_of_range',
-        message: 'A senha deve ter entre 6 e 16 caracteres.',
-      ),
-      (
-        pointer: '/password',
-        code: 'unknown',
-        message: 'Confira a senha informada.',
-      ),
-      (
-        pointer: '/passwordConfirm',
-        code: 'validation_required',
-        message: 'Confirme sua senha.',
-      ),
-      (
-        pointer: '/passwordConfirm',
-        code: 'validation_values_mismatch',
-        message: 'As senhas não coincidem.',
-      ),
-      (
-        pointer: '/passwordConfirm',
-        code: 'unknown',
-        message: 'Confira a confirmação da senha.',
-      ),
-      (
-        pointer: '/token',
-        code: 'validation_invalid_token',
-        message: 'O link é inválido ou expirou. Solicite um novo link.',
-      ),
-    ];
-
-    for (final scenario in scenarios) {
-      test('${scenario.pointer}: ${scenario.code}', () {
-        final error = ErrorEntity(
-          status: '400',
-          pointer: scenario.pointer,
-          code: scenario.code,
-          title: 'Failed to create record.',
-          detail: 'English backend validation message.',
-        );
-
-        expect(
-          AuthenticationErrorMessageFormatter.format(error, fallback: fallback),
-          scenario.message,
-        );
-      });
+  group('Email errors', () {
+    for (final error in [
+      const ErrorEntity(status: '400', pointer: '/email'),
+      const ErrorEntity(status: '422', parameter: 'email'),
+      const ErrorEntity(status: '400', code: 'user_invalid_email'),
+    ]) {
+      test(
+        'maps ${error.status}/${error.pointer}/${error.parameter}/${error.code} to the email field',
+        () {
+          expect(
+            AuthenticationErrorMessageFormatter.isEmailError(error),
+            isTrue,
+          );
+          expect(
+            AuthenticationErrorMessageFormatter.requestCode(error),
+            'Informe um e-mail válido.',
+          );
+        },
+      );
     }
-
-    for (final field in ['email', 'password']) {
-      test('maps legacy 422 /data/attributes/$field without a detail', () {
-        final error = ErrorEntity(
-          status: '422',
-          pointer: '/data/attributes/$field',
-        );
-
-        expect(
-          AuthenticationErrorMessageFormatter.format(error, fallback: fallback),
-          field == 'email'
-              ? 'Informe um e-mail válido.'
-              : 'Confira a senha informada.',
-        );
-      });
-    }
-
-    test('maps legacy email conflict without parsing remote text', () {
-      const error = ErrorEntity(
-        status: '409',
-        pointer: '/data/attributes/email',
-      );
-
-      expect(
-        AuthenticationErrorMessageFormatter.format(error, fallback: fallback),
-        'Este e-mail já está em uso.',
-      );
-    });
-
-    test('unknown fields and codes use the operation fallback', () {
-      const error = ErrorEntity(
-        status: '400',
-        pointer: '/unrecognized',
-        code: 'validation_new_rule',
-        detail: 'Sensitive backend information.',
-      );
-
-      expect(
-        AuthenticationErrorMessageFormatter.format(error, fallback: fallback),
-        fallback,
-      );
-    });
-
-    test('does not interpret a server failure as field validation', () {
+    test('a server failure is not email validation', () {
       const error = ErrorEntity(status: '503', pointer: '/email');
-
+      expect(AuthenticationErrorMessageFormatter.isEmailError(error), isFalse);
       expect(
-        AuthenticationErrorMessageFormatter.format(error, fallback: fallback),
+        AuthenticationErrorMessageFormatter.requestCode(error),
         'O serviço está indisponível no momento. Tente novamente mais tarde.',
       );
     });
   });
 
-  group('Sign-in context', () {
-    for (final status in ['400', '401']) {
-      test('HTTP $status does not claim an existing session expired', () {
-        final error = ErrorEntity(
-          status: status,
-          detail: 'Failed to authenticate.',
-        );
-
-        expect(
-          AuthenticationErrorMessageFormatter.signIn(error),
-          'Não foi possível entrar. Confira seu e-mail e sua senha.',
-        );
-      });
+  group('Code errors', () {
+    for (final error in [
+      const ErrorEntity(status: '401', code: 'user_invalid_token'),
+      const ErrorEntity(status: '400', pointer: '/secret'),
+      const ErrorEntity(status: '422', parameter: 'secret'),
+    ]) {
+      test(
+        'maps ${error.status}/${error.code}/${error.pointer}/${error.parameter} to the code field',
+        () {
+          expect(
+            AuthenticationErrorMessageFormatter.isCodeError(error),
+            isTrue,
+          );
+          expect(
+            AuthenticationErrorMessageFormatter.confirmCode(error),
+            'Código inválido ou expirado. Confira o código ou solicite outro.',
+          );
+        },
+      );
     }
-
     test(
-      'HTTP 403 suggests verification without exposing the remote reason',
+      'a server failure is not an invalid code even with a matching type',
       () {
-        const error = ErrorEntity(status: '403', detail: 'Unverified record.');
-
+        const error = ErrorEntity(
+          status: '503',
+          code: 'user_invalid_token',
+          pointer: '/secret',
+        );
+        expect(AuthenticationErrorMessageFormatter.isCodeError(error), isFalse);
         expect(
-          AuthenticationErrorMessageFormatter.signIn(error),
-          'Não foi possível entrar. Confirme seu e-mail e tente novamente.',
+          AuthenticationErrorMessageFormatter.confirmCode(error),
+          'O serviço está indisponível no momento. Tente novamente mais tarde.',
         );
       },
     );
-
-    test('keeps the field-specific required message', () {
-      const error = ErrorEntity(
-        status: '400',
-        pointer: '/password',
-        code: 'validation_required',
-      );
-
+    test('account validation 401 is not claimed to be a rejected code', () {
+      const error = ErrorEntity(status: '401', code: 'user_unauthorized');
+      expect(AuthenticationErrorMessageFormatter.isCodeError(error), isFalse);
       expect(
-        AuthenticationErrorMessageFormatter.signIn(error),
-        'Informe sua senha.',
+        AuthenticationErrorMessageFormatter.confirmCode(error),
+        'Não foi possível confirmar seu acesso. Solicite um novo código.',
+      );
+      expect(
+        AuthenticationErrorMessageFormatter.requestCode(error),
+        'Não foi possível enviar o código. Tente novamente.',
       );
     });
+  });
 
-    test('uses a neutral fallback for unknown failures', () {
+  group('Safe feedback', () {
+    for (final status in ['429', '408', '403']) {
+      test('HTTP $status uses local text for both operations', () {
+        final error = ErrorEntity(
+          status: status,
+          title: 'remote-title',
+          detail: 'remote-secret',
+        );
+        expect(
+          AuthenticationErrorMessageFormatter.requestCode(error),
+          isNot(contains('remote')),
+        );
+        expect(
+          AuthenticationErrorMessageFormatter.confirmCode(error),
+          isNot(contains('remote')),
+        );
+      });
+    }
+    test('rate limit has a useful local message', () {
+      const error = ErrorEntity(status: '429');
       expect(
-        AuthenticationErrorMessageFormatter.signIn(
-          const ErrorEntity(detail: 'Unexpected error'),
-        ),
-        'Não foi possível entrar. Tente novamente.',
+        AuthenticationErrorMessageFormatter.requestCode(error),
+        'Muitas tentativas. Aguarde um pouco e tente novamente.',
+      );
+    });
+    test('empty errors have an operation-specific fallback', () {
+      expect(
+        AuthenticationErrorMessageFormatter.requestErrors([]),
+        'Não foi possível enviar o código. Tente novamente.',
+      );
+      expect(
+        AuthenticationErrorMessageFormatter.confirmationErrors([]),
+        'Não foi possível confirmar seu acesso. Tente novamente.',
+      );
+    });
+    test('messages are deduplicated in original order without exposing unknown content', () {
+      const errors = [
+        ErrorEntity(status: '429'),
+        ErrorEntity(status: '429'),
+        ErrorEntity(title: 'remote', detail: 'private'),
+      ];
+      expect(
+        AuthenticationErrorMessageFormatter.requestErrors(errors),
+        'Muitas tentativas. Aguarde um pouco e tente novamente.\nNão foi possível enviar o código. Tente novamente.',
+      );
+      expect(
+        AuthenticationErrorMessageFormatter.confirmationErrors(errors),
+        'Muitas tentativas. Aguarde um pouco e tente novamente.\nNão foi possível confirmar seu acesso. Tente novamente.',
       );
     });
   });

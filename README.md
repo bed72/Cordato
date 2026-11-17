@@ -129,7 +129,7 @@ Os resultados e descrições PocketBase abaixo são históricos, não estado atu
 SignInBloc solicita código com email e publica o userId em SignInSuccess, sem
 autenticar. ResendEmailBloc inicia somente o cooldown do código já solicitado,
 sem duplicar a emissão; o reenvio explícito retorna o novo userId e reinicia
-os 60 segundos após sucesso. ConfirmCodeBloc confirma userId/code,
+os 60 segundos após sucesso. CodeBloc confirma userId/code,
 sem armazenar código nos estados. Todos usam o contrato de aplicação, descartam
 submissões concorrentes e permitem retry manual após falhas.
 
@@ -139,7 +139,7 @@ código pode confirmar automaticamente; também há botão Confirmar. Reenvio re
 60 segundos e atualiza o identificador usado na confirmação. Alterar e-mail permite
 iniciar outra solicitação. Código e credenciais não passam pela URL ou pelo estado do Bloc.
 
-SignInBloc pertence ao escopo da rota de entrada; ConfirmCodeBloc e ResendEmailBloc
+SignInBloc pertence ao escopo da rota de entrada; CodeBloc e ResendEmailBloc
 pertencem ao escopo da confirmação. As telas não fecham essas instâncias; a sessão
 global redireciona após autenticação. Previews manuais de entrada, confirmação,
 loading e erro estão em authentication/presentation/previews. Não houve restauração

@@ -1,116 +1,89 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
-import 'package:cordato/features/core/presentation/navigation/session_redirect_deferral.dart';
 import 'package:cordato/features/root/presentation/navigation/session_route_policy.dart';
 import 'package:cordato/features/session/presentation/bloc/session_state.dart';
 
 void main() {
-  group('Protected password route', () {
-    for (final state in [const SessionInitial(), const SessionLoading()]) {
-      test('${state.runtimeType} sends direct entry to session validation', () {
-        expect(
-          SessionRoutePolicy.redirect(
-            state: state,
-            path: RouteEnum.authenticationChangePassword.path,
-            deferred: false,
-          ),
-          RouteEnum.app.path,
-        );
-      });
-    }
-    test('unauthenticated direct entry redirects normally', () {
-      expect(
-        SessionRoutePolicy.redirect(
-          state: const SessionUnauthenticated(),
-          path: RouteEnum.authenticationChangePassword.path,
-          deferred: false,
-        ),
-        RouteEnum.welcome.path,
-      );
-    });
-  });
-
-  group('Logout completion', () {
-    test(
-      'releasing after clear does not reuse a stale authenticated observation',
-      () {
+  group('Protected routes', () {
+    for (final route in RouteEnum.values.where(
+      (route) => route.authenticated,
+    )) {
+      for (final state in [const SessionInitial(), const SessionLoading()]) {
+        test('${state.runtimeType} validates ${route.path} first', () {
+          expect(
+            SessionRoutePolicy.redirect(state: state, path: route.path),
+            RouteEnum.app.path,
+          );
+        });
+      }
+      for (final state in [
+        const SessionUnauthenticated(),
+        const SessionFailure(),
+      ]) {
+        test('${state.runtimeType} leaves ${route.path}', () {
+          expect(
+            SessionRoutePolicy.redirect(state: state, path: route.path),
+            RouteEnum.welcome.path,
+          );
+        });
+      }
+      test('authenticated ${route.path} stays open', () {
         expect(
           SessionRoutePolicy.redirect(
             state: const SessionAuthenticated(),
-            path: RouteEnum.authenticationSignIn.path,
-            deferred: false,
-            afterDeferral: true,
+            path: route.path,
           ),
           isNull,
         );
+      });
+    }
+  });
+
+  group('Authentication completion', () {
+    for (final route in [
+      RouteEnum.app,
+      RouteEnum.welcome,
+      RouteEnum.authenticationSignIn,
+      RouteEnum.authenticationConfirm,
+    ]) {
+      test('authentication from ${route.path} redirects to dashboard', () {
         expect(
           SessionRoutePolicy.redirect(
-            state: const SessionUnauthenticated(),
-            path: RouteEnum.authenticationSignIn.path,
-            deferred: false,
+            state: const SessionAuthenticated(),
+            path: route.path,
           ),
-          isNull,
+          RouteEnum.dashboard.path,
         );
-      },
-    );
-    test('keeps the route during token removal and preserves sign-in after release', () {
-      var path = RouteEnum.authenticationChangePassword.path;
-      String? redirect;
-      late SessionRedirectDeferral deferral;
-      void reevaluate() {
-        redirect = SessionRoutePolicy.redirect(
-          state: const SessionUnauthenticated(),
-          path: path,
-          deferred: deferral.isDeferredFor(path),
+      });
+    }
+    for (final route in [
+      RouteEnum.authenticationSignIn,
+      RouteEnum.authenticationConfirm,
+    ]) {
+      for (final state in [
+        const SessionInitial(),
+        const SessionLoading(),
+        const SessionUnauthenticated(),
+        const SessionFailure(),
+      ]) {
+        test(
+          '${state.runtimeType} preserves the public ${route.path} flow',
+          () {
+            expect(
+              SessionRoutePolicy.redirect(state: state, path: route.path),
+              isNull,
+            );
+          },
         );
       }
-
-      deferral = SessionRedirectDeferral(onReleased: reevaluate);
-      final release = deferral.hold(path);
-      reevaluate();
-      expect(redirect, isNull);
-      path = RouteEnum.authenticationSignIn.path;
-      release();
-      expect(redirect, isNull);
-    });
-
-    test('disposal releases normal protection if the flow does not finish', () {
-      final path = RouteEnum.authenticationChangePassword.path;
-      String? redirect;
-      late SessionRedirectDeferral deferral;
-      deferral = SessionRedirectDeferral(
-        onReleased: () {
-          redirect = SessionRoutePolicy.redirect(
-            state: const SessionUnauthenticated(),
-            path: path,
-            deferred: deferral.isDeferredFor(path),
-          );
-        },
-      );
-      final release = deferral.hold(path);
-      release();
-      expect(redirect, RouteEnum.welcome.path);
-    });
-
-    test('other logout destinations are unchanged', () {
+    }
+    test('confirmed absence from splash opens welcome', () {
       expect(
         SessionRoutePolicy.redirect(
           state: const SessionUnauthenticated(),
-          path: RouteEnum.settings.path,
-          deferred: false,
+          path: RouteEnum.app.path,
         ),
         RouteEnum.welcome.path,
-      );
-    });
-
-    test('normal authenticated sign-in still redirects to dashboard', () {
-      expect(
-        SessionRoutePolicy.redirect(
-          state: const SessionAuthenticated(),
-          path: RouteEnum.authenticationSignIn.path,
-          deferred: false,
-        ),
-        RouteEnum.dashboard.path,
       );
     });
   });

@@ -11,16 +11,8 @@ enum RouteEnum(final String path, {final bool authenticated = false}) {
   userEdit('/user/edit', authenticated: true),
   dashboard('/dashboard', authenticated: true),
   authenticationSignIn('/authentication/sign-in'),
-  authenticationSignUp('/authentication/sign-up'),
   authenticationConfirm('/authentication/confirm'),
-  settingsSupport('/settings/support', authenticated: true),
-  authenticationConfirmEmail('/authentication/confirm-email'),
-  authenticationPasswordRecovery('/authentication/password-recovery'),
-  authenticationChangePassword(
-    '/authentication/change-password',
-    authenticated: true,
-  ),
-  authenticationResetPassword('/authentication/reset-password');
+  settingsSupport('/settings/support', authenticated: true);
 
   static Set<String> authenticatedPaths() => values
       .where((route) => route.authenticated)

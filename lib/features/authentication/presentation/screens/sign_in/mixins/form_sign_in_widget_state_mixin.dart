@@ -2,96 +2,48 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/validators/validation.dart';
-
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/form_sign_in_widget.dart';
 import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 
 mixin FormSignInWidgetStateMixin on State<FormSignInWidget> {
-  final passwordFocus = FocusNode();
-
   String email = '';
   String? emailFailure;
 
-  String password = '';
-  String? passwordFailure;
-
-  @override
-  void dispose() {
-    passwordFocus.dispose();
-    super.dispose();
-  }
-
-  void focusPassword() {
-    if (widget.enabled) {
-      passwordFocus.requestFocus();
-    }
-  }
-
   List<ErrorEntity> showErrors(List<ErrorEntity> errors) {
-    final emailMessages = <String>[];
-    final remaining = <ErrorEntity>[];
-    final passwordMessages = <String>[];
-
-    for (final error in errors) {
-      if (error.status == '400' || error.status == '422') {
-        switch (error.pointer) {
-          case '/identity':
-          case '/data/attributes/email':
-            emailMessages.add(
-              AuthenticationErrorMessageFormatter.signIn(error),
-            );
-            continue;
-          case '/data/attributes/password':
-          case '/password':
-            passwordMessages.add(
-              AuthenticationErrorMessageFormatter.signIn(error),
-            );
-            continue;
-        }
-      }
-      remaining.add(error);
-    }
-
+    final fieldErrors = errors.where(
+      AuthenticationErrorMessageFormatter.isEmailError,
+    );
     setState(() {
-      emailFailure = emailMessages.isEmpty ? null : emailMessages.join('\n');
-      passwordFailure = passwordMessages.isEmpty
+      emailFailure = fieldErrors.isEmpty
           ? null
-          : passwordMessages.join('\n');
+          : fieldErrors
+                .map(AuthenticationErrorMessageFormatter.requestCode)
+                .toSet()
+                .join('\n');
     });
-    return remaining;
+    return errors
+        .where(
+          (error) => !AuthenticationErrorMessageFormatter.isEmailError(error),
+        )
+        .toList();
   }
 
   void submit() {
     if (!widget.enabled) return;
 
-    final validatedEmail = widget.emailValidation(email);
-    final validatedPassword = widget.passwordValidation(password);
-
+    final validatedEmail = widget.validation(email);
     setState(() {
       emailFailure = switch (validatedEmail) {
         Invalid(:final message) => message,
         Valid() => null,
       };
-      passwordFailure = switch (validatedPassword) {
-        Invalid(:final message) => message,
-        Valid() => null,
-      };
     });
 
-    if (validatedEmail case Valid(value: final validEmail)) {
-      if (validatedPassword case Valid(value: final validPassword)) {
-        widget.onSubmit((email: validEmail, password: validPassword));
-      }
-    }
+    if (validatedEmail case Valid(:final value)) widget.onSubmit(value);
   }
 
   void onEmailChanged(String value) {
     email = value;
     if (emailFailure != null) setState(() => emailFailure = null);
-  }
-
-  void onPasswordChanged(String value) {
-    password = value;
-    if (passwordFailure != null) setState(() => passwordFailure = null);
   }
 }

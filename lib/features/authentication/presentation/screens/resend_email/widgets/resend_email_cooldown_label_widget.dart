@@ -17,10 +17,13 @@ final class const ResendEmailCooldownLabelWidget({
   @override
   Widget build(BuildContext context) {
     final label = _label;
+    final reduceMotion =
+        MediaQuery.disableAnimationsOf(context) ||
+        MediaQuery.reduceMotionOf(context);
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 200),
-      reverseDuration: const Duration(milliseconds: 150),
+      duration: reduceMotion ? .zero : const Duration(milliseconds: 200),
+      reverseDuration: reduceMotion ? .zero : const Duration(milliseconds: 150),
       transitionBuilder: (child, animation) => FadeTransition(
         opacity: animation,
         child: SizeTransition(

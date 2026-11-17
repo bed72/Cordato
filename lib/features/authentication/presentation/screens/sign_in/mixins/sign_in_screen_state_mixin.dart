@@ -1,61 +1,61 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-
 import 'package:cordato/features/authentication/presentation/screens/sign_in/sign_in_screen.dart';
-import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_bloc.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_event.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/bloc/sign_in_state.dart';
 import 'package:cordato/features/authentication/presentation/screens/sign_in/widgets/form_sign_in_widget.dart';
+import 'package:cordato/features/authentication/presentation/screens/code/arguments/code_arguments.dart';
 import 'package:cordato/features/authentication/presentation/formatters/authentication_error_message_formatter.dart';
 
 mixin SignInScreenStateMixin on State<SignInScreen> {
-  SignInBloc get bloc => widget.bloc;
-
   final formKey = GlobalKey<FormSignInWidgetState>();
+  String? _submittedEmail;
 
   void handleSignIn(SignInState state) {
-    if (!mounted || bloc.isClosed || state is! SignInFailure) return;
-    if (state case SignInFailure(:final errors) when errors.errors.isNotEmpty) {
-      final remaining =
-          formKey.currentState?.showErrors(errors.errors) ?? errors.errors;
+    if (!mounted || widget.bloc.isClosed) return;
 
-      if (remaining.isNotEmpty) {
-        context.showToast(
-          variant: .error,
-          title: 'Erro ao entrar',
-          description: remaining
-              .map(AuthenticationErrorMessageFormatter.signIn)
-              .toSet()
-              .join('\n'),
+    switch (state) {
+      case SignInSuccess(:final userId):
+        final email = _submittedEmail;
+        if (email == null) return;
+
+        context.replace(
+          RouteEnum.authenticationConfirm.path,
+          arguments: CodeArguments(email: email, userId: userId),
         );
-      }
-      return;
-    }
+      case SignInFailure(:final errors):
+        final remaining =
+            formKey.currentState?.showErrors(errors.errors) ?? errors.errors;
 
-    context.showToast(
-      variant: .error,
-      title: 'Erro ao entrar',
-      description: 'Não foi possível entrar. Tente novamente.',
-    );
+        if (remaining.isNotEmpty || errors.errors.isEmpty) {
+          context.showToast(
+            variant: .error,
+            title: 'Erro ao enviar código',
+            description: AuthenticationErrorMessageFormatter.requestErrors(
+              remaining,
+            ),
+          );
+        }
+      case SignInInitial() || SignInSubmitting():
+        break;
+    }
   }
 
   void signIn() {
-    if (!bloc.state.canSubmit) return;
+    if (!widget.bloc.state.canSubmit) return;
+
     context.dismissKeyboard();
     formKey.currentState?.submit();
   }
 
-  void submit(({String email, String password}) credentials) {
-    if (!bloc.state.canSubmit) return;
+  void submit(String email) {
+    if (!widget.bloc.state.canSubmit) return;
 
     context.dismissKeyboard();
-
-    bloc.add(
-      SignInSubmittedEvent(
-        email: credentials.email,
-        password: credentials.password,
-      ),
-    );
+    _submittedEmail = email;
+    widget.bloc.add(SignInSubmittedEvent(email: email));
   }
 }

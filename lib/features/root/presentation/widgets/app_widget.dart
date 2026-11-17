@@ -13,7 +13,6 @@ import 'package:cordato/features/root/presentation/mixins/app_widget_state_mixin
 
 import 'package:cordato/features/core/presentation/themes/themes.dart';
 import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/session_redirect_scope_widget.dart';
 
 class const AppWidget({
   super.key,
@@ -52,10 +51,8 @@ final class _AppWidgetState extends State<AppWidget> with AppWidgetStateMixin {
         debugShowCheckedModeBanner: kDebugMode,
         supportedLocales: const [Locale('pt', 'BR')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        builder: (_, child) => SessionRedirectScopeWidget(
-          deferral: sessionRedirectDeferral,
-          child: ToastProviderWidget(child: child ?? const SizedBox.shrink()),
-        ),
+        builder: (_, child) =>
+            ToastProviderWidget(child: child ?? const SizedBox.shrink()),
       ),
     );
   }

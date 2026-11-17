@@ -51,13 +51,14 @@ Esse sucesso significa código solicitado, não sessão autenticada. ResendEmail
 também usa requestCode e emite o novo userId em cada sucesso. ResendEmailStartedEvent
 sem parâmetros inicia somente o cooldown do código já solicitado, sem outro request;
 submissões explícitas reenviam após o prazo e reiniciam os 60 segundos após sucesso.
-ConfirmCodeBloc recebe userId/code somente no evento, aguarda confirmCode e não
+Os arquivos da etapa de código ficam em presentation/screens/code/ e os testes
+espelham esse nome. CodeBloc recebe userId/code somente no evento, aguarda confirmCode e não
 armazena código nos estados. Os três usam droppable, erros originais e retry manual.
 Por solicitação posterior, o fluxo visual do histórico 4d8837f foi reaproveitado
 com os Blocs atuais, sem Supabase, Commands ou pinput. As únicas rotas de Authentication
 são sign-in (email) e confirm (código). SignInSuccess substitui a rota por confirmação,
-levando ConfirmCodeArguments com email/userId, nunca o código. A confirmação recebe
-ConfirmCodeBloc e ResendEmailBloc pelo provide/addBloc da rota e não fecha essas instâncias.
+levando CodeArguments com email/userId, nunca o código. A confirmação recebe
+CodeBloc e ResendEmailBloc pelo provide/addBloc da rota e não fecha essas instâncias.
 O mixin possui o controller, valida seis dígitos, usa o userId mais recente após reenvio
 e deixa o redirecionamento autenticado à composição global de Session. Alterar e-mail
 substitui a rota para criar um novo SignInBloc. Não duplicar o primeiro request.

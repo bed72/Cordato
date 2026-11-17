@@ -9,8 +9,8 @@ final class const ButtonSignInWidget({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ElevatedButtonWidget(
-    label: 'Entrar',
     onTap: onPressed,
     isLoading: isLoading,
+    label: 'Enviar código',
   );
 }

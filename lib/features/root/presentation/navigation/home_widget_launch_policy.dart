@@ -5,12 +5,9 @@ enum HomeWidgetLaunchAction { wait, signIn, openExpense }
 abstract final class HomeWidgetLaunchPolicy {
   static HomeWidgetLaunchAction action({
     required bool pending,
-    required bool deferred,
     required SessionState state,
   }) {
-    if (!pending || deferred) {
-      return .wait;
-    }
+    if (!pending) return .wait;
 
     return switch (state) {
       SessionUnauthenticated() => .signIn,

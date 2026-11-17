@@ -9,7 +9,6 @@ import 'package:cordato/features/root/presentation/bloc/home_widget_sync_event.d
 import 'package:cordato/features/root/presentation/bloc/home_widget_launch_bloc.dart';
 import 'package:cordato/features/root/presentation/bloc/home_widget_launch_event.dart';
 import 'package:cordato/features/root/presentation/bloc/home_widget_launch_state.dart';
-import 'package:cordato/features/core/presentation/navigation/session_redirect_deferral.dart';
 
 import 'package:cordato/features/root/presentation/widgets/app_widget.dart';
 import 'package:cordato/features/root/presentation/navigation/session_route_policy.dart';
@@ -24,22 +23,18 @@ mixin AppWidgetStateMixin on State<AppWidget> {
   bool _pendingExpenseLaunch = false;
 
   late SessionBloc bloc;
-  late HomeWidgetLaunchBloc homeWidgetLaunchBloc;
   late HomeWidgetSyncBloc homeWidgetSyncBloc;
-  late final SessionRedirectDeferral sessionRedirectDeferral;
+  late HomeWidgetLaunchBloc homeWidgetLaunchBloc;
 
   @override
   void initState() {
     super.initState();
-    sessionRedirectDeferral = SessionRedirectDeferral(
-      onReleased: () => handleSession(bloc.state, afterDeferral: true),
-    );
-
     bloc = widget.sessionBloc();
     homeWidgetLaunchBloc = widget.homeWidgetLaunchBloc();
     homeWidgetSyncBloc = widget.homeWidgetSyncBloc();
     homeWidgetLaunchBloc.add(const HomeWidgetLaunchStartedEvent());
     homeWidgetSyncBloc.add(const HomeWidgetSyncStartedEvent());
+
     bloc.add(const SessionStartedEvent());
     _scheduleInitialRoute();
   }
@@ -52,12 +47,14 @@ mixin AppWidgetStateMixin on State<AppWidget> {
       homeWidgetLaunchBloc = widget.homeWidgetLaunchBloc();
       homeWidgetLaunchBloc.add(const HomeWidgetLaunchStartedEvent());
     }
+
     if (oldWidget.homeWidgetSyncBloc != widget.homeWidgetSyncBloc) {
       unawaited(homeWidgetSyncBloc.close());
       homeWidgetSyncBloc = widget.homeWidgetSyncBloc();
       homeWidgetSyncBloc.add(const HomeWidgetSyncStartedEvent());
       handleSessionChange(bloc.state);
     }
+
     if (oldWidget.sessionBloc != widget.sessionBloc) {
       unawaited(bloc.close());
       bloc = widget.sessionBloc();
@@ -73,6 +70,7 @@ mixin AppWidgetStateMixin on State<AppWidget> {
     unawaited(homeWidgetLaunchBloc.close());
     unawaited(homeWidgetSyncBloc.close());
     unawaited(bloc.close());
+
     super.dispose();
   }
 
@@ -93,9 +91,7 @@ mixin AppWidgetStateMixin on State<AppWidget> {
   }
 
   void handleHomeWidgetLaunch(HomeWidgetLaunchState state) {
-    if (state is! HomeWidgetLaunchRequested) {
-      return;
-    }
+    if (state is! HomeWidgetLaunchRequested) return;
 
     _pendingExpenseLaunch = true;
     handleSession(bloc.state);
@@ -106,14 +102,14 @@ mixin AppWidgetStateMixin on State<AppWidget> {
     final action = HomeWidgetLaunchPolicy.action(
       state: state,
       pending: _pendingExpenseLaunch,
-      deferred: sessionRedirectDeferral.isDeferredFor(path),
     );
 
     switch (action) {
       case .wait:
         return false;
       case .signIn:
-        if (path != RouteEnum.authenticationSignIn.path) {
+        if (path != RouteEnum.authenticationSignIn.path &&
+            path != RouteEnum.authenticationConfirm.path) {
           target.navigate(RouteEnum.authenticationSignIn.path);
         }
         return true;
@@ -144,24 +140,28 @@ mixin AppWidgetStateMixin on State<AppWidget> {
           widget.navigatorKey != key) {
         return;
       }
+
       final target = key.currentContext;
       if (target == null) {
         _scheduleInitialRoute();
         return;
       }
+
       if (RouteEnum.authenticatedPaths().contains(
         target.routeState(listen: false).uri.path,
       )) {
         target.navigate(RouteEnum.app.path);
       }
+
       handleSession(owner.state);
     });
     WidgetsBinding.instance.ensureVisualUpdate();
   }
 
-  void handleSession(SessionState state, {bool afterDeferral = false}) {
+  void handleSession(SessionState state) {
     final owner = bloc;
     final key = widget.navigatorKey;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted ||
           !identical(bloc, owner) ||
@@ -173,16 +173,10 @@ mixin AppWidgetStateMixin on State<AppWidget> {
 
       final target = key.currentContext;
       if (target == null) return;
-      if (_handleHomeWidgetLaunch(target, state)) {
-        return;
-      }
+      if (_handleHomeWidgetLaunch(target, state)) return;
+
       final path = target.routeState(listen: false).uri.path;
-      final redirect = SessionRoutePolicy.redirect(
-        state: state,
-        path: path,
-        deferred: sessionRedirectDeferral.isDeferredFor(path),
-        afterDeferral: afterDeferral,
-      );
+      final redirect = SessionRoutePolicy.redirect(state: state, path: path);
       if (redirect != null) target.navigate(redirect);
     });
     WidgetsBinding.instance.ensureVisualUpdate();

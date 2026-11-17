@@ -2,52 +2,61 @@ import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 
 abstract final class AuthenticationErrorMessageFormatter {
-  static String format(ErrorEntity error, {required String fallback}) {
-    if (error.status == '400' ||
-        error.status == '409' ||
-        error.status == '422') {
-      final field = error.pointer?.replaceFirst('/data/attributes', '');
-      final required = error.code == 'validation_required';
+  static bool isEmailError(ErrorEntity error) =>
+      (error.status == '400' || error.status == '422') &&
+      (error.pointer == '/email' ||
+          error.parameter == 'email' ||
+          error.code == 'user_invalid_email');
 
-      switch (field) {
-        case '/email' || '/identity':
-          if (error.code == 'validation_not_unique' || error.status == '409') {
-            return 'Este e-mail já está em uso.';
-          }
-          return required ? 'Informe seu e-mail.' : 'Informe um e-mail válido.';
-        case '/password' || '/passwordConfirm':
-          if (error.code == 'validation_values_mismatch') {
-            return 'As senhas não coincidem.';
-          }
-          if (required) {
-            return field == '/passwordConfirm'
-                ? 'Confirme sua senha.'
-                : 'Informe sua senha.';
-          }
-          if (error.code == 'validation_length_out_of_range' ||
-              error.code == 'validation_length') {
-            return 'A senha deve ter entre 6 e 16 caracteres.';
-          }
-          return field == '/passwordConfirm'
-              ? 'Confira a confirmação da senha.'
-              : 'Confira a senha informada.';
-        case '/token':
-          return 'O link é inválido ou expirou. Solicite um novo link.';
-      }
+  static bool isCodeError(ErrorEntity error) =>
+      (error.status == '400' ||
+          error.status == '401' ||
+          error.status == '422') &&
+      (error.code == 'user_invalid_token' ||
+          error.pointer == '/secret' ||
+          error.parameter == 'secret');
+
+  static String requestCode(ErrorEntity error) {
+    if (isEmailError(error)) {
+      return 'Informe um e-mail válido.';
     }
-
-    return ErrorMessageFormatter.format(error, fallback: fallback);
+    const fallback = 'Não foi possível enviar o código. Tente novamente.';
+    return error.status == '401'
+        ? fallback
+        : ErrorMessageFormatter.format(error, fallback: fallback);
   }
 
-  static String signIn(ErrorEntity error) {
-    if (error.status == '401' ||
-        (error.status == '400' && error.pointer == null)) {
-      return 'Não foi possível entrar. Confira seu e-mail e sua senha.';
+  static String confirmCode(ErrorEntity error) {
+    if (isCodeError(error)) {
+      return 'Código inválido ou expirado. Confira o código ou solicite outro.';
     }
-    if (error.status == '403') {
-      return 'Não foi possível entrar. Confirme seu e-mail e tente novamente.';
+    if (error.status == '401') {
+      return 'Não foi possível confirmar seu acesso. Solicite um novo código.';
     }
+    return ErrorMessageFormatter.format(
+      error,
+      fallback: 'Não foi possível confirmar seu acesso. Tente novamente.',
+    );
+  }
 
-    return format(error, fallback: 'Não foi possível entrar. Tente novamente.');
+  static String requestErrors(Iterable<ErrorEntity> errors) => _messages(
+    errors,
+    requestCode,
+    'Não foi possível enviar o código. Tente novamente.',
+  );
+
+  static String confirmationErrors(Iterable<ErrorEntity> errors) => _messages(
+    errors,
+    confirmCode,
+    'Não foi possível confirmar seu acesso. Tente novamente.',
+  );
+
+  static String _messages(
+    Iterable<ErrorEntity> errors,
+    String Function(ErrorEntity) format,
+    String fallback,
+  ) {
+    final messages = errors.map(format).toSet();
+    return messages.isEmpty ? fallback : messages.join('\n');
   }
 }
