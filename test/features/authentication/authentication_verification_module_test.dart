@@ -30,11 +30,10 @@ void main() {
           .thenThrow(AuthenticationException(errors: ErrorsEntity.unknown()));
       final boot = bootstrapModule(
         createModule(
-          register: (context) => context
-            ..addInstance<IAuthenticationRepository>(repository)
-            ..module(authenticationModule),
+          register: (context) => context.module(authenticationModule),
         ),
       );
+      boot.injector.replaceInstance<IAuthenticationRepository>(repository);
       addTearDown(boot.injector.dispose);
       final signUp = boot.injector.get<SignUpBloc>();
       final verification = boot.injector.get<ResendEmailBloc>();

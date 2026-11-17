@@ -50,8 +50,7 @@ exclusivos desse transporte. `flutter_secure_storage` não tem mais consumidores
 e também foi retirado. Não foram criados adapters substitutos vazios.
 
 Domínio, Blocs, telas, rotas e serialização pura permanecem. Os módulos registram
-apresentação e capacidades atuais; ainda não registram os adapters de backend.
-Authentication agora tem implementação REST isolada, descrita abaixo, sem bind.
+apresentação, capacidades atuais e os adapters REST de Authentication e Session.
 Os demais adapters seguem ausentes. O app completo não pode executar esses
 fluxos e os consumidores de senha são incompatíveis com o contrato substituído.
 Mocks explícitos em composição não comprovam integração remota funcional.
@@ -61,6 +60,7 @@ Mocks explícitos em composição não comprovam integração remota funcional.
 ```text
 AuthenticationRepository -> IHttpClient -> HttpClient -> Dio
                          -> ISessionClient -> SessionClient -> IHttpClient
+SessionRepository        -> ISessionClient (a mesma instância do core)
 ```
 
 Dio é obrigatório no construtor de HttpClient e configurado exclusivamente pela
@@ -73,8 +73,8 @@ conforme a referência histórica; ISessionClient é puro e pertence a applicati
 | PersistCookieJar e Dio | Configurados no core como lazy singletons |
 | IHttpClient | Bind para HttpClient.new, com Dio injetado |
 | ISessionClient | Bind para SessionClient.new, com IHttpClient injetado |
-| IAuthenticationRepository | AuthenticationRepository implementado, sem bind |
-| ISessionRepository | Contrato preservado; adapter e bind pendentes |
+| IAuthenticationRepository | Bind para AuthenticationRepository.new em authenticationModule sem path |
+| ISessionRepository | Bind para SessionRepository.new em sessionModule sem path |
 
 Essas capacidades disponíveis não significam migração de UI nem funcionamento
 do app completo. Não adicionar adapters fictícios ou caminhos legados paralelos.
@@ -98,12 +98,13 @@ devem ser mascarados como erro de credenciais.
 Por solicitação explícita, o contrato anterior de senha, cadastro, recuperação e
 verificação por link foi removido, sem interface paralela ou contrato legado.
 Os nomes públicos de autenticação não especificam o mecanismo OTP. Nesta etapa
-o contrato tem implementação REST, ainda sem bind de produção.
+o contrato tem implementação REST registrada como lazy singleton no módulo existente.
 Os consumidores antigos de senha ainda não foram migrados e suas chamadas aos
 métodos removidos são incompatíveis: a análise e a suíte global ficam bloqueadas
 até sua migração ou remoção. Não há stubs, sucesso fictício nem exclusão de testes
-para esconder essa lacuna. Settings preserva `signOut`, mas continua sem adapter.
-Telas, Blocs, rotas, navegação e `ISessionRepository` não foram alterados aqui.
+para esconder essa lacuna. Settings preserva `signOut` e passa a ter o contrato
+registrado, mas seu fluxo visual não foi homologado nem o app completo compila.
+Telas, Blocs, rotas, navegação e o contrato `ISessionRepository` não foram alterados aqui.
 
 `authentication/infrastructure/repositories/authentication_repository.dart`
 implementa somente esse contrato, recebendo IHttpClient e ISessionClient. `requestCode`
@@ -123,8 +124,13 @@ ISessionClient, contrato puro em core/application/clients/interface_session_clie
 Core registra ISessionClient por SessionClient.new como lazy singleton. Repositories
 dependem dessa interface, sem importar a implementação concreta.
 ISessionClient expõe `session` como Stream<bool>, além de loadSession,
-confirmCode, signOut e close. O adapter futuro de ISessionRepository deve
-repassar `session` pelo getter `sessionChanges` já consumido pelo SessionBloc.
+confirmCode, signOut e close. SessionRepository implementa ISessionRepository e
+repassa o mesmo stream `session` pelo getter `sessionChanges` consumido pelo SessionBloc.
+Delega loadSession sem cache e converte somente HttpClientException por ResponseMapper
+para SessionException. Status/type são preservados sem conteúdo remoto; erros
+inesperados e envelopes inválidos propagam, sem ausência presumida. O repository
+não fecha o client nem o stream compartilhado. SessionException mantém o ErrorsEntity
+recebido sem recriá-lo, assim como os estados de falha do Bloc preservado.
 Por solicitação explícita de simplificação, usa requests diretos e a política
 padrão de sucesso HTTP 2xx do transporte, sem validação de status específicos, parsing de
 conta, SDK, AuthStore ou implementação paralela.
@@ -148,10 +154,17 @@ cookies ao receber 401 ou concluir logout. Sucesso HTTP da conta não valida seu
 campos nem comprova permissões financeiras. Falhas de cookies seguem o erro do
 transporte e não são consideradas 401 de sessão.
 
-AuthenticationRepository é o primeiro consumidor dessa coordenação. O adapter
-de Session e os bindings dos repositories continuam na próxima step, sem migração visual.
-Testes usam Dio/jar reais, adapter fake e diretório temporário, sem rede ou UI;
-isso não homologa o serviço nem torna o app completo funcional.
+AuthenticationRepository e SessionRepository compartilham a coordenação do core.
+Ambos são lazy singletons nos módulos existentes sem path, disponíveis sem visitar
+rotas. Não há alteração de ownership dos Blocs. Testes de Session resolvem o módulo
+real com o core, usando Dio/jar reais, adapter fake e diretório temporário, sem rede
+ou UI. Cobrem restauração em composição nova, expiração, origem/redirect e fluxo
+completo com concorrência e conferência do jar em memória e em disco. A composição
+real do módulo Authentication tem teste próprio, mas sua execução continua bloqueada
+pelos imports dos Blocs de senha incompatíveis. Isso não homologa o serviço nem
+torna o app completo funcional; construir AuthenticationRepository diretamente nos
+testes integrados não comprova resolução desse módulo. Testes com contratos mockados
+substituem os binds após bootstrap por replaceInstance, sem registros duplicados.
 
 As descrições PocketBase abaixo, os documentos arquivados e os serviços isolados
 em `backend/` e `worker/` são históricos, não requisitos do Flutter atual. Esses

@@ -1,73 +1,52 @@
 # authentication-session-logout Specification
 
-> Mecanismo histórico superado: Authentication usa HTTP e Session observa token
-> no storage, sem importar Authentication. Logout pertence a Settings e consome
-> o contrato de aplicação. Sign-in usa provide/addBloc do Modular; Session
-> continua global sob AppWidget. Supabase e commands abaixo não são instruções
-> vigentes. Consulte [a referência atual](../../README.md).
+> A infraestrutura atual revoga a sessão Appwrite por REST autenticado com cookies,
+> usando contratos puros de aplicação e coordenação compartilhada de sessão.
+> Supabase, commands e observação de token no storage são mecanismos históricos.
+> Esta spec não declara migração das telas, integração de Settings ou homologação
+> remota. Consulte [a referência atual](../../README.md).
 
 ## Purpose
-Define the layered, reactive Supabase logout flow shared by authenticated features.
+
+Define current-session Appwrite logout through shared cookie-session infrastructure, preserving confirmed state on failures without changing presentation or navigation.
 
 ## Requirements
 
-### Requirement: Layered logout execution
-The authenticated logout flow SHALL execute through a disposable presentation command that consumes the existing `IAuthenticationRepository`, which SHALL continue delegating through `AuthenticationDataSource` to `SupabaseAuthenticationClient` without duplicating authentication infrastructure in Settings.
+### Requirement: Current-session revocation
+The application SHALL revoke only the current Appwrite session and await transport response handling before reporting logout. It MUST NOT revoke all user sessions or promise additional local cookie cleanup beyond the server's Set-Cookie response.
 
-#### Scenario: Successful command execution
-- **WHEN** `LogoutCommand.signOut` is executed and `IAuthenticationRepository.signOut` returns `Right`
-- **THEN** the repository is invoked exactly once
-- **THEN** the command completes successfully
+#### Scenario: Successful logout
+- **WHEN** the current-session deletion succeeds and transport cookie handling completes
+- **THEN** logout completes and observers receive unauthenticated
+- **AND** other devices' sessions are not targeted
 
-#### Scenario: Repository failure reaches the command
-- **WHEN** `LogoutCommand.signOut` is executed and `IAuthenticationRepository.signOut` returns `Left(LogoutFailure)`
-- **THEN** the repository is invoked exactly once
-- **THEN** the command exposes that `LogoutFailure` as its error
+#### Scenario: Session already absent
+- **WHEN** deletion explicitly returns 401 because no current authenticated session exists
+- **THEN** logout completes as unauthenticated after transport response handling
+- **AND** no manual cookie deletion is performed
 
-#### Scenario: Command lifecycle ends
-- **WHEN** the owner of the logout command is disposed
-- **THEN** the underlying observable command is disposed
+### Requirement: Logout failure preserves confirmed state
+An unconfirmed remote logout SHALL fail without deliberately clearing local credentials or publishing unauthenticated. Cookie handling failures SHALL remain transport failures; the session client MUST NOT add cleanup recovery state or automatic retries.
 
-### Requirement: Supabase logout delegation
-The existing authentication repository, data source, and client SHALL translate a logout request into one `Supabase Auth.signOut` call and SHALL preserve the typed failure boundary between infrastructure and presentation.
+#### Scenario: Remote revocation fails
+- **WHEN** deletion times out or returns a failure other than confirmed absence of session
+- **THEN** the expected application failure reaches the caller and no unauthenticated event is emitted
+- **AND** no automatic retry occurs
+- **AND** the caller is not promised that the remote session remains valid after an uncertain response
 
-#### Scenario: Supabase accepts sign-out
-- **WHEN** `Supabase Auth.signOut` completes successfully
-- **THEN** `SupabaseAuthenticationClient.signOut` returns success
-- **THEN** `AuthenticationDataSource.signOut` returns the client result
-- **THEN** `AuthenticationRepository.signOut` returns `Right`
+#### Scenario: Cookie persistence fails after revocation
+- **WHEN** remote revocation succeeds but CookieManager fails to persist response cookies
+- **THEN** logout fails without publishing unauthenticated
+- **AND** no extra local cleanup or rollback is claimed
 
-#### Scenario: Supabase rejects sign-out
-- **WHEN** `Supabase Auth.signOut` throws
-- **THEN** `SupabaseAuthenticationClient.signOut` returns failure without exposing the SDK exception
-- **THEN** `AuthenticationDataSource.signOut` returns the client result
-- **THEN** `AuthenticationRepository.signOut` returns `Left(LogoutFailure)`
+#### Scenario: No cookie expiry in response
+- **WHEN** remote revocation succeeds without cookie expiry headers
+- **THEN** logout publishes unauthenticated but makes no claim that cookies were removed locally
 
-### Requirement: Reactive logout completion
-A successful Supabase sign-out SHALL complete through the global authentication-state observer, which SHALL map `signedOut` to an unauthenticated session and delegate navigation to `SessionGuardWidget` rather than Settings.
+### Requirement: Independent logout infrastructure
+The logout operation SHALL be available through a pure application contract outside route scopes. It MUST NOT navigate, access presentation state or require visiting Authentication first.
 
-#### Scenario: Signed-out event is observed
-- **WHEN** Supabase emits `AuthChangeEvent.signedOut` after the logout command succeeds
-- **THEN** the global session state becomes unauthenticated
-- **THEN** `SessionGuardWidget` delegates navigation to welcome
-- **THEN** Settings does not invoke the router directly
-
-#### Scenario: Logout does not complete
-- **WHEN** the logout command fails and no `signedOut` event is emitted
-- **THEN** the authenticated session state is not changed by Settings
-- **THEN** Settings remains available for a retry
-
-### Requirement: Logout dependency boundaries
-The Settings logout integration MUST depend on Authentication only through its domain repository contract and MUST NOT access Supabase, authentication data sources, authentication clients, storage, or global routing directly. The Authentication dependency chain SHALL be registered in the root-owned private `_supabaseModule` so Settings can resolve it without activating an Authentication route.
-
-#### Scenario: Implementing the integration
-- **WHEN** the logout command, Settings module, screen, mixin, and widgets are created or updated
-- **THEN** the Settings logout command is the only runtime component in Settings that imports `IAuthenticationRepository`
-- **THEN** preview fakes may implement Authentication contracts only from its domain layer
-- **THEN** no Settings presentation file imports Authentication data or infrastructure
-- **THEN** no Settings presentation file imports `supabase_flutter`, storage, or a global router
-
-#### Scenario: Opening Settings without an active Authentication route
-- **WHEN** the application enters the feature-scoped Settings route
-- **THEN** `LogoutCommand` resolves the root-owned `IAuthenticationRepository`
-- **THEN** Authentication presentation commands and routes remain feature-scoped
+#### Scenario: Isolated dependency resolution
+- **WHEN** the OTP authentication contract is resolved in root composition without activating Authentication routes
+- **THEN** logout resolves with the same shared session infrastructure used by restoration
+- **AND** no Settings, screen, Bloc or navigation change is required to verify it

@@ -55,8 +55,9 @@ Não usa Either, PocketBase ou SDK Appwrite. A DI configura Dio e o injeta em
 IHttpClient; as features recebem somente a fronteira IHttpClient.
 `AuthenticationRepository` implementa o
 contrato único `IAuthenticationRepository` com solicitação de código de e-mail,
-confirmação e logout. O core já registra ISessionClient com SessionClient; o
-repository depende da interface de sessão e ainda não tem binding próprio;
+confirmação e logout. O core registra ISessionClient com SessionClient; os módulos
+existentes registram IAuthenticationRepository e ISessionRepository como lazy singletons,
+compartilhando essa coordenação sem depender de visitar rotas;
 a apresentação continua sem migração e não há login OTP utilizável nas telas.
 Não houve envio de e-mail, alteração remota ou importação de dados nesta etapa.
 
@@ -76,7 +77,7 @@ sem criptografia adicional nesta etapa. Não passe API keys administrativas ao a
 
 Padrão a seguir: repositories recebem IHttpClient/ISessionClient, enquanto a DI
 compõe HttpClient/SessionClient. O stream do client é `ISessionClient.session`;
-o adapter futuro de Session o exporá como `ISessionRepository.sessionChanges`.
+SessionRepository o expõe como `ISessionRepository.sessionChanges`, sem alterar o Bloc.
 Não criar factories de HTTP, fallback de Dio ou implementações paralelas.
 
 PocketBase foi removido de todo o Flutter: código, bindings, testes exclusivos e
@@ -100,14 +101,22 @@ o repository preserva status/type via ResponseMapper sem
 expor mensagens remotas. Não há métodos de senha ou adapter legado paralelo.
 
 Os repositories anteriores foram removidos, não substituídos por sucessos
-fictícios. O adapter de Session e os demais adapters financeiros/áudio continuam
-pendentes. O app completo ainda não executa esses fluxos; Settings não foi
-conectada ao novo repository. Testes de composição usam mocks explicitamente.
+fictícios. Authentication e Session têm adapters registrados; User e os adapters
+financeiros/áudio continuam pendentes. O app completo ainda não executa esses fluxos;
+Settings não foi migrada ou homologada visualmente. Os consumidores antigos de senha
+continuam incompatíveis com o contrato novo. Testes de Session e infraestrutura usam
+o core real com transporte fake, inclusive em uma composição nova sobre os cookies
+persistidos; a resolução do módulo Authentication continua bloqueada por seus imports
+de Blocs de senha. Testes globais de composição substituem contratos por mocks explicitamente.
 
 Baseline da remoção anterior: `flutter pub get`, `flutter analyze` sem problemas
 e 1157 testes aprovados, sem rede ou UI. Após substituir o contrato de
 Authentication, consumidores antigos de senha permanecem incompatíveis e
 bloqueiam análise/suíte globais até sua migração; não foram mascarados com stubs.
+Verificação da infraestrutura concluída em 17/11/2026: `flutter pub get` concluído,
+380 testes focados aprovados e análise focada sem issues. A análise global mantém
+93 issues conhecidos; a suíte global teve 1174 aprovações e 13 falhas de
+compilação/carregamento dos consumidores antigos, incluindo composição de Authentication.
 Os testes da infraestrutura atual usam Dio e cookies reais com transporte fake,
 sem rede ou UI. Não houve build nativo, homologação
 remota, deploy ou importação de dados. Backend/worker isolados não foram alterados.

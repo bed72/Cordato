@@ -2,6 +2,8 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/bloc_scoped_extension.dart';
+import 'package:cordato/features/authentication/infrastructure/repositories/authentication_repository.dart';
+import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 
 import 'package:cordato/features/authentication/presentation/validators/email_validation.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
@@ -24,6 +26,7 @@ import 'package:cordato/features/authentication/presentation/screens/password_re
 
 final authenticationModule = createModule(
   register: (context) => context
+    ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
     ..add(EmailValidation.new)
     ..add(PasswordValidation.new)
     ..add<SignUpBloc>(SignUpBloc.new)

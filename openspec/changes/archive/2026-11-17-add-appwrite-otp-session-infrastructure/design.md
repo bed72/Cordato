@@ -87,13 +87,15 @@ autenticado da instância; isso continua sendo verificação separada.
 ISessionClient é um contrato puro em core/application/clients, implementado por
 SessionClient e registrado no core como lazy singleton. Consumidores dependem
 da interface, sem importar a implementação concreta.
-O stream é ISessionClient.session. O futuro SessionRepository o repassa como
+O stream é ISessionClient.session. SessionRepository o repassa como
 ISessionRepository.sessionChanges, sem alterar o contrato usado pelo Bloc.
 SessionClient recebe somente IHttpClient e usa Requests/Responses e
 HttpResponseException, sem Dio. Publica booleanos em stream broadcast sem replay.
 Cookies ficam com o transporte existente, sem SDK, AuthStore ou persistência
-paralela. AuthenticationRepository usa a mesma fronteira. SessionRepository e
-seus bindings seguem na step 4.
+paralela. AuthenticationRepository usa a mesma fronteira. SessionRepository delega
+loadSession e converte HttpClientException por ResponseMapper para SessionException,
+sem fechar o client ou o stream compartilhado. Ambos têm bindings lazy singleton
+nos módulos existentes sem path.
 
 Authentication solicita o código por IHttpClient e delega confirmação/logout à
 coordenação; Session delega restauração/observação. Tipos Dio ficam somente em
@@ -136,7 +138,12 @@ Política adotada como recomendação conservadora: falha remota de logout não 
 
 Registrar a capacidade compartilhada no core sem `path`, o contrato OTP no módulo existente de Authentication e `ISessionRepository` no módulo de Session. Não criar módulos dependencies/form/routes. Composição isolada deve comprovar que ambos compartilham transporte e coordenação sem visitar rotas.
 
-O bind de Authentication permanece ausente nesta step, logo Settings não passa a funcionar. Outras features seguem sem adapters. A remoção do contrato antigo deixa consumidores de senha e seus testes incompatíveis até migração própria; composição com mocks não comprova integração Appwrite funcional.
+Os binds de Authentication e Session estão presentes. Isso não entrega Settings
+homologada nem um app completo funcional. Outras features seguem sem adapters.
+A remoção do contrato antigo deixa consumidores de senha e seus testes incompatíveis
+até migração própria. O teste de resolução real de Authentication existe, mas sua
+execução é bloqueada pelos imports desses Blocs no módulo; Session e core são testados
+isoladamente com transporte fake. Composição com mocks não comprova integração remota.
 
 ## Risks / Trade-offs
 

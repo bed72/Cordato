@@ -32,12 +32,9 @@ void main() {
       ),
     ).thenAnswer((_) async {});
     boot = bootstrapModule(
-      createModule(
-        register: (context) => context
-          ..addInstance<IAuthenticationRepository>(repository)
-          ..module(authenticationModule),
-      ),
+      createModule(register: (context) => context.module(authenticationModule)),
     );
+    boot.injector.replaceInstance<IAuthenticationRepository>(repository);
     addTearDown(boot.injector.dispose);
   });
 

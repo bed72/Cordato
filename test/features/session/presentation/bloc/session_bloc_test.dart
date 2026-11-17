@@ -19,7 +19,7 @@ void main() {
   setUp(() {
     repository = SessionRepositoryMock();
     changes = StreamController<bool>.broadcast();
-    when(() => repository.sessionChanges).thenAnswer((_) => changes.stream);
+    when(() => repository.session).thenAnswer((_) => changes.stream);
   });
   tearDown(() async => changes.close());
 
@@ -61,7 +61,7 @@ void main() {
         ],
         verify: (_) {
           verify(repository.loadSession).called(1);
-          verify(() => repository.sessionChanges).called(1);
+          verify(() => repository.session).called(1);
           expect(changes.hasListener, isFalse);
         },
       );
@@ -116,7 +116,7 @@ void main() {
         bloc.add(const SessionStartedEvent());
         await Future<void>.delayed(Duration.zero);
         verify(repository.loadSession).called(1);
-        verify(() => repository.sessionChanges).called(1);
+        verify(() => repository.session).called(1);
         verifyNoMoreInteractions(repository);
       },
     );
@@ -226,7 +226,7 @@ void main() {
     blocTest<SessionBloc, SessionState>(
       'handles synchronous subscription failures without starting a read',
       build: () {
-        when(() => repository.sessionChanges).thenThrow(failure);
+        when(() => repository.session).thenThrow(failure);
         return SessionBloc(repository: repository);
       },
       act: (bloc) => bloc.add(const SessionStartedEvent()),

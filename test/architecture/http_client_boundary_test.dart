@@ -3,17 +3,19 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('authentication depends on the session contract rather than its implementation', () {
-    final repository = File(
-      'lib/features/authentication/infrastructure/repositories/authentication_repository.dart',
-    ).readAsStringSync();
+  test('repositories depend on the session contract rather than its implementation', () {
+    for (final feature in ['authentication', 'session']) {
+      final repository = File(
+        'lib/features/$feature/infrastructure/repositories/${feature}_repository.dart',
+      ).readAsStringSync();
 
-    expect(
-      repository,
-      contains('application/clients/interface_session_client.dart'),
-    );
-    expect(repository, contains('ISessionClient'));
-    expect(repository, isNot(contains('clients/session/session_client.dart')));
+      expect(
+        repository,
+        contains('application/clients/interface_session_client.dart'),
+      );
+      expect(repository, contains('ISessionClient'));
+      expect(repository, isNot(contains('clients/session/session_client.dart')));
+    }
   });
 
   test('keeps Dio confined to the HTTP transport and core composition', () {

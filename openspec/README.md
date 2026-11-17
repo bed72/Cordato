@@ -21,12 +21,13 @@ configurado na DI, sem create ou fallback interno. Repositories não usam Dio.
 
 ISessionClient é o contrato puro da coordenação compartilhada e já tem bind no
 core; expõe o stream `session`. AuthenticationRepository usa IHttpClient e
-ISessionClient, mas ainda não tem bind. ISessionRepository preserva
-`sessionChanges`; seu adapter e composição permanecem pendentes. A apresentação
+ISessionClient e tem bind no módulo de Authentication. SessionRepository implementa
+ISessionRepository, preserva `sessionChanges` e tem bind no módulo de Session. A apresentação
 de senha não foi migrada e ainda bloqueia análise e suíte globais.
 
-As regras atuais estão na [arquitetura](../ARCHITECTURE.md). A change ativa é
-[add-appwrite-otp-session-infrastructure](changes/add-appwrite-otp-session-infrastructure/).
+As regras atuais estão na [arquitetura](../ARCHITECTURE.md). A infraestrutura foi
+concluída e suas specs sincronizadas; o registro está em
+[add-appwrite-otp-session-infrastructure](changes/archive/2026-11-17-add-appwrite-otp-session-infrastructure/).
 As descrições antigas de backend abaixo e os serviços em backend/ e worker/ são
 históricos ou isolados, não autorização para restaurar esse SDK no Flutter.
 Specs arquivadas permanecem intactas; não houve schema, deploy ou migração de dados.

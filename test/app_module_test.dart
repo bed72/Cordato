@@ -53,16 +53,18 @@ void main() {
       boot = bootstrapModule(
         createModule(
           register: (context) => context
-            ..addInstance<IAuthenticationRepository>(
-              AuthenticationRepositoryMock(),
-            )
-            ..addInstance<ISessionRepository>(SessionRepositoryMock())
             ..addInstance<IUserRepository>(UserRepositoryMock())
             ..addInstance<IExpenseRepository>(ExpenseRepositoryMock())
             ..addInstance<IMetricsRepository>(MetricsRepositoryMock())
             ..addInstance<IAudioRepository>(audioRepository)
             ..module(appModule(directory: directory)),
         ),
+      );
+      boot.injector.replaceInstance<IAuthenticationRepository>(
+        AuthenticationRepositoryMock(),
+      );
+      boot.injector.replaceInstance<ISessionRepository>(
+        SessionRepositoryMock(),
       );
       addTearDown(boot.injector.dispose);
     });

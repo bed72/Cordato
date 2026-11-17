@@ -33,14 +33,14 @@ Falhas de transporte/storage não são convertidas em ausência.
 ISessionClient é o contrato puro em core/application/clients/interface_session_client.dart.
 SessionClient implementa esse contrato e o core o registra como lazy singleton.
 Expõe `session` (Stream<bool>), `loadSession`, `confirmCode`, `signOut` e `close`.
-O futuro adapter ISessionRepository deve expor esse stream como `sessionChanges`,
+O adapter SessionRepository expõe esse mesmo stream como `sessionChanges`,
 preservando o contrato de aplicação existente sem depender da classe concreta.
 AuthenticationRepository é o primeiro consumidor: recebe IHttpClient e ISessionClient,
 solicita código por REST retornando userId como String e delega confirmação/logout.
 Não há wrapper de desafio, métodos de senha, retry ou implementação paralela.
 HttpClientException passa por ResponseMapper para AuthenticationException, sem conteúdo
 remoto; parsing e erros inesperados não são convertidos em sucesso.
-O repository ainda não tem binding; SessionRepository segue pendente. Consumidores
+Os repositories têm bindings lazy singleton nos módulos existentes sem path. Consumidores
 dependem de ISessionClient, não da implementação concreta em infrastructure.
 Não restaure o refresh/AuthStore anterior nem conecte os consumidores de senha
 artificialmente ao novo fluxo. Os contratos de Session e seu Bloc não mudaram.
@@ -49,8 +49,8 @@ Para continuar esta migração, siga os contratos existentes: IHttpClient fica
 junto de HttpClient no transporte histórico; ISessionClient fica em application
 do core. A composição importa implementações e registra pelos contratos.
 Não injete Dio ou SessionClient concreto nos repositories, crie wrappers extras
-ou restaure variantes paralelas. AuthenticationRepository existe, mas seu bind
-e o adapter ISessionRepository pertencem à próxima etapa; as telas de senha
+ou restaure variantes paralelas. AuthenticationRepository e SessionRepository estão
+registrados pelos contratos nos respectivos módulos; as telas de senha
 continuam incompatíveis e não devem ser atendidas por stubs.
 
 Por solicitação explícita, PocketBase foi removido de todo o Flutter, não apenas
@@ -80,12 +80,12 @@ validação própria de endpoint/projeto.
 `OriginInterceptor` restringe a origem. O client não acessa diretórios nem resolve
 dependências globalmente; Authentication é seu primeiro consumidor em infrastructure.
 Contratos, domínio, Blocs, telas, rotas, serialização pura e seus testes foram
-preservados. Os contratos de Authentication, Session, User, Expense, exportação
-de Expense, Metrics e áudio não têm adapters de produção registrados nesta fase.
+preservados. Authentication e Session têm adapters de produção registrados nesta fase.
+Os contratos de User, Expense, exportação de Expense, Metrics e áudio ainda não têm adapters.
 Não crie implementações vazias, retornos de sucesso ou ausência de sessão
 presumida para esconder essa lacuna. O app completo exige a migração desses
-adapters e da composição: OTP existe somente em infraestrutura, sem telas ou
-bindings; métricas e envio de áudio Appwrite continuam ausentes.
+adapters e da composição: OTP existe somente em infraestrutura com bindings,
+sem telas; métricas e envio de áudio Appwrite continuam ausentes.
 Cookies são arquivos no diretório de suporte, sem criptografia adicional por
 decisão explícita; melhorias de persistência segura ficam adiadas.
 `ResponseMapper` usa exceções próprias e preserva status/type Appwrite sem
@@ -97,7 +97,11 @@ Os testes do transporte usam Dio real com adapter fake e diretório temporário,
 sem rede ou UI. Testes de composição, incluindo `test/app_module_test.dart`,
 fornecem mocks dos contratos de aplicação, sem fixture/backend anterior.
 Isso comprova composição e comportamento com contratos fornecidos, não uma
-integração Appwrite funcional. Não apague cobertura independente do backend.
+integração Appwrite funcional. Os testes de Session também usam o core real com
+adapter HTTP fake; os do módulo Authentication continuam bloqueados pelos imports
+dos Blocs de senha. Para substituir um repository já registrado em testes de
+composição, use replaceInstance após bootstrap, sem duplicar o registro do contrato.
+Não apague cobertura independente do backend.
 Um teste de arquitetura bloqueia a reintrodução do SDK/adapters removidos em
 `lib/`, `test/` e `pubspec.yaml`.
 

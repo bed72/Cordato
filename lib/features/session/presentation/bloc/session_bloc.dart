@@ -22,7 +22,7 @@ final class SessionBloc({required final ISessionRepository repository})
 
     try {
       final observation = emit.onEach<bool>(
-        repository.sessionChanges,
+        repository.session,
         onData: (hasSession) {
           if (isClosed || emit.isDone) return;
           emit(

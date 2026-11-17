@@ -24,16 +24,16 @@
 
 ## 4. Repository Session e composição
 
-- [ ] 4.1 Implementar ISessionRepository por ISessionClient, repassando session como sessionChanges sem alterar SessionBloc; verificar loadSession, stream, SessionException com ErrorsEntity original e falhas de transporte/cookies sem ausência presumida.
-- [ ] 4.2 Registrar capacidade no core e repositories nos módulos existentes sem paths novos; verificar resolução isolada dos contratos Authentication e Session sem visitar rotas, compartilhamento das dependências e ausência de métodos de senha.
-- [ ] 4.3 Testar restauração com uma nova instância do jar no mesmo diretório, expiração de cookies e recusa de outra origem/redirect; verificar com Dio real e adapter fake, sem rede nem UI.
-- [ ] 4.4 Testar ponta a ponta da infraestrutura OTP → cookies → conta → observação → logout, incluindo confirmação/restauração concorrentes com logout; verificar estado final e conteúdo efetivo do jar sem sleeps arbitrários.
-- [ ] 4.5 Atualizar AGENTS.md, ARCHITECTURE.md e README.md com bindings efetivamente disponíveis e adapters ainda ausentes; verificar que apresentação, User, Expense, Metrics, áudio e serviços independentes continuam fora do escopo.
+- [x] 4.1 Implementar ISessionRepository por ISessionClient, repassando session como sessionChanges sem alterar SessionBloc; verificar loadSession, stream, SessionException com ErrorsEntity original e falhas de transporte/cookies sem ausência presumida.
+- [x] 4.2 Registrar capacidade no core e repositories nos módulos existentes sem paths novos; verificar resolução isolada dos contratos Authentication e Session sem visitar rotas, compartilhamento das dependências e ausência de métodos de senha. A execução do teste do módulo Authentication segue bloqueada pelos consumidores de senha preservados; não se declara resolução runtime aprovada desse módulo.
+- [x] 4.3 Testar restauração com uma nova instância do jar no mesmo diretório, expiração de cookies e recusa de outra origem/redirect; verificar com Dio real e adapter fake, sem rede nem UI.
+- [x] 4.4 Testar ponta a ponta da infraestrutura OTP → cookies → conta → observação → logout, incluindo confirmação/restauração concorrentes com logout; verificar estado final e conteúdo efetivo do jar sem sleeps arbitrários.
+- [x] 4.5 Atualizar AGENTS.md, ARCHITECTURE.md e README.md com bindings efetivamente disponíveis e adapters ainda ausentes; verificar que apresentação, User, Expense, Metrics, áudio e serviços independentes continuam fora do escopo.
 
 ## 5. Verificação integrada
 
-- [ ] 5.1 Executar `flutter pub get`, `flutter analyze` e `flutter test` sequencialmente, incluindo testes de arquitetura e features afetadas; registrar resultados e bloqueios sem remover cobertura ou introduzir testes de UI.
-- [ ] 5.2 Revisar o diff final e comparar com os cenários das três specs; verificar ausência de alterações em telas, Blocs, rotas, navegação, backend e worker, comentários novos no código, segredos e dependências removidas reintroduzidas.
+- [x] 5.1 Executar `flutter pub get`, `flutter analyze` e `flutter test` sequencialmente, incluindo testes de arquitetura e features afetadas; registrar resultados e bloqueios sem remover cobertura ou introduzir testes de UI.
+- [x] 5.2 Revisar o diff final e comparar com os cenários das três specs; verificar ausência de alterações em telas, Blocs, rotas, navegação, backend e worker, comentários novos no código, segredos e dependências removidas reintroduzidas.
 
 ## Workflow follow-up
 
@@ -140,3 +140,19 @@
 - Arquitetura documenta o fluxo e os binds efetivamente disponíveis. AuthenticationRepository continua sem bind e SessionRepository pendente; não se declara migração visual ou app completo funcional. Histórico e mudanças arquivadas não foram reescritos.
 - Verificação imediatamente anterior ao commit: 361 testes focados aprovados; flutter analyze com as mesmas 93 issues conhecidas dos consumidores de senha removidos, sem novos diagnósticos. OpenSpec estrito e git diff --check aprovados.
 - Todas as alterações pendentes serão incluídas no commit por autorização explícita do usuário, sem push ou deploy.
+
+## Registro de conclusão — steps 4 e 5 (17/11/2026)
+
+- Baseline de `git status --short` limpo. Implementado SessionRepository com somente ISessionClient: loadSession delegado sem cache e o mesmo stream exposto por sessionChanges. HttpClientException passa por ResponseMapper para SessionException; parsing/erros inesperados continuam visíveis. SessionException e o Bloc preservam ErrorsEntity sem alterações.
+- Registrados IAuthenticationRepository e ISessionRepository como lazy singleton nos módulos existentes sem path, reutilizando os clients do core. Não houve alteração de SessionBloc, apresentação, rotas, navegação ou Settings em produção.
+- Adicionados testes unitários de delegação, observação, metadados seguros, transporte/storage e propagação inesperada. Resolução isolada de Session aprovada, incluindo factories independentes de Bloc. Testes existentes de composição substituem repositories por replaceInstance após bootstrap, sem registros duplicados nem remoção de expectativas.
+- Testes integrados usam coreModule e sessionModule reais, Dio/jar reais, adapter fake e diretório temporário. Conferem solicitação/confirmação/conta/observação/logout, restauração em composição nova com novo jar, expiração, bloqueio de outra origem e redirect, confirmação/restauração concorrentes com logout e cookies finais em memória e em disco. Sem rede, UI ou sleeps.
+- O teste de resolução real de Authentication com core e Session foi incluído em authentication_callback_module_test.dart. Sua execução permanece bloqueada pela compilação dos consumidores de senha importados no módulo. A tarefa 4.2 está entregue com essa limitação explícita, não com aprovação runtime de Authentication; a construção direta do adapter nos testes integrados não substitui essa verificação.
+- `flutter test test/features/session --reporter failures-only`: 36 aprovados. Falhas intermediárias de montagem de testes (identidade do stream, mocktail, duplicidade de bind e tipo esperado na restrição de origem) foram corrigidas; nenhuma mudança no transporte foi necessária.
+- Verificação global sequencial: `flutter pub get` concluído sem alteração de dependências; `flutter analyze` com as mesmas 93 issues dos consumidores antigos; `flutter test --reporter failures-only` com 1174 aprovados e as mesmas 13 falhas de compilação/carregamento. Sem stubs, contrato legado ou cobertura removida para ocultá-las.
+- `dart analyze lib/features/session/application lib/features/session/infrastructure lib/features/session/session_module.dart lib/features/authentication/infrastructure test/features/session test/features/authentication/infrastructure`: sem issues.
+- `flutter test test/architecture test/features/core test/features/session test/features/authentication/application test/features/authentication/infrastructure --reporter failures-only`: 380 aprovados.
+- AGENTS.md, ARCHITECTURE.md, README.md, openspec/README.md e design.md atualizados com bindings disponíveis e limitações reais. Proteção arquitetural inclui ambos os repositories dependendo somente do contrato de sessão.
+- Revisados os cenários das três specs: cobertura existente de emissão, erros, confirmação incerta e logout complementada pela cobertura de adapter/composição/persistência/concorrência desta etapa. Sem mudanças em telas, Blocs, rotas, navegação, backend ou worker; sem comentários novos, segredos, novas dependências, commit, deploy ou homologação remota.
+- Infraestrutura concluída; migração visual e homologação remota continuam follow-ups separados. A conclusão não significa análise/suíte globais aprovadas nem app completo funcional.
+- `openspec validate add-appwrite-otp-session-infrastructure --strict` e `git diff --check` aprovados. A pedido do usuário, sincronizadas as três capabilities nas specs principais, com validação estrita 3/3 aprovada, e arquivada a change em `2026-11-17-add-appwrite-otp-session-infrastructure`. Nenhum bloqueio global foi declarado resolvido pelo arquivamento.
