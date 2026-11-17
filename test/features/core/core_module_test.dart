@@ -1,148 +1,76 @@
-import 'dart:async';
 import 'dart:io';
-import 'dart:convert';
 
-import 'package:flutter/services.dart';
-import 'package:mocktail/mocktail.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/core_module.dart';
+import 'package:cordato/features/core/application/clients/interface_share_client.dart';
+import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 import 'package:cordato/features/core/application/clients/interface_recording_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/share/share_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/recording/recording_client.dart';
+import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
-
-import '../../support/core/mocks/flutter_secure_storage_mock.dart';
-import '../../support/core/fakes/secure_storage_channel_fake.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  late Directory directory;
+  late ModularBootstrap boot;
+
+  setUpAll(() => initializeDateFormatting('pt_BR'));
 
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('cordato-di-');
+    final directory = await Directory.systemTemp.createTemp('cordato-di-');
     addTearDown(() => directory.delete(recursive: true));
+    boot = bootstrapModule(
+      createModule(
+        register: (context) => context
+          ..addInstance<Directory>(directory)
+          ..module(coreModule),
+      ),
+    );
+    addTearDown(boot.injector.dispose);
   });
 
-  group('PocketBase initialization before DI', () {
-    late FlutterSecureStorageMock storage;
+  group('Shared formatters', () {
+    test('resolves one money formatter without visiting routes', () {
+      final formatter = boot.injector.get<IMoneyFormatter>();
 
-    setUp(() {
-      storage = FlutterSecureStorageMock();
-      final channel = SecureStorageChannelFake(storage: storage);
-      channel.install();
-      addTearDown(channel.dispose);
+      expect(formatter, isA<MoneyFormatter>());
+      expect(boot.injector.get<IMoneyFormatter>(), same(formatter));
     });
 
-    test(
-      'registers the same ready SDK after secure session restoration',
-      () async {
-        final read = Completer<String?>();
-        final readStarted = Completer<void>();
-        when(() => storage.read(key: '@cordato.pocketbase_auth'))
-            .thenAnswer((_) {
-              readStarted.complete();
-              return read.future;
-            });
-        when(
-          () => storage.write(
-            key: '@cordato.pocketbase_auth',
-            value: any(named: 'value'),
-          ),
-        ).thenAnswer((_) async {});
-        addTearDown(() {
-          if (!read.isCompleted) {
-            read.complete();
-          }
-        });
-        verifyZeroInteractions(storage);
+    test('resolves one date formatter without visiting routes', () {
+      final formatter = boot.injector.get<IDateFormatter>();
 
-        final initialization = PocketBaseFactory.create(
-          url: 'https://example.com',
-        );
-        bool clientDelivered = false;
-        final observedClient = initialization.then((client) {
-          clientDelivered = true;
-          addTearDown(client.close);
-          return client;
-        });
-        await readStarted.future;
-        await Future<void>.value();
+      expect(formatter, isA<DateFormatter>());
+      expect(boot.injector.get<IDateFormatter>(), same(formatter));
+    });
+  });
 
-        expect(clientDelivered, isFalse);
-        verify(() => storage.read(key: '@cordato.pocketbase_auth')).called(1);
+  group('Shared native clients', () {
+    test('resolves one recorder without preparing a recording', () {
+      final recording = boot.injector.get<IRecordingClient>();
 
-        read.complete(
-          jsonEncode({
-            'token': 'stored-token',
-            'model': {'id': 'user-id', 'collectionName': 'users'},
-          }),
-        );
-        final client = await observedClient;
-        final boot = bootstrapModule(
-          createModule(
-            register: (context) => context
-              ..addInstance<Directory>(directory)
-              ..addInstance<PocketBase>(client)
-              ..module(coreModule),
-          ),
-        );
-        addTearDown(boot.injector.dispose);
+      expect(recording, isA<RecordingClient>());
+      expect(boot.injector.get<IRecordingClient>(), same(recording));
+    });
 
-        expect(clientDelivered, isTrue);
-        expect(boot.injector.get<PocketBase>(), same(client));
-        expect(boot.injector.get<PocketBase>(), same(client));
-        expect(
-          boot.injector.get<PocketBase>().authStore,
-          same(client.authStore),
-        );
-        final formatter = boot.injector.get<IMoneyFormatter>();
-        expect(boot.injector.get<IMoneyFormatter>(), same(formatter));
-        final recording = boot.injector.get<IRecordingClient>();
-        expect(recording, isA<RecordingClient>());
-        expect(boot.injector.get<IRecordingClient>(), same(recording));
-        expect(client.authStore.token, 'stored-token');
-        expect(client.authStore.record?.id, 'user-id');
-        verifyNever(() => storage.read(key: '@cordato.pocketbase_auth'));
-      },
-    );
+    test('resolves one share client without accessing the platform', () {
+      final sharing = boot.injector.get<IShareClient>();
 
-    test(
-      'propagates storage failure before the module can be composed',
-      () async {
-        final read = Completer<String?>();
-        final failure = PlatformException(code: 'storage_unavailable');
-        when(() => storage.read(key: '@cordato.pocketbase_auth'))
-            .thenAnswer((_) => read.future);
-        bool moduleComposed = false;
-        final initialization =
-            PocketBaseFactory.create(url: 'https://example.com').then((client) {
-              addTearDown(client.close);
-              moduleComposed = true;
-              return createModule(
-                register: (context) => context
-                  ..addInstance<Directory>(directory)
-                  ..addInstance<PocketBase>(client)
-                  ..module(coreModule),
-              );
-            });
-        final initializationFailure = expectLater(
-          initialization,
-          throwsA(
-            isA<PlatformException>().having(
-              (exception) => exception.code,
-              'code',
-              failure.code,
-            ),
-          ),
-        );
+      expect(sharing, isA<ShareClient>());
+      expect(boot.injector.get<IShareClient>(), same(sharing));
+    });
 
-        read.completeError(failure);
-        await initializationFailure;
+    test('resolves one home widget client without observing launches', () {
+      final homeWidget = boot.injector.get<IHomeWidgetClient>();
 
-        expect(moduleComposed, isFalse);
-        verify(() => storage.read(key: '@cordato.pocketbase_auth')).called(1);
-      },
-    );
+      expect(homeWidget, isA<HomeWidgetClient>());
+      expect(boot.injector.get<IHomeWidgetClient>(), same(homeWidget));
+    });
   });
 }

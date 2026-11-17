@@ -16,25 +16,23 @@ import 'package:cordato/features/settings/presentation/screens/settings/bloc/exp
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/export_event.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/export_state.dart';
 
-import '../../support/core/fakes/pocketbase_fixture.dart';
+import '../../support/expense/mocks/export_repository_mock.dart';
 import '../../support/core/mocks/file_share_client_mock.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('Settings alone resolves the page-owned export Bloc and root-owned Expense adapter', () async {
+  test('Settings resolves the page-owned export Bloc with the supplied Expense contract', () async {
     final directory = await Directory.systemTemp.createTemp('cordato-di-');
     addTearDown(() => directory.delete(recursive: true));
-    final fixture = PocketBaseFixture()..authenticate();
-    fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-      'items': [],
-      'page': 1,
-      'totalPages': 0,
-    });
-
-    addTearDown(fixture.client.close);
+    final expenses = ExportRepositoryMock();
+    when(expenses.prepare).thenAnswer((_) async => null);
     final boot = bootstrapModule(
-      createAppModule(pocketBase: fixture.client, supportDirectory: directory),
+      createModule(
+        register: (context) => context
+          ..addInstance<expense.IExportRepository>(expenses)
+          ..module(appModule(directory: directory)),
+      ),
     );
 
     addTearDown(boot.injector.dispose);
@@ -73,14 +71,7 @@ void main() {
     final empty = bloc.stream.firstWhere((state) => state is ExportEmpty);
     bloc.add(const ExportRequested());
     await empty;
-    expect(
-      fixture.requests.single.url.queryParameters['filter'],
-      'owner = "user-1"',
-    );
-    expect(
-      fixture.requests.single.url.path,
-      '/api/collections/expenses/records',
-    );
+    verify(expenses.prepare).called(1);
     verify(files.cleanExpired).called(1);
     verifyNoMoreInteractions(files);
     await spec.dispose(bloc);

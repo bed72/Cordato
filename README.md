@@ -55,24 +55,36 @@ features: OTP, repositories, Metrics, áudio e importação dos dados ficam para
 depois. Não há alteração remota nesta etapa.
 
 `HttpClient.create()` em `clients/http/http_client.dart` é síncrono e recebe
-`cookies`, `endpoint` e `projectId`. O bootstrap obtém o diretório de suporte,
-registrado como `Directory` na composição root. O `coreModule` não recebe
-parâmetros e registra cookies e Dio como lazy singletons no Modular, sem factories
-auxiliares. A restrição de origem fica em `OriginInterceptor`.
+`cookies`, `endpoint` e `projectId`. `main.dart` obtém o diretório de suporte e
+monta `ModularApp` com `appModule(directory: directory)`, sem módulo intermediário.
+O módulo raiz registra o `Directory`; `coreModule` permanece sem parâmetros e
+registra cookies e Dio como lazy singletons no Modular. `lib/factory.dart`,
+Talker e o observer customizado foram removidos. O bootstrap não inicializa
+PocketBase. A restrição de origem fica em `OriginInterceptor`.
 O módulo usa `APPWRITE_ENDPOINT` (padrão `https://console.cordato.cloud/v1`) e
 `APPWRITE_PROJECT_ID` (projeto Cordato), configuráveis por `--dart-define`.
 Cookies ficam no diretório de suporte do app,
 sem criptografia adicional nesta etapa. Não passe API keys administrativas ao app.
 
-Verificação: `flutter pub get` concluído; 109 testes do transporte, DI do core e
-arquitetura aprovados, sem rede. A análise e os testes globais estão
-bloqueados pela remoção prévia de `pocketbase` e `http` do pubspec e dos arquivos
-do client PocketBase, ainda importados pelos fluxos existentes. `http_parser`
-também ainda é importado diretamente pelo áudio, mas deixou de ser dependência
-direta. Não houve homologação remota nem build nativo. Os resultados abaixo são
-históricos.
+PocketBase foi removido de todo o Flutter: código, bindings, testes exclusivos e
+fixtures, incluindo `test/app_module_test.dart`. As dependências diretas
+`pocketbase`, `http`, `http_parser` e `flutter_secure_storage` não fazem parte do
+app. Domínio, contratos, Blocs, rotas, telas, serialização e seus testes continuam.
 
-### Integração PocketBase existente
+Os repositories anteriores foram removidos, não migrados nem substituídos por
+sucessos fictícios. Authentication, Session, User, Expense, exportação, Metrics
+e áudio precisam dos adapters Appwrite antes de o app completo poder executar
+esses fluxos. Testes de composição usam mocks de contratos explicitamente.
+
+Verificação: `flutter pub get`, `flutter analyze` sem problemas e suíte global
+com 1157 testes aprovados, sem rede ou UI. Não houve build nativo, homologação
+remota, deploy ou importação de dados. Backend/worker isolados não foram alterados.
+Os resultados e descrições PocketBase abaixo são históricos, não estado atual.
+
+### Integração PocketBase anterior
+
+O registro abaixo é histórico. Os repositories, a factory, as dependências de
+transporte e o observer descritos foram removidos do Flutter.
 
 **Repositories migrados; análise e suíte Flutter globais aprovadas.** A infraestrutura
 agora usa o SDK oficial PocketBase 0.25.3, compartilhado por DI e com persistência
@@ -979,9 +991,10 @@ As descrições dos fluxos Flutter acima não comprovam suporte pelo novo backen
 - `bloc`, `flutter_bloc` e `bloc_concurrency` para apresentação assíncrona.
 - `flutter_modular` 7 para composição, DI e rotas.
 - Material 3 via `material_ui`, fonte Inter e localização pt-BR.
-- SDK oficial `pocketbase` para autenticação, coleções e transporte HTTP nativo.
-- `AsyncAuthStore` com `flutter_secure_storage` para persistência segura da sessão.
-- `talker_bloc_logger` para observação de Blocs somente em debug, sem logger HTTP.
+- Dio, `cookie_jar` e `dio_cookie_manager` para o transporte Appwrite preparatório,
+  sem SDK Appwrite; não há mais consumidores PocketBase no Flutter.
+- `PersistCookieJar` para cookies em arquivos, sem criptografia adicional nesta etapa.
+- Sem Talker, observer customizado ou logger HTTP.
 - `flutter_test`, `bloc_test`, `mocktail` e `fake_async` para testes sem UI.
 
 ## Desenvolvimento
@@ -1279,12 +1292,9 @@ Sign-out chama `authStore.clear()` localmente, sem HTTP ou espera durável.
 Confirmação de e-mail usa `confirmVerification(token)` e não cria sessão;
 endpoint, payload e headers pertencem ao SDK.
 
-O `talker_bloc_logger` usa uma instância local de Talker pelo `Observer`,
-instalado por `createDependencies` somente em debug. Registra criação, fechamento,
-tipos de eventos e transições, sem imprimir os dados completos; erros inesperados mostram
-somente tipo e stack trace, omitindo mensagens potencialmente sensíveis.
-Não há logger HTTP, Dio, interceptors próprios, wrapper de CRUD ou refresh
-automático. Não use o PocketBase compartilhado para origens externas. Não adicione
+Talker e o observer customizado foram removidos. Não há logger HTTP, wrapper de
+CRUD ou refresh automático; Dio e cookies compõem o transporte Appwrite
+preparatório. Não use os transports autenticados para origens externas. Não adicione
 segredos ao código ou fixtures. Valores financeiros são centavos inteiros de BRL,
 e datas financeiras preservam seus componentes civis, sem conversão de fuso.
 

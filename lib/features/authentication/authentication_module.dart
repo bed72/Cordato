@@ -22,12 +22,8 @@ import 'package:cordato/features/authentication/presentation/screens/change_pass
 import 'package:cordato/features/authentication/presentation/screens/password_recovery/password_recovery_screen.dart';
 import 'package:cordato/features/authentication/presentation/screens/password_recovery/bloc/password_recovery_bloc.dart';
 
-import 'package:cordato/features/authentication/infrastructure/repositories/authentication_repository.dart';
-import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
-
 final authenticationModule = createModule(
   register: (context) => context
-    ..addLazySingleton<IAuthenticationRepository>(AuthenticationRepository.new)
     ..add(EmailValidation.new)
     ..add(PasswordValidation.new)
     ..add<SignUpBloc>(SignUpBloc.new)

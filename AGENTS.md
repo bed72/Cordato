@@ -1,34 +1,55 @@
 # AGENTS.md
 
-## Migração Appwrite: Client Preparatório
+## Migração Appwrite: Remoção Completa Do Client Anterior
 
-Por solicitação explícita, a migração para Appwrite começa somente pelo transporte:
+Por solicitação explícita, PocketBase foi removido de todo o Flutter, não apenas
+do core: repositories concretos, bindings, testes exclusivos, fixtures e mocks.
+Não restaure o SDK, seus adapters, AuthStore ou testes de endpoints anteriores.
+`flutter_secure_storage` também foi retirado, pois não tem mais consumidores.
+Os serviços independentes em `backend/` e `worker/` e documentos arquivados não
+foram alterados: são históricos/isolados, não dependências do Flutter atual.
+
+O transporte preparatório Appwrite segue sem SDK:
 `HttpClient.create` em `clients/http/http_client.dart` configura Dio síncrono com
 o `PersistCookieJar` recebido e `CookieManager`, sem SDK Appwrite, wrapper de CRUD,
 logger HTTP ou restauração do client HTTP histórico.
 Esta é uma exceção localizada às referências abaixo sobre ausência de Dio.
-O bootstrap obtém somente o diretório de suporte para esse transporte e entrega
-o `Directory` a `createAppModule`, que o registra na composição root. O core é
+`main.dart` obtém o diretório de suporte e chama
+`appModule(directory: directory)`, sem criar módulo intermediário.
+O módulo raiz registra o `Directory`. `lib/factory.dart`, o observer customizado
+e Talker foram removidos, incluindo o teste exclusivo do observer; não os restaure.
+O core é
 `final coreModule = createModule(...)`, sem parâmetros e sem `path`, como os
-demais módulos compartilhados. O PocketBase ainda consumido pelo legado também
-é registrado na composição root, não no core. O Modular cria um
+demais módulos compartilhados. Não há inicialização, bind ou consumidor
+PocketBase no Flutter atual. O Modular cria um
 `PersistCookieJar` e um Dio por `addLazySingleton`, compartilhados no core sem
 `path`, injetando o `Directory` nos cookies. Não há factories auxiliares nem
 validação própria de endpoint/projeto.
 `OriginInterceptor` restringe a origem. O client não acessa diretórios nem resolve
 dependências globalmente; não tem consumidores nas features ainda.
-OTP, sessão Appwrite, repositories, importação, Metrics e áudio ficam para etapas
-posteriores. Não migre esses fluxos incidentalmente.
+Contratos, domínio, Blocs, telas, rotas, serialização pura e seus testes foram
+preservados. Os contratos de Authentication, Session, User, Expense, exportação
+de Expense, Metrics e áudio não têm adapters de produção registrados nesta fase.
+Não crie implementações vazias, retornos de sucesso ou ausência de sessão
+presumida para esconder essa lacuna. O app completo exige a migração desses
+adapters, que ainda não implementa OTP, métricas ou envio de áudio Appwrite.
 Cookies são arquivos no diretório de suporte, sem criptografia adicional por
 decisão explícita; melhorias de persistência segura ficam adiadas.
 `ResponseMapper` preserva status/tipo para mensagens locais, sem conteúdo remoto.
-Os testes usam Dio real com adapter fake e persistência em diretório temporário,
-sem rede ou UI. A remoção prévia de PocketBase, http e http_parser do pubspec não prova
-migração dos consumidores existentes e pode bloquear análise/testes globais.
-As exclusões posteriores dos arquivos do client PocketBase também são pendências
-preexistentes: não os restaure incidentalmente nesta etapa.
+Os testes do transporte usam Dio real com adapter fake e diretório temporário,
+sem rede ou UI. Testes de composição, incluindo `test/app_module_test.dart`,
+fornecem mocks dos contratos de aplicação, sem fixture/backend anterior.
+Isso comprova composição e comportamento com contratos fornecidos, não uma
+integração Appwrite funcional. Não apague cobertura independente do backend.
+Um teste de arquitetura bloqueia a reintrodução do SDK/adapters removidos em
+`lib/`, `test/` e `pubspec.yaml`.
 
-## Client Atual: SDK PocketBase
+## Histórico: SDK PocketBase Removido
+
+Esta seção e demais descrições específicas de PocketBase abaixo são históricas,
+não requisitos para os adapters futuros. Os consumidores e bindings SDK foram
+removidos por solicitação explícita. Em conflito, prevalece a seção Appwrite
+acima; não restaure esse transporte nem suas garantias incidentalmente.
 
 A infraestrutura HTTP própria foi removida por solicitação explícita.
 Authentication, Session, User, Expense e Metrics já usam o SDK, com testes de
@@ -200,9 +221,9 @@ Sucesso leva ao sign-in com “Senha alterada. Entre novamente”. A composiçã
 possui `SessionRedirectDeferral`, não global, exposto por inherited widget do core:
 a tela adia redirecionamentos somente da própria rota enquanto a operação está
 pendente e libera ao falhar o PATCH, concluir a navegação ou ser descartada.
-Authentication e Session continuam sem importar uma à outra. Não há logger HTTP;
-o observer de debug registra somente lifecycle e tipos seguros dos Blocs, sem
-payloads, estados completos, credenciais ou URLs com token.
+Authentication e Session continuam sem importar uma à outra. Não há logger HTTP,
+Talker ou observer customizado de debug. Não adicione logs de payloads, estados
+completos, credenciais ou URLs com token.
 Descrições JSON:API e token opaco em documentos históricos não são requisitos
 para recriar a API antiga no PocketBase. Não trate troca de `BASE_URL` como
 homologação da integração. Diferenças e lacunas
@@ -623,14 +644,15 @@ unitários de Bloc, validação, formatação, contratos, infraestrutura e arqui
 | Modular/rotas                | Catálogo de rotas e resolução de dependências/factories sem montar UI.                                                         |
 | Architecture                 | Imports, camadas, contextos e isolamento de contratos; DI/rotas exigem testes próprios.                                        |
 
-- Use `mocktail`, `bloc_test` e `flutter_test`. Em teste de Bloc, mocke o contrato
-  de repository, não o client HTTP. Em teste do repository PocketBase, use o SDK
-  real com transporte mockado; capacidades nativas auxiliares usam clients mockados.
-- Testes da factory usam o canal simulado do FlutterSecureStorage, sem injetar
-  storage na API de produção. HTTP do SDK pode usar `http.runWithClient` com
-  `MockClient`, sem servidor local. Testes do observer exercitam eventos, estados,
-  erros e lifecycle reais dos Blocs e restauram `Bloc.observer` ao terminar,
-  sem chamar métodos protegidos diretamente ou montar UI.
+- Use `mocktail`, `bloc_test` e `flutter_test`. Em teste de Bloc ou composição,
+  mocke o contrato de repository, não um SDK removido. O transporte atual usa
+  Dio real com adapter fake; capacidades nativas auxiliares usam clients mockados.
+- Os testes exclusivos da factory PocketBase e seu canal simulado de Secure
+  Storage foram removidos com a implementação, assim como os testes e fixtures
+  exclusivos dos repositories anteriores. Testes de domínio, contratos, Blocs,
+  formatação, serialização e DI permanecem sem esse backend.
+  O observer customizado e seus testes foram
+  removidos junto ao Talker; não adicione um substituto incidentalmente.
 - Controle operações pendentes com `Completer` ou sinais observáveis; não dependa
   de sleeps arbitrários para provar concorrência.
 - Organize suítes extensas em `group` por operação ou responsabilidade. Separe

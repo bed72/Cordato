@@ -1,12 +1,17 @@
 import 'dart:io';
 
-import 'package:pocketbase/pocketbase.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/app_module.dart';
 
-import 'support/core/fakes/pocketbase_fixture.dart';
+import 'support/authentication/mocks/authentication_repository_mock.dart';
+import 'support/session/mocks/session_repository_mock.dart';
+import 'support/user/mocks/user_repository_mock.dart';
+import 'support/expense/mocks/expense_repository_mock.dart';
+import 'support/metrics/mocks/metrics_repository_mock.dart';
+import 'support/dashboard/mocks/audio_repository_mock.dart';
 
 import 'package:cordato/features/root/presentation/bloc/home_widget_sync_bloc.dart';
 import 'package:cordato/features/root/presentation/bloc/home_widget_launch_bloc.dart';
@@ -19,8 +24,12 @@ import 'package:cordato/features/core/infrastructure/clients/home_widget/home_wi
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_bloc.dart';
 
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
-import 'package:cordato/features/dashboard/infrastructure/repositories/audio_repository.dart';
 import 'package:cordato/features/dashboard/application/repositories/interface_audio_repository.dart';
+import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
+import 'package:cordato/features/session/application/repositories/interface_session_repository.dart';
+import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
 import 'package:cordato/features/authentication/presentation/screens/sign_up/bloc/sign_up_bloc.dart';
 
@@ -30,20 +39,29 @@ import 'package:cordato/features/expense/presentation/screens/expense/validators
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() => initializeDateFormatting('pt_BR'));
 
   group('Route catalog and dependency resolution', () {
     late ModularBootstrap boot;
+    late AudioRepositoryMock audioRepository;
 
     setUp(() async {
       final directory = await Directory.systemTemp.createTemp('cordato-di-');
       addTearDown(() => directory.delete(recursive: true));
 
-      final fixture = PocketBaseFixture();
-      addTearDown(fixture.client.close);
+      audioRepository = AudioRepositoryMock();
       boot = bootstrapModule(
-        createAppModule(
-          pocketBase: fixture.client,
-          supportDirectory: directory,
+        createModule(
+          register: (context) => context
+            ..addInstance<IAuthenticationRepository>(
+              AuthenticationRepositoryMock(),
+            )
+            ..addInstance<ISessionRepository>(SessionRepositoryMock())
+            ..addInstance<IUserRepository>(UserRepositoryMock())
+            ..addInstance<IExpenseRepository>(ExpenseRepositoryMock())
+            ..addInstance<IMetricsRepository>(MetricsRepositoryMock())
+            ..addInstance<IAudioRepository>(audioRepository)
+            ..module(appModule(directory: directory)),
         ),
       );
       addTearDown(boot.injector.dispose);
@@ -116,21 +134,8 @@ void main() {
         boot.manager.enter('dashboard', route.ownerTags);
 
         final capture = boot.injector.get<IAudioRepository>();
-        expect(
-          capture,
-          isA<AudioRepository>()
-              .having(
-                (repository) => repository.pocketBase,
-                'shared session',
-                same(boot.injector.get<PocketBase>()),
-              )
-              .having(
-                (repository) => repository.client,
-                'shared recorder',
-                same(boot.injector.get<IRecordingClient>()),
-              ),
-        );
-        expect(boot.injector.get<IAudioRepository>(), isNot(same(capture)));
+        expect(capture, same(audioRepository));
+        expect(boot.injector.get<IRecordingClient>(), isA<IRecordingClient>());
 
         final first = boot.injector.get<DashboardBloc>();
         final second = boot.injector.get<DashboardBloc>();

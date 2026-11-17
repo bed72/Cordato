@@ -1,8 +1,7 @@
-import 'dart:convert';
-
+import 'package:mocktail/mocktail.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pocketbase/pocketbase.dart';
+import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 
 import 'package:cordato/features/authentication/authentication_module.dart';
 import 'package:cordato/features/authentication/presentation/validators/password_validation.dart';
@@ -11,20 +10,25 @@ import 'package:cordato/features/authentication/presentation/screens/change_pass
 import 'package:cordato/features/authentication/presentation/screens/change_password/bloc/change_password_state.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
-import '../../support/core/fakes/pocketbase_fixture.dart';
+import '../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('change password stays protected and page-owned using the SDK and local sign-out', () async {
-    final fixture = PocketBaseFixture();
-    fixture.authenticate();
-    fixture.respond = (_) => PocketBaseFixture.jsonResponse({'id': 'user-1'});
-    addTearDown(fixture.client.close);
+  test('change password stays protected and page-owned using the application contract', () async {
+    final repository = AuthenticationRepositoryMock();
+    when(
+      () => repository.changePassword(
+        oldPassword: 'OldPass1',
+        password: 'NewPass1',
+        passwordConfirm: 'NewPass1',
+      ),
+    ).thenAnswer((_) async {});
+    when(repository.signOut).thenAnswer((_) async {});
     final boot = bootstrapModule(
       createModule(
         register: (context) => context
-          ..addInstance<PocketBase>(fixture.client)
+          ..addInstance<IAuthenticationRepository>(repository)
           ..module(authenticationModule),
       ),
     );
@@ -66,14 +70,14 @@ void main() {
     );
     await complete;
 
-    expect(fixture.client.authStore.token, isEmpty);
-    final request = fixture.requests.single;
-    expect(request.url.path, '/api/collections/users/records/user-1');
-    expect(jsonDecode(request.body), {
-      'oldPassword': 'OldPass1',
-      'password': 'NewPass1',
-      'passwordConfirm': 'NewPass1',
-    });
+    verifyInOrder([
+      () => repository.changePassword(
+        oldPassword: 'OldPass1',
+        password: 'NewPass1',
+        passwordConfirm: 'NewPass1',
+      ),
+      repository.signOut,
+    ]);
     await spec.dispose(bloc);
     expect(bloc.isClosed, isTrue);
   });

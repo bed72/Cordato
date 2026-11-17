@@ -28,10 +28,10 @@ const endpoint = String.fromEnvironment(
 final coreModule = createModule(
   register: (context) => context
     ..addLazySingleton<PersistCookieJar>(
-      (Directory supportDirectory) => PersistCookieJar(
+      (Directory directory) => PersistCookieJar(
         ignoreExpires: false,
         persistSession: true,
-        storage: FileStorage('${supportDirectory.path}/$projectId/cookies'),
+        storage: FileStorage('${directory.path}/$projectId/cookies'),
       ),
     )
     ..addLazySingleton<Dio>(

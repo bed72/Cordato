@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/core_module.dart';
@@ -18,13 +17,9 @@ import 'package:cordato/features/authentication/authentication_module.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/root/presentation/screens/app_screen.dart';
 
-Module createAppModule({
-  required PocketBase pocketBase,
-  required Directory supportDirectory,
-}) => createModule(
+Module appModule({required Directory directory}) => createModule(
   register: (context) => context
-    ..addInstance<Directory>(supportDirectory)
-    ..addInstance<PocketBase>(pocketBase)
+    ..addInstance<Directory>(directory)
     ..module(coreModule)
     ..module(userModule)
     ..module(rootModule)

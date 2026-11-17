@@ -19,7 +19,7 @@ void main() {
     ],
   };
 
-  group('PocketBase view conversion', () {
+  group('Monthly metrics payload conversion', () {
     test('parses a flat record preserving civil dates and server values', () {
       final response = ExpenseMetricsResponse.fromJson(record);
       final entity = response.toEntity();

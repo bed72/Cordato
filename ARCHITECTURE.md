@@ -4,9 +4,12 @@
 
 A migração autorizada inicia com o transporte em
 `lib/features/core/infrastructure/clients/http/`. O bootstrap aguarda somente a
-obtenção do diretório de suporte para esse transporte e entrega o `Directory` a
-`createAppModule`. A composição root registra esse diretório e o PocketBase
-legado. `final coreModule = createModule(...)` não recebe parâmetros nem tem
+obtenção do diretório de suporte em `main.dart`. O entrypoint passa esse diretório
+por `appModule(directory: directory)` diretamente ao `ModularApp`, sem módulo
+intermediário. O módulo raiz registra o `Directory` e inclui os módulos de feature.
+`lib/factory.dart`, o observer customizado e Talker foram removidos; o bootstrap
+não inicializa nem registra PocketBase.
+`final coreModule = createModule(...)` não recebe parâmetros nem tem
 `path`: registra `PersistCookieJar` e Dio como lazy singletons. Modular injeta o
 diretório nos cookies e resolve os cookies ao construir Dio, sem resolução global
 de dependências pelo client e sem bind de caminho como `String` genérica.
@@ -28,11 +31,22 @@ automaticamente `close()`. Os testes fecham explicitamente as instâncias usadas
 `ResponseMapper` converte status HTTP e `type` nativo em `ErrorsEntity`, omite a
 mensagem remota e propaga erros inesperados de parsing/programação.
 
-Não foram migrados autenticação/OTP, sessão, contratos, repositories, métricas,
-exportação, widget ou áudio. As seções PocketBase abaixo descrevem os consumidores
-existentes, não uma migração concluída. A retirada prévia das dependências
-PocketBase/http/http_parser e dos arquivos do client PocketBase sem retirar seus
-consumidores bloqueia verificação global. Essas exclusões foram preservadas.
+Por solicitação explícita, não há SDK, AuthStore, adapters ou consumidores
+PocketBase em `lib/` nem fixtures/mocks desse backend em `test/`.
+Foram removidos os repositories concretos anteriores de Authentication, Session,
+User, Expense, exportação de Expense, Metrics e áudio, seus bindings e os testes
+exclusivos desse transporte. `flutter_secure_storage` não tem mais consumidores
+e também foi retirado. Não foram criados adapters substitutos vazios.
+
+Domínio, contratos, Blocs, telas, rotas e serialização pura permanecem. Os módulos
+registram apresentação e capacidades atuais; os contratos de backend acima
+ainda não têm implementação de produção. O app completo não pode executar esses
+fluxos até sua migração para Appwrite. A suíte passa com mocks explícitos dos
+contratos em composição, não com uma integração remota fictícia.
+
+As descrições PocketBase abaixo, os documentos arquivados e os serviços isolados
+em `backend/` e `worker/` são históricos, não requisitos do Flutter atual. Esses
+serviços não foram alterados nem houve deploy/importação nesta remoção.
 
 ## Decisão Canônica
 
@@ -1414,17 +1428,12 @@ foram preservadas fora do escopo desta tarefa.
 
 ### Clients Compartilhados
 
-`main.dart` aguarda `createDependencies` de `lib/factory.dart` antes de `runApp`.
-`createDependencies` configura o observer e aguarda `PocketBaseFactory.create`,
-que cria `FlutterSecureStorage` e lê a sessão persistida.
-`createAppModule` encaminha somente o SDK pronto a `createCoreModule`, que
-registra `PocketBase` por `addInstance`, sem expor storage na DI.
-Os repositories recebem o SDK diretamente,
-sem Future de inicialização. A leitura segura bloqueia a montagem visual do app;
-falhas propagam antes de montar o ModularApp, sem limpar credenciais, presumir
-ausência de sessão ou tentar novamente automaticamente. Não há tela de retry
-de inicialização nesta etapa.
-Não há singleton global estático nem wrapper dos métodos de coleção.
+O bootstrap atual aguarda o diretório de suporte e o entrega ao módulo raiz;
+o core resolve cookies e Dio pela DI, conforme a seção de preparação Appwrite.
+Não há factory de bootstrap, observer customizado ou registro PocketBase.
+Os parágrafos PocketBase abaixo descrevem a integração anterior e os contratos
+dos repositories legados, ainda pendentes de migração. Suas garantias de leitura
+inicial pertenciam à factory removida, não ao bootstrap Appwrite atual.
 
 `BASE_URL` padrão: `https://pocketbase.cordato.cloud`. O SDK acrescenta `/api/` aos
 endpoints. A factory passa a configuração diretamente ao SDK, sem validação ou
@@ -1510,13 +1519,10 @@ build nativo ou homologação do PocketBase real.
 
 ## Composição, Rotas E Bootstrap
 
-O bootstrap instala `Observer`, baseado em `TalkerBlocObserver`, somente
-em debug e antes da criação dos Blocs. Ele recebe uma instância de Talker criada
-localmente em `lib/factory.dart`, sem logger global ou wrapper de client. Registra
-criação, fechamento, tipos de eventos e transições, sem imprimir
-o conteúdo de eventos ou estados. Erros inesperados registram somente o tipo e
-stack trace, sem a mensagem potencialmente sensível. Não há logs de change
-duplicando transições nem instalação do observer em profile/release.
+O bootstrap não instala observer customizado. Talker, seus adapters e o teste
+exclusivo do observer foram removidos. Blocs continuam usando `addError` para
+falhas inesperadas, sem telemetry injetada, logger HTTP ou envio automático.
+Não registre conteúdo de eventos/estados, credenciais ou mensagens remotas.
 
 Módulos usam `createModule` do Modular 7, pertencem à feature e registram
 interfaces para implementações. Authentication e Expense têm um módulo por
@@ -1603,10 +1609,10 @@ Root contém `AppScreen`, o splash visual, e `AppWidget`, proprietário do
 SessionBloc e das decisões globais de navegação. A abertura sem token resolve
 ausência local; com token, aguarda auth-refresh e sua persistência.
 
-`main.dart` inicializa o binding Flutter, aguarda `createDependencies` de
-`lib/factory.dart` e monta ModularApp sem depender de serviços remotos. A factory
-concentra a criação das dependências de bootstrap e configura o observer de debug;
-os demais bindings permanecem nos módulos.
+`main.dart` inicializa o binding Flutter, aguarda `getApplicationSupportDirectory`
+e monta `ModularApp` com `appModule(directory: directory)`, sem depender de
+serviços remotos. O módulo raiz registra o diretório; os demais bindings
+permanecem nos módulos, sem factory ou módulo intermediário de bootstrap.
 Não há client de crash reporting ou push remoto registrado
 no core; os handlers padrão do Flutter e da plataforma são preservados.
 `addError` usa o mecanismo de Bloc, sem envio automático a serviços externos.

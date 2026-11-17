@@ -1,6 +1,7 @@
+import 'package:mocktail/mocktail.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pocketbase/pocketbase.dart';
+import 'package:cordato/features/authentication/application/repositories/interface_authentication_repository.dart';
 
 import 'package:cordato/features/authentication/authentication_module.dart';
 import 'package:cordato/features/authentication/presentation/screens/password_recovery/bloc/password_recovery_bloc.dart';
@@ -11,20 +12,29 @@ import 'package:cordato/features/authentication/presentation/screens/reset_passw
 import 'package:cordato/features/authentication/presentation/screens/reset_password/bloc/reset_password_state.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
-import '../../support/core/fakes/pocketbase_fixture.dart';
+import '../../support/authentication/mocks/authentication_repository_mock.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  late PocketBaseFixture fixture;
+  late AuthenticationRepositoryMock repository;
   late ModularBootstrap boot;
 
   setUp(() {
-    fixture = PocketBaseFixture();
-    addTearDown(fixture.client.close);
+    repository = AuthenticationRepositoryMock();
+    when(() => repository.requestPasswordReset(email: 'person@example.com'))
+        .thenAnswer((_) async {});
+    when(repository.signOut).thenAnswer((_) async {});
+    when(
+      () => repository.confirmPasswordReset(
+        token: 'reset-token',
+        password: 'NewPass1',
+        passwordConfirm: 'NewPass1',
+      ),
+    ).thenAnswer((_) async {});
     boot = bootstrapModule(
       createModule(
         register: (context) => context
-          ..addInstance<PocketBase>(fixture.client)
+          ..addInstance<IAuthenticationRepository>(repository)
           ..module(authenticationModule),
       ),
     );
@@ -32,7 +42,7 @@ void main() {
   });
 
   test(
-    'recovery is page-scoped and resolves the SDK repository without UI',
+    'recovery is page-scoped and resolves the application contract without UI',
     () async {
       expect(
         () => boot.injector.get<PasswordRecoveryBloc>(),
@@ -62,11 +72,8 @@ void main() {
       bloc.add(const PasswordRecoverySubmitted(email: 'person@example.com'));
       await sent;
 
-      expect(
-        fixture.requests.single.url.path,
-        '/api/collections/users/request-password-reset',
-      );
-      expect(fixture.client.authStore.token, isEmpty);
+      verify(() => repository.requestPasswordReset(email: 'person@example.com'))
+          .called(1);
       await spec.dispose(bloc);
       expect(bloc.isClosed, isTrue);
     },
@@ -75,7 +82,6 @@ void main() {
   test(
     'reset is page-scoped and clears the shared session before confirmation',
     () async {
-      fixture.authenticate();
       expect(() => boot.injector.get<ResetPasswordBloc>(), throwsA(anything));
       final route = boot.routes.routes.singleWhere(
         (route) => route.path == RouteEnum.authenticationResetPassword.path,
@@ -99,8 +105,14 @@ void main() {
 
       bloc.add(const ResetPasswordOpened(hasToken: true));
       await ready;
-      expect(fixture.client.authStore.token, isEmpty);
-      expect(fixture.requests, isEmpty);
+      verify(repository.signOut).called(1);
+      verifyNever(
+        () => repository.confirmPasswordReset(
+          token: 'reset-token',
+          password: 'NewPass1',
+          passwordConfirm: 'NewPass1',
+        ),
+      );
       final complete = bloc.stream.firstWhere(
         (state) => state is ResetPasswordSuccess,
       );
@@ -113,10 +125,13 @@ void main() {
       );
       await complete;
 
-      expect(
-        fixture.requests.single.url.path,
-        '/api/collections/users/confirm-password-reset',
-      );
+      verify(
+        () => repository.confirmPasswordReset(
+          token: 'reset-token',
+          password: 'NewPass1',
+          passwordConfirm: 'NewPass1',
+        ),
+      ).called(1);
       await spec.dispose(bloc);
       expect(bloc.isClosed, isTrue);
     },

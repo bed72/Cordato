@@ -36,10 +36,6 @@ dependencies:
   flutter_bloc: ^9.1.1
   bloc_concurrency: ^0.3.0
 
-  talker: ^5.2.0
-  talker_logger: ^5.2.0
-  talker_bloc_logger: ^5.2.0
-
   csv: ^8.0.0
   dio: ^5.11.1
   intl: ^0.20.3
@@ -48,7 +44,6 @@ dependencies:
   path_provider: ^2.1.6
   flutter_modular: ^7.1.1
   dio_cookie_manager: ^3.5.0
-  flutter_secure_storage: ^11.2.0
 
   share_plus: ^13.3.1
   home_widget: ^0.10.0

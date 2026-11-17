@@ -1,7 +1,8 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:cordato/factory.dart';
+import 'package:cordato/app_module.dart';
 import 'package:cordato/features/root/presentation/bloc/home_widget_sync_bloc.dart';
 import 'package:cordato/features/root/presentation/bloc/home_widget_launch_bloc.dart';
 
@@ -13,13 +14,13 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final module = await createDependencies();
   final navigatorKey = GlobalKey<NavigatorState>();
+  final directory = await getApplicationSupportDirectory();
 
   runApp(
     ModularApp(
-      module: module,
       navigatorKey: navigatorKey,
+      module: appModule(directory: directory),
       initialRoute: RouteEnum.app.path,
       defaultTransition: TransitionType.fade,
       child: Builder(

@@ -12,7 +12,7 @@ void main() {
     'email': 'person@example.com',
   };
 
-  test('maps a native PocketBase record without a status field', () {
+  test('maps a user payload without a status field', () {
     final user = UserResponse.fromJson(record).toEntity();
 
     expect(user.id, record['id']);
