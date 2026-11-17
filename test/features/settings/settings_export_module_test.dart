@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -9,6 +11,7 @@ import 'package:cordato/features/core/infrastructure/clients/share/share_client.
 import 'package:cordato/features/core/application/clients/interface_share_client.dart';
 import 'package:cordato/features/expense/application/repositories/interface_export_repository.dart'
     as expense;
+
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/export_bloc.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/export_event.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/bloc/export_state.dart';
@@ -20,18 +23,26 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('Settings alone resolves the page-owned export Bloc and root-owned Expense adapter', () async {
+    final directory = await Directory.systemTemp.createTemp('cordato-di-');
+    addTearDown(() => directory.delete(recursive: true));
     final fixture = PocketBaseFixture()..authenticate();
     fixture.respond = (_) => PocketBaseFixture.jsonResponse({
       'items': [],
       'page': 1,
       'totalPages': 0,
     });
+
     addTearDown(fixture.client.close);
-    final boot = bootstrapModule(createAppModule(pocketBase: fixture.client));
+    final boot = bootstrapModule(
+      createAppModule(pocketBase: fixture.client, supportDirectory: directory),
+    );
+
     addTearDown(boot.injector.dispose);
     final client = boot.injector.get<IShareClient>();
+
     expect(client, isA<ShareClient>());
     expect(boot.injector.get<IShareClient>(), same(client));
+
     final files = FileShareClientMock();
     when(files.cleanExpired).thenAnswer((_) async {});
     boot.injector.replaceInstance<IShareClient>(files);
@@ -39,6 +50,7 @@ void main() {
     final route = boot.routes.routes.singleWhere(
       (route) => route.path == RouteEnum.settings.path,
     );
+
     boot.manager.enter('settings-export-test', route.ownerTags);
     expect(() => boot.injector.get<ExportBloc>(), throwsA(anything));
     expect(

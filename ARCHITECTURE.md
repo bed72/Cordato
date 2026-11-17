@@ -1,5 +1,39 @@
 # Arquitetura
 
+## Preparação do Client Appwrite
+
+A migração autorizada inicia com o transporte em
+`lib/features/core/infrastructure/clients/http/`. O bootstrap aguarda somente a
+obtenção do diretório de suporte para esse transporte e entrega o `Directory` a
+`createAppModule`. A composição root registra esse diretório e o PocketBase
+legado. `final coreModule = createModule(...)` não recebe parâmetros nem tem
+`path`: registra `PersistCookieJar` e Dio como lazy singletons. Modular injeta o
+diretório nos cookies e resolve os cookies ao construir Dio, sem resolução global
+de dependências pelo client e sem bind de caminho como `String` genérica.
+
+`HttpClient.create` é síncrono e recebe cookies, endpoint e projeto. Configura Dio
+diretamente, com header de projeto, JSON, timeouts e redirects desabilitados.
+`OriginInterceptor` restringe os requests à origem configurada. Não há factories
+auxiliares nem validação própria do endpoint/projeto. Não usa API key administrativa, SDK
+Appwrite, logger HTTP, retry ou interceptor de gestão de sessão.
+
+`CookieManager` usa `PersistCookieJar` com expiração respeitada e cookies de sessão
+persistidos. O caminho padrão é `<projectId>/cookies` no diretório de
+suporte do app; os testes registram um `Directory` temporário na composição root.
+Os arquivos não têm criptografia adicional, conforme simplificação aprovada.
+O jar carrega cookies sob demanda, não restaura/valida sessão no bootstrap.
+O transporte é root-owned e não fecha ao sair de rotas. A API funcional do
+Modular 7.1.1 não expõe callback de descarte por bind; registrar Dio não executa
+automaticamente `close()`. Os testes fecham explicitamente as instâncias usadas.
+`ResponseMapper` converte status HTTP e `type` nativo em `ErrorsEntity`, omite a
+mensagem remota e propaga erros inesperados de parsing/programação.
+
+Não foram migrados autenticação/OTP, sessão, contratos, repositories, métricas,
+exportação, widget ou áudio. As seções PocketBase abaixo descrevem os consumidores
+existentes, não uma migração concluída. A retirada prévia das dependências
+PocketBase/http/http_parser e dos arquivos do client PocketBase sem retirar seus
+consumidores bloqueia verificação global. Essas exclusões foram preservadas.
+
 ## Decisão Canônica
 
 Authentication/Sign-in define a arquitetura obrigatória do Cordato: organização

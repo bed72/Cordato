@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -32,10 +34,18 @@ void main() {
   group('Route catalog and dependency resolution', () {
     late ModularBootstrap boot;
 
-    setUp(() {
+    setUp(() async {
+      final directory = await Directory.systemTemp.createTemp('cordato-di-');
+      addTearDown(() => directory.delete(recursive: true));
+
       final fixture = PocketBaseFixture();
       addTearDown(fixture.client.close);
-      boot = bootstrapModule(createAppModule(pocketBase: fixture.client));
+      boot = bootstrapModule(
+        createAppModule(
+          pocketBase: fixture.client,
+          supportDirectory: directory,
+        ),
+      );
       addTearDown(boot.injector.dispose);
     });
 

@@ -1,5 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:talker/talker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -25,5 +26,10 @@ Future<Module> createDependencies() async {
     ),
   );
 
-  return createAppModule(pocketBase: pocketBase);
+  final supportDirectory = await getApplicationSupportDirectory();
+
+  return createAppModule(
+    pocketBase: pocketBase,
+    supportDirectory: supportDirectory,
+  );
 }

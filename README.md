@@ -47,6 +47,33 @@ remota nesta implementação.
 
 ## Client e verificação atual
 
+### Preparação para Appwrite
+
+O client REST preparatório usa Dio, `CookieManager` e `PersistCookieJar`, sem SDK
+Appwrite. O transporte está registrado na DI, mas ainda não é consumido pelas
+features: OTP, repositories, Metrics, áudio e importação dos dados ficam para
+depois. Não há alteração remota nesta etapa.
+
+`HttpClient.create()` em `clients/http/http_client.dart` é síncrono e recebe
+`cookies`, `endpoint` e `projectId`. O bootstrap obtém o diretório de suporte,
+registrado como `Directory` na composição root. O `coreModule` não recebe
+parâmetros e registra cookies e Dio como lazy singletons no Modular, sem factories
+auxiliares. A restrição de origem fica em `OriginInterceptor`.
+O módulo usa `APPWRITE_ENDPOINT` (padrão `https://console.cordato.cloud/v1`) e
+`APPWRITE_PROJECT_ID` (projeto Cordato), configuráveis por `--dart-define`.
+Cookies ficam no diretório de suporte do app,
+sem criptografia adicional nesta etapa. Não passe API keys administrativas ao app.
+
+Verificação: `flutter pub get` concluído; 109 testes do transporte, DI do core e
+arquitetura aprovados, sem rede. A análise e os testes globais estão
+bloqueados pela remoção prévia de `pocketbase` e `http` do pubspec e dos arquivos
+do client PocketBase, ainda importados pelos fluxos existentes. `http_parser`
+também ainda é importado diretamente pelo áudio, mas deixou de ser dependência
+direta. Não houve homologação remota nem build nativo. Os resultados abaixo são
+históricos.
+
+### Integração PocketBase existente
+
 **Repositories migrados; análise e suíte Flutter globais aprovadas.** A infraestrutura
 agora usa o SDK oficial PocketBase 0.25.3, compartilhado por DI e com persistência
 no `flutter_secure_storage`. Dio, talker_dio_logger e o client HTTP próprio foram

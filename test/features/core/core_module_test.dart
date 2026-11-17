@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -11,13 +11,18 @@ import 'package:cordato/features/core/core_module.dart';
 import 'package:cordato/features/core/application/clients/interface_recording_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/recording/recording_client.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
-import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_factory.dart';
 
 import '../../support/core/mocks/flutter_secure_storage_mock.dart';
 import '../../support/core/fakes/secure_storage_channel_fake.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  late Directory directory;
+
+  setUp(() async {
+    directory = await Directory.systemTemp.createTemp('cordato-di-');
+    addTearDown(() => directory.delete(recursive: true));
+  });
 
   group('PocketBase initialization before DI', () {
     late FlutterSecureStorageMock storage;
@@ -74,7 +79,14 @@ void main() {
           }),
         );
         final client = await observedClient;
-        final boot = bootstrapModule(createCoreModule(pocketBase: client));
+        final boot = bootstrapModule(
+          createModule(
+            register: (context) => context
+              ..addInstance<Directory>(directory)
+              ..addInstance<PocketBase>(client)
+              ..module(coreModule),
+          ),
+        );
         addTearDown(boot.injector.dispose);
 
         expect(clientDelivered, isTrue);
@@ -107,7 +119,12 @@ void main() {
             PocketBaseFactory.create(url: 'https://example.com').then((client) {
               addTearDown(client.close);
               moduleComposed = true;
-              return createCoreModule(pocketBase: client);
+              return createModule(
+                register: (context) => context
+                  ..addInstance<Directory>(directory)
+                  ..addInstance<PocketBase>(client)
+                  ..module(coreModule),
+              );
             });
         final initializationFailure = expectLater(
           initialization,

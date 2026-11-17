@@ -1,5 +1,33 @@
 # AGENTS.md
 
+## Migração Appwrite: Client Preparatório
+
+Por solicitação explícita, a migração para Appwrite começa somente pelo transporte:
+`HttpClient.create` em `clients/http/http_client.dart` configura Dio síncrono com
+o `PersistCookieJar` recebido e `CookieManager`, sem SDK Appwrite, wrapper de CRUD,
+logger HTTP ou restauração do client HTTP histórico.
+Esta é uma exceção localizada às referências abaixo sobre ausência de Dio.
+O bootstrap obtém somente o diretório de suporte para esse transporte e entrega
+o `Directory` a `createAppModule`, que o registra na composição root. O core é
+`final coreModule = createModule(...)`, sem parâmetros e sem `path`, como os
+demais módulos compartilhados. O PocketBase ainda consumido pelo legado também
+é registrado na composição root, não no core. O Modular cria um
+`PersistCookieJar` e um Dio por `addLazySingleton`, compartilhados no core sem
+`path`, injetando o `Directory` nos cookies. Não há factories auxiliares nem
+validação própria de endpoint/projeto.
+`OriginInterceptor` restringe a origem. O client não acessa diretórios nem resolve
+dependências globalmente; não tem consumidores nas features ainda.
+OTP, sessão Appwrite, repositories, importação, Metrics e áudio ficam para etapas
+posteriores. Não migre esses fluxos incidentalmente.
+Cookies são arquivos no diretório de suporte, sem criptografia adicional por
+decisão explícita; melhorias de persistência segura ficam adiadas.
+`ResponseMapper` preserva status/tipo para mensagens locais, sem conteúdo remoto.
+Os testes usam Dio real com adapter fake e persistência em diretório temporário,
+sem rede ou UI. A remoção prévia de PocketBase, http e http_parser do pubspec não prova
+migração dos consumidores existentes e pode bloquear análise/testes globais.
+As exclusões posteriores dos arquivos do client PocketBase também são pendências
+preexistentes: não os restaure incidentalmente nesta etapa.
+
 ## Client Atual: SDK PocketBase
 
 A infraestrutura HTTP própria foi removida por solicitação explícita.
