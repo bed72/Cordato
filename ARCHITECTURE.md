@@ -44,6 +44,32 @@ ainda não têm implementação de produção. O app completo não pode executar
 fluxos até sua migração para Appwrite. A suíte passa com mocks explícitos dos
 contratos em composição, não com uma integração remota fictícia.
 
+### Contrato de autenticação e fronteira temporária de apresentação
+
+Authentication possui somente `IAuthenticationRepository` em
+`application/repositories/interface_authentication_repository.dart`:
+
+- `requestCode(email:) -> Future<String>` com o `userId` necessário à confirmação;
+- `confirmCode(userId:, code:) -> Future<void>`;
+- `signOut() -> Future<void>`.
+
+O identificador é retornado diretamente como `String`, sem entidade wrapper.
+Não são retornados código, secret, cookies ou respostas remotas.
+O contrato não exige senha nem cadastro separado e não
+normaliza e-mail ou código. Falhas remotas esperadas usarão
+`AuthenticationException` com o `ErrorsEntity` original; parsing e storage não
+devem ser mascarados como erro de credenciais.
+
+Por solicitação explícita, o contrato anterior de senha, cadastro, recuperação e
+verificação por link foi removido, sem interface paralela ou contrato legado.
+Os nomes públicos de autenticação não especificam o mecanismo OTP. Nesta etapa
+somente os tipos e o contrato estão disponíveis, sem adapter ou bind de produção.
+Os consumidores antigos de senha ainda não foram migrados e suas chamadas aos
+métodos removidos são incompatíveis: a análise e a suíte global ficam bloqueadas
+até sua migração ou remoção. Não há stubs, sucesso fictício nem exclusão de testes
+para esconder essa lacuna. Settings preserva `signOut`, mas continua sem adapter.
+Telas, Blocs, rotas, navegação e `ISessionRepository` não foram alterados aqui.
+
 As descrições PocketBase abaixo, os documentos arquivados e os serviços isolados
 em `backend/` e `worker/` são históricos, não requisitos do Flutter atual. Esses
 serviços não foram alterados nem houve deploy/importação nesta remoção.
@@ -347,13 +373,9 @@ Pode usar tipos puros de domain e do core.
 
 `IAuthenticationRepository`, em
 `authentication/application/repositories/interface_authentication_repository.dart`,
-define:
-
-- `signIn({required String email, required String password}) -> Future<void>`;
-- `signUp({required String email, required String password}) -> Future<void>`;
-- `resendEmail({required String email}) -> Future<void>`;
-- `signOut() -> Future<void>`;
-- `confirmEmail(String token) -> Future<EmailVerificationStatusEnum>`.
+define somente `requestCode(email:)`, `confirmCode(userId:, code:)` e `signOut()`.
+Os métodos de senha/cadastro/verificação abaixo são históricos, não fazem parte
+do contrato atual.
 
 Não há entidade de sessão ou output de login. Token e ID são detalhes internos
 de persistência. `AuthenticationException`, em `application/exceptions/`,

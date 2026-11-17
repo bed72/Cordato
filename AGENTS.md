@@ -2,6 +2,15 @@
 
 ## Migração Appwrite: Remoção Completa Do Client Anterior
 
+Por solicitação explícita posterior, `IAuthenticationRepository` agora contém
+somente `requestCode(email:)`, `confirmCode(userId:, code:)` e `signOut()`.
+O contrato antigo de senha/cadastro/recuperação/verificação foi removido, sem
+interface paralela ou contrato legado. Os nomes públicos não usam `Otp`:
+`requestCode` retorna `Future<String>` com o userId, sem entidade wrapper. Consumidores antigos ainda
+não migrados apresentam incompatibilidades de compilação; não restaure métodos
+removidos, crie stubs ou apague testes para mascará-las. Esta decisão prevalece
+sobre as referências à preservação do contrato antigo abaixo.
+
 Por solicitação explícita, PocketBase foi removido de todo o Flutter, não apenas
 do core: repositories concretos, bindings, testes exclusivos, fixtures e mocks.
 Não restaure o SDK, seus adapters, AuthStore ou testes de endpoints anteriores.
