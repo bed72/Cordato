@@ -21,7 +21,7 @@ The application SHALL request an email OTP for new and existing accounts through
 - **AND** infrastructure does not introduce timers, automatic retries or resend loops
 
 ### Requirement: OTP session confirmation
-The application SHALL exchange the challenge user identifier and the supplied OTP for a cookie-backed session. Confirmation SHALL complete successfully only after cookie handling and authenticated account validation succeed.
+The application SHALL exchange the challenge user identifier and the supplied OTP for a cookie-backed session. Confirmation SHALL complete successfully only after cookie handling and the subsequent account request succeed. Account response fields SHALL NOT be parsed or validated by the session client.
 
 #### Scenario: Valid code
 - **WHEN** a code is accepted and the subsequent account query succeeds
@@ -43,7 +43,7 @@ The application SHALL exchange the challenge user identifier and the supplied OT
 The OTP contract SHALL expose only pure application/domain values and expected application exceptions. Remote error messages, OTP values and cookie credentials MUST NOT be logged or stored in application state by this infrastructure.
 
 #### Scenario: Malformed response
-- **WHEN** a successful response has missing or incorrectly typed required challenge or account fields
+- **WHEN** the code-request response has missing or incorrectly typed user identifier
 - **THEN** parsing fails visibly rather than producing an empty challenge or successful authentication
 
 #### Scenario: Transport failure
@@ -52,7 +52,12 @@ The OTP contract SHALL expose only pure application/domain values and expected a
 - **AND** infrastructure makes no claim that an uncertain request was not processed
 
 ### Requirement: Infrastructure-only migration boundary
-The authentication adapter SHALL support code request, code confirmation and current-session logout through the single IAuthenticationRepository contract. The former password contract MUST be removed, without a parallel or legacy interface. Public authentication names MUST NOT encode the OTP mechanism. Existing password presentation consumers remain explicitly unmigrated rather than being connected to a partial or fictitious implementation; their compilation incompatibilities MUST remain visible until migration.
+The authentication adapter SHALL expose code request, confirmation and current-session logout through a single IAuthenticationRepository. The password contract MUST be removed without a parallel or legacy interface. Public authentication names MUST NOT encode the OTP mechanism.
+
+#### Scenario: Password consumers have not been migrated
+- **WHEN** a preserved password consumer calls a removed operation
+- **THEN** its compilation incompatibility remains visible until migration
+- **AND** no partial implementation, stub or fictitious success is introduced to hide it
 
 #### Scenario: New infrastructure is registered
 - **WHEN** the new OTP contract is resolved independently of any Authentication route

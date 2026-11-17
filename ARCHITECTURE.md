@@ -70,6 +70,37 @@ até sua migração ou remoção. Não há stubs, sucesso fictício nem exclusã
 para esconder essa lacuna. Settings preserva `signOut`, mas continua sem adapter.
 Telas, Blocs, rotas, navegação e `ISessionRepository` não foram alterados aqui.
 
+### Coordenação de sessão
+
+`core/infrastructure/clients/session/session_client.dart` contém a única
+coordenação de sessão, `SessionClient`, recebendo somente o Dio existente.
+Por solicitação explícita de simplificação, usa requests diretos e a política
+padrão de sucesso HTTP do Dio, sem validação de status específicos, parsing de
+conta, SDK, AuthStore ou implementação paralela.
+
+`loadSession()` consulta `/account`: sucesso publica/retorna `true`; HTTP 401
+publica/retorna `false`. `confirmCode` executa POST de sessão e GET de conta antes
+de publicar `true`. `signOut` exclui somente `/account/sessions/current` e publica
+`false` em sucesso ou 401. As demais falhas propagam sem evento de saída.
+
+Uma única fila ordena cada chamada até concluir request, efeitos do CookieManager
+e publicação. Não há cache, deduplicação ou compartilhamento de restaurações:
+cada chamada faz sua consulta. A fila continua após erros, sem retry automático;
+logout aguarda operações anteriores, inclusive seu timeout. O stream é broadcast,
+sem replay; cancelar uma assinatura não afeta as demais. `close()` aguarda a fila
+e fecha somente o stream, não o Dio injetado.
+
+Cookies ficam exclusivamente com CookieManager/PersistCookieJar. Não há limpeza
+manual, tombstones, controle adicional de persistência ou desembrulhamento de
+exceções. Sem `Set-Cookie` remoto de expiração, não se promete remoção local dos
+cookies ao receber 401 ou concluir logout. Sucesso HTTP da conta não valida seus
+campos nem comprova permissões financeiras. Falhas de cookies seguem o erro do
+transporte e não são consideradas 401 de sessão.
+
+Repositories e bindings continuam nas próximas steps, sem migração visual.
+Testes usam Dio/jar reais, adapter fake e diretório temporário, sem rede ou UI;
+isso não homologa o serviço nem torna o app completo funcional.
+
 As descrições PocketBase abaixo, os documentos arquivados e os serviços isolados
 em `backend/` e `worker/` são históricos, não requisitos do Flutter atual. Esses
 serviços não foram alterados nem houve deploy/importação nesta remoção.

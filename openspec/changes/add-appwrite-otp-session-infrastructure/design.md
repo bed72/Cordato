@@ -26,7 +26,7 @@ Manter `ISessionRepository.loadSession()` e `sessionChanges`, compatíveis com a
 
 Solicitar código com `POST account/tokens/email`, corpo `userId: unique()` e `email`, conforme o contrato da versão instalada; `unique()` é o sentinela REST, não uma dependência do SDK. Reenvio é uma nova chamada explícita, com retorno do novo desafio. Não inferir se a conta já existia. Não pedir security phrase nesta primeira versão.
 
-Confirmar com `POST account/sessions/token`, corpo `userId` e `secret` recebido do parâmetro `code`. A resposta não deve produzir um DTO público de sessão. Após cookies processados, executar `GET account` e validar campos obrigatórios antes de publicar autenticação. Restauração usa o mesmo GET. Logout usa `DELETE account/sessions/current`; não usar exclusão de todas as sessões.
+Confirmar com `POST account/sessions/token`, corpo `userId` e `secret` recebido do parâmetro `code`. A resposta não deve produzir um DTO público de sessão. Após cookies processados, executar `GET account` antes de publicar autenticação. Por solicitação de simplificação, usar sucesso HTTP do Dio sem parsing da conta ou validação adicional de status específicos. Restauração usa o mesmo GET. Logout usa `DELETE account/sessions/current`; não usar exclusão de todas as sessões.
 
 Os caminhos devem compor `/v1/account/...` preservando o prefixo do endpoint mesmo sem barra final. Verificar a resolução de URI do Dio em testes, em vez de assumir que a concatenação é correta. Confirmar status, payloads e cookies com documentação compatível com a versão instalada antes de fixar fixtures. Acesso remoto de escrita, disparo de e-mail ou alteração de configuração não fazem parte desta criação de spec nem são necessários para testes automatizados.
 
@@ -43,8 +43,8 @@ etapa; nenhuma fixture de repository foi criada ainda.
 | Operação | Request JSON | Sucesso documentado | Projeção a consumir |
 | --- | --- | --- | --- |
 | `POST /v1/account/tokens/email` | `userId: "unique()"`, `email` original; `phrase` omitido (default false) | 201, JSON Token | `userId` String não vazio para o desafio |
-| `POST /v1/account/sessions/token` | `userId` original, `secret` com o `code` original | 201, JSON Session | Nenhum DTO público; aguardar cookies e validar conta |
-| `GET /v1/account` | Sem corpo | 200, JSON User | `$id` String não vazio para identidade interna |
+| `POST /v1/account/sessions/token` | `userId` original, `secret` com o `code` original | 201, JSON Session | Nenhum DTO público; aguardar cookies e consultar conta |
+| `GET /v1/account` | Sem corpo | 200, JSON User | Corpo ignorado; sucesso HTTP confirma sessão |
 | `DELETE /v1/account/sessions/current` | Sem corpo | 204, sem conteúdo | Nenhuma resposta pública |
 
 O Token documentado contém `$id`, `$createdAt`, `userId`, `secret`, `expire` e
@@ -62,10 +62,10 @@ com exemplos `a_session_<projectId>` e `a_session_<projectId>_legacy`, atributos
 de domínio/path, expiração, Secure e HttpOnly. A mesma documentação define o
 sentinela REST `"unique()"` sem SDK. O jar existente deve respeitar os atributos
 efetivamente recebidos; não criar credencial a partir do corpo Session nem
-fallback bearer/`X-Fallback-Cookies`. A limpeza deve considerar as variantes de
-sessão e cookies host-only/de domínio sem atingir outras origens.
+fallback bearer/`X-Fallback-Cookies`. A expiração segue o Set-Cookie do servidor,
+sem limpeza manual de cookies pelo client de sessão.
 
-Os tratamentos de 401 como ausência e de falhas de cleanup são políticas locais
+Os tratamentos de 401 como ausência e de falhas de cookies são políticas locais
 das decisões 4 e 5, não garantias de que toda falha remota revogou ou preservou
 sessão. Não houve POST, DELETE, envio de e-mail ou mudança de configuração remota.
 A conferência documental não homologa SMTP, atributos reais de cookies ou o fluxo
@@ -73,25 +73,25 @@ autenticado da instância; isso continua sendo verificação separada.
 
 ### 3. Coordenação compartilhada específica de sessão
 
-Adicionar no core uma capacidade de infraestrutura específica de sessão Appwrite, root-owned, usada pelos dois repositories. Ela recebe Dio e cookies por injeção, executa somente operações de sessão/conta necessárias a esse fluxo e publica estados confirmados. Não é wrapper CRUD nem AuthStore próprio com token ou persistência paralela; os cookies continuam exclusivamente no jar existente.
+`SessionClient`, em `core/infrastructure/clients/session/`, recebe somente o Dio existente. Faz requests diretos de conta/sessão e publica booleanos por stream broadcast, sem replay. Cookies ficam com CookieManager/jar, sem SDK, AuthStore, contrato paralelo ou persistência própria. Não havia adapter de sessão atual em produção a preservar. Repositories e bindings seguem nas steps 3 e 4.
 
-Authentication solicita o desafio pelo Dio e delega confirmação/logout à capacidade; Session delega restauração/observação. Tipos Dio e respostas remotas ficam em infrastructure. Cada repository converte falhas remotas para a exceção da operação usando `ResponseMapper`. Não há import direto entre Authentication e Session. A conta consultada é uma projeção interna estrita para comprovar identidade (`$id` não vazio); não implementar `IUserRepository`, perfil, permissões ou nova entidade de usuário nesta etapa.
+Authentication solicita o código pelo Dio e delega confirmação/logout à capacidade; Session delega restauração/observação. Tipos Dio ficam em infrastructure, com mapeamento remoto nos repositories por ResponseMapper. Não há import entre Authentication e Session, interpretação da conta, perfil ou entidade adicional.
 
 Alternativas rejeitadas: evento global vindo de interceptor HTTP, reuso de AuthStore removido ou importação de Session por Authentication. Todas ampliam acoplamento ou reintroduzem mecanismos abandonados.
 
 ### 4. Serialização dos efeitos, não apenas dos eventos
 
-Serializar a cadeia inteira de cada operação de sessão: request, processamento de `Set-Cookie`, validação, limpeza e publicação. Confirmação mantém criação e GET na mesma unidade ordenada. Logout solicitado depois de confirmação ou restauração aguarda a unidade anterior e executa em seguida. A fila deve prosseguir depois de falhas e não executar retries automáticos.
+Uma fila simples ordena requests, processamento de Set-Cookie e publicação. Confirmação mantém POST e GET na mesma unidade. Logout aguarda operações anteriores, inclusive timeout. A fila continua após falhas, sem retries automáticos.
 
-Compartilhar restaurações simultâneas somente enquanto não houver mutação solicitada entre elas; após uma confirmação/logout enfileirada, uma nova restauração deve refletir essa ordem. Cancelar uma subscription não cancela o transporte nem fecha a capacidade compartilhada.
+Por solicitação de simplificação, não há compartilhamento, cache ou deduplicação de restaurações: cada chamada é enfileirada e consulta a conta. Cancelar uma assinatura não cancela transporte nem fecha as demais. `close()` aguarda a fila e fecha apenas o stream.
 
 Esta escolha evita que um simples contador descarte eventos mas deixe `CookieManager` persistir `Set-Cookie` obsoleto. O custo é um logout aguardar o timeout de uma operação anterior. Não usar flags de UI nem interceptors de autenticação para contornar a ordem.
 
 ### 5. Políticas de ausência, falha e logout
 
-`GET /account` com 401 confirma ausência: remover os cookies de sessão do serviço e só então retornar/publicar false. Rede, 403, 5xx, payload inválido e erro local não significam logout. Não instalar tratamento global de 401 para outras features.
+`GET /account` com sucesso HTTP confirma sessão sem validar campos. HTTP 401 de resposta confirma ausência; rede, 403, 5xx e erros locais não publicam logout. Falha de cookies encapsulada por Dio não é confundida com 401 de resposta.
 
-Logout remoto bem-sucedido ou 401 de sessão já ausente permite limpeza explícita. Limpar cookies relevantes ao serviço configurado sem apagar cookies de origens alheias; usar a API pública do jar e testar cookies de domínio e host-only. Aguardar persistência da limpeza antes do evento/compleção. Se falhar, propagar; o retry explícito deve poder terminar a limpeza mesmo com sessão já revogada.
+Por solicitação explícita de simplificação, removidos limpeza manual, tombstones e desembrulhamento próprio de exceções. Cookies, expiração e falhas seguem CookieManager/jar. Sem Set-Cookie remoto de expiração, 401 ou logout não prometem exclusão local de cookies. Não há garantia adicional de retry de limpeza incompleta.
 
 Política adotada como recomendação conservadora: falha remota de logout não inicia limpeza local nem publica saída. Isso não promete que um request com timeout não revogou a sessão no servidor. A resposta futura de restauração reconcilia a realidade. Um POST de confirmação aceito seguido de GET falho também é incerto: não publicar sucesso nem repetir POST automaticamente; permitir restauração explícita posterior.
 

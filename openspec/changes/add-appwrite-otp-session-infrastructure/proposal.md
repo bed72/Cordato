@@ -9,6 +9,7 @@ O Flutter já possui Dio e cookies persistidos, mas os adapters de backend anter
 - Introduzir contrato de aplicação e repository para solicitar OTP, confirmar código e encerrar a sessão atual, sem métodos de senha ou cadastro separado.
 - Implementar restauração e observação de sessão por cookies e consulta autenticada de `/account`.
 - Compartilhar uma coordenação mínima das operações de sessão entre repositories, independente de apresentação e sem dependência direta entre Authentication e Session.
+- Por solicitação de simplificação da step 2: usar sucesso HTTP de conta, uma fila simples por chamada e cookies geridos pelo CookieManager, sem parsing da conta, deduplicação, limpeza manual ou garantias adicionais de persistência.
 - Registrar infraestrutura de produção na DI, com testes de contratos, transporte, persistência, concorrência e resolução isolada.
 - Substituir a especificação histórica de logout por comportamento de infraestrutura Appwrite; não migrar Settings nesta etapa.
 - Substituir o contrato antigo pelo único `IAuthenticationRepository`, sem nomes públicos com OTP, interface paralela ou contrato legado, conforme correção explícita do usuário na step 1.
@@ -23,7 +24,7 @@ O Flutter já possui Dio e cookies persistidos, mas os adapters de backend anter
 
 ### Modified Capabilities
 
-- `authentication-session-logout`: revogação da sessão Appwrite atual, limpeza local e isolamento das camadas, substituindo requisitos históricos de Supabase/commands sem alterar UI.
+- `authentication-session-logout`: revogação da sessão Appwrite atual, cookies geridos pelo transporte e isolamento das camadas, substituindo requisitos históricos de Supabase/commands sem alterar UI.
 
 ## Impact
 

@@ -21,19 +21,20 @@
 ## ADDED Requirements
 
 ### Requirement: Current-session revocation
-The application SHALL revoke only the current Appwrite session before removing its local credentials and reporting successful logout. It MUST NOT revoke all user sessions or claim durable local cleanup before cookie persistence completes.
+The application SHALL revoke only the current Appwrite session and await transport response handling before reporting logout. It MUST NOT revoke all user sessions or promise additional local cookie cleanup beyond the server's Set-Cookie response.
 
 #### Scenario: Successful logout
-- **WHEN** the current-session deletion succeeds and local cleanup completes
+- **WHEN** the current-session deletion succeeds and transport cookie handling completes
 - **THEN** logout completes and observers receive unauthenticated
 - **AND** other devices' sessions are not targeted
 
 #### Scenario: Session already absent
 - **WHEN** deletion explicitly returns 401 because no current authenticated session exists
-- **THEN** local session cookies are removed and logout completes as unauthenticated after cleanup succeeds
+- **THEN** logout completes as unauthenticated after transport response handling
+- **AND** no manual cookie deletion is performed
 
 ### Requirement: Logout failure preserves confirmed state
-An unconfirmed remote logout SHALL fail without deliberately clearing local credentials or publishing unauthenticated. A local cleanup failure after confirmed remote revocation SHALL remain a failure and permit an explicit retry.
+An unconfirmed remote logout SHALL fail without deliberately clearing local credentials or publishing unauthenticated. Cookie handling failures SHALL remain transport failures; the session client MUST NOT add cleanup recovery state or automatic retries.
 
 #### Scenario: Remote revocation fails
 - **WHEN** deletion times out or returns a failure other than confirmed absence of session
@@ -41,10 +42,14 @@ An unconfirmed remote logout SHALL fail without deliberately clearing local cred
 - **AND** no automatic retry occurs
 - **AND** the caller is not promised that the remote session remains valid after an uncertain response
 
-#### Scenario: Cleanup fails after revocation
-- **WHEN** remote revocation succeeds but local cookie deletion fails
-- **THEN** logout does not report full success or publish completed local logout
-- **AND** an explicit retry can reconcile a remotely absent session and finish cleanup
+#### Scenario: Cookie persistence fails after revocation
+- **WHEN** remote revocation succeeds but CookieManager fails to persist response cookies
+- **THEN** logout fails without publishing unauthenticated
+- **AND** no extra local cleanup or rollback is claimed
+
+#### Scenario: No cookie expiry in response
+- **WHEN** remote revocation succeeds without cookie expiry headers
+- **THEN** logout publishes unauthenticated but makes no claim that cookies were removed locally
 
 ### Requirement: Independent logout infrastructure
 The logout operation SHALL be available through a pure application contract outside route scopes. It MUST NOT navigate, access presentation state or require visiting Authentication first.

@@ -11,6 +11,19 @@ não migrados apresentam incompatibilidades de compilação; não restaure méto
 removidos, crie stubs ou apague testes para mascará-las. Esta decisão prevalece
 sobre as referências à preservação do contrato antigo abaixo.
 
+A única coordenação de sessão é `SessionClient` em
+`core/infrastructure/clients/session/`, recebendo somente o Dio existente.
+Por solicitação explícita de simplificação, usa o sucesso HTTP de `/account`,
+sem parsing ou validação própria da conta. Uma fila simples ordena cada chamada,
+sem cache/compartilhamento de restaurações, retries ou implementação paralela.
+Cookies e suas falhas seguem o CookieManager/jar existentes: não há limpeza
+manual, tombstones ou desembrulhamento próprio de exceções. HTTP 401 de conta ou
+logout confirma ausência, mas não promete remoção local sem Set-Cookie remoto.
+Falhas de transporte/storage não são convertidas em ausência.
+Ainda não há binding dessa capacidade ou repositories consumidores nesta step.
+Não restaure o refresh/AuthStore anterior nem conecte os consumidores de senha
+artificialmente ao novo fluxo. Os contratos de Session e seu Bloc não mudaram.
+
 Por solicitação explícita, PocketBase foi removido de todo o Flutter, não apenas
 do core: repositories concretos, bindings, testes exclusivos, fixtures e mocks.
 Não restaure o SDK, seus adapters, AuthStore ou testes de endpoints anteriores.

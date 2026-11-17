@@ -9,22 +9,22 @@
 
 ## 2. Coordenação compartilhada de sessão
 
-- [ ] 2.1 Implementar consulta estrita de conta na capacidade compartilhada com Dio e jar injetados; verificar GET com URI preservando `/v1`, cookies, 401, 403, 5xx, payload inválido e falhas de leitura/limpeza usando adapter fake e diretório temporário.
-- [ ] 2.2 Implementar observação de estados confirmados e compartilhamento de restauração pendente; verificar subscribers independentes, cancelamento e validação única por sessão sem mutação intermediária.
-- [ ] 2.3 Implementar serialização completa de efeitos de restauração, confirmação e logout; verificar com Completer que a fila continua após falha e que operações antigas não sobrescrevem cookies ou estado depois de mutações posteriores.
-- [ ] 2.4 Documentar em ARCHITECTURE.md ownership, ordem de operações, espera por timeouts e ausência de interceptor de sessão; conferir com testes de arquitetura e implementação efetiva.
+- [x] 2.1 Implementar GET de conta pelo Dio existente, sem validação própria de status/campos ou limpeza manual; verificar `/v1`, cookies pelo transporte, sucesso, 401, 403, 5xx e falhas de cookies com adapter fake e diretório temporário.
+- [x] 2.2 Implementar observação broadcast e restauração por chamada explícita, sem cache/deduplicação; verificar subscribers independentes, cancelamento e ordem das consultas.
+- [x] 2.3 Implementar serialização completa de efeitos de restauração, confirmação e logout; verificar com Completer que a fila continua após falha e que operações antigas não sobrescrevem cookies ou estado depois de mutações posteriores.
+- [x] 2.4 Documentar em ARCHITECTURE.md ownership, ordem de operações, espera por timeouts e ausência de interceptor de sessão; conferir com testes de arquitetura e implementação efetiva.
 
 ## 3. Repository OTP e logout
 
 - [ ] 3.1 Implementar solicitação e reenvio explícito de OTP; verificar payload REST `userId: unique()`, e-mail inalterado, desafio retornado, parsing inválido, limite de requests, timeout e ausência de retry/autenticação antecipada.
-- [ ] 3.2 Implementar confirmação por código e validação subsequente da conta na unidade serializada; verificar payload com `secret`, cookies persistidos antes da validação, evento autenticado apenas após GET válido e falha incerta quando GET falhar após criação.
-- [ ] 3.3 Implementar revogação da sessão atual e limpeza local aguardada; verificar sucesso, 401 já ausente, erro remoto sem saída publicada, falha de persistência após revogação e retry explícito que conclui a limpeza sem atingir outras origens.
+- [ ] 3.2 Implementar confirmação por código e consulta subsequente da conta na unidade serializada; verificar payload com `secret`, cookies processados antes da consulta, evento autenticado após sucesso HTTP do GET e falha incerta quando GET falhar após criação.
+- [ ] 3.3 Implementar revogação da sessão atual com cookies geridos pelo transporte; verificar sucesso, 401 já ausente, erro remoto sem saída publicada e falha de persistência sem limpeza manual ou garantia adicional de retry.
 - [ ] 3.4 Mapear falhas remotas para AuthenticationException com ResponseMapper; verificar preservação de status/type e propagação de erros inesperados sem conteúdo remoto, credenciais ou logs.
 - [ ] 3.5 Documentar em README.md a política de logout, confirmação incerta e infraestrutura OTP ainda sem telas; conferir que não promete login utilizável ou revogação remota em timeout.
 
 ## 4. Repository Session e composição
 
-- [ ] 4.1 Implementar ISessionRepository pela capacidade compartilhada, sem alterar SessionBloc; verificar loadSession, stream, SessionException com ErrorsEntity original e propagação de parsing/storage inesperados.
+- [ ] 4.1 Implementar ISessionRepository pela capacidade compartilhada, sem alterar SessionBloc; verificar loadSession, stream, SessionException com ErrorsEntity original e falhas de transporte/cookies sem ausência presumida.
 - [ ] 4.2 Registrar capacidade no core e repositories nos módulos existentes sem paths novos; verificar resolução isolada dos contratos Authentication e Session sem visitar rotas, compartilhamento das dependências e ausência de métodos de senha.
 - [ ] 4.3 Testar restauração com uma nova instância do jar no mesmo diretório, expiração de cookies e recusa de outra origem/redirect; verificar com Dio real e adapter fake, sem rede nem UI.
 - [ ] 4.4 Testar ponta a ponta da infraestrutura OTP → cookies → conta → observação → logout, incluindo confirmação/restauração concorrentes com logout; verificar estado final e conteúdo efetivo do jar sem sleeps arbitrários.
@@ -62,3 +62,30 @@
 - `flutter analyze` após a substituição apontou 93 issues nos consumidores antigos e testes dos métodos removidos; não são bloqueios anteriores à tarefa. Não foram criados stubs nem removidos testes antigos para mascarar as incompatibilidades.
 - A tentativa de suíte global foi interrompida e não comprova aprovação. A migração/remoção dos consumidores antigos continua pendente.
 - Verificação após simplificar para String: `flutter test test/architecture/authentication_contract_test.dart test/features/authentication/application --reporter failures-only`, nove testes aprovados.
+
+## Registro inicial — step 2 (17/11/2026, substituído pela simplificação abaixo)
+
+- Antes de implementar, todas as alterações pendentes foram commitadas a pedido do usuário: `3074c08` (`refactor: replace authentication contract with code-based operations`).
+- Implementadas tarefas 2.1–2.4 em `SessionClient`, a única coordenação de sessão; não havia repository/client de sessão legado em produção para preservar ou duplicar. Dio, CookieManager e jar existentes foram reutilizados.
+- GET de conta com parsing estrito, observação broadcast, compartilhamento de restauração pendente e fila de restauração/confirmação/logout incluindo efeitos de cookies. Sem wrapper de entidade, nomes públicos com OTP, SDK, AuthStore ou camada legada paralela.
+- Remoção persistida somente dos cookies de sessão do projeto aplicáveis à conta, preservando outros cookies/origens. Tombstones de valor vazio permitem retry explícito de escrita incompleta, inclusive após remoção em memória. Falhas de CookieManager propagam sua causa original.
+- Adicionado fake de storage delegado a FileStorage real e estendido o adapter fake existente para respostas assíncronas. Os 37 testes de SessionClient usam diretório temporário, jar real e Completer, sem rede, UI ou sleeps.
+- `flutter pub get` concluído, sem alteração de dependências. `flutter analyze` permanece com as mesmas 93 issues dos consumidores de senha da step 1, sem diagnóstico nos arquivos desta step. Um import desnecessário introduzido durante o desenvolvimento foi removido.
+- `dart analyze lib/features/core/infrastructure/clients/session test/features/core/infrastructure/clients/session test/support/core/fakes/cookie_storage_fake.dart test/support/core/fakes/http_client_adapter_fake.dart`: sem issues.
+- `flutter test test/features/core/infrastructure/clients/session/session_client_test.dart test/features/core/infrastructure/clients/http --reporter failures-only`: 54 aprovados.
+- `flutter test test/architecture test/features/core test/features/session test/features/authentication/application --reporter failures-only`: 301 aprovados.
+- `flutter test --reporter failures-only`: 1.095 aprovados e 13 falhas de carregamento/compilação por consumidores dos métodos removidos de Authentication (incluindo composição global e Settings). A primeira tentativa foi interrompida pela reconexão do ambiente; o comando foi repetido até concluir. Nenhuma cobertura antiga foi apagada ou mascarada.
+- ARCHITECTURE.md e AGENTS.md registram ownership, ordem dos efeitos, espera por timeout e ausência de interceptor de sessão. Repositories, bindings e migração visual seguem pendentes, conforme as steps seguintes.
+- `openspec validate add-appwrite-otp-session-infrastructure --strict` aprovado após mover o cenário de consumidores antigos para fora do requisito excessivamente longo. `git diff --check` e verificação de formatação sem problemas.
+
+### Simplificação solicitada pelo usuário
+
+- Substituído o SessionClient de 145 por 66 linhas, recebendo somente Dio. Mantidos requests diretos, stream broadcast e uma fila simples que continua após falhas.
+- Removidos `_validateAccount`, parsing de identidade, validação adicional de status, cache/compartilhamento de restaurações, limpeza manual, tombstones e desembrulhamento próprio de erros de cookies.
+- Cada chamada de restauração consulta `/account`. Sucesso segue o Dio; 401 de resposta confirma ausência. A confirmação mantém POST e GET na mesma operação antes de publicar autenticação.
+- Cookies ficam exclusivamente com CookieManager/jar. Sem expiração enviada pelo servidor, não se promete remoção local ao receber 401 ou concluir logout. Não há recuperação adicional de gravações incompletas.
+- Design, specs, ARCHITECTURE.md e AGENTS.md atualizados para essas decisões. Os testes específicos das garantias removidas foram substituídos por cenários da política simplificada; cobertura independente e consumidores antigos não foram apagados para esconder falhas.
+- `flutter test test/features/core/infrastructure/clients/session/session_client_test.dart --reporter failures-only`: 26 aprovados.
+- `flutter test test/architecture test/features/core test/features/session test/features/authentication/application --reporter failures-only`: 290 aprovados.
+- Análise focada do client, seus testes e fakes sem issues. `flutter analyze` permanece com as mesmas 93 issues nos consumidores dos métodos de senha removidos; nenhum diagnóstico nos arquivos da simplificação.
+- `openspec validate add-appwrite-otp-session-infrastructure --strict` e `git diff --check` aprovados. Sem nova dependência, commit, deploy ou migração visual.
