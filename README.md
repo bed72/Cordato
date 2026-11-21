@@ -61,7 +61,66 @@ Verificação da migração User:
 - Suíte global e builds nativos não executados; não há confirmação de execução
   do app completo nem conferência visual.
 
-### Verificação da remoção de CSV
+### Dashboard sem áudio
+
+O botão “Adicionar gasto” abre somente o formulário manual. Não há toque longo,
+gravação, barra de áudio, animação de expansão, envio ao worker ou feedback de
+captura. O botão mantém semântica acessível, cores do tema e o bounce do core.
+Ao voltar com uma despesa confirmada, a Dashboard solicita atualização; cancelar
+o formulário não dispara essa atualização.
+
+Previews não criam recursos de áudio. Os enums, exceções, formatadores, mixin e
+testes exclusivos restantes foram removidos. Isso não migra Metrics nem altera
+a implementação nativa dos widgets do sistema.
+
+Verificação desta remoção:
+
+- `flutter pub get`: concluído, sem novas dependências.
+- Análise focada dos widgets, screen, preview e testes alterados: sem problemas.
+- `flutter test --no-pub test/architecture test/features/dashboard
+  test/features/expense test/features/root --reporter failures-only`:
+  **531 aprovados**.
+- `flutter test --no-pub --reporter failures-only`: **900 aprovados e 3 falhas
+  de carregamento**, ainda em Metrics e composição global.
+- `flutter analyze --no-pub`: 25 ocorrências no estado observado, em Metrics,
+  seus testes pendentes e no fallback antigo `UserEntity.id` da Dashboard.
+  Esse fallback é um bloqueio independente da remoção de áudio.
+- Sem testes de UI, build nativo ou conferência visual.
+
+### Histórico da manutenção dos testes na transição local
+
+Foram removidos os testes exclusivos de implementações já apagadas de
+PocketBase/identidade, gravação e áudio, além dos respectivos doubles sem uso.
+As exclusões já em andamento foram preservadas. O teste de callbacks de
+autenticação foi retirado; os testes do gerador de associações nativas em
+`test/tool/app_links_test.dart` continuam, pois essa ferramenta ainda existe.
+As verificações de acessibilidade mantêm as mesmas asserções para os componentes
+restantes, sem ignorar arquivos ausentes dinamicamente.
+
+O teste de DI do core agora também verifica formatadores compartilhados,
+localização `pt_BR` e resolução do client de widget sem visitar rotas.
+`test/app_module_test.dart` foi adaptado para ToStore, destinos locais e
+factories atuais, sem login, logout ou áudio.
+
+Verificação:
+
+- `flutter pub get`: concluído.
+- `flutter test --no-pub test/architecture
+  test/features/core/tostore_module_test.dart
+  test/features/core/presentation/enums/app_route_test.dart
+  --reporter failures-only`: **89 aprovados**.
+- `flutter test --no-pub --reporter failures-only`: **913 aprovados e 3 falhas
+  de carregamento**, em `metrics_module_test.dart`, `metrics_repository_test.dart`
+  e `app_module_test.dart`.
+- `flutter analyze --no-pub`: 61 ocorrências no estado observado, concentradas
+  nas referências de produção ainda pendentes de Dashboard/Metrics e testes
+  legados de Metrics. A Dashboard também recebeu alterações em paralelo.
+- `git diff --check`: sem problemas. Sem build nativo ou testes de UI.
+
+As falhas remanescentes não foram convertidas em skip, ocultadas por módulos
+mockados nem resolvidas restaurando dependências removidas.
+
+### Histórico da verificação da remoção de CSV
 
 - `flutter pub get`: concluído; csv e share_plus removidos do lockfile.
 - Análise focada de Expense, Settings, Information, módulo core e testes:
@@ -1440,36 +1499,3 @@ Não adicione comentários ao código; decisões ficam em Markdown.
 Mudanças de arquitetura, testes ou estado do produto devem manter estes três
 documentos coerentes e registrar limitações reais, sem declarar migrações ou
 validações que ainda não ocorreram.
-## Gravação de áudio na Dashboard
-
-Mantenha o botão de adicionar gasto pressionado para abrir a gravação de áudio.
-Soltar mantém a captura; X descarta e a seta finaliza. O toque curto continua
-abrindo o formulário. O widget e suas animações permanecem iguais. Ao atingir
-30 segundos, a gravação para e a barra aguarda seta ou X.
-
-Usa `record` para gravar AAC em arquivo `.m4a` temporário, sem transcrição nem
-logs de conteúdo. O áudio temporário é removido ao finalizar ou descartar o fluxo.
-O app não interpreta nem cadastra despesas; isso pertence ao worker.
-
-O fluxo usa `AudioBloc` → `IAudioRepository` / `AudioRepository` →
-`RecordingClient`, com uma única família de eventos de captura, sem transcrição
-ou conversão intermediária de notificações. Os nomes de código usam áudio;
-o visual, os gestos e as animações da barra permanecem preservados.
-
-A seta finaliza e envia o áudio ao worker, usando multipart no campo `file`
-(`audio/mp4`, até 2 MiB), data civil local e JWT atual. Usa `http`/`http_parser`
-somente na infraestrutura desse envio, sem client HTTP genérico.
-Após validar upload e sessão, o worker retorna `202`; o app mostra
-“Áudio recebido para processamento”, não “Despesa cadastrada”.
-Não há polling, retry ou atualização automática: recarregue as despesas depois.
-O processamento é em memória; reinícios podem perder áudios já aceitos e falhas
-posteriores ficam somente nos logs seguros. Se o envio ficar sem confirmação,
-confira suas despesas antes de reenviar para evitar duplicação.
-
-Há testes unitários da captura e apresentação lógica, sem testes de UI.
-Android/iOS reais, builds nativos e o endpoint ainda precisam de validação.
-
-Verificação local da integração (10/11/2026): `flutter pub get` e `flutter analyze`
-concluídos, `flutter test --reporter failures-only` com 1.608 testes aprovados.
-O worker passou 195 testes locais com IA configurável por `AI_BASE_URL`, `AI_MODEL`
-e `AI_API_KEY`, usando OpenRouter por padrão; detalhes e limites no seu README.

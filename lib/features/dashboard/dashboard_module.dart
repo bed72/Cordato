@@ -1,11 +1,9 @@
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
-import 'package:cordato/features/core/presentation/extensions/bloc_scoped_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
 
-import 'package:cordato/features/dashboard/presentation/screens/bloc/audio_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
 

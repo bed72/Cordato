@@ -84,6 +84,26 @@ sem UI. Mocks do SDK são restritos a injeção de falhas e controle de operaç�
 pendentes do inicializador/repositories User e Expense, com doubles em
 `test/support/core/mocks/`. Preserve e registre os erros legados fora do escopo.
 
+Por solicitação explícita, testes exclusivos das implementações removidas de
+PocketBase, sessão/identidade autenticada, recording e áudio foram eliminados,
+assim como seus doubles sem consumidores. Não os restaure para recriar fluxos
+removidos. O teste antigo do bootstrap PocketBase do core foi substituído pela
+cobertura atual de ToStore/DI em `test/features/core/tostore_module_test.dart`.
+Testes de composição global acompanham o contrato local e não devem mockar
+modules inteiros para ocultar dependências inválidas. Metrics e a composição
+do app ainda podem falhar enquanto suas implementações estiverem pendentes;
+preserve testes de comportamento desses fluxos existentes para a migração.
+Testes de acessibilidade deixam de enumerar arquivos de telas removidas, sem
+skip condicional por existência nem relaxamento das asserções dos componentes atuais.
+
+Dashboard não contém áudio, speech, gravação, toque longo ou dependências de
+microfone, inclusive em previews. O botão de gasto é somente manual, com o
+IconButtonWidget do core e sem controller/lifecycle de captura.
+ActionButtonDashboardWidget abre Expense por BuildContext com retorno tipado e
+returnToPrevious; só solicita DashboardExpensesChanged após retornar uma despesa
+confirmada, com contexto montado e a mesma instância viva do DashboardBloc.
+Não restaure enums, exceções, formatadores, mixins ou testes exclusivos do áudio.
+
 ## Client Atual: SDK PocketBase
 
 A infraestrutura HTTP própria foi removida por solicitação explícita.
@@ -308,29 +328,9 @@ Não alterar Flutter ou backend nem executar deploy incidentalmente ao manter es
 
 ## Produto E Limites
 
-A captura de áudio na Dashboard usa `record`, sem transcrição ou logs de conteúdo,
-inclusive em debug. O widget, seus gestos e animações permanecem preservados.
-O adapter grava AAC em `.m4a` temporário por até 30 segundos; X, lifecycle e
-cancelamento da observação liberam o microfone e removem o arquivo. A seta finaliza
-a captura e envia multipart ao worker. Somente `202` válido confirma aceite para
-processamento, nunca cadastro da despesa; não há polling ou atualização automática.
-O usuário recarrega as despesas depois. O worker processa em memória, sem fila
-persistente; reinícios podem perder áudios aceitos e falhas posteriores ficam nos logs.
-O fluxo usa `IAudioRepository` → `AudioRepository` → `IRecordingClient` /
-`RecordingClient`. `RecordingEvent` é a única família de notificações de captura,
-repassada sem duplicação ou mapper; o Bloc e os tipos da Dashboard usam `Audio`,
-não `Speech`. O client separa preparação, observação, finalização e limpeza, sem
-misturar essas responsabilidades em callbacks extensos. O uso de `http` e
-`http_parser` em produção foi explicitamente autorizado para esse envio, diretamente
-no repository, sem restaurar o client HTTP genérico removido. `WORKER_URL` é uma
-origem HTTPS separada da `BASE_URL`; o JWT atual vai somente ao worker configurado,
-sem redirecionamentos, retries ou gestão da sessão nesse fluxo.
-O contrato remoto é POST `/api/collections/audio/process`, multipart
-com campo `file` de tipo `audio/mp4`; `202` representa somente aceite para
-processamento e `415` formato não suportado. A resposta `202` exige `request_id`
-não vazio e `status: processing`. Falha de transporte/timeout/resposta incerta
-orienta conferir despesas antes de reenviar. Isso não comprova homologação remota.
-Não interpretar nem cadastrar despesas no Flutter neste fluxo.
+O fluxo de áudio da Dashboard foi removido. O cadastro de despesas é manual;
+não há captura, envio ao worker ou interpretação por IA nesse contexto.
+Históricos de áudio neste repositório não autorizam restaurar a funcionalidade.
 
 Cordato é um aplicativo de finanças pessoais e familiares. Cada pessoa é dona
 dos próprios dados; família é uma lente autorizada de leitura, não dona do dinheiro.

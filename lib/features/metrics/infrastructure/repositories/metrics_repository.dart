@@ -2,7 +2,6 @@ import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 
 import 'package:cordato/features/core/infrastructure/serializers/date_serializer.dart';
-import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_mapper.dart';
 
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
@@ -14,7 +13,7 @@ import 'package:cordato/features/metrics/application/repositories/interface_metr
 
 final class MetricsRepository({
   required final PocketBase _pocketBase,
-  required final IHomeWidgetClient _homeWidgetClient,
+  required final IHomeWidgetClient _client,
 }) implements IMetricsRepository {
   @override
   Future<ExpenseMetricsEntity> getExpenses({
@@ -43,9 +42,7 @@ final class MetricsRepository({
       );
     }
 
-    final widgetRevision = isCurrentMonth
-        ? _homeWidgetClient.beginMonthlyRead()
-        : null;
+    final widgetRevision = isCurrentMonth ? _client.beginMonthlyRead() : null;
 
     try {
       final response = await _pocketBase.send<Map<String, dynamic>>(
@@ -63,7 +60,7 @@ final class MetricsRepository({
       final items = response['items'] as List;
       if (items.isEmpty) {
         if (widgetRevision != null) {
-          await _homeWidgetClient.publishMonthlyTotal(
+          await _client.publishMonthlyTotal(
             cents: 0,
             month: first,
             revision: widgetRevision,
@@ -89,7 +86,7 @@ final class MetricsRepository({
       }
 
       if (widgetRevision != null) {
-        await _homeWidgetClient.publishMonthlyTotal(
+        await _client.publishMonthlyTotal(
           month: first,
           revision: widgetRevision,
           cents: metrics.totalAmount,

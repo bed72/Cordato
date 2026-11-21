@@ -165,11 +165,7 @@ void main() {
                   'application/repositories/interface_home_widget_launch_repository.dart',
                 }.contains(targetPath);
             final isApplicationContract =
-                (targetContext == 'dashboard' &&
-                    targetPath ==
-                        'application/repositories/interface_audio_repository.dart') ||
-                isFeatureRepositoryContract ||
-                isRootWidgetContract;
+                isFeatureRepositoryContract || isRootWidgetContract;
             final isOuterAdapter =
                 targetPath.startsWith('application/clients/') ||
                 targetPath.startsWith('application/repositories/') ||

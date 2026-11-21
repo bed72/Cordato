@@ -128,7 +128,7 @@ final class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 ),
                 floatingActionButtonLocation: .endFloat,
-                floatingActionButton: ActionButtonDashboardWidget(),
+                floatingActionButton: const ActionButtonDashboardWidget(),
               ),
       ),
     );

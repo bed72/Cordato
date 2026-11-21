@@ -8,14 +8,12 @@ import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_event
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_state.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
-import '../../support/core/fakes/pocketbase_fixture.dart';
 import '../../support/core/mocks/home_widget_client_mock.dart';
 
 void main() {
-  late PocketBaseFixture fixture;
-  late ModularBootstrap boot;
-  late DateTime first;
   late DateTime last;
+  late DateTime first;
+  late ModularBootstrap boot;
 
   setUp(() {
     final now = DateTime.now();

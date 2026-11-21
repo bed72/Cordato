@@ -1,43 +1,41 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:cordato/features/dashboard/presentation/widgets/audio_bar_widget.dart';
-import 'package:cordato/features/dashboard/presentation/screens/bloc/audio_state.dart';
-import 'package:cordato/features/dashboard/presentation/widgets/mixins/dashboard_audio_state_mixin.dart';
+import 'package:flutter_modular/flutter_modular.dart' show ModularNavigationX;
+
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
+import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_event.dart';
+import 'package:cordato/features/dashboard/presentation/widgets/expense_action_button_widget.dart';
 
 final class const ActionButtonDashboardWidget({super.key})
-    extends StatefulWidget {
-  @override
-  State<ActionButtonDashboardWidget> createState() =>
-      _ActionButtonDashboardWidgetState();
-}
-
-final class _ActionButtonDashboardWidgetState
-    extends State<ActionButtonDashboardWidget>
-    with
-        SingleTickerProviderStateMixin,
-        WidgetsBindingObserver,
-        DashboardAudioStateMixin {
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
       bottom: false,
-      child: BlocConsumer<AudioBloc, AudioState>(
-        bloc: widget.bloc,
-        listener: (_, state) => handleAudioState(state),
-        builder: (context, state) => AnimatedBuilder(
-          animation: expansion,
-          builder: (context, _) => AudioBarWidget(
-            state: state,
-            expansion: expansion.value,
-            onOpenExpense: openExpense,
-            onStartCapture: startAudio,
-            onCancelCapture: cancelAudio,
-            onSubmitCapture: submitAudio,
-          ),
-        ),
-      ),
+      child: ExpenseActionButtonWidget(onTap: () => _openExpense(context)),
     );
+  }
+
+  Future<void> _openExpense(BuildContext context) async {
+    if (ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+
+    final bloc = context.read<DashboardBloc>();
+    final expense = await context.pushNamed<ExpenseEntity>(
+      RouteEnum.expense.path,
+      arguments: (returnToPrevious: true),
+    );
+
+    if (expense != null &&
+        context.mounted &&
+        !bloc.isClosed &&
+        identical(context.read<DashboardBloc>(), bloc)) {
+      bloc.add(DashboardExpensesChanged());
+    }
   }
 }

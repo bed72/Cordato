@@ -154,6 +154,23 @@ Remoção local não elimina cópias exportadas, backups do sistema ou dados env
 a terceiros. Apoio via Pix continua voluntário e externo ao processamento do app.
 Essa revisão editorial não constitui validação jurídica ou aprovação no Play.
 
+### Cadastro manual na Dashboard
+
+ActionButtonDashboardWidget é StatelessWidget e abre somente o formulário de
+Expense. O retorno tipado e returnToPrevious permanecem: uma despesa confirmada
+solicita DashboardExpensesChanged apenas se o contexto estiver montado e o
+DashboardBloc capturado continuar vivo e atual. Cancelamento não solicita refresh.
+ExpenseActionButtonWidget usa IconButtonWidget do core, com semântica de adicionar
+gasto, área de 48 pixels, cores do tema e bounce compartilhado. Não há toque longo,
+controller de expansão, observação de lifecycle, captura ou envio de áudio.
+
+Enums, exceções, formatador e mixin exclusivos do áudio foram removidos, assim
+como os testes próprios. Previews retornam DashboardScreen diretamente, mantendo
+somente o ownership existente do DashboardBloc pela screen. O módulo não registra
+AudioBloc nem recursos de gravação. Testes arquiteturais sem UI verificam essas
+fronteiras e a preservação da navegação manual. Metrics e ajustes não relacionados
+ao áudio permanecem fora desta alteração.
+
 ### Root local e widgets do sistema
 
 `main` aguarda o banco/perfil local e usa `/dashboard` como rota inicial, sem
@@ -190,6 +207,13 @@ da migração de Metrics para armazenamento local; testes isolados de Root usam 
 contrato mockado, sem comprovar o app inteiro ou atualização real do widget.
 Testes exclusivos das políticas de sessão removidas são substituídos por políticas
 locais, testes de navegação/concorrência/DI e arquitetura, sem UI.
+
+Na manutenção posterior dos testes, suítes exclusivas de implementações removidas
+(PocketBase/identidade, recording e áudio) e doubles sem uso foram eliminados por
+solicitação explícita. O core mantém testes do SDK ToStore real e DI local;
+a composição global é testada pelo contrato local, sem simular módulos para
+ocultar falhas de produção. Testes de Metrics e da composição do app continuam
+registrando bloqueios enquanto as implementações pendentes não compilarem.
 
 ## Decisão Canônica
 
@@ -2191,69 +2215,3 @@ Flutter; não invente resultado de análise, testes ou execução no dispositivo
 
 Mudanças estruturais atualizam os documentos afetados na mesma alteração.
 Histórico de OpenSpec não substitui o código atual nem redefine estas decisões.
-# Captura de áudio na Dashboard
-
-O toque curto no botão de despesa mantém o formulário; toque longo abre a barra
-com X, onda e seta. Soltar não confirma. Os widgets, gestos e animações permanecem
-inalterados. A captura usa `record`, grava AAC mono em arquivo `.m4a` temporário
-por até 30 segundos e alimenta a onda existente com amplitude normalizada de dBFS.
-Ao atingir o limite, encerra a gravação e aguarda seta ou X, sem reinício automático.
-No Flutter não há transcrição, diagnóstico de conteúdo, interpretação ou cadastro financeiro;
-interpretação e cadastro pertencem exclusivamente ao worker após o aceite.
-
-`AudioBloc` pertence ao `provide` da Dashboard, sem migrar DashboardBloc.
-Consome `IAudioRepository`, implementado por `AudioRepository`; infrastructure usa `IRecordingClient`
-do core, com um adapter compartilhado do plugin. A observação possui a captura
-e sua interrupção libera o recurso nativo. Apresentação não importa o plugin.
-
-Os arquivos de contrato contêm somente as interfaces. `RecordingEvent`, em
-`core/application/events`, é a única família de notificações de captura: início,
-amplitude normalizada e término. Repository, Bloc e previews usam esses mesmos
-tipos, sem eventos equivalentes da Dashboard ou mapper intermediário.
-Modelos ficam em `application/models`, enums de falha em `application/enums` e exceções em
-`application/exceptions` dos respectivos contextos. Os modelos de compartilhamento
-usam `ShareAttachmentModel` e `ShareOriginModel`, em arquivos `_model.dart`.
-`RecordingClient` mantém as operações públicas no início do arquivo e separa
-preparação, permissão, início nativo, observação, amplitude, interrupção,
-finalização e limpeza em métodos de responsabilidade explícita.
-`AudioRepository` delega a captura ao client, traduz falhas esperadas de captura/envio
-e preserva erros inesperados. Não mantém outro controller, outra
-assinatura de stream ou estado paralelo da operação.
-Nenhum tipo do plugin atravessa o contrato do core. `finish` retorna
-bytes somente à infraestrutura, nunca ao estado do Bloc ou aos widgets.
-
-`RecordingModel` permanece em `infrastructure/clients/recording/models`:
-recorder, controllers, subscriptions, Futures e timer são recursos internos do
-adapter. Finalizações simultâneas compartilham o mesmo stop; descarte aguarda
-preparação/finalização pendentes antes de liberar o recorder e excluir somente
-o diretório temporário daquela captura. Nova captura aguarda a liberação anterior.
-
-Na apresentação, o widget de ação conecta o Bloc ao mixin de lifecycle/animação.
-`AudioBarWidget` compõe a superfície e seus estados visuais;
-`ExpenseActionButtonWidget` mantém o gesto e a acessibilidade do botão recolhido.
-
-A seta conclui a captura e envia POST `/api/collections/audio/process` ao host HTTPS
-de `WORKER_URL` (padrão `https://worker.cordato.cloud`), separado da origem PocketBase.
-`AudioRepository` usa `http` diretamente, sem restaurar client HTTP genérico ou wrapper
-CRUD. `http_parser` define somente o MIME do arquivo multipart `file` (`audio/mp4`,
-nome técnico `audio.m4a`); `reference_date` contém a data civil local. O corpo possui
-tamanho conhecido, até 2 MiB de áudio. O JWT atual vem do AuthStore compartilhado e
-vai apenas à origem configurada do worker, sem redirecionamentos ou retries.
-Um client por envio é fechado ao concluir/falhar/atingir timeout de 30 segundos.
-O SDK PocketBase não é usado como transporte para essa outra origem.
-O temporário e o recorder são liberados antes de iniciar o POST; a cópia dos bytes
-fica somente na infraestrutura durante o envio. Falha de limpeza impede iniciar o
-request, sem transformar um aceite remoto já recebido em falha de limpeza local.
-
-Somente `202` com `request_id` não vazio e `status: processing` publica `AudioAccepted`;
-o listener mostra “Áudio recebido para processamento” e recolhe a barra, sem confirmar
-cadastro ou atualizar Dashboard/widget. Não há polling: o usuário recarrega depois.
-HTTPs de recusa usam mensagens locais, sem expor texto remoto ou limpar a sessão.
-Timeout, falha de transporte ou resposta inválida/incerta orienta conferir despesas
-antes de reenviar, sem retry automático. Lifecycle/fechamento bloqueiam publicação
-tardia e removem temporários, mas não desfazem processamento remoto já aceito.
-A integração está implementada localmente, ainda sem homologação remota.
-
-Testes unitários cobrem adapter, repository, Bloc, formatador e resolução do client
-pela DI, sem montar UI. Gestos, microfone, permissões, animação e comportamento em
-Android/iOS reais, assim como builds nativos, ainda precisam de validação.

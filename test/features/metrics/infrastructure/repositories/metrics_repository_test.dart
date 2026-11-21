@@ -76,7 +76,7 @@ void main() {
     ).thenAnswer((_) async {});
     repository = MetricsRepository(
       pocketBase: fixture.client,
-      homeWidgetClient: homeWidgetClient,
+      client: homeWidgetClient,
     );
     respond({
       'items': [record],
