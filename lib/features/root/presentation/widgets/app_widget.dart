@@ -11,7 +11,7 @@ import 'package:cordato/features/root/presentation/mixins/app_widget_state_mixin
 import 'package:cordato/features/core/presentation/themes/themes.dart';
 import 'package:cordato/features/core/presentation/widgets/toast/toast_provider_widget.dart';
 
-class const AppWidget({
+final class const AppWidget({
   super.key,
   required final GlobalKey<NavigatorState> navigatorKey,
   required final HomeWidgetSyncBloc Function() homeWidgetSyncBloc,
@@ -26,13 +26,9 @@ final class _AppWidgetState extends State<AppWidget> with AppWidgetStateMixin {
   Widget build(BuildContext context) {
     final routerConfig = ModularApp.routerConfigOf(context);
 
-    return MultiBlocListener(
-      listeners: [
-        BlocListener<HomeWidgetLaunchBloc, HomeWidgetLaunchState>(
-          bloc: homeWidgetLaunchBloc,
-          listener: (_, state) => handleHomeWidgetLaunch(state),
-        ),
-      ],
+    return BlocListener<HomeWidgetLaunchBloc, HomeWidgetLaunchState>(
+      bloc: homeWidgetLaunchBloc,
+      listener: (_, state) => handleHomeWidgetLaunch(state),
       child: MaterialApp.router(
         title: 'Cordato',
         themeMode: .system,
@@ -43,10 +39,8 @@ final class _AppWidgetState extends State<AppWidget> with AppWidgetStateMixin {
         debugShowCheckedModeBanner: kDebugMode,
         supportedLocales: const [Locale('pt', 'BR')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        builder: (_, child) => SessionRedirectScopeWidget(
-          deferral: sessionRedirectDeferral,
-          child: ToastProviderWidget(child: child ?? const SizedBox.shrink()),
-        ),
+        builder: (_, child) =>
+            ToastProviderWidget(child: child ?? const SizedBox.shrink()),
       ),
     );
   }

@@ -10,8 +10,8 @@ final class HomeWidgetSyncRepository({
   Stream<void> get refreshRequests => homeWidgetClient.monthlyRefreshRequests;
 
   @override
-  Future<void> setSessionActive({required bool active}) =>
-      homeWidgetClient.setMonthlySessionActive(active: active);
+  Future<void> enable() =>
+      homeWidgetClient.setMonthlySessionActive(active: true);
 
   @override
   Future<void> refresh() async {

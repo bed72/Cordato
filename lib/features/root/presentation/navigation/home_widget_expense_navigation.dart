@@ -5,25 +5,21 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 abstract final class HomeWidgetExpenseNavigation {
   static void open({
     required RouteState baseRoute,
-    required void Function(bool Function(RouteState)) popUntil,
-    required void Function() showDashboard,
     required void Function() pushExpense,
+    required void Function() showDashboard,
+    required void Function(bool Function(RouteState)) popUntil,
   }) {
-    var hasNewExpense = _isNewExpense(baseRoute);
+    bool hasNewExpense = _isNewExpense(baseRoute);
     popUntil((route) {
       final isNewExpense = _isNewExpense(route);
-      if (isNewExpense) {
-        hasNewExpense = true;
-      }
+      if (isNewExpense) hasNewExpense = true;
+
       return isNewExpense;
     });
-    if (hasNewExpense) {
-      return;
-    }
 
-    if (baseRoute.uri.path != RouteEnum.dashboard.path) {
-      showDashboard();
-    }
+    if (hasNewExpense) return;
+    if (baseRoute.uri.path != RouteEnum.dashboard.path) showDashboard();
+
     pushExpense();
   }
 

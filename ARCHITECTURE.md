@@ -116,6 +116,43 @@ Remoção local não elimina cópias exportadas, backups do sistema ou dados env
 a terceiros. Apoio via Pix continua voluntário e externo ao processamento do app.
 Essa revisão editorial não constitui validação jurídica ou aprovação no Play.
 
+### Root local e widgets do sistema
+
+`main` aguarda o banco/perfil local e usa `/dashboard` como rota inicial, sem
+passar por Welcome ou autenticação. A rota `/` mantém AppScreen como fallback
+visual e AppNavigationPolicy aponta essa entrada à Dashboard; outras entradas
+existentes são preservadas. Um pedido de nova despesa pelo widget tem prioridade.
+
+AppWidget mantém tema, localização e ToastProviderWidget. Seu mixin possui
+somente os Blocs de launch e sync por factories estáveis. Cria e inicia em
+initState, substitui/fecha apenas quando uma factory muda e fecha no dispose.
+Não há SessionBloc, SessionRoutePolicy, HomeWidgetLaunchPolicy, redirect deferral
+ou escopo de sessão. Nenhum stream de client é observado diretamente no widget.
+
+O intent de nova despesa fica pendente até o Navigator estar pronto.
+A coordenação usa callbacks pós-frame protegidos por mounted, owner, fechamento
+e navigatorKey atual. HomeWidgetExpenseNavigation continua usando os RouteStates
+reais de popUntil: preserva criações existentes e abre Dashboard → criação quando
+necessário, sem confundir edição por ID com cadastro. Essa tarefa não modifica
+Welcome nem seus links antigos, que deixam de participar da entrada padrão.
+
+HomeWidgetSyncBloc começa em Initial. O evento Started mantém uma única observação
+via emit.onEach em handler droppable e solicita a primeira atualização.
+Pedidos de refresh usam handler restartable, aguardam `repository.enable()`
+e depois Metrics sem filtros, para o mês atual. Erros esperados preservam
+ErrorsEntity, falhas inesperadas usam addError/fallback e nenhuma falha publica
+um zero fictício. Fechamento e handlers substituídos não publicam estados tardios.
+Não há timer ou retry automático; nova mutação ou pedido explícito pode atualizar.
+
+O adapter de Root usa `setMonthlySessionActive(active: true)` da capacidade nativa
+existente como habilitação idempotente de publicação, não autenticação. O nome
+legado e as revisões/serialização do client permanecem para evitar uma migração
+incidental de core e widgets nativos. A atualização de valores continua dependente
+da migração de Metrics para armazenamento local; testes isolados de Root usam seu
+contrato mockado, sem comprovar o app inteiro ou atualização real do widget.
+Testes exclusivos das políticas de sessão removidas são substituídos por políticas
+locais, testes de navegação/concorrência/DI e arquitetura, sem UI.
+
 ## Decisão Canônica
 
 Authentication/Sign-in define a arquitetura obrigatória do Cordato: organização

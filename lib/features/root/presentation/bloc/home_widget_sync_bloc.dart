@@ -11,12 +11,15 @@ import 'package:cordato/features/root/application/repositories/interface_home_wi
 final class HomeWidgetSyncBloc({
   required final IHomeWidgetSyncRepository repository,
 }) extends Bloc<HomeWidgetSyncEvent, HomeWidgetSyncState> {
-  this : super(const HomeWidgetSyncInactive()) {
+  this : super(const HomeWidgetSyncInitial()) {
     on<HomeWidgetSyncStartedEvent>(
       _observeRefreshRequests,
       transformer: droppable(),
     );
-    on<HomeWidgetSyncOperationEvent>(_synchronize, transformer: restartable());
+    on<HomeWidgetRefreshRequestedEvent>(
+      _synchronize,
+      transformer: restartable(),
+    );
   }
 
   Future<void> _observeRefreshRequests(
@@ -24,7 +27,7 @@ final class HomeWidgetSyncBloc({
     Emitter<HomeWidgetSyncState> emit,
   ) async {
     try {
-      await emit.onEach<void>(
+      final observation = emit.onEach<void>(
         repository.refreshRequests,
         onData: (_) {
           if (!isClosed && !emit.isDone) {
@@ -32,11 +35,12 @@ final class HomeWidgetSyncBloc({
           }
         },
         onError: (error, stackTrace) {
-          if (!isClosed && !emit.isDone) {
-            addError(error, stackTrace);
-          }
+          if (!isClosed && !emit.isDone) addError(error, stackTrace);
         },
       );
+
+      add(const HomeWidgetRefreshRequestedEvent());
+      await observation;
     } catch (error, stackTrace) {
       if (!isClosed && !emit.isDone) {
         addError(error, stackTrace);
@@ -45,24 +49,13 @@ final class HomeWidgetSyncBloc({
   }
 
   Future<void> _synchronize(
-    HomeWidgetSyncOperationEvent event,
+    HomeWidgetRefreshRequestedEvent event,
     Emitter<HomeWidgetSyncState> emit,
   ) async {
-    if (event is HomeWidgetRefreshRequestedEvent && !state.active) return;
-
-    final active = switch (event) {
-      HomeWidgetSessionChangedEvent(:final authenticated) => authenticated,
-      HomeWidgetRefreshRequestedEvent() => state.active,
-    };
-
-    emit(
-      active ? const HomeWidgetSyncUpdating() : const HomeWidgetSyncInactive(),
-    );
+    emit(const HomeWidgetSyncUpdating());
     try {
-      if (event is HomeWidgetSessionChangedEvent) {
-        await repository.setSessionActive(active: active);
-      }
-      if (!active || isClosed || emit.isDone) return;
+      await repository.enable();
+      if (isClosed || emit.isDone) return;
 
       await repository.refresh();
       if (!isClosed && !emit.isDone) emit(const HomeWidgetSyncReady());
@@ -74,9 +67,7 @@ final class HomeWidgetSyncBloc({
       if (isClosed || emit.isDone) return;
 
       addError(error, stackTrace);
-      if (active) {
-        emit(HomeWidgetSyncFailure(errors: ErrorsEntity.unknown()));
-      }
+      emit(HomeWidgetSyncFailure(errors: ErrorsEntity.unknown()));
     }
   }
 }

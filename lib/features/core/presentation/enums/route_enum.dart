@@ -10,7 +10,7 @@ enum RouteEnum(final String path, {final bool authenticated = false}) {
   expense('/expense', authenticated: true),
   informationPrivacy('/information/privacy'),
   expenses('/expenses', authenticated: true),
-  dashboard('/dashboard', authenticated: true),
+  dashboard('/dashboard'),
   authenticationSignIn('/authentication/sign-in'),
   authenticationSignUp('/authentication/sign-up'),
   authenticationConfirm('/authentication/confirm');

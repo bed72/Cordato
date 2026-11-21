@@ -18,7 +18,7 @@ Future<void> main() async {
     ModularApp(
       module: module,
       navigatorKey: navigatorKey,
-      initialRoute: RouteEnum.app.path,
+      initialRoute: RouteEnum.dashboard.path,
       defaultTransition: TransitionType.fade,
       child: Builder(
         builder: (_) {

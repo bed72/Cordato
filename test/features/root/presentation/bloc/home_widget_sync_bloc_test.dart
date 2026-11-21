@@ -16,40 +16,41 @@ void main() {
   late HomeWidgetSyncRepositoryMock repository;
   setUp(() {
     repository = HomeWidgetSyncRepositoryMock();
-    when(() => repository.setSessionActive(active: any(named: 'active')))
-        .thenAnswer((_) async {});
+    when(repository.enable).thenAnswer((_) async {});
     when(repository.refresh).thenAnswer((_) async {});
   });
 
-  test('starts inactive', () async {
+  test('starts idle without touching native state or metrics', () async {
     final bloc = HomeWidgetSyncBloc(repository: repository);
-    expect(bloc.state, isA<HomeWidgetSyncInactive>());
-    await bloc.close();
+    addTearDown(bloc.close);
+
+    expect(bloc.state, isA<HomeWidgetSyncInitial>());
+    verifyZeroInteractions(repository);
   });
 
   test(
-    'owns refresh observation through the repository and cancels it on close',
+    'startup refreshes locally and owns a single mutation observation',
     () async {
       final subscribed = Completer<void>();
       final refreshes = StreamController<void>(onListen: subscribed.complete);
       when(() => repository.refreshRequests)
           .thenAnswer((_) => refreshes.stream);
       final bloc = HomeWidgetSyncBloc(repository: repository);
-      bloc.add(const HomeWidgetSyncStartedEvent());
-      await subscribed.future;
       final ready = bloc.stream.firstWhere(
         (state) => state is HomeWidgetSyncReady,
       );
-      bloc.add(const HomeWidgetSessionChangedEvent(authenticated: true));
-      await ready;
 
       bloc.add(const HomeWidgetSyncStartedEvent());
-      final synchronized = bloc.stream.firstWhere(
+      await subscribed.future;
+      await ready;
+      bloc.add(const HomeWidgetSyncStartedEvent());
+      final refreshed = bloc.stream.firstWhere(
         (state) => state is HomeWidgetSyncReady,
       );
       refreshes.add(null);
-      await synchronized;
+      await refreshed;
 
+      verify(repository.enable).called(2);
       verify(repository.refresh).called(2);
       verify(() => repository.refreshRequests).called(1);
       await bloc.close();
@@ -59,55 +60,70 @@ void main() {
   );
 
   blocTest<HomeWidgetSyncBloc, HomeWidgetSyncState>(
-    'activation waits for session activation before fetching monthly metrics',
-    build: () => HomeWidgetSyncBloc(repository: repository),
-    act: (bloc) =>
-        bloc.add(const HomeWidgetSessionChangedEvent(authenticated: true)),
-    expect: () => [isA<HomeWidgetSyncUpdating>(), isA<HomeWidgetSyncReady>()],
-    verify: (_) => verifyInOrder([
-      () => repository.setSessionActive(active: true),
-      repository.refresh,
-    ]),
-  );
-
-  blocTest<HomeWidgetSyncBloc, HomeWidgetSyncState>(
-    'ignores mutation requests while signed out',
+    'refresh enables publication before querying monthly metrics',
     build: () => HomeWidgetSyncBloc(repository: repository),
     act: (bloc) => bloc.add(const HomeWidgetRefreshRequestedEvent()),
-    expect: () => [],
-    verify: (_) => verifyNever(repository.refresh),
+    expect: () => [isA<HomeWidgetSyncUpdating>(), isA<HomeWidgetSyncReady>()],
+    verify: (_) => verifyInOrder([repository.enable, repository.refresh]),
   );
 
-  blocTest<HomeWidgetSyncBloc, HomeWidgetSyncState>(
-    'refreshes after a mutation without changing the session',
-    build: () => HomeWidgetSyncBloc(repository: repository),
-    seed: () => const HomeWidgetSyncReady(),
-    act: (bloc) => bloc.add(const HomeWidgetRefreshRequestedEvent()),
-    expect: () => [isA<HomeWidgetSyncUpdating>(), isA<HomeWidgetSyncReady>()],
-    verify: (_) {
-      verify(repository.refresh).called(1);
-      verifyNever(
-        () => repository.setSessionActive(active: any(named: 'active')),
-      );
-    },
-  );
+  test('waits for native enable before querying metrics', () async {
+    final started = Completer<void>();
+    final enabled = Completer<void>();
+    when(repository.enable).thenAnswer((_) {
+      started.complete();
+      return enabled.future;
+    });
+    final bloc = HomeWidgetSyncBloc(repository: repository);
+    addTearDown(bloc.close);
+    final ready = bloc.stream.firstWhere(
+      (state) => state is HomeWidgetSyncReady,
+    );
+
+    bloc.add(const HomeWidgetRefreshRequestedEvent());
+    await started.future;
+    verifyNever(repository.refresh);
+    enabled.complete();
+    await ready;
+
+    verify(repository.refresh).called(1);
+  });
+
+  test('closing while enabling prevents a late metrics query', () async {
+    final started = Completer<void>();
+    final enabled = Completer<void>();
+    when(repository.enable).thenAnswer((_) {
+      started.complete();
+      return enabled.future;
+    });
+    final bloc = HomeWidgetSyncBloc(repository: repository);
+    bloc.add(const HomeWidgetRefreshRequestedEvent());
+    await started.future;
+
+    final closing = bloc.close();
+    enabled.complete();
+    await closing;
+
+    verifyNever(repository.refresh);
+    expect(bloc.isClosed, isTrue);
+  });
 
   final errors = ErrorsEntity.unknown();
   blocTest<HomeWidgetSyncBloc, HomeWidgetSyncState>(
-    'a new refresh request retries after failure without an automatic retry',
+    'an explicit refresh retries after failure without automatic retry',
     build: () => HomeWidgetSyncBloc(repository: repository),
     seed: () => HomeWidgetSyncFailure(errors: errors),
     act: (bloc) => bloc.add(const HomeWidgetRefreshRequestedEvent()),
     expect: () => [isA<HomeWidgetSyncUpdating>(), isA<HomeWidgetSyncReady>()],
     verify: (_) => verify(repository.refresh).called(1),
   );
+
   blocTest<HomeWidgetSyncBloc, HomeWidgetSyncState>(
     'preserves expected errors without zeroing the native summary',
     build: () {
       when(repository.refresh).thenThrow(MetricsException(errors: errors));
       return HomeWidgetSyncBloc(repository: repository);
     },
-    seed: () => const HomeWidgetSyncReady(),
     act: (bloc) => bloc.add(const HomeWidgetRefreshRequestedEvent()),
     expect: () => [
       isA<HomeWidgetSyncUpdating>(),
@@ -117,63 +133,109 @@ void main() {
         same(errors),
       ),
     ],
+    errors: () => isEmpty,
+    verify: (_) => verify(repository.refresh).called(1),
   );
 
   blocTest<HomeWidgetSyncBloc, HomeWidgetSyncState>(
-    'reports unexpected failures with a safe failure state',
+    'reports unexpected failures with a safe state and no automatic retry',
     build: () {
       when(repository.refresh).thenThrow(StateError('unexpected'));
       return HomeWidgetSyncBloc(repository: repository);
     },
-    seed: () => const HomeWidgetSyncReady(),
     act: (bloc) => bloc.add(const HomeWidgetRefreshRequestedEvent()),
     expect: () => [isA<HomeWidgetSyncUpdating>(), isA<HomeWidgetSyncFailure>()],
     errors: () => [isA<StateError>()],
+    verify: (_) => verify(repository.refresh).called(1),
   );
 
-  test(
-    'logout invalidates a pending refresh and ignores its late completion',
-    () async {
-      final refreshing = Completer<void>();
+  blocTest<HomeWidgetSyncBloc, HomeWidgetSyncState>(
+    'native enable failure prevents querying metrics',
+    build: () {
+      when(repository.enable).thenThrow(StateError('native failure'));
+      return HomeWidgetSyncBloc(repository: repository);
+    },
+    act: (bloc) => bloc.add(const HomeWidgetRefreshRequestedEvent()),
+    expect: () => [isA<HomeWidgetSyncUpdating>(), isA<HomeWidgetSyncFailure>()],
+    errors: () => [isA<StateError>()],
+    verify: (_) => verifyNever(repository.refresh),
+  );
+
+  late StreamController<void> refreshes;
+  blocTest<HomeWidgetSyncBloc, HomeWidgetSyncState>(
+    'stream failures report an error but keep later refreshes working',
+    build: () {
+      refreshes = StreamController<void>();
+      when(() => repository.refreshRequests)
+          .thenAnswer((_) => refreshes.stream);
+      return HomeWidgetSyncBloc(repository: repository);
+    },
+    act: (bloc) async {
+      final ready = bloc.stream.firstWhere(
+        (state) => state is HomeWidgetSyncReady,
+      );
+      bloc.add(const HomeWidgetSyncStartedEvent());
+      await ready;
+      final refreshed = bloc.stream.firstWhere(
+        (state) => state is HomeWidgetSyncReady,
+      );
+      refreshes.addError(StateError('stream failure'));
+      refreshes.add(null);
+      await refreshed;
+    },
+    expect: () => [
+      isA<HomeWidgetSyncUpdating>(),
+      isA<HomeWidgetSyncReady>(),
+      isA<HomeWidgetSyncUpdating>(),
+      isA<HomeWidgetSyncReady>(),
+    ],
+    errors: () => [isA<StateError>()],
+    tearDown: () => refreshes.close(),
+  );
+
+  blocTest<HomeWidgetSyncBloc, HomeWidgetSyncState>(
+    'observation setup failure is reported without querying metrics',
+    build: () {
+      when(() => repository.refreshRequests)
+          .thenThrow(StateError('observation failed'));
+      return HomeWidgetSyncBloc(repository: repository);
+    },
+    act: (bloc) => bloc.add(const HomeWidgetSyncStartedEvent()),
+    expect: () => [],
+    errors: () => [isA<StateError>()],
+    verify: (_) => verifyNever(repository.refresh),
+  );
+
+  for (final outcome in ['success', 'expected failure', 'unexpected failure']) {
+    test('closing ignores late $outcome from a pending refresh', () async {
+      final started = Completer<void>();
       final pending = Completer<void>();
       when(repository.refresh).thenAnswer((_) {
-        refreshing.complete();
+        started.complete();
         return pending.future;
       });
       final bloc = HomeWidgetSyncBloc(repository: repository);
-      bloc.add(const HomeWidgetSessionChangedEvent(authenticated: true));
-      await refreshing.future;
-      final inactive = bloc.stream.firstWhere(
-        (state) => state is HomeWidgetSyncInactive,
-      );
+      final states = <HomeWidgetSyncState>[];
+      final subscription = bloc.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+      bloc.add(const HomeWidgetRefreshRequestedEvent());
+      await started.future;
 
-      bloc.add(const HomeWidgetSessionChangedEvent(authenticated: false));
-      await inactive;
-      pending.complete();
-      await bloc.close();
+      final closing = bloc.close();
+      switch (outcome) {
+        case 'success':
+          pending.complete();
+        case 'expected failure':
+          pending.completeError(MetricsException(errors: errors));
+        default:
+          pending.completeError(StateError('late failure'));
+      }
+      await closing;
 
-      expect(bloc.state, isA<HomeWidgetSyncInactive>());
-      verify(() => repository.setSessionActive(active: false)).called(1);
-    },
-  );
-
-  test('closing with a pending refresh publishes no late state', () async {
-    final refreshing = Completer<void>();
-    final pending = Completer<void>();
-    when(repository.refresh).thenAnswer((_) {
-      refreshing.complete();
-      return pending.future;
+      expect(states, [isA<HomeWidgetSyncUpdating>()]);
+      expect(bloc.isClosed, isTrue);
     });
-    final bloc = HomeWidgetSyncBloc(repository: repository);
-    bloc.add(const HomeWidgetSessionChangedEvent(authenticated: true));
-    await refreshing.future;
-
-    final closing = bloc.close();
-    pending.complete();
-    await closing;
-
-    expect(bloc.state, isA<HomeWidgetSyncUpdating>());
-  });
+  }
 
   test(
     'a newer refresh supersedes pending work instead of dropping a mutation',
@@ -182,9 +244,9 @@ void main() {
       final first = Completer<void>();
       final latest = Completer<void>();
       final refreshed = Completer<void>();
-      var refreshCount = 0;
+      int refreshCount = 0;
       when(repository.refresh).thenAnswer((_) {
-        refreshCount++;
+        refreshCount += 1;
         if (refreshCount == 1) {
           started.complete();
           return first.future;
@@ -193,7 +255,7 @@ void main() {
         return latest.future;
       });
       final bloc = HomeWidgetSyncBloc(repository: repository);
-      bloc.add(const HomeWidgetSessionChangedEvent(authenticated: true));
+      bloc.add(const HomeWidgetRefreshRequestedEvent());
       await started.future;
 
       bloc.add(const HomeWidgetRefreshRequestedEvent());

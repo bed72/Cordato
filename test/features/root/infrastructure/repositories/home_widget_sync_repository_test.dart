@@ -56,19 +56,20 @@ void main() {
     },
   );
 
-  for (final active in [true, false]) {
-    test('session activation $active awaits the widget client', () async {
+  test(
+    'local publication awaits enabling the existing widget client',
+    () async {
       final client = HomeWidgetClientMock();
-      when(() => client.setMonthlySessionActive(active: active))
+      when(() => client.setMonthlySessionActive(active: true))
           .thenAnswer((_) async {});
       final repository = HomeWidgetSyncRepository(
         homeWidgetClient: client,
         metricsRepository: MetricsRepositoryMock(),
       );
 
-      await repository.setSessionActive(active: active);
+      await repository.enable();
 
-      verify(() => client.setMonthlySessionActive(active: active)).called(1);
-    });
-  }
+      verify(() => client.setMonthlySessionActive(active: true)).called(1);
+    },
+  );
 }

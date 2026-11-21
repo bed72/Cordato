@@ -49,6 +49,21 @@ Distinga exportação CSV de backup restaurável, suporte de acesso remoto ao ba
 cópias do sistema de backup próprio e apoio Pix de processamento de pagamentos.
 Não prometa criptografia, recuperação ou conformidade jurídica já verificadas.
 
+Root não depende de Session ou Authentication. `main` abre Dashboard depois de
+aguardar as dependências locais; a rota `/` é fallback visual e sua política pura
+também aponta à Dashboard. AppWidget possui somente HomeWidgetLaunchBloc e
+HomeWidgetSyncBloc por factories estáveis, com fechamento no lifecycle.
+O atalho nativo permanece pendente até o Navigator estar disponível e abre
+Dashboard → criação, preservando criações existentes sem confundi-las com edição.
+Não restaure SessionRoutePolicy, HomeWidgetLaunchPolicy ou redirect deferral.
+HomeWidgetSyncStartedEvent observa pedidos de atualização e solicita o resumo
+inicial sem autenticação. Cada refresh restartable habilita a publicação nativa
+por `IHomeWidgetSyncRepository.enable` antes de consultar Metrics. O adapter usa
+a API legada `setMonthlySessionActive(active: true)` somente como habilitação do
+client; isso não representa identidade ou sessão. Não migrar Metrics nem alterar
+formatos/implementações nativas nesta manutenção. Não há refresh periódico,
+retry automático ou proteção de rotas por sessão na apresentação Root.
+
 Testes ToStore usam SDK real com diretórios temporários e fechamento explícito,
 sem UI. Mocks do SDK são restritos a injeção de falhas e controle de operações
 pendentes do inicializador/repository User, com double em

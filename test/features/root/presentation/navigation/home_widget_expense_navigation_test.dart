@@ -8,7 +8,7 @@ void main() {
   group('Home widget expense navigation', () {
     for (final base in [
       RouteEnum.app,
-      RouteEnum.authenticationSignIn,
+      RouteEnum.informationHelp,
       RouteEnum.dashboard,
       RouteEnum.settings,
     ]) {

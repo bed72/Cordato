@@ -16,19 +16,16 @@ final class HomeWidgetLaunchBloc({
     HomeWidgetLaunchStartedEvent event,
     Emitter<HomeWidgetLaunchState> emit,
   ) async {
-    if (state is! HomeWidgetLaunchInitial) {
-      return;
-    }
+    if (state is! HomeWidgetLaunchInitial) return;
 
     emit(const HomeWidgetLaunchListening());
-    var observedLaunches = 0;
+    int observedLaunches = 0;
     try {
       final observation = emit.onEach<void>(
         repository.expenseLaunches,
         onData: (_) {
-          if (isClosed || emit.isDone) {
-            return;
-          }
+          if (isClosed || emit.isDone) return;
+
           emit(HomeWidgetLaunchRequested(sequence: ++observedLaunches));
         },
         onError: (error, stackTrace) => _reportFailure(emit, error, stackTrace),
@@ -53,9 +50,8 @@ final class HomeWidgetLaunchBloc({
     Object error,
     StackTrace stackTrace,
   ) {
-    if (isClosed || emit.isDone) {
-      return;
-    }
+    if (isClosed || emit.isDone) return;
+
     addError(error, stackTrace);
     emit(const HomeWidgetLaunchFailure());
   }

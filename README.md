@@ -60,6 +60,31 @@ Verificação da migração User:
 - Suíte global e builds nativos não executados; não há confirmação de execução
   do app completo nem conferência visual.
 
+### Entrada local e widgets do sistema
+
+Root inicia na Dashboard, sem login ou Welcome na entrada padrão. Os atalhos do
+widget continuam abrindo Nova despesa e o resumo mensal é solicitado ao iniciar
+o app e por sinais de atualização, sem depender de sessão. O AppWidget mantém
+ownership único dos Blocs e não observa diretamente os plugins nativos.
+A integração de valores do resumo ainda depende da migração de Metrics;
+não houve mudança no formato nativo ou homologação visual do widget.
+
+Verificação do Root local:
+
+- `flutter pub get`: concluído.
+- Análise focada de Root, bootstrap, catálogo de rotas e testes: sem problemas.
+- `flutter test --no-pub test/features/root
+  test/architecture/root_local_architecture_test.dart --reporter failures-only`:
+  80 aprovados.
+- Regressão incluindo Settings, Information, User, Bloc da Dashboard, ToStore
+  e schema de despesas: 324 aprovados.
+- `flutter analyze --no-pub`: 559 problemas restantes fora do escopo.
+- `flutter test --no-pub test/architecture --reporter failures-only`:
+  86 aprovados e 4 falhas, por referências legadas a rotas de autenticação
+  removidas, um erro de compilador em cascata e os arquivos Sign-in/Sign-up ausentes.
+- Suíte global e builds nativos não executados; navegação e widgets do sistema
+  ainda exigem conferência manual quando Expense e Metrics estiverem migrados.
+
 ### Configurações e informações locais
 
 Configurações usa um único módulo sem path e destinos sem autenticação. A tela
