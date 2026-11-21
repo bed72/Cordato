@@ -1,8 +1,6 @@
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 
 import 'package:cordato/features/core/infrastructure/serializers/date_serializer.dart';
-import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_mapper.dart';
-import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_extension.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';

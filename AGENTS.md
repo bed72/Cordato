@@ -1,5 +1,29 @@
 # AGENTS.md
 
+## Transição Local Em Andamento: ToStore
+
+Por decisão explícita, a branch `tostore` inicia uma versão exclusivamente local.
+Authentication, Session, infraestrutura PocketBase, áudio, backend e worker foram
+removidos pelo usuário. Não os restaure para sanar os erros legados. As instruções
+PocketBase abaixo descrevem o estado anterior e não prevalecem sobre este escopo.
+
+A primeira entrega cobre somente abertura ToStore, schema, perfil inicial, DI e
+testes. Não migrar repositories, entidades, Blocs ou telas incidentalmente.
+`main` aguarda `createDependencies`; `ToStoreFactory.create` abre o banco em
+diretório persistente com schemas fornecidos pela composição, durabilidade
+`durable` e logs diagnósticos desativados. `createAppModule` e `createCoreModule`
+recebem o ToStore pronto e compartilham a instância, sem wrapper genérico de CRUD.
+User usa KV `profile`, sem ID, nome inicial `Cordato` e seed aleatória persistida.
+Expense usa schema próprio sem `owner`: ID automático, centavos inteiros positivos,
+categoria padrão `other`, descrição anulável e data civil obrigatória.
+Default hoje e validação de categoria pertencem à futura criação no repository;
+schema não normaliza datas nem restringe o enum. Não prometa app funcional,
+backup, criptografia ou validação global a partir dos testes focados.
+
+Testes ToStore usam SDK real com diretórios temporários e fechamento explícito,
+sem UI. Mocks do SDK são restritos a injeção de falhas do inicializador, com double
+em `test/support/core/mocks/`. Preserve e registre os erros legados fora do escopo.
+
 ## Client Atual: SDK PocketBase
 
 A infraestrutura HTTP própria foi removida por solicitação explícita.

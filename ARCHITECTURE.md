@@ -1,5 +1,54 @@
 # Arquitetura
 
+## Transição local com ToStore
+
+A branch `tostore` inicia uma versão local, sem contas, sessão remota ou `owner`
+nas despesas. Esta decisão substitui o bootstrap PocketBase descrito nas seções
+anteriores à transição abaixo; essas seções ainda descrevem os consumidores
+legados, não uma integração operacional ou autorização para restaurá-los.
+
+`main` aguarda `createDependencies` antes de `runApp`. A composição resolve
+`getApplicationSupportDirectory`, abre o ToStore com `ToStoreFactory.create`,
+aguarda `initializeProfile` e entrega o banco pronto a `createAppModule` e
+`createCoreModule`. O core registra a mesma instância por `addInstance`;
+repositories futuros usam o SDK diretamente em infrastructure, sem wrapper
+genérico de CRUD, tipos do SDK em application ou futures de abertura na DI.
+A instância pertence ao bootstrap, não às telas ou módulos de feature; não se
+fecha o banco ao trocar rotas ou ao entrar em background. Falha ao preparar
+o perfil fecha a instância e propaga a falha original antes de montar o app.
+O encerramento abrupto depende da recuperação do motor, não de `dispose`.
+
+A factory recebe diretório e schemas, sem importar regras das features. Usa
+`RecoveryDurability.durable`, persistência em arquivo e journal nativo; logs
+diagnósticos do ToStore ficam desativados inclusive em debug. Isso não constitui
+auditoria de durabilidade, criptografia, backup ou proteção contra desinstalação.
+Não há retry, exclusão, reset ou fallback para banco vazio no bootstrap do app.
+A evolução declarativa de schema segue o motor e exige testes com dados
+existentes antes de futuras mudanças; não há migração de dados PocketBase.
+
+User mantém somente uma entrada KV `profile`, com `name: Cordato` e `avatar`
+contendo uma seed aleatória de 16 bytes representada em hexadecimal, criada
+uma única vez. Não há ID ou tabela de usuários. O inicializador preserva perfis
+existentes, rejeita estrutura inválida e verifica `hasErrors` na gravação.
+Nome e seed não são derivados um do outro.
+
+Expense possui `expenseSchema` em infrastructure, com tabela `expenses`,
+ID sequencial automático em String, `amount` inteiro obrigatório com mínimo 1,
+`category` textual obrigatória com default `other`, `description` textual
+anulável e `occurred_on` datetime obrigatório com índice. Não há `owner`, TTL ou
+expulsão por capacidade. O schema não restringe categoria a um enum; a migração
+do repository deverá validar os valores de `ExpenseCategoryEnum`.
+Datas civis devem ser gravadas como ISO 8601 de meia-noite UTC, sem conversão de
+fuso. O schema não impõe essa normalização nem possui default de timestamp:
+o padrão hoje no calendário local será calculado a cada criação no repository,
+nunca na abertura do banco.
+
+Esta entrega não migra repositories, entidades, Blocs ou telas para os novos
+contratos locais. As referências restantes a PocketBase e fluxos removidos ainda
+bloqueiam análise/compilação globais. Testes focados exercitam banco real em
+diretórios temporários, reabertura, defaults, restrições, perfil e DI do core,
+sem UI; não comprovam que o app completo inicia nem substituem build nativo.
+
 ## Decisão Canônica
 
 Authentication/Sign-in define a arquitetura obrigatória do Cordato: organização

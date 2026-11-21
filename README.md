@@ -2,6 +2,38 @@
 
 Aplicativo Flutter de finanças pessoais e familiares.
 
+## Migração offline em andamento
+
+A branch `tostore` prepara uma versão local com ToStore 3.6.3. A primeira entrega
+abre o banco `cordato` no diretório persistente de suporte do app antes de
+`runApp`, compartilha a instância pronta pela DI e inicializa um perfil KV único
+com nome `Cordato` e seed aleatória de avatar persistida, sem ID ou conta.
+
+O schema de `expenses` contém ID automático, valor positivo em centavos,
+categoria padrão `other`, descrição anulável e data civil obrigatória, sem
+`owner`. O default de data hoje e a validação das categorias entrarão na migração
+do repository; não há default de timestamp no schema.
+
+Repositories e telas ainda não consomem esse armazenamento. As remoções anteriores
+de Authentication, Session, PocketBase, áudio, backend e worker deixam referências
+legadas e erros globais de análise/compilação; o app ainda não está pronto para
+publicação. Os estados e instruções PocketBase abaixo são anteriores à transição.
+Não há sincronização, importação remota, criptografia ou backup nesta entrega.
+Dados locais podem ser perdidos ao desinstalar o app ou trocar de dispositivo.
+
+Verificação desta fundação:
+
+- `flutter pub get`: concluído; lockfile reconciliado com as dependências atuais.
+- Análise focada da factory ToStore, schema, inicializador, módulo core e testes:
+  sem problemas.
+- Testes focados de ToStore, perfil, schema e DI: 20 aprovados.
+- `flutter analyze --no-pub`: 775 problemas no estado de transição, com referências
+  legadas a APIs, classes e dependências removidas.
+- `flutter test --no-pub test/architecture --reporter failures-only`:
+  83 aprovados e 2 falhas por arquivos de Sign-in/Sign-up previamente removidos.
+- Suíte global e builds nativos não executados; compilação do app completo ainda
+  bloqueada pelos consumidores legados.
+
 Configurações inclui a tela “Pague-me um café”, em `/settings/support`, com
 mensagem de apoio voluntário e QR Code Pix estático de valor livre na própria tela,
 renderizado com `pretty_qr_code`. “Copiar Pix” copia o código para pagar no banco.
