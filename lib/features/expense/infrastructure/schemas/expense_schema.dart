@@ -4,29 +4,26 @@ import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart
 
 final expenseSchema = TableSchema(
   name: 'expenses',
-  primaryKeyConfig: const PrimaryKeyConfig(
-    name: 'id',
-    type: PrimaryKeyType.sequential,
-  ),
+  primaryKeyConfig: const PrimaryKeyConfig(name: 'id', type: .sequential),
   fields: [
     const FieldSchema(
       name: 'amount',
-      type: DataType.integer,
-      nullable: false,
       minValue: 1,
+      type: .integer,
+      nullable: false,
     ),
     FieldSchema(
       name: 'category',
-      type: DataType.text,
+      type: .text,
       nullable: false,
       defaultValue: ExpenseCategoryEnum.other.value,
     ),
-    const FieldSchema(name: 'description', type: DataType.text),
     const FieldSchema(
-      name: 'occurred_on',
-      type: DataType.datetime,
+      type: .datetime,
       nullable: false,
       createIndex: true,
+      name: 'occurred_on',
     ),
+    const FieldSchema(name: 'description', type: .text),
   ],
 );
