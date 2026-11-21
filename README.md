@@ -6,7 +6,7 @@ Aplicativo Flutter de finanças pessoais e familiares.
 
 A branch `tostore` prepara uma versão local com ToStore 3.6.3. A primeira entrega
 abre o banco `cordato` no diretório persistente de suporte do app antes de
-`runApp`, compartilha a instância pronta pela DI e inicializa um perfil KV único
+`runApp`, compartilha a instância pronta pela DI e inicializa um perfil local único
 com nome `Cordato` e seed aleatória de avatar persistida, sem ID ou conta.
 
 O schema de `expenses` contém ID automático, valor positivo em centavos,
@@ -14,7 +14,16 @@ categoria padrão `other`, descrição anulável e data civil obrigatória, sem
 `owner`. O default de data hoje e a validação das categorias entrarão na migração
 do repository; não há default de timestamp no schema.
 
-Repositories e telas ainda não consomem esse armazenamento. As remoções anteriores
+User já consome esse armazenamento para consultar perfil e atualizar nome/avatar.
+Não há ID, e-mail, alteração de senha ou exclusão de conta nesse fluxo. O nome
+continua com validação de 2–32 caracteres Unicode após trim e a seed do avatar é
+independente dele. Atualizações parciais preservam o outro campo e somente
+confirmam sucesso após o reconhecimento da gravação. Nome e avatar ficam em
+chaves KV independentes (`profile.name` e `profile.avatar`), sem fila ou estado
+pendente no repository. Atualizar ambos usa duas gravações, sem rollback conjunto.
+O inicializador completa apenas chaves ausentes e não substitui valores válidos.
+O objeto KV `profile` da etapa anterior não é migrado nesta branch sem usuários.
+Expense e Metrics ainda aguardam migração. As remoções anteriores
 de Authentication, Session, PocketBase, áudio, backend e worker deixam referências
 legadas e erros globais de análise/compilação; o app ainda não está pronto para
 publicação. Os estados e instruções PocketBase abaixo são anteriores à transição.
@@ -32,7 +41,24 @@ Verificação desta fundação:
 - `flutter test --no-pub test/architecture --reporter failures-only`:
   83 aprovados e 2 falhas por arquivos de Sign-in/Sign-up previamente removidos.
 - Suíte global e builds nativos não executados; compilação do app completo ainda
-  bloqueada pelos consumidores legados.
+bloqueada pelos consumidores legados.
+
+Verificação da migração User:
+
+- `flutter pub get`: concluído.
+- Análise focada de User, consumidores de perfil na Dashboard, catálogo de rotas,
+  limites arquiteturais e testes: sem problemas.
+- `flutter test --no-pub test/features/user
+  test/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc_test.dart
+  test/features/core/infrastructure/clients/tostore/tostore_factory_test.dart
+  test/features/core/tostore_module_test.dart
+  test/features/expense/infrastructure/schemas/expense_schema_test.dart
+  --reporter failures-only`: 186 aprovados após simplificar as chaves do perfil.
+- `flutter analyze --no-pub`: 727 problemas dos consumidores e testes legados.
+- `flutter test --no-pub test/architecture --reporter failures-only`:
+  83 aprovados e as mesmas 2 falhas por arquivos Sign-in/Sign-up removidos.
+- Suíte global e builds nativos não executados; não há confirmação de execução
+  do app completo nem conferência visual.
 
 Configurações inclui a tela “Pague-me um café”, em `/settings/support`, com
 mensagem de apoio voluntário e QR Code Pix estático de valor livre na própria tela,

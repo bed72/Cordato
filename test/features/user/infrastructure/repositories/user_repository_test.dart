@@ -1,442 +1,418 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
+import 'package:mocktail/mocktail.dart';
+import 'package:tostore/tostore.dart';
 
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
+import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
-import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 import 'package:cordato/features/user/infrastructure/repositories/user_repository.dart';
+import 'package:cordato/features/user/infrastructure/storage/profile_initializer.dart';
 
-import '../../../../support/core/fakes/pocketbase_fixture.dart';
+import '../../../../support/core/mocks/tostore_mock.dart';
 
 void main() {
-  const body = {
-    'id': 'user-1',
-    'collectionName': 'users',
-    'name': 'Nome da API',
-    'avatar': 'api-avatar',
-    'email': 'person@example.com',
-  };
-  late PocketBaseFixture fixture;
-  late IUserRepository repository;
+  group('Persistent local profile', () {
+    late Directory directory;
+    late ToStore database;
+    late UserRepository repository;
 
-  setUp(() {
-    fixture = PocketBaseFixture();
-    fixture.authenticate();
-    fixture.respond = (_) => PocketBaseFixture.jsonResponse(body);
-    repository = UserRepository(pocketBase: fixture.client);
-    addTearDown(fixture.client.close);
-  });
+    setUp(() async {
+      directory = await Directory.systemTemp.createTemp('cordato-user-');
+      database = await ToStoreFactory.create(
+        directory: directory.path,
+        schemas: const [],
+      );
+      await initializeProfile(database: database);
+      repository = UserRepository(database: database);
+    });
 
-  group('Profile reads and updates', () {
+    tearDown(() async {
+      await database.close();
+      await directory.delete(recursive: true);
+    });
+
+    test('reads initialized name and seed without an account', () async {
+      final profile = await repository.get();
+
+      expect(profile.name, 'Cordato');
+      expect(profile.avatar, matches(RegExp(r'^[0-9a-f]{32}$')));
+    });
+
     test(
-      'reads the current auth identity and maps the remote record',
+      'reads current storage on each call without a cached profile',
       () async {
-        final user = await repository.getById();
+        await repository.get();
+        final savedName = await database.setValue(
+          'profile.name',
+          'Updated externally',
+        );
+        final savedAvatar = await database.setValue(
+          'profile.avatar',
+          'external-seed',
+        );
+        expect(savedName.hasErrors, isFalse);
+        expect(savedAvatar.hasErrors, isFalse);
 
-        expect(user.id, 'user-1');
-        expect(user.name, 'Nome da API');
-        expect(user.email, 'person@example.com');
-        expect(user.avatar, 'api-avatar');
-        final request = fixture.requests.single;
-        expect(request.method, 'GET');
-        expect(request.url.path, '/api/collections/users/records/user-1');
-        expect(request.headers['Authorization'], PocketBaseFixture.token);
-        expect(request.body, isEmpty);
-        expect(request.url.query, isEmpty);
+        final profile = await repository.get();
+
+        expect(profile.name, 'Updated externally');
+        expect(profile.avatar, 'external-seed');
       },
     );
 
-    test('reads the current auth record on each operation', () async {
-      await repository.getById();
-      fixture.authenticate(id: 'new-user');
+    test('updates name without replacing the saved avatar', () async {
+      final original = await repository.get();
 
-      await repository.getById();
+      final updated = await repository.update(name: '  Gabriel  ');
 
-      expect(
-        fixture.requests.last.url.path,
-        '/api/collections/users/records/new-user',
+      expect(updated.name, '  Gabriel  ');
+      expect(updated.avatar, original.avatar);
+      expect((await repository.get()).name, '  Gabriel  ');
+    });
+
+    test('updates seed without replacing the saved name', () async {
+      final updated = await repository.update(avatar: '  selected-seed  ');
+
+      expect(updated.name, 'Cordato');
+      expect(updated.avatar, '  selected-seed  ');
+      expect((await repository.get()).avatar, '  selected-seed  ');
+    });
+
+    test('updates both supplied fields', () async {
+      final updated = await repository.update(name: 'Gabriel', avatar: 'seed');
+
+      expect(updated.name, 'Gabriel');
+      expect(updated.avatar, 'seed');
+      expect(await database.getValue('profile.name'), 'Gabriel');
+      expect(await database.getValue('profile.avatar'), 'seed');
+    });
+
+    test('an empty update preserves the entire profile', () async {
+      final original = await repository.get();
+
+      final unchanged = await repository.update();
+
+      expect(unchanged.name, original.name);
+      expect(unchanged.avatar, original.avatar);
+    });
+
+    test('persists name and seed across close and reopen', () async {
+      await repository.update(name: 'Gabriel', avatar: 'chosen-seed');
+      await database.close();
+      database = await ToStoreFactory.create(
+        directory: directory.path,
+        schemas: const [],
       );
+      await initializeProfile(database: database);
+      repository = UserRepository(database: database);
+
+      final reopened = await repository.get();
+
+      expect(reopened.name, 'Gabriel');
+      expect(reopened.avatar, 'chosen-seed');
     });
 
-    test('delegates ID encoding to the SDK without trimming', () async {
-      const id = ' a/b?c#d ';
-      fixture.authenticate(id: id);
+    test(
+      'concurrent independent repositories preserve both updated fields',
+      () async {
+        await Future.wait([
+          repository.update(name: 'Gabriel'),
+          UserRepository(database: database).update(avatar: 'chosen-seed'),
+        ]);
 
-      await repository.getById();
+        final profile = await repository.get();
 
-      expect(fixture.requests.single.url.pathSegments.last, id);
-      expect(fixture.requests.single.url.query, isEmpty);
-      expect(fixture.requests.single.url.fragment, isEmpty);
+        expect(profile.name, 'Gabriel');
+        expect(profile.avatar, 'chosen-seed');
+      },
+    );
+
+    test('missing profile fails without silently recreating it', () async {
+      await database.removeValue('profile.name');
+      await database.removeValue('profile.avatar');
+
+      await expectLater(
+        repository.get(),
+        throwsA(
+          isA<UserException>().having(
+            (exception) => exception.errors.errors.single.code,
+            'code',
+            'profile_missing',
+          ),
+        ),
+      );
+      await expectLater(
+        repository.update(name: 'Gabriel'),
+        throwsA(isA<UserException>()),
+      );
+
+      expect(await database.getValue('profile.name'), isNull);
+      expect(await database.getValue('profile.avatar'), isNull);
     });
 
-    for (final name in <String?>[null, '', '  Nome  ']) {
-      for (final avatar in <String?>[null, '', '  seed  ']) {
-        if (name == null && avatar == null) {
-          continue;
-        }
+    for (final invalidField in [
+      (key: 'profile.name', value: 123),
+      (key: 'profile.avatar', value: false),
+      (key: 'profile.name', value: <String, dynamic>{}),
+      (key: 'profile.avatar', value: <String>[]),
+    ]) {
+      test(
+        'malformed ${invalidField.key} propagates ${invalidField.value.runtimeType}',
+        () async {
+          final savedProfile = await database.setValue(
+            invalidField.key,
+            invalidField.value,
+          );
+          expect(savedProfile.hasErrors, isFalse);
 
-        test('patches only supplied attributes: $name / $avatar', () async {
-          final user = await repository.update(name: name, avatar: avatar);
+          await expectLater(repository.get(), throwsA(isA<TypeError>()));
+          await expectLater(
+            repository.update(name: 'Gabriel'),
+            throwsA(isA<TypeError>()),
+          );
 
-          expect(user.name, 'Nome da API');
-          expect(user.avatar, 'api-avatar');
-          final request = fixture.requests.single;
-          expect(request.method, 'PATCH');
-          expect(request.url.path, '/api/collections/users/records/user-1');
-          expect(jsonDecode(request.body), {'name': ?name, 'avatar': ?avatar});
-          expect(request.headers['Authorization'], PocketBaseFixture.token);
-          expect(fixture.client.authStore.token, PocketBaseFixture.token);
-          expect(fixture.client.authStore.record?.data['name'], 'Nome da API');
+          expect(await database.getValue(invalidField.key), invalidField.value);
+        },
+      );
+    }
+  });
+
+  group('Injected storage failures', () {
+    late ToStoreMock database;
+    late UserRepository repository;
+
+    setUp(() {
+      database = ToStoreMock();
+      repository = UserRepository(database: database);
+      when(() => database.getValue('profile.name'))
+          .thenAnswer((_) async => 'Cordato');
+      when(() => database.getValue('profile.avatar'))
+          .thenAnswer((_) async => 'original-seed');
+    });
+
+    for (final operation in ['read', 'update']) {
+      test(
+        '$operation maps native storage errors without exposing messages',
+        () async {
+          final statuses = [
+            GeneralStatus(type: ResultType.engError, message: 'private data'),
+            GeneralStatus(
+              type: ResultType.sysDbClosed,
+              message: 'private path',
+            ),
+          ];
+          when(() => database.getValue('profile.name'))
+              .thenThrow(DbException(statuses));
+
+          final pendingProfile = operation == 'read'
+              ? repository.get()
+              : repository.update(name: 'Gabriel');
+
+          await expectLater(
+            pendingProfile,
+            throwsA(
+              isA<UserException>()
+                  .having(
+                    (exception) =>
+                        exception.errors.errors.map((error) => error.code),
+                    'codes',
+                    statuses.map((status) => status.codeKey),
+                  )
+                  .having(
+                    (exception) => exception.errors.errors.every(
+                      (error) => error.title == null && error.detail == null,
+                    ),
+                    'no raw storage messages',
+                    isTrue,
+                  ),
+            ),
+          );
+        },
+      );
+
+      test(
+        '$operation maps filesystem failures to safe expected errors',
+        () async {
+          when(() => database.getValue('profile.name'))
+              .thenThrow(const FileSystemException('private path'));
+
+          await expectLater(
+            operation == 'read'
+                ? repository.get()
+                : repository.update(name: 'Gabriel'),
+            throwsA(isA<UserException>()),
+          );
+        },
+      );
+    }
+
+    test(
+      'an unsuccessful write fails and permits a later manual retry',
+      () async {
+        int writes = 0;
+        when(() => database.setValue(any(), any()))
+            .thenAnswer((invocation) async {
+              writes += 1;
+              if (writes == 1) {
+                return DbResult(
+                  statuses: [
+                    GeneralStatus(
+                      type: ResultType.engError,
+                      message: 'write failed',
+                    ),
+                  ],
+                );
+              }
+              when(() => database.getValue('profile.avatar'))
+                  .thenAnswer((_) async => 'new-seed');
+              return DbResult(statuses: []);
+            });
+
+        await expectLater(
+          repository.update(name: 'Gabriel'),
+          throwsA(isA<UserException>()),
+        );
+        final updated = await repository.update(avatar: 'new-seed');
+
+        expect(updated.name, 'Cordato');
+        expect(updated.avatar, 'new-seed');
+        verify(() => database.setValue('profile.name', 'Gabriel')).called(1);
+        verify(() => database.setValue('profile.avatar', 'new-seed')).called(1);
+      },
+    );
+
+    test(
+      'does not complete an update before storage acknowledges the write',
+      () async {
+        final writeStarted = Completer<void>();
+        final pendingWrite = Completer<DbResult>();
+        when(() => database.setValue('profile.name', any())).thenAnswer((_) {
+          writeStarted.complete();
+          return pendingWrite.future;
         });
-      }
-    }
+        bool acknowledged = false;
+        final updating = repository.update(name: 'Gabriel').then((profile) {
+          acknowledged = true;
+          return profile;
+        });
 
-    test(
-      'delegates an update without attributes as an empty SDK body',
-      () async {
-        final user = await repository.update();
+        await writeStarted.future;
+        expect(acknowledged, isFalse);
+        when(() => database.getValue('profile.name'))
+            .thenAnswer((_) async => 'Gabriel');
+        pendingWrite.complete(DbResult(statuses: []));
+        final updated = await updating;
 
-        expect(user.name, 'Nome da API');
-        expect(fixture.requests.single.method, 'PATCH');
-        expect(fixture.requests.single.body, isEmpty);
-        expect(fixture.client.authStore.token, PocketBaseFixture.token);
+        expect(acknowledged, isTrue);
+        expect(updated.name, 'Gabriel');
       },
     );
 
-    test(
-      'maps an empty avatar to absence and preserves an empty name',
-      () async {
-        fixture.respond = (_) =>
-            PocketBaseFixture.jsonResponse({...body, 'name': '', 'avatar': ''});
-
-        final user = await repository.getById();
-
-        expect(user.name, isEmpty);
-        expect(user.avatar, isNull);
-      },
-    );
-  });
-
-  group('Shared failure handling', () {
-    for (final operation in ['get', 'update', 'delete']) {
-      Future<dynamic> execute() => switch (operation) {
-        'get' => repository.getById(),
-        'update' => repository.update(name: 'Nome', avatar: 'seed'),
-        _ => repository.delete(),
-      };
-
-      for (final missingId in <String?>[null, '', '   ']) {
-        test(
-          '$operation rejects missing auth ID $missingId without HTTP',
-          () async {
-            if (missingId == null) {
-              fixture.client.authStore.clear();
-            } else {
-              fixture.authenticate(id: missingId);
-            }
-
-            await expectLater(
-              execute(),
-              throwsA(
-                isA<MissingAuthenticatedUserException>().having(
-                  (exception) => exception.errors.errors.single.title,
-                  'title',
-                  'Usuário não identificado',
-                ),
-              ),
-            );
-
-            expect(fixture.requests, isEmpty);
-          },
-        );
-      }
-
+    for (final failure in [
+      StateError('unexpected'),
+      const FormatException('invalid profile'),
+    ]) {
       test(
-        '$operation preserves ordered native field errors and metadata',
+        'unexpected ${failure.runtimeType} propagates without masking',
         () async {
-          fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-            'message': 'Failed to update record.',
-            'data': {
-              'name': {
-                'code': 'validation_length_out_of_range',
-                'message': 'Must be between 2 and 32 characters.',
-              },
-              'avatar': {
-                'code': 'validation_length_out_of_range',
-                'message': 'Must be at most 2048 characters.',
-              },
-            },
-          }, status: 400);
+          when(() => database.getValue('profile.name')).thenThrow(failure);
 
+          await expectLater(repository.get(), throwsA(same(failure)));
           await expectLater(
-            execute(),
-            throwsA(
-              isA<UserException>().having(
-                (exception) => exception.errors.errors
-                    .map(
-                      (error) => (
-                        error.status,
-                        error.code,
-                        error.pointer,
-                        error.parameter,
-                        error.detail,
-                      ),
-                    )
-                    .toList(),
-                'ordered errors',
-                [
-                  (
-                    '400',
-                    'validation_length_out_of_range',
-                    '/name',
-                    'name',
-                    'Must be between 2 and 32 characters.',
-                  ),
-                  (
-                    '400',
-                    'validation_length_out_of_range',
-                    '/avatar',
-                    'avatar',
-                    'Must be at most 2048 characters.',
-                  ),
-                ],
-              ),
-            ),
+            repository.update(name: 'Gabriel'),
+            throwsA(same(failure)),
           );
-          expect(fixture.client.authStore.token, PocketBaseFixture.token);
-        },
-      );
-
-      for (final status in [401, 403, 404, 500]) {
-        test(
-          '$operation maps HTTP $status without clearing the session',
-          () async {
-            fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-              'message': 'Remote failure',
-            }, status: status);
-
-            await expectLater(
-              execute(),
-              throwsA(
-                isA<UserException>().having(
-                  (exception) => exception.errors.errors.single.status,
-                  'status',
-                  '$status',
-                ),
-              ),
-            );
-            expect(fixture.client.authStore.token, PocketBaseFixture.token);
-            expect(fixture.client.authStore.record?.id, 'user-1');
-          },
-        );
-      }
-
-      test(
-        '$operation does not clear a newer login after a late 401',
-        () async {
-          fixture.respond = (_) {
-            fixture.authenticate(authToken: 'new-token', id: 'new-user');
-            return PocketBaseFixture.jsonResponse({}, status: 401);
-          };
-
-          await expectLater(execute(), throwsA(isA<UserException>()));
-
-          expect(fixture.client.authStore.token, 'new-token');
-          expect(fixture.client.authStore.record?.id, 'new-user');
-        },
-      );
-
-      test(
-        '$operation maps network failures without clearing the session',
-        () async {
-          fixture.respond = (_) => throw const SocketException('offline');
-
-          await expectLater(
-            execute(),
-            throwsA(
-              isA<UserException>().having(
-                (exception) => exception.errors.errors.single.title,
-                'title',
-                'Erro desconhecido',
-              ),
-            ),
-          );
-          expect(fixture.client.authStore.token, PocketBaseFixture.token);
-        },
-      );
-
-      test(
-        '$operation preserves a replaced auth record after a late 401',
-        () async {
-          fixture.respond = (_) {
-            fixture.authenticate();
-            return PocketBaseFixture.jsonResponse({}, status: 401);
-          };
-
-          await expectLater(execute(), throwsA(isA<UserException>()));
-
-          expect(fixture.client.authStore.token, PocketBaseFixture.token);
-          expect(fixture.client.authStore.record?.id, 'user-1');
-        },
-      );
-
-      test('$operation propagates unexpected errors unchanged', () async {
-        final failure = StateError('unexpected');
-        fixture.respond = (_) => throw failure;
-
-        await expectLater(execute(), throwsA(same(failure)));
-      });
-
-      test(
-        '$operation propagates unexpected format failures unchanged',
-        () async {
-          const failure = FormatException('invalid payload');
-          fixture.respond = (_) => throw failure;
-
-          await expectLater(execute(), throwsA(same(failure)));
         },
       );
     }
 
-    for (final operation in ['get', 'update']) {
-      for (final field in ['id', 'name', 'email', 'avatar']) {
-        for (final invalid in [null, 123, false]) {
-          test('$operation rejects invalid $field: $invalid', () async {
-            fixture.respond = (_) =>
-                PocketBaseFixture.jsonResponse({...body, field: invalid});
+    test('a thrown write failure is not reported as success', () async {
+      final failure = StateError('unexpected write');
+      when(() => database.setValue('profile.name', any())).thenThrow(failure);
 
-            final pending = switch (operation) {
-              'get' => repository.getById(),
-              _ => repository.update(name: 'Nome'),
-            };
+      await expectLater(
+        repository.update(name: 'Gabriel'),
+        throwsA(same(failure)),
+      );
 
-            await expectLater(pending, throwsA(isA<TypeError>()));
+      verify(() => database.setValue('profile.name', any())).called(1);
+    });
+
+    test('name update writes only its own key', () async {
+      when(() => database.setValue('profile.name', 'Gabriel'))
+          .thenAnswer((_) async {
+            when(() => database.getValue('profile.name'))
+                .thenAnswer((_) async => 'Gabriel');
+            return DbResult(statuses: []);
           });
-        }
 
-        test('$operation rejects missing $field', () async {
-          final malformed = {...body}..remove(field);
-          fixture.respond = (_) => PocketBaseFixture.jsonResponse(malformed);
+      await repository.update(name: 'Gabriel');
 
-          final pending = switch (operation) {
-            'get' => repository.getById(),
-            _ => repository.update(name: 'Nome'),
-          };
-
-          await expectLater(pending, throwsA(isA<TypeError>()));
-        });
-      }
-    }
-  });
-
-  group('Account deletion and session cleanup', () {
-    test(
-      'awaits remote confirmation before clearing the shared AuthStore',
-      () async {
-        final remote = Completer<http.Response>();
-        final started = Completer<void>();
-        fixture.respond = (_) {
-          started.complete();
-          return remote.future;
-        };
-        final events = <String>[];
-        final cleared = Completer<void>();
-        final subscription = fixture.client.authStore.onChange.listen((event) {
-          events.add(event.token);
-          cleared.complete();
-        });
-        addTearDown(subscription.cancel);
-        var completed = false;
-
-        final deletion = repository.delete().then((_) => completed = true);
-        await started.future;
-        expect(completed, isFalse);
-        expect(fixture.client.authStore.token, PocketBaseFixture.token);
-        expect(events, isEmpty);
-        remote.complete(http.Response('', 204));
-        await deletion;
-        await cleared.future;
-
-        expect(completed, isTrue);
-        expect(fixture.client.authStore.token, isEmpty);
-        expect(fixture.client.authStore.record, isNull);
-        expect(events, ['']);
-        final request = fixture.requests.single;
-        expect(request.method, 'DELETE');
-        expect(request.url.path, '/api/collections/users/records/user-1');
-        expect(request.body, isEmpty);
-        expect(request.url.query, isEmpty);
-      },
-    );
+      verify(() => database.setValue('profile.name', 'Gabriel')).called(1);
+      verifyNever(() => database.setValue('profile.avatar', any()));
+    });
 
     test(
-      'uses native SDK success semantics instead of requiring exactly 204',
+      'a second field failure does not hide an acknowledged first write',
       () async {
-        fixture.respond = (_) =>
-            PocketBaseFixture.jsonResponse({}, status: 200);
-
-        await repository.delete();
-
-        expect(fixture.client.authStore.token, isEmpty);
-      },
-    );
-
-    test(
-      'does not clear a different user authenticated during deletion',
-      () async {
-        fixture.respond = (_) {
-          fixture.authenticate(authToken: 'new-token', id: 'new-user');
-          return http.Response('', 204);
-        };
-
-        await repository.delete();
-
-        expect(fixture.client.authStore.token, 'new-token');
-        expect(fixture.client.authStore.record?.id, 'new-user');
-      },
-    );
-
-    test(
-      'does not wait for durable deletion from the native AsyncAuthStore',
-      () async {
-        final cleared = Completer<void>();
-        final clearing = Completer<void>();
-        final store = AsyncAuthStore(
-          initial: jsonEncode({
-            'token': PocketBaseFixture.token,
-            'model': body,
-          }),
-          save: (_) async {},
-          clear: () {
-            clearing.complete();
-            return cleared.future;
-          },
+        when(() => database.setValue('profile.name', 'Gabriel'))
+            .thenAnswer((_) async {
+              when(() => database.getValue('profile.name'))
+                  .thenAnswer((_) async => 'Gabriel');
+              return DbResult(statuses: []);
+            });
+        when(() => database.setValue('profile.avatar', 'new-seed')).thenAnswer(
+          (_) async => DbResult(
+            statuses: [
+              GeneralStatus(type: ResultType.engError, message: 'write failed'),
+            ],
+          ),
         );
-        final client = PocketBase(
-          fixture.client.baseURL,
-          authStore: store,
-          httpClientFactory: fixture.client.httpClientFactory,
+
+        await expectLater(
+          repository.update(name: 'Gabriel', avatar: 'new-seed'),
+          throwsA(isA<UserException>()),
         );
-        addTearDown(client.close);
-        addTearDown(() {
-          if (!cleared.isCompleted) {
-            cleared.complete();
-          }
-        });
-        fixture.respond = (_) => http.Response('', 204);
-        final persistentRepository = UserRepository(pocketBase: client);
+        final stored = await repository.get();
 
-        await persistentRepository.delete();
-        await clearing.future;
-
-        expect(store.token, isEmpty);
-        expect(cleared.isCompleted, isFalse);
-        cleared.complete();
+        expect(stored.name, 'Gabriel');
+        expect(stored.avatar, 'original-seed');
+        verify(() => database.setValue('profile.name', 'Gabriel')).called(1);
+        verify(() => database.setValue('profile.avatar', 'new-seed')).called(1);
       },
     );
+
+    test('native developer errors remain unexpected failures', () async {
+      final failure = DbException([
+        GeneralStatus(
+          type: ResultType.devInvalidArgumentType,
+          message: 'developer mistake',
+        ),
+      ]);
+      when(() => database.getValue('profile.name')).thenThrow(failure);
+
+      await expectLater(repository.get(), throwsA(same(failure)));
+      await expectLater(
+        repository.update(name: 'Gabriel'),
+        throwsA(same(failure)),
+      );
+    });
+
+    test('thrown native write failures use safe application errors', () async {
+      when(() => database.setValue('profile.avatar', any())).thenThrow(
+        DbException([
+          GeneralStatus(type: ResultType.engError, message: 'private path'),
+        ]),
+      );
+
+      await expectLater(
+        repository.update(avatar: 'new-seed'),
+        throwsA(isA<UserException>()),
+      );
+
+      verify(() => database.setValue('profile.avatar', any())).called(1);
+    });
   });
 }

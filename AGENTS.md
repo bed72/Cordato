@@ -7,22 +7,41 @@ Authentication, Session, infraestrutura PocketBase, áudio, backend e worker for
 removidos pelo usuário. Não os restaure para sanar os erros legados. As instruções
 PocketBase abaixo descrevem o estado anterior e não prevalecem sobre este escopo.
 
-A primeira entrega cobre somente abertura ToStore, schema, perfil inicial, DI e
-testes. Não migrar repositories, entidades, Blocs ou telas incidentalmente.
+A fundação cobre abertura ToStore, schema, perfil inicial, DI e testes. User foi
+migrado explicitamente para leitura/atualização local de nome e avatar. Não migrar
+Expense, Metrics ou outros fluxos incidentalmente.
 `main` aguarda `createDependencies`; `ToStoreFactory.create` abre o banco em
 diretório persistente com schemas fornecidos pela composição, durabilidade
 `durable` e logs diagnósticos desativados. `createAppModule` e `createCoreModule`
 recebem o ToStore pronto e compartilham a instância, sem wrapper genérico de CRUD.
-User usa KV `profile`, sem ID, nome inicial `Cordato` e seed aleatória persistida.
+User usa KV `profile.name` e `profile.avatar`, sem ID, nome inicial `Cordato` e
+seed aleatória persistida.
 Expense usa schema próprio sem `owner`: ID automático, centavos inteiros positivos,
 categoria padrão `other`, descrição anulável e data civil obrigatória.
 Default hoje e validação de categoria pertencem à futura criação no repository;
 schema não normaliza datas nem restringe o enum. Não prometa app funcional,
 backup, criptografia ou validação global a partir dos testes focados.
 
+UserEntity não possui ID/e-mail. IUserRepository expõe `getProfile` e `update`,
+sem exclusão de conta. UserRepository usa chaves independentes pelo ToStore pronto,
+verifica `hasErrors` e grava somente os campos fornecidos, sem fila de Futures,
+transação ou estado pendente no repository. Atualizações simultâneas de campos
+diferentes não se sobrescrevem; atualizar ambos não é uma operação atômica.
+O bootstrap inicializa somente chaves ausentes, preservando valores válidos e
+rejeitando valores presentes malformados. Não crie identidade, sessão, cache de perfil ou
+inicialização silenciosa no repository. Falta de perfil e falhas esperadas de
+storage geram UserException; erros de parsing/programação propagam como inesperados.
+Mensagens nativas do banco não chegam aos erros de UI. User/Edit preservam
+ownership dos Blocs pela screen e factories estáveis, sem migração incidental.
+Dashboard consulta somente o contrato atualizado. Rotas User não exigem sessão.
+User possui um único `userModule`, sem path, com binds e rotas completas.
+Não separar dependências em outro módulo nem restringir o repository ao lifecycle
+da rota; Dashboard o consome sem precisar visitar User.
+
 Testes ToStore usam SDK real com diretórios temporários e fechamento explícito,
-sem UI. Mocks do SDK são restritos a injeção de falhas do inicializador, com double
-em `test/support/core/mocks/`. Preserve e registre os erros legados fora do escopo.
+sem UI. Mocks do SDK são restritos a injeção de falhas e controle de operações
+pendentes do inicializador/repository User, com double em
+`test/support/core/mocks/`. Preserve e registre os erros legados fora do escopo.
 
 ## Client Atual: SDK PocketBase
 

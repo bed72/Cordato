@@ -9,8 +9,8 @@ import 'package:cordato/features/user/domain/entities/user_entity.dart';
 
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_bloc.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.dart';
-import 'package:cordato/features/user/presentation/screens/edit/widgets/edit_user_app_bar_widget.dart';
 import 'package:cordato/features/user/presentation/screens/edit/mixins/edit_screen_state_mixin.dart';
+import 'package:cordato/features/user/presentation/screens/edit/widgets/edit_user_app_bar_widget.dart';
 
 final class const EditScreen({
   super.key,
@@ -66,8 +66,8 @@ final class _EditScreenState extends State<EditScreen>
                           enabled: state.canSubmit,
                           onChanged: onNameChanged,
                           textCapitalization: .words,
-                          initialValue: widget.initialName,
                           onSubmitted: (_) => updateName(),
+                          initialValue: widget.initialName,
                         ),
                       ],
                     ),

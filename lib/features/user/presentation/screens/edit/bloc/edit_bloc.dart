@@ -17,6 +17,7 @@ final class EditBloc({required final IUserRepository repository})
     Emitter<EditState> emit,
   ) async {
     if (!state.canSubmit) return;
+
     emit(const EditSubmitting());
 
     try {
@@ -27,12 +28,6 @@ final class EditBloc({required final IUserRepository repository})
       emit(EditSuccess(user: user));
     } on UserException catch (error) {
       if (isClosed || emit.isDone) return;
-
-      emit(EditFailure(errors: error.errors));
-    } on MissingAuthenticatedUserException catch (error) {
-      if (isClosed || emit.isDone) {
-        return;
-      }
 
       emit(EditFailure(errors: error.errors));
     } catch (error, stackTrace) {

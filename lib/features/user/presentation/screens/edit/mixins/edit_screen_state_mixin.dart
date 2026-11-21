@@ -14,9 +14,11 @@ import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.
 import 'package:cordato/features/user/presentation/formatters/user_error_message_formatter.dart';
 
 mixin EditScreenStateMixin on State<EditScreen> {
-  late EditBloc bloc;
   String? nameFailure;
+
+  late EditBloc bloc;
   late String name = widget.initialName;
+
   final nameValidation = const NameValidation();
 
   bool get canUpdate =>
@@ -26,13 +28,16 @@ mixin EditScreenStateMixin on State<EditScreen> {
   @override
   void initState() {
     super.initState();
+
     bloc = widget.bloc();
   }
 
   @override
   void didUpdateWidget(covariant EditScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (oldWidget.bloc == widget.bloc) return;
+
     unawaited(bloc.close());
     bloc = widget.bloc();
     nameFailure = null;
@@ -41,6 +46,7 @@ mixin EditScreenStateMixin on State<EditScreen> {
   @override
   void dispose() {
     unawaited(bloc.close());
+
     super.dispose();
   }
 
@@ -56,6 +62,7 @@ mixin EditScreenStateMixin on State<EditScreen> {
 
   void updateName() {
     if (!canUpdate || !bloc.state.canSubmit || bloc.isClosed) return;
+
     context.dismissKeyboard();
     setState(() => nameFailure = null);
     bloc.add(EditSubmittedEvent(name: name.trim()));
@@ -64,11 +71,12 @@ mixin EditScreenStateMixin on State<EditScreen> {
   void handleUpdate(EditState state) {
     if (!mounted || bloc.isClosed) return;
     if (state case EditFailure(:final errors)) {
-      final fieldErrors = errors.errors.where(nameValidation.isFieldError);
+      final fields = errors.errors.where(nameValidation.isFieldError);
+
       setState(() {
-        nameFailure = fieldErrors.isEmpty
+        nameFailure = fields.isEmpty
             ? null
-            : fieldErrors
+            : fields
                   .map(
                     (error) => UserErrorMessageFormatter.format(
                       error,
@@ -77,9 +85,11 @@ mixin EditScreenStateMixin on State<EditScreen> {
                   )
                   .join('\n');
       });
+
       final remaining = errors.errors.where(
         (error) => !nameValidation.isFieldError(error),
       );
+
       if (remaining.isNotEmpty) {
         context.showToast(
           variant: .error,
@@ -102,14 +112,17 @@ mixin EditScreenStateMixin on State<EditScreen> {
           description: 'Não foi possível atualizar o nome. Tente novamente.',
         );
       }
+
       return;
     }
+
     if (state case EditSuccess(:final user)) {
       context.showToast(
         variant: .success,
         title: 'Nome atualizado',
         description: 'Seu nome foi atualizado com sucesso.',
       );
+
       widget.onUpdated(context, user);
     }
   }

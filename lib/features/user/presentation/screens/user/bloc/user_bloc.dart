@@ -26,7 +26,7 @@ final class UserBloc({required final IUserRepository repository})
         case UserRequestedEvent():
           emit(const UserLoading());
 
-          final data = await repository.getById();
+          final data = await repository.get();
           if (isClosed || emit.isDone) return;
 
           emit(UserReady(data: data));
@@ -35,23 +35,15 @@ final class UserBloc({required final IUserRepository repository})
 
           final data = await repository.update(avatar: seed);
           if (isClosed || emit.isDone) return;
+
           if (data.avatar != seed) {
             emit(UserAvatarFailure(data: user, errors: .unknown()));
             return;
           }
 
           emit(UserAvatarSuccess(data: data));
-        case UserDeleteRequestedEvent():
-          emit(UserDeleting(data: user));
-
-          await repository.delete();
-          if (isClosed || emit.isDone) return;
-
-          emit(UserDeleteSuccess(data: user));
       }
     } on UserException catch (error) {
-      _fail(event, user, error.errors, emit);
-    } on MissingAuthenticatedUserException catch (error) {
       _fail(event, user, error.errors, emit);
     } catch (error, stackTrace) {
       if (isClosed || emit.isDone) return;
@@ -69,14 +61,11 @@ final class UserBloc({required final IUserRepository repository})
     Emitter<UserState> emit,
   ) {
     if (isClosed || emit.isDone) return;
+
     emit(switch (event) {
       UserRequestedEvent() => UserFailure(errors: errors),
       UserAvatarSubmittedEvent() => UserAvatarFailure(
         data: user!,
-        errors: errors,
-      ),
-      UserDeleteRequestedEvent() => UserDeleteFailure(
-        data: user,
         errors: errors,
       ),
     });

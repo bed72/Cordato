@@ -7,17 +7,12 @@ import 'package:cordato/features/user/application/repositories/interface_user_re
 final class DashboardUserPreviewRepository({final ErrorsEntity? failure})
     implements IUserRepository {
   @override
-  Future<UserEntity> getById() async {
-    if (failure != null) throw UserException(errors: failure!);
-    return const UserEntity(
-      name: 'Gabriel',
-      id: 'preview-user',
-      email: 'preview@example.com',
-    );
+  Future<UserEntity> get() async {
+    if (failure != null) {
+      throw UserException(errors: failure!);
+    }
+    return const UserEntity(name: 'Gabriel', avatar: 'preview-avatar');
   }
-
-  @override
-  Future<void> delete() async => throw UserException(errors: .unknown());
 
   @override
   Future<UserEntity> update({String? name, String? avatar}) async =>

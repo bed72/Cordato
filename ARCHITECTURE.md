@@ -26,10 +26,12 @@ Não há retry, exclusão, reset ou fallback para banco vazio no bootstrap do ap
 A evolução declarativa de schema segue o motor e exige testes com dados
 existentes antes de futuras mudanças; não há migração de dados PocketBase.
 
-User mantém somente uma entrada KV `profile`, com `name: Cordato` e `avatar`
-contendo uma seed aleatória de 16 bytes representada em hexadecimal, criada
-uma única vez. Não há ID ou tabela de usuários. O inicializador preserva perfis
-existentes, rejeita estrutura inválida e verifica `hasErrors` na gravação.
+User mantém duas entradas KV independentes, `profile.name` com padrão `Cordato` e
+`profile.avatar` contendo uma seed aleatória de 16 bytes em hexadecimal.
+Não há ID ou tabela de usuários. O inicializador grava somente as chaves ausentes,
+preserva valores existentes válidos, rejeita valores malformados e verifica
+`hasErrors` em cada gravação. Uma inicialização interrompida pode completar a chave
+ausente na próxima abertura, sem substituir os campos já persistidos.
 Nome e seed não são derivados um do outro.
 
 Expense possui `expenseSchema` em infrastructure, com tabela `expenses`,
@@ -43,11 +45,50 @@ fuso. O schema não impõe essa normalização nem possui default de timestamp:
 o padrão hoje no calendário local será calculado a cada criação no repository,
 nunca na abertura do banco.
 
-Esta entrega não migra repositories, entidades, Blocs ou telas para os novos
-contratos locais. As referências restantes a PocketBase e fluxos removidos ainda
+Expense e Metrics ainda não migraram repositories, entidades, Blocs ou telas para
+os novos contratos locais. As referências restantes a PocketBase e fluxos removidos ainda
 bloqueiam análise/compilação globais. Testes focados exercitam banco real em
 diretórios temporários, reabertura, defaults, restrições, perfil e DI do core,
 sem UI; não comprovam que o app completo inicia nem substituem build nativo.
+
+### Perfil User local
+
+User já usa o ToStore compartilhado diretamente em infrastructure.
+`IUserRepository.getProfile()` lê `profile.name` e `profile.avatar` em cada chamada;
+`update` grava somente as chaves dos campos fornecidos, verifica cada reconhecimento
+e relê o perfil antes de devolver a entidade. UserEntity contém nome e seed opcional de avatar,
+sem ID, e-mail ou identidade autenticada. O mapper local mantém casts estritos;
+seed vazia é ausência para apresentação, sem derivação por ID.
+O repository não inicializa perfil ausente nem retorna defaults diante de falha.
+
+Não há fila de Futures, estado pendente ou transação no UserRepository.
+Chaves independentes impedem que atualizar nome sobrescreva avatar, inclusive por
+instâncias diferentes. Escritas concorrentes na mesma chave seguem o motor,
+sem ordenação adicional pelo app. Atualizar ambos os campos usa duas gravações:
+uma falha na segunda não desfaz a primeira. Leituras não são snapshots atômicos.
+User usa somente `userModule`, sem path, com repository e factories de Blocs no
+mesmo registro e rotas completas de `RouteEnum.user` e `RouteEnum.userEdit`.
+Não há módulo separado de dependências. O bind de IUserRepository é compartilhado
+e root-owned, disponível antes de visitar User e depois de sair das suas rotas.
+Não há retry automático nem transação envolvendo despesas. O objeto KV `profile`
+da etapa anterior não é lido ou migrado; esta branch ainda não possui usuários.
+
+Falhas nativas esperadas e resultados com `hasErrors` são convertidos para
+UserException com códigos na ordem original, sem mensagens/conteúdo do storage.
+Erros nativos de programação, TypeError e FormatException continuam inesperados;
+Blocs publicam fallback seguro e usam addError conforme seu lifecycle.
+UserBloc mantém carregamento e atualização do avatar; eventos/estados de exclusão
+foram removidos. EditBloc mantém submissão droppable e bloqueio após sucesso.
+Nome continua validado no formulário com 2–32 code points Unicode após trim;
+repository e Bloc não normalizam entradas.
+
+Telas e previews locais não exibem e-mail, troca de senha ou exclusão de conta.
+As rotas `/user` e `/user/edit` não exigem sessão. O ownership atual das duas
+screens é preservado: factories estáveis, criação e fechamento pela screen.
+Os callbacks legados de navegação permanecem sem adotar outro ownership.
+Dashboard apenas acompanha `getProfile`, sem importar a implementação.
+Testes de User exercitam banco em disco, atualizações parciais, reabertura,
+erros, concorrência, Blocs, parsing e resolução das rotas/DI, sem montar UI.
 
 ## Decisão Canônica
 

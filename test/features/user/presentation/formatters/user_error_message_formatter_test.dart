@@ -7,6 +7,22 @@ void main() {
   const fallback = 'Não foi possível atualizar o nome.';
 
   group('User error messages', () {
+    for (final code in ['profile_missing', 'ENG_ERROR', 'SYS_DB_CLOSED']) {
+      test('local storage code $code uses safe feedback', () {
+        expect(
+          UserErrorMessageFormatter.format(
+            ErrorEntity(
+              code: code,
+              title: 'private path',
+              detail: 'private profile contents',
+            ),
+            fallback: fallback,
+          ),
+          fallback,
+        );
+      });
+    }
+
     const scenarios = {
       'validation_required': 'Informe seu nome.',
       'validation_length': 'O nome deve ter entre 2 e 32 caracteres.',

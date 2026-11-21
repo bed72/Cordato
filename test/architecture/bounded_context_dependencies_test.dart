@@ -8,6 +8,7 @@ final _importPattern = RegExp(
 
 const _financialContexts = {'expense', 'budget', 'family'};
 const _forbiddenDomainImports = {
+  'package:tostore/',
   'package:record/',
   'package:speech_to_text/',
   'package:pocketbase/',
@@ -25,6 +26,7 @@ const _forbiddenDomainImports = {
   'package:flutter_secure_storage/',
 };
 const _forbiddenPresentationImports = {
+  'package:tostore/',
   'package:record/',
   'package:speech_to_text/',
   'package:share_plus/',

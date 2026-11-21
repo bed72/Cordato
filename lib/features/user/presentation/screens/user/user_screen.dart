@@ -1,13 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_modular/flutter_modular.dart';
-import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_item_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/buttons/danger_button_widget.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 
@@ -34,72 +31,57 @@ final class const UserScreen({
 final class _UserScreenState extends State<UserScreen>
     with UserScreenStateMixin {
   @override
-  Widget build(BuildContext context) => BlocConsumer<UserBloc, UserState>(
-    bloc: bloc,
-    listener: (_, state) => handleUser(state),
-    builder: (_, state) {
-      if (state
-          case UserFailure(:final errors) ||
-              UserDeleteFailure(data: null, :final errors)) {
-        return ErrorScreen(
+  Widget build(BuildContext context) {
+    return BlocConsumer<UserBloc, UserState>(
+      bloc: bloc,
+      listener: (_, state) => handleUser(state),
+      builder: (_, state) {
+        if (state case UserFailure(:final errors)) {
+          return ErrorScreen(
+            onAction: loadUser,
+            description: error(errors),
+            actionLabel: 'Tentar novamente',
+            title: 'Não foi possível carregar seus dados.',
+            appBar: SettingsAppBarWidget(onBackPressed: widget.onBackPressed),
+          );
+        }
+        return Scaffold(
           appBar: SettingsAppBarWidget(onBackPressed: widget.onBackPressed),
-          title: 'Não foi possível carregar seus dados.',
-          description: error(errors),
-          actionLabel: 'Tentar novamente',
-          onAction: loadUser,
-          secondaryActionLabel: 'Excluir conta',
-          onSecondaryAction: state.canDelete
-              ? showDeleteAccountConfirmation
-              : null,
-        );
-      }
-      return Scaffold(
-        appBar: SettingsAppBarWidget(onBackPressed: widget.onBackPressed),
-        body: SafeArea(
-          child: Padding(
-            padding: const .all(16.0),
-            child: Column(
-              spacing: 16,
-              crossAxisAlignment: .stretch,
-              children: [
-                const HeaderWidget(
-                  title: 'Dados pessoais',
-                  description: 'Gerencie os dados da sua conta.',
-                ),
-                const SizedBox(height: 8.0),
-                Expanded(
-                  child: state.user != null
-                      ? _buildUser(state.user!, state)
-                      : ExcludeSemantics(
-                          child: IgnorePointer(
-                            child: UserSkeletonWidget(
-                              child: _buildUser(
-                                const UserEntity(
-                                  id: '72',
-                                  name: 'Nome do usuário',
-                                  email: 'usuario@exemplo.com',
+          body: SafeArea(
+            child: Padding(
+              padding: const .all(16.0),
+              child: Column(
+                spacing: 16,
+                crossAxisAlignment: .stretch,
+                children: [
+                  const HeaderWidget(
+                    title: 'Dados pessoais',
+                    description: 'Personalize seu perfil neste dispositivo.',
+                  ),
+                  const SizedBox(height: 8.0),
+                  Expanded(
+                    child: state.user != null
+                        ? _buildUser(state.user!, state)
+                        : ExcludeSemantics(
+                            child: IgnorePointer(
+                              child: UserSkeletonWidget(
+                                child: _buildUser(
+                                  const UserEntity(name: 'Nome do usuário'),
+                                  state,
                                 ),
-                                state,
                               ),
                             ),
                           ),
-                        ),
-                ),
-                const SizedBox(height: 8.0),
-                DangerButtonWidget(
-                  isLoading: state.isDeleting,
-                  onTap: state.canDelete ? showDeleteAccountConfirmation : null,
-                  child: const Flexible(
-                    child: Text('Excluir conta', textAlign: .center),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8.0),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
+  }
 
   SingleChildScrollView _buildUser(UserEntity currentUser, UserState state) =>
       SingleChildScrollView(
@@ -125,26 +107,6 @@ final class _UserScreenState extends State<UserScreen>
                   value: currentUser.displayName,
                   icon: Icons.person_outline,
                   onPressed: state.canEdit ? () => editName(currentUser) : null,
-                ),
-                MenuItemWidget(
-                  height: 64.0,
-                  spacing: 12.0,
-                  label: 'E-mail',
-                  value: currentUser.email,
-                  showChevron: false,
-                  disabledOpacity: 0.5,
-                  icon: Icons.mark_email_read_outlined,
-                ),
-                MenuItemWidget(
-                  height: 64.0,
-                  spacing: 12.0,
-                  label: 'Alterar senha',
-                  icon: Icons.lock_outline,
-                  onPressed: state.canEdit
-                      ? () => context.pushNamed(
-                          RouteEnum.authenticationChangePassword.path,
-                        )
-                      : null,
                 ),
               ],
             ),

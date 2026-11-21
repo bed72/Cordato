@@ -143,15 +143,6 @@ final class DashboardBloc({
               errors,
             ParallelWaitError(
               errors: (
-                AsyncError(
-                  error: MissingAuthenticatedUserException(:final errors),
-                ),
-                null,
-              ),
-            ) =>
-              errors,
-            ParallelWaitError(
-              errors: (
                 AsyncError(error: MetricsException(:final errors)),
                 null,
               ),
@@ -173,10 +164,8 @@ final class DashboardBloc({
 
   Future<UserEntity> _getUser(Emitter<DashboardState> emit) async {
     try {
-      return await _userRepository.getById();
+      return await _userRepository.get();
     } on UserException {
-      rethrow;
-    } on MissingAuthenticatedUserException {
       rethrow;
     } catch (error, stackTrace) {
       if (_active(emit)) addError(error, stackTrace);

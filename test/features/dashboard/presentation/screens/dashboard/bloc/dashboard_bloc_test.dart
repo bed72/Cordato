@@ -5,7 +5,6 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
@@ -33,7 +32,7 @@ void main() {
   late MetricsRepositoryMock metricsRepository;
   late List<StreamSubscription<DashboardState>> subscriptions;
   final today = DateTime(2026, 10, 19, 16, 30);
-  const profile = UserEntity(id: 'user', name: 'Gabriel', email: 'a@b.com');
+  const profile = UserEntity(name: 'Gabriel', avatar: 'profile-seed');
 
   ExpensePageEntity page(List<DateTime> dates, {int? nextPage}) =>
       ExpensePageEntity(
@@ -109,7 +108,7 @@ void main() {
     users = UserRepositoryMock();
     expenses = ExpenseRepositoryMock();
     metricsRepository = MetricsRepositoryMock();
-    when(() => users.getById()).thenAnswer((_) async => profile);
+    when(() => users.get()).thenAnswer((_) async => profile);
     when(history).thenAnswer((_) async => page([DateTime(2024, 1)]));
     stubRecent(() async => page([]));
     when(
@@ -164,7 +163,7 @@ void main() {
       expect(bloc.state.firstMonth, DateTime(2024, 1));
       await send(DashboardOpened());
       expect(states.length, 2);
-      verify(() => users.getById()).called(1);
+      verify(() => users.get()).called(1);
       verify(history).called(1);
       verify(
         () => metricsRepository.getExpenses(
@@ -188,10 +187,10 @@ void main() {
       () async {
         final pendingUser = Completer<UserEntity>();
         final pendingHistory = Completer<ExpensePageEntity>();
-        when(() => users.getById()).thenAnswer((_) => pendingUser.future);
+        when(() => users.get()).thenAnswer((_) => pendingUser.future);
         when(history).thenAnswer((_) => pendingHistory.future);
         await send(DashboardOpened());
-        verify(() => users.getById()).called(1);
+        verify(() => users.get()).called(1);
         verify(history).called(1);
         verifyZeroInteractions(metricsRepository);
         pendingUser.complete(profile);
@@ -332,7 +331,7 @@ void main() {
         'User failure preserves ${errors.errors.length} errors and fails the whole Dashboard',
         () async {
           final pendingHistory = Completer<ExpensePageEntity>();
-          when(() => users.getById())
+          when(() => users.get())
               .thenAnswer((_) async => throw UserException(errors: errors));
           when(history).thenAnswer((_) => pendingHistory.future);
           final states = recordStates();
@@ -352,7 +351,7 @@ void main() {
           expect(bloc.state.canRetry, isTrue);
           expect(bloc.state.financialError, same(errors));
           verify(history).called(1);
-          verify(() => users.getById()).called(1);
+          verify(() => users.get()).called(1);
           verifyNoMoreInteractions(expenses);
           verifyZeroInteractions(metricsRepository);
         },
@@ -425,7 +424,7 @@ void main() {
           ).called(1);
           verify(() => expenses.get(pageSize: 6, from: month, to: end))
               .called(1);
-          verify(() => users.getById()).called(2);
+          verify(() => users.get()).called(2);
           verify(history).called(2);
         },
       );
@@ -475,7 +474,7 @@ void main() {
         await flush();
         expect(bloc.state.phase, DashboardPhaseEnum.ready);
         verify(history).called(1);
-        verify(() => users.getById()).called(1);
+        verify(() => users.get()).called(1);
       },
     );
 
@@ -559,7 +558,7 @@ void main() {
       await send(DashboardPreviousMonthRequested());
       expect(bloc.state, same(failed));
       final pendingUser = Completer<UserEntity>();
-      when(() => users.getById()).thenAnswer((_) => pendingUser.future);
+      when(() => users.get()).thenAnswer((_) => pendingUser.future);
       stubMetrics(() async => totals(DateTime(2026, 10)));
       final states = recordStates();
       await send(DashboardRetryRequested());
@@ -572,7 +571,7 @@ void main() {
         DashboardPhaseEnum.loading,
         DashboardPhaseEnum.ready,
       ]);
-      verify(() => users.getById()).called(2);
+      verify(() => users.get()).called(2);
     });
 
     test(
@@ -647,8 +646,8 @@ void main() {
 
   group('Profile refresh and lifecycle', () {
     test('a confirmed profile with an empty name remains valid', () async {
-      const unnamed = UserEntity(id: 'user', name: '', email: 'a@b.com');
-      when(() => users.getById()).thenAnswer((_) async => unnamed);
+      const unnamed = UserEntity(name: '');
+      when(() => users.get()).thenAnswer((_) async => unnamed);
 
       await send(DashboardOpened());
 
@@ -667,12 +666,10 @@ void main() {
         clearInteractions(metricsRepository);
         final states = recordStates();
         const updatedProfile = UserEntity(
-          id: 'user',
           name: 'Gabriel atualizado',
-          email: 'a@b.com',
           avatar: 'updated-avatar',
         );
-        when(() => users.getById()).thenAnswer((_) async => updatedProfile);
+        when(() => users.get()).thenAnswer((_) async => updatedProfile);
         await send(DashboardUserRequested());
         expect(states.map((state) => state.phase), [
           DashboardPhaseEnum.loading,
@@ -708,7 +705,7 @@ void main() {
           clearInteractions(expenses);
           clearInteractions(metricsRepository);
           final states = recordStates();
-          when(() => users.getById())
+          when(() => users.get())
               .thenAnswer((_) async => throw UserException(errors: errors));
 
           await send(DashboardUserRequested());
@@ -733,12 +730,12 @@ void main() {
       'manual retry after a profile failure reloads the complete Dashboard',
       () async {
         await send(DashboardOpened());
-        when(() => users.getById())
+        when(() => users.get())
             .thenAnswer((_) async => throw UserException(errors: .unknown()));
         await send(DashboardUserRequested());
         expect(bloc.state.phase, DashboardPhaseEnum.failure);
         final states = recordStates();
-        when(() => users.getById()).thenAnswer((_) async => profile);
+        when(() => users.get()).thenAnswer((_) async => profile);
 
         await send(DashboardRetryRequested());
 
@@ -748,7 +745,7 @@ void main() {
         ]);
         expect(bloc.state.user, same(profile));
         expect(bloc.state.financialError, isNull);
-        verify(() => users.getById()).called(3);
+        verify(() => users.get()).called(3);
         verify(history).called(2);
         verify(
           () => metricsRepository.getExpenses(
@@ -764,13 +761,16 @@ void main() {
       DashboardOpened(),
       DashboardUserRequested(),
     ]) {
-      const missingIdentity = MissingAuthenticatedUserException();
+      final missingProfile = UserException(
+        errors: const ErrorsEntity(
+          errors: [ErrorEntity(code: 'profile_missing')],
+        ),
+      );
       blocTest<DashboardBloc, DashboardState>(
-        '${event.runtimeType} preserves shared identity errors without reporting',
+        '${event.runtimeType} preserves missing local profile errors without reporting',
         setUp: () => bloc.close(),
         build: () {
-          when(() => users.getById())
-              .thenAnswer((_) async => throw missingIdentity);
+          when(() => users.get()).thenAnswer((_) async => throw missingProfile);
           return bloc = create();
         },
         seed: () => DashboardState(
@@ -795,7 +795,7 @@ void main() {
               .having(
                 (state) => state.financialError,
                 'errors',
-                same(missingIdentity.errors),
+                same(missingProfile.errors),
               )
               .having((state) => state.user, 'user', isNull)
               .having((state) => state.metrics, 'metrics', isNull)
@@ -812,9 +812,9 @@ void main() {
           setUp: () => bloc.close(),
           build: () {
             if (synchronous) {
-              when(() => users.getById()).thenThrow(error);
+              when(() => users.get()).thenThrow(error);
             } else {
-              when(() => users.getById()).thenAnswer((_) async => throw error);
+              when(() => users.get()).thenAnswer((_) async => throw error);
             }
             return bloc = create();
           },
@@ -854,9 +854,9 @@ void main() {
 
     test('returning from User during loading replaces the whole cycle without waiting for old User', () async {
       final pending = Completer<UserEntity>();
-      when(() => users.getById()).thenAnswer((_) => pending.future);
+      when(() => users.get()).thenAnswer((_) => pending.future);
       await send(DashboardOpened());
-      when(() => users.getById()).thenAnswer((_) async => profile);
+      when(() => users.get()).thenAnswer((_) async => profile);
       await send(DashboardUserRequested());
       final ready = bloc.state;
       expect(ready.phase, DashboardPhaseEnum.ready);
@@ -877,9 +877,9 @@ void main() {
     test('confirmed changes replace a pending profile refresh', () async {
       await send(DashboardOpened());
       final pending = Completer<UserEntity>();
-      when(() => users.getById()).thenAnswer((_) => pending.future);
+      when(() => users.get()).thenAnswer((_) => pending.future);
       await send(DashboardUserRequested());
-      when(() => users.getById()).thenAnswer((_) async => profile);
+      when(() => users.get()).thenAnswer((_) async => profile);
       await send(DashboardExpensesChanged());
       final ready = bloc.state;
       pending.completeError(UserException(errors: .unknown()));

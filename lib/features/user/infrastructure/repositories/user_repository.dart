@@ -1,5 +1,8 @@
-import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_mapper.dart';
-import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_extension.dart';
+import 'dart:io';
+
+import 'package:tostore/tostore.dart';
+
+import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/infrastructure/responses/user_response.dart';
@@ -7,44 +10,70 @@ import 'package:cordato/features/user/infrastructure/responses/user_response.dar
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
-final class UserRepository({required final PocketBase pocketBase})
+final class UserRepository({required final ToStore database})
     implements IUserRepository {
   @override
-  Future<UserEntity> getById() async {
-    final id = pocketBase.userId();
-
+  Future<UserEntity> get() async {
     try {
-      final user = await pocketBase.collection('users').getOne(id);
+      final [name, avatar] = await Future.wait([
+        database.getValue('profile.name'),
+        database.getValue('profile.avatar'),
+      ]);
 
-      return UserResponse.fromJson(user.toJson()).toEntity();
-    } on ClientException catch (exception) {
-      throw UserException(errors: PocketBaseMapper.fromException(exception));
+      if (name == null || avatar == null) {
+        throw UserException(
+          errors: const ErrorsEntity(
+            errors: [ErrorEntity(code: 'profile_missing')],
+          ),
+        );
+      }
+
+      return UserResponse.fromJson({'name': name, 'avatar': avatar}).toEntity();
+    } on DbException catch (exception) {
+      throw _failure(exception);
+    } on FileSystemException {
+      throw UserException(errors: .unknown());
     }
   }
 
   @override
   Future<UserEntity> update({String? name, String? avatar}) async {
-    final id = pocketBase.userId();
+    final current = await get();
+
+    if (name == null && avatar == null) return current;
+
+    final fields = {'profile.name': ?name, 'profile.avatar': ?avatar};
 
     try {
-      final user = await pocketBase
-          .collection('users')
-          .update(id, body: {'name': ?name, 'avatar': ?avatar});
+      for (final field in fields.entries) {
+        final saved = await database.setValue(field.key, field.value);
 
-      return UserResponse.fromJson(user.toJson()).toEntity();
-    } on ClientException catch (exception) {
-      throw UserException(errors: PocketBaseMapper.fromException(exception));
+        if (saved.hasErrors) throw _failure(DbException(saved.statuses));
+      }
+
+      return await get();
+    } on DbException catch (exception) {
+      throw _failure(exception);
+    } on FileSystemException {
+      throw UserException(errors: .unknown());
     }
   }
 
-  @override
-  Future<void> delete() async {
-    final id = pocketBase.userId();
-
-    try {
-      await pocketBase.collection('users').delete(id);
-    } on ClientException catch (exception) {
-      throw UserException(errors: PocketBaseMapper.fromException(exception));
+  UserException _failure(DbException exception) {
+    if (exception.statuses.any((status) => status.isDeveloperError)) {
+      throw exception;
     }
+
+    return UserException(
+      errors: ErrorsEntity(
+        errors: exception.statuses.isEmpty
+            ? ErrorsEntity.unknown().errors
+            : .unmodifiable(
+                exception.statuses.map(
+                  (status) => ErrorEntity(code: status.codeKey),
+                ),
+              ),
+      ),
+    );
   }
 }

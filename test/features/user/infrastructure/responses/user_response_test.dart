@@ -3,21 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/user/infrastructure/responses/user_response.dart';
 
 void main() {
-  const record = {
-    'id': 'user12345678901',
-    'verified': true,
-    'name': 'Gabriel',
-    'collectionName': 'users',
-    'avatar': 'chosen-avatar',
-    'email': 'person@example.com',
-  };
+  const record = {'name': 'Gabriel', 'avatar': 'chosen-avatar'};
 
-  test('maps a native PocketBase record without a status field', () {
+  test('maps the local profile without account fields', () {
     final user = UserResponse.fromJson(record).toEntity();
 
-    expect(user.id, record['id']);
     expect(user.name, 'Gabriel');
-    expect(user.email, 'person@example.com');
     expect(user.avatar, 'chosen-avatar');
   });
 
@@ -40,7 +31,7 @@ void main() {
     expect(user.avatar, '  seed  ');
   });
 
-  for (final field in ['id', 'name', 'email', 'avatar']) {
+  for (final field in ['name', 'avatar']) {
     for (final invalid in [null, 123, false]) {
       test('rejects invalid $field: $invalid', () {
         expect(
