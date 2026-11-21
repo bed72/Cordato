@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
-import 'package:cordato/features/core/presentation/widgets/cards/iformation_card_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/cards/information_card_widget.dart';
 
 @CordatoPreview(
   group: 'Core / Cards',
@@ -21,7 +21,7 @@ Widget previewIformationCardWidget() => Scaffold(
     child: Padding(
       padding: const .all(16.0),
       child: Builder(
-        builder: (context) => IformationCardWidget(
+        builder: (context) => InformationCardWidget(
           title: 'Mais valor registrado',
           description: 'De 1 a 8, você registrou 35% mais valor que nos mesmos dias do mês passado.',
           icon: Icons.trending_up,

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:mocktail/mocktail.dart';
-import 'package:pocketbase/pocketbase.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;

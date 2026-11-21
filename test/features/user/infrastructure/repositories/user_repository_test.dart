@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:pocketbase/pocketbase.dart';
 
 import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';

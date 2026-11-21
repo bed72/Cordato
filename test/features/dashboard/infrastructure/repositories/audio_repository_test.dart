@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:http/http.dart' as http;
-import 'package:pocketbase/pocketbase.dart';
+
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 

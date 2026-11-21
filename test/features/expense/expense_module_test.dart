@@ -1,6 +1,5 @@
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pocketbase/pocketbase.dart';
 
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';

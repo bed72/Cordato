@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pocketbase/pocketbase.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_mapper.dart';
 

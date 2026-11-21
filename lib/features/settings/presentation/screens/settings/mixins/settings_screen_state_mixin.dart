@@ -7,17 +7,11 @@ import 'package:cordato/features/core/presentation/formatters/error_message_form
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
 
 import 'package:cordato/features/settings/presentation/screens/settings/settings_screen.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_bloc.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_event.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/bloc/logout_state.dart';
 
 mixin SettingsScreenStateMixin on State<SettingsScreen> {
-  late LogoutBloc bloc;
-
   @override
   void initState() {
     super.initState();
-    bloc = widget.logoutBloc();
   }
 
   @override

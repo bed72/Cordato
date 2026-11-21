@@ -25,6 +25,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
+  archive:
+    dependency: transitive
+    description:
+      name: archive
+      sha256: "2fda90592c0afd219c5e285618a98da835cd10df38372666093d25dfe457a2d0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.7.1"
   args:
     dependency: transitive
     description:
@@ -267,54 +275,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.1.1"
-  flutter_secure_storage:
-    dependency: "direct main"
-    description:
-      name: flutter_secure_storage
-      sha256: d4e1fb6b2cb524868929e78dc0282fa000554b22060fb53789dc481c9fc95bb8
-      url: "https://pub.dev"
-    source: hosted
-    version: "11.2.0"
-  flutter_secure_storage_darwin:
-    dependency: transitive
-    description:
-      name: flutter_secure_storage_darwin
-      sha256: a031ceac9b070e62ef183cd7f7d1a8798ebde402d5049f0fe6eb3a51bd797a21
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.3"
-  flutter_secure_storage_linux:
-    dependency: transitive
-    description:
-      name: flutter_secure_storage_linux
-      sha256: caa75bd78f017422912e3a904933113b2428eb79f981ac37acd2dd2a700458ea
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.0.3"
-  flutter_secure_storage_platform_interface:
-    dependency: transitive
-    description:
-      name: flutter_secure_storage_platform_interface
-      sha256: "64951127f001f546891c86f414972bf49ef2c4c8a4c92c65f5790cc0c9100045"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.1"
-  flutter_secure_storage_web:
-    dependency: transitive
-    description:
-      name: flutter_secure_storage_web
-      sha256: "073a62b3aeb866ab4ce795f960413948e51e5a42a9b0c8333b6daf5bb3208a1c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.1"
-  flutter_secure_storage_windows:
-    dependency: transitive
-    description:
-      name: flutter_secure_storage_windows
-      sha256: "471951813a97006d899db4948acc654a4f28c440083ea08178935ce20b173ec1"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.2.2"
   flutter_staggered_grid_view:
     dependency: "direct main"
     description:
@@ -365,14 +325,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
-  http:
-    dependency: "direct main"
-    description:
-      name: http
-      sha256: "87721a4a50b19c7f1d49001e51409bddc46303966ce89a65af4f4e6004896412"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.6.0"
   http_multi_server:
     dependency: transitive
     description:
@@ -382,7 +334,7 @@ packages:
     source: hosted
     version: "3.2.3"
   http_parser:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: http_parser
       sha256: "178d74305e7866013777bab2c3d8726205dc5a4dd935297175b19a23a2e66571"
@@ -429,14 +381,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
-  json_annotation:
-    dependency: transitive
-    description:
-      name: json_annotation
-      sha256: "2a743920d81b7910627f68ee2c9ac1fc0bfee32b9fc3403587d7c6791ca12f80"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.12.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -637,14 +581,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
-  pocketbase:
-    dependency: "direct main"
-    description:
-      name: pocketbase
-      sha256: "847653ae9238c60619ad2c74ab711b6624152ef2da7dabc972d44eb4f8c078a4"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.26.0"
   pool:
     dependency: transitive
     description:
@@ -653,6 +589,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.3"
+  posix:
+    dependency: transitive
+    description:
+      name: posix
+      sha256: "613646d076944f3acc125830af935b48d4b8a57a388691547bbfd25b434f4d63"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.5.4"
   pretty_qr_code:
     dependency: "direct main"
     description:
@@ -685,46 +629,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.3"
-  record:
-    dependency: "direct main"
-    description:
-      name: record
-      sha256: "3bbb68002de8bb2fc7178b6c955254fa882e2fe4c33fa98db4b98dd662d8a1d6"
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.2.0"
-  record_android:
-    dependency: transitive
-    description:
-      name: record_android
-      sha256: "68c8cb40628a460b2a8bdf746697bd798a71cca7b03b8dac20e752d50425900f"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.3.0"
-  record_darwin:
-    dependency: transitive
-    description:
-      name: record_darwin
-      sha256: "6ff6477febaa928ae3a294014f1254c766aaf6bb8f288f02cbe7cda1b9e9be87"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.0"
-  record_linux:
-    dependency: transitive
-    description:
-      name: record_linux
-      sha256: a2c1680b908c899e8198ad46e553adbfba4d66fe41c1314705cf3afb888f8033
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.0"
-  record_platform_interface:
-    dependency: transitive
-    description:
-      name: record_platform_interface
-      sha256: "970b2a2c4ac4dc666adca8a41fefc3c4b0c62ef1dfc3c46ba5400def7155ac1a"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.0"
   record_use:
     dependency: transitive
     description:
@@ -733,22 +637,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
-  record_web:
-    dependency: transitive
-    description:
-      name: record_web
-      sha256: "15852c45e3ac621090d919373faa5400ddffaf28403525359041132526a02b1d"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.0"
-  record_windows:
-    dependency: transitive
-    description:
-      name: record_windows
-      sha256: c708162ff3195e4b8898242410b66233a5081699f519226c4afe985d1eb877e0
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.4.0"
   share_plus:
     dependency: "direct main"
     description:
@@ -890,14 +778,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.2.0"
-  talker_bloc_logger:
-    dependency: "direct main"
-    description:
-      name: talker_bloc_logger
-      sha256: "5a80e841511291b674ff0b98e644fc50b3283098e442fac77ba3fc9a59464505"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.2.0"
   talker_logger:
     dependency: "direct main"
     description:
@@ -938,6 +818,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.20"
+  tostore:
+    dependency: "direct main"
+    description:
+      name: tostore
+      sha256: ec349193895407c6d802682587ad3ec35bafd04352e3bb0fa785044aa5ec39a2
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.6.3"
   typed_data:
     dependency: transitive
     description:

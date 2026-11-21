@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 
-final class const IformationCardContentWidget({
+final class const InformationCardContentWidget({
   super.key,
   required final String title,
   required final IconData icon,

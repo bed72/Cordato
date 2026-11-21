@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:pocketbase/pocketbase.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';

@@ -1,5 +1,3 @@
-import 'package:pocketbase/pocketbase.dart';
-
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 

@@ -1,5 +1,3 @@
-import 'package:pocketbase/pocketbase.dart';
-
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 
 import 'package:cordato/features/core/infrastructure/serializers/date_serializer.dart';

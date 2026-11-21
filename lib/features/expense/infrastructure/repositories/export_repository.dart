@@ -1,5 +1,3 @@
-import 'package:pocketbase/pocketbase.dart';
-
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_mapper.dart';
 import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_extension.dart';

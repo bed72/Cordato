@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
@@ -136,7 +135,6 @@ final class DashboardBloc({
           financialError: switch (error) {
             ErrorsEntity() => error,
             UserException(:final errors) => errors,
-            MissingAuthenticatedUserException(:final errors) => errors,
             MetricsException(:final errors) => errors,
             ExpenseException(:final errors) => errors,
             ParallelWaitError(

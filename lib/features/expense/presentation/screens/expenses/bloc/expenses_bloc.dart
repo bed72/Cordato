@@ -1,8 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
-
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_event.dart';

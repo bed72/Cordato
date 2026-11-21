@@ -1,9 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/widgets/cards/iformation_card_content_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/cards/information_card_content_widget.dart';
 
-final class const IformationCardWidget({
+final class const InformationCardWidget({
   super.key,
   required final String title,
   required final IconData icon,
@@ -23,7 +23,7 @@ final class const IformationCardWidget({
         ),
         child: Padding(
           padding: const .all(12.0),
-          child: IformationCardContentWidget(
+          child: InformationCardContentWidget(
             icon: icon,
             title: title,
             iconColor: iconColor,

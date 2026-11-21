@@ -2,8 +2,6 @@ import 'package:cordato/features/core/application/clients/interface_home_widget_
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import 'package:pocketbase/pocketbase.dart';
-
 import 'package:cordato/features/metrics/metrics_module.dart';
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_bloc.dart';
 import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_event.dart';
