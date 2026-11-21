@@ -38,6 +38,17 @@ User possui um único `userModule`, sem path, com binds e rotas completas.
 Não separar dependências em outro módulo nem restringir o repository ao lifecycle
 da rota; Dashboard o consome sem precisar visitar User.
 
+Settings também usa um único módulo sem path e rotas completas, sem autenticação.
+SettingsScreen é StatelessWidget: recebe ExportBloc do provide, não o cria/fecha
+e navega por BuildContext. Não restaure LogoutBloc, confirmação de saída ou
+callbacks de navegação na composição da rota. Exportação ainda consome o contrato
+legado de Expense; não migre Expense incidentalmente ao manter Settings.
+Information continua somente apresentação. Os documentos 2.0 de 21/11/2026
+descrevem perfil/dados locais, sem cadastro, backend, e-mails transacionais ou IA.
+Distinga exportação CSV de backup restaurável, suporte de acesso remoto ao banco,
+cópias do sistema de backup próprio e apoio Pix de processamento de pagamentos.
+Não prometa criptografia, recuperação ou conformidade jurídica já verificadas.
+
 Testes ToStore usam SDK real com diretórios temporários e fechamento explícito,
 sem UI. Mocks do SDK são restritos a injeção de falhas e controle de operações
 pendentes do inicializador/repository User, com double em

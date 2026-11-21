@@ -2,7 +2,6 @@ import 'package:cordato/features/core/application/enums/share_outcome_enum.dart'
 import 'package:cordato/features/core/application/models/share_origin_model.dart';
 import 'package:cordato/features/core/application/clients/interface_share_client.dart';
 import 'package:cordato/features/core/application/exceptions/file_share_exception.dart';
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/settings/application/exceptions/export_exception.dart';
@@ -12,20 +11,21 @@ import 'package:cordato/features/expense/application/repositories/interface_expo
     as expense;
 
 final class ExportRepository({
-  required final IShareClient shareClient,
-  required final expense.IExportRepository expenseRepository,
+  required final IShareClient _client,
+  required final expense.IExportRepository _repository,
 }) implements IExportRepository {
   @override
   Future<PreparedExportModel?> prepare() async {
     try {
-      await shareClient.cleanExpired();
-      final document = await expenseRepository.prepare();
+      await _client.cleanExpired();
+      final document = await _repository.prepare();
       if (document == null) return null;
 
-      expenseRepository.validateOwner(document.ownerId);
+      _repository.validateOwner(document.ownerId);
+
       final date = DateTime.now();
       final day = '${date.year}-${_pad(date.month)}-${_pad(date.day)}';
-      final attachment = await shareClient.prepare(
+      final attachment = await _client.prepare(
         bytes: document.bytes,
         fileName: 'cordato-despesas-$day.csv',
       );
@@ -35,19 +35,15 @@ final class ExportRepository({
       );
 
       try {
-        expenseRepository.validateOwner(document.ownerId);
+        _repository.validateOwner(document.ownerId);
 
         return export;
       } on ExpenseException {
-        await shareClient.discard(attachment);
-        rethrow;
-      } on MissingAuthenticatedUserException {
-        await shareClient.discard(attachment);
+        await _client.discard(attachment);
+
         rethrow;
       }
     } on ExpenseException catch (exception) {
-      throw ExportException(errors: exception.errors);
-    } on MissingAuthenticatedUserException catch (exception) {
       throw ExportException(errors: exception.errors);
     } on FileShareException catch (exception) {
       throw ExportException(errors: exception.errors);
@@ -60,15 +56,14 @@ final class ExportRepository({
     ShareOriginModel? origin,
   }) async {
     try {
-      expenseRepository.validateOwner(export.ownerId);
-      return await shareClient.share(
+      _repository.validateOwner(export.ownerId);
+
+      return await _client.share(
         origin: origin,
         mimeType: 'text/csv',
         attachment: export.attachment,
       );
     } on ExpenseException catch (exception) {
-      throw ExportException(errors: exception.errors);
-    } on MissingAuthenticatedUserException catch (exception) {
       throw ExportException(errors: exception.errors);
     } on FileShareException catch (exception) {
       throw ExportException(errors: exception.errors);
@@ -80,7 +75,7 @@ final class ExportRepository({
   @override
   Future<void> discard(PreparedExportModel export) async {
     try {
-      await shareClient.discard(export.attachment);
+      await _client.discard(export.attachment);
     } on FileShareException catch (exception) {
       throw ExportException(errors: exception.errors);
     }

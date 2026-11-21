@@ -90,6 +90,32 @@ Dashboard apenas acompanha `getProfile`, sem importar a implementação.
 Testes de User exercitam banco em disco, atualizações parciais, reabertura,
 erros, concorrência, Blocs, parsing e resolução das rotas/DI, sem montar UI.
 
+### Settings e Information na versão local
+
+Settings possui um único módulo sem path, com rotas completas `/settings` e
+`/settings/support`, sem exigência de sessão. SettingsScreen é StatelessWidget,
+com navegação pelo BuildContext e seções Perfil local, Dados, Informações e Apoio.
+Não há Bloc, mixin, confirmação ou testes de logout. ExportBloc continua
+exclusivamente no provide da rota e é recebido pelo ExportWidget sem transferência
+de ownership para a tela.
+
+A preparação/partilha de CSV e seus testes permanecem. O adapter de Settings
+preserva falhas de Expense e do client de compartilhamento, sem depender da
+exceção removida de identidade autenticada. Os contratos legados de documento e
+validação de proprietário de Expense não foram migrados nesta tarefa.
+A resolução isolada de Settings usa contratos de Expense/Share mockados:
+isso não comprova exportação offline enquanto o adapter de Expense estiver pendente.
+
+Information mantém conteúdo local somente de apresentação. Termos e Privacidade
+passam à versão 2.0 de 21/11/2026; Ajuda acompanha perfil único, sem cadastro,
+login, gravação de áudio, IA, hospedagem do banco ou e-mails transacionais.
+Os textos distinguem dados locais, snapshot do widget, exportação CSV sem
+restauração, cópias do sistema operacional e comunicações voluntárias ao suporte.
+Não prometem backup remoto, criptografia adicional ou recuperação pelo suporte.
+Remoção local não elimina cópias exportadas, backups do sistema ou dados enviados
+a terceiros. Apoio via Pix continua voluntário e externo ao processamento do app.
+Essa revisão editorial não constitui validação jurídica ou aprovação no Play.
+
 ## Decisão Canônica
 
 Authentication/Sign-in define a arquitetura obrigatória do Cordato: organização
@@ -173,8 +199,8 @@ no backend; o aplicativo não as prova por ocultar ações na interface.
 ## Exportação de despesas em CSV
 
 Settings possui a interação “Exportar despesas” por `ExportBloc`, criado somente
-no `provide` da rota e recebido explicitamente pela apresentação. O ownership
-preexistente de LogoutBloc não muda. O fluxo separa preparação e compartilhamento:
+no `provide` da rota e recebido explicitamente pela apresentação. LogoutBloc foi
+removido na transição local. O fluxo separa preparação e compartilhamento:
 o Bloc publica o anexo pronto e o listener da rota ativa solicita a abertura nativa.
 Uma preparação tardia após fechamento não abre o compartilhamento nem publica UI;
 isso não cancela HTTP/IO já iniciados.
@@ -456,9 +482,8 @@ dependências de módulos irmãos.
 Welcome mantém o rodapé original e navega somente para termos e privacidade;
 Ajuda permanece acessível pelas Configurações, sem link na Welcome. Settings
 oferece os três destinos. A navegação usa as extensões de `BuildContext` nos
-widgets responsáveis. Somente os antigos callbacks de
-informações de Settings foram removidos; logout e demais contratos da tela
-permanecem preservados. Root não inclui essas páginas no conjunto protegido.
+widgets responsáveis. Settings não recebe callbacks de navegação da rota nem
+mantém interação de logout. Root não inclui essas páginas no conjunto protegido.
 
 O conteúdo editorial fica em
 `information/presentation/content/information_content.dart`, com textos puros,
@@ -478,13 +503,12 @@ Não reutiliza o card compacto de informação com ícone lateral, inadequado ao
 parágrafos longos dos documentos. Previews isolados cobrem os dois resumos em
 claro/escuro e privacidade em largura reduzida com texto ampliado.
 
-O canal de suporte e privacidade é exibido como texto selecionável. Solicitações
-de exclusão sem acesso ao app são orientadas por e-mail; não há formulário,
-envio automático ou implementação de exclusão nesta feature. A exclusão
-autenticada continua pertencendo a User. As páginas públicas Angular, seus links,
-o recurso web exigido pelo Google Play e qualquer apoio via Pix são entregas
-separadas. A UI local não comprova atendimento operacional, conformidade jurídica,
-publicação web ou homologação das regras do PocketBase.
+O canal de suporte e privacidade é exibido como texto selecionável. Não há
+formulário ou envio automático. Sem conta remota, o suporte não exclui nem recupera
+o banco do dispositivo. Solicitações sobre mensagens de suporte são distintas
+da gestão dos dados locais. Publicação web da política e declarações no Play
+precisam de conferência separada. A UI local não comprova atendimento operacional,
+conformidade jurídica ou publicação web.
 
 Testes verificam o catálogo público isolado e na composição global, a estrutura
 editorial e os limites arquiteturais sem montar UI. Previews manuais incluem

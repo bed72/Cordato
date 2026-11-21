@@ -9,7 +9,6 @@ import 'package:cordato/features/core/application/enums/share_outcome_enum.dart'
 import 'package:cordato/features/core/application/models/share_origin_model.dart';
 import 'package:cordato/features/core/application/models/share_attachment_model.dart';
 import 'package:cordato/features/core/application/exceptions/file_share_exception.dart';
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 
 import 'package:cordato/features/expense/application/models/document_model.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
@@ -46,10 +45,7 @@ void main() {
   setUp(() {
     expenses = ExportRepositoryMock();
     files = FileShareClientMock();
-    repository = ExportRepository(
-      expenseRepository: expenses,
-      shareClient: files,
-    );
+    repository = ExportRepository(repository: expenses, client: files);
     document = DocumentModel(
       ownerId: 'owner',
       bytes: Uint8List.fromList([1, 2, 3]),
@@ -151,20 +147,25 @@ void main() {
       },
     );
 
-    test('maps absent identity without exposing SDK types', () async {
-      const missing = MissingAuthenticatedUserException();
-      when(expenses.prepare).thenThrow(missing);
-      await expectLater(
-        repository.prepare(),
-        throwsA(
-          isA<ExportException>().having(
-            (error) => error.errors,
-            'errors',
-            same(missing.errors),
+    test(
+      'rejects an invalid document before preparing a shared file',
+      () async {
+        when(() => expenses.validateOwner('owner'))
+            .thenThrow(ExpenseException(errors: errors));
+        await expectLater(
+          repository.prepare(),
+          throwsA(
+            isA<ExportException>().having(
+              (error) => error.errors,
+              'errors',
+              same(errors),
+            ),
           ),
-        ),
-      );
-    });
+        );
+        verify(files.cleanExpired).called(1);
+        verifyNoMoreInteractions(files);
+      },
+    );
 
     test('preserves file failure metadata', () async {
       when(

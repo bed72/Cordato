@@ -5,7 +5,7 @@ import 'package:cordato/features/settings/settings_module.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 
 void main() {
-  test('Settings registers its authenticated support destination', () {
+  test('Settings registers both local destinations without authentication', () {
     final boot = bootstrapModule(
       createModule(register: (context) => context.module(settingsModule)),
     );
@@ -17,12 +17,20 @@ void main() {
 
     expect(
       RouteEnum.authenticatedPaths(),
-      contains(RouteEnum.settingsSupport.path),
+      isNot(contains(RouteEnum.settingsSupport.path)),
     );
     expect(matches, hasLength(1));
     expect(matches!.single.route.provide, isNull);
-    expect(RouteEnum.settingsSupport.authenticated, isTrue);
+    expect(RouteEnum.settings.authenticated, isFalse);
+    expect(RouteEnum.settingsSupport.authenticated, isFalse);
     expect(RouteEnum.settingsSupport.path, '/settings/support');
     expect(matches.single.route.path, RouteEnum.settingsSupport.path);
+    expect(
+      boot.routes.routes.map((route) => route.path),
+      unorderedEquals([
+        RouteEnum.settings.path,
+        RouteEnum.settingsSupport.path,
+      ]),
+    );
   });
 }

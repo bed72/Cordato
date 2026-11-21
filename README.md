@@ -1,6 +1,6 @@
 # Cordato
 
-Aplicativo Flutter de finanças pessoais e familiares.
+Aplicativo Flutter de finanças pessoais, em migração para uso local.
 
 ## Migração offline em andamento
 
@@ -60,6 +60,30 @@ Verificação da migração User:
 - Suíte global e builds nativos não executados; não há confirmação de execução
   do app completo nem conferência visual.
 
+### Configurações e informações locais
+
+Configurações usa um único módulo sem path e destinos sem autenticação. A tela
+não mantém estado de logout e organiza Perfil local, Dados, Informações e Apoio.
+Os documentos de Termos de uso e Política de Privacidade estão na versão 2.0,
+de 21/11/2026, e a Ajuda acompanha o perfil sem cadastro, armazenamento local,
+ausência de áudio/IA, perda de dados e limites de cópias/exportação.
+Os textos não prometem criptografia adicional, sincronização, backup remoto
+ou recuperação pelo suporte. A exportação CSV não é restaurável no Cordato.
+Publicação web da política, declarações no Play e revisão jurídica são separadas.
+
+Verificação desta etapa:
+
+- `flutter pub get`: concluído.
+- Análise focada de Settings, Information, rotas e testes: sem problemas.
+- `flutter test --no-pub test/features/settings test/features/information
+  --reporter failures-only`: 57 aprovados.
+- Regressão incluindo User, Bloc da Dashboard, factory/DI ToStore e schema de
+  despesas: 244 aprovados.
+- `flutter test --no-pub test/architecture --reporter failures-only`:
+  86 aprovados e as mesmas 2 falhas por arquivos Sign-in/Sign-up removidos.
+- `flutter analyze --no-pub`: 632 problemas restantes da transição fora do escopo.
+- Suíte global e builds nativos não executados; sem conferência visual.
+
 Configurações inclui a tela “Pague-me um café”, em `/settings/support`, com
 mensagem de apoio voluntário e QR Code Pix estático de valor livre na própria tela,
 renderizado com `pretty_qr_code`. “Copiar Pix” copia o código para pagar no banco.
@@ -75,9 +99,13 @@ ou consulta bancária no app; a chave e o destinatário exigem conferência no b
 
 ### Exportar despesas
 
-Em **Configurações → Conta → Exportar despesas**, o app consulta todo o histórico
-do próprio usuário e gera um CSV no dispositivo para o compartilhamento nativo
-Android/iOS. Exige internet e a tela ativa durante a preparação; não há filtros,
+Em **Configurações → Dados → Exportar despesas**, a apresentação e o adapter de
+compartilhamento continuam preservados. A fonte das despesas ainda usa o contrato
+legado de Expense e aguarda migração para ToStore: esta etapa não comprova
+exportação offline funcional.
+
+O fluxo prepara um CSV no dispositivo para compartilhamento nativo Android/iOS.
+A tela precisa estar ativa durante a preparação; não há filtros,
 dados de familiares/perfil, processamento em background ou seletor “Salvar como”.
 Histórico vazio mostra um aviso; falhas permitem tentar novamente sem compartilhar
 um arquivo parcial.
@@ -95,7 +123,7 @@ Destinos dependem do sistema e dos apps instalados; o retorno do compartilhament
 não comprova entrega ou salvamento durável. Dados enviados a outros aplicativos
 ficam fora do controle de Cordato.
 
-Verificação desta funcionalidade: `flutter pub get`, `flutter analyze` sem problemas
+Verificação histórica anterior à migração local: `flutter pub get`, `flutter analyze` sem problemas
 e `flutter test --reporter failures-only` com **1531 testes aprovados**. Não houve
 build nativo, conferência visual Android/iOS/iPad, abertura no Excel ou homologação
 remota nesta implementação.

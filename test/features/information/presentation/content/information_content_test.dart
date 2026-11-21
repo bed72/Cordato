@@ -3,15 +3,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/information/presentation/content/information_content.dart';
 
 void main() {
+  final terms = InformationContent.termsSections
+      .expand((section) => section.paragraphs)
+      .join('\n');
+  final privacy = InformationContent.privacySections
+      .expand((section) => section.paragraphs)
+      .join('\n');
+  final questions = InformationContent.helpSections
+      .expand((section) => section.questions)
+      .toList();
+  final help = questions.map((item) => item.answer).join('\n');
+
   group('Information editorial content', () {
     test('identifies the responsible person and a real contact', () {
       expect(InformationContent.responsible, 'Gabriel Ramos');
       expect(InformationContent.email, 'developer.bed@gmail.com');
     });
 
-    test('versions both legal documents with an explicit update date', () {
-      expect(InformationContent.version, isNotEmpty);
-      expect(InformationContent.updatedAt, matches(r'^\d{2}/\d{2}/\d{4}$'));
+    test('versions the local documents with an explicit update date', () {
+      expect(InformationContent.version, '2.0');
+      expect(InformationContent.updatedAt, '21/11/2026');
     });
 
     for (final document in [
@@ -26,15 +37,15 @@ void main() {
         sections: InformationContent.privacySections,
       ),
     ]) {
-      group(document.name, () {
-        test('has a summary and uniquely titled, nonempty sections', () {
-          expect(document.sections, isNotEmpty);
+      test(
+        '${document.name} has a summary and uniquely titled nonempty sections',
+        () {
           expect(document.summary.trim(), isNotEmpty);
+          expect(document.sections, isNotEmpty);
           expect(
             document.sections.map((section) => section.title).toSet(),
             hasLength(document.sections.length),
           );
-
           for (final section in document.sections) {
             expect(section.title.trim(), isNotEmpty);
             expect(section.paragraphs, isNotEmpty);
@@ -42,170 +53,142 @@ void main() {
               expect(paragraph.trim(), isNotEmpty);
             }
           }
-        });
-
-        test(
-          'provides account deletion instructions inside and outside the app',
-          () {
-            final text = document.sections
-                .expand((section) => section.paragraphs)
-                .join('\n');
-
-            expect(text, contains(InformationContent.email));
-            expect(text, contains('Exclusão de conta Cordato'));
-            expect(text, contains('Dados pessoais → Excluir conta'));
-          },
-        );
-      });
+        },
+      );
     }
 
-    test(
-      'distinguishes database hosting from international email processing',
-      () {
-        final text = InformationContent.privacySections
-            .expand((section) => section.paragraphs)
-            .join('\n');
+    test('explains a local profile rather than a remote account', () {
+      expect(
+        InformationContent.termsSummary,
+        contains('sem cadastro ou login'),
+      );
+      expect(terms, contains('Não há cadastro, login ou senha'));
+      expect(privacy, contains('Não há e-mail de cadastro'));
+      expect(privacy, contains('Não há autenticação própria'));
+      expect(help, contains('sem cadastro, login ou senha'));
+      expect(privacy, contains('seed inicial é gerada aleatoriamente'));
+    });
 
-        expect(text, contains('Resend'));
-        expect(text, contains('Estados Unidos'));
-        expect(text, contains('Hostinger, no Brasil'));
-        expect(text, contains('backups próprios por 7 dias'));
-      },
-    );
+    test('explains storage and does not promise remote recovery', () {
+      for (final text in [terms, privacy, help]) {
+        expect(text, contains('dispositivo'));
+        expect(text, contains('backup remoto próprio'));
+        expect(text, contains('sistema'));
+        expect(text, isNot(contains('backups semanais')));
+        expect(text, isNot(contains('três cópias automáticas')));
+      }
+      expect(terms, contains('pode apagar seus registros'));
+      expect(privacy, contains('não pode apagar ou recuperar'));
+      expect(help, contains('podem ser perdidos'));
+    });
 
-    test(
-      'discloses optional audio processing and international AI providers',
-      () {
-        final text = InformationContent.privacySections
-            .expand((section) => section.paragraphs)
-            .join('\n');
+    test('distinguishes CSV export from a restorable backup', () {
+      expect(terms, contains('não um backup restaurável'));
+      expect(privacy, contains('restauração de CSV'));
+      final answer = questions
+          .singleWhere(
+            (item) => item.question == 'Exportar despesas é fazer um backup?',
+          )
+          .answer;
+      expect(answer, contains('não importa nem restaura'));
+      expect(answer, contains('destino escolhido'));
+    });
 
-        expect(
-          InformationContent.privacySummary,
-          contains('inteligência artificial'),
-        );
-        expect(text, contains('permissão'));
-        expect(text, contains('formulário'));
-        expect(text, contains('OpenRouter'));
-        expect(text, contains('30 segundos'));
-        expect(text, contains('aciona o envio'));
-        expect(text, contains('fora do Brasil'));
-        expect(text, contains('Gemini, do Google'));
-        expect(text, contains('não garante retenção zero'));
-        expect(text, contains('uso desse recurso é opcional'));
-        expect(text, contains('https://openrouter.ai/privacy'));
-        expect(text, contains('credencial de sessão não são enviadas à IA'));
-      },
-    );
-
-    test('distinguishes temporary audio cleanup from provider retention', () {
-      final text = InformationContent.privacySections
-          .expand((section) => section.paragraphs)
-          .join('\n');
-
-      expect(text, contains('finalização ou cancelamento'));
-      expect(text, contains('retenção nos serviços de IA'));
-      expect(text, contains('Não prometemos retenção zero'));
-      expect(text, contains('arquivo temporário no dispositivo'));
-      expect(text, contains('logs desse processamento não incluem áudio'));
-      expect(text, contains('em memória, sem arquivo ou fila persistente'));
+    test('explains local deletion without obsolete account actions', () {
+      for (final text in [terms, privacy, help]) {
+        expect(text, contains('conta remota para'));
+        expect(text, contains('desinstal'));
+        expect(text, contains('arquivos exportados'));
+        expect(text, isNot(contains('Excluir conta')));
+        expect(text, isNot(contains('Exclusão de conta Cordato')));
+      }
+      expect(privacy, contains('O suporte não tem acesso ao banco'));
     });
 
     test(
-      'qualifies backup configuration consistently across public content',
+      'removes operational claims about retired providers and credentials',
       () {
-        final terms = InformationContent.termsSections
-            .expand((section) => section.paragraphs)
-            .join('\n');
-        final privacy = InformationContent.privacySections
-            .expand((section) => section.paragraphs)
-            .join('\n');
-        final help = InformationContent.helpSections
-            .expand((section) => section.questions)
-            .map((item) => item.answer)
-            .join('\n');
-
-        for (final text in [terms, privacy, help]) {
-          expect(text, isNot(contains('Não mantemos backups próprios')));
-          expect(text, isNot(contains('não mantemos backups próprios')));
+        final allContent = [
+          InformationContent.termsSummary,
+          terms,
+          InformationContent.privacySummary,
+          privacy,
+          help,
+        ].join('\n');
+        for (final retiredInstruction in [
+          'Hostinger',
+          'Resend',
+          'OpenRouter',
+          'Gemini',
+          'Reenviar',
+          'recupere sua senha',
+          'confirme o e-mail',
+          'credencial de sessão',
+          'aceite do envio',
+          '30 segundos',
+        ]) {
+          expect(allContent, isNot(contains(retiredInstruction)));
         }
+        expect(privacy, contains('não oferece captura de áudio'));
+        expect(help, contains('não oferece gravação de áudio'));
+      },
+    );
 
-        expect(terms, contains('Backups não garantem'));
+    test(
+      'does not claim absolute privacy or configured database encryption',
+      () {
         expect(
           privacy,
-          contains('backups semanais e até três cópias automáticas'),
+          contains('não possui criptografia adicional configurada'),
         );
-        expect(privacy, contains('não comprova execução'));
-        expect(help, contains('não comprova sua execução'));
-        expect(privacy, contains('conservar registros excluídos'));
+        expect(privacy, contains('Backups e transferências'));
+        expect(privacy, contains('processamento fora do Brasil'));
+        expect(privacy, contains('destino'));
+        expect(privacy, contains('cópias enviadas a terceiros'));
       },
     );
 
-    test('explains audio acceptance without promising expense creation', () {
-      final terms = InformationContent.termsSections
-          .expand((section) => section.paragraphs)
-          .join('\n');
-      final answer = InformationContent.helpSections
-          .expand((section) => section.questions)
-          .singleWhere(
-            (item) => item.question == 'O que acontece quando envio um áudio?',
-          )
-          .answer;
-
-      expect(answer, contains('formulário manual'));
-      expect(answer, contains('O aceite não confirma o cadastro'));
-      expect(terms, contains('aceite do envio não confirma o cadastro'));
-      expect(answer, contains('confira suas despesas antes de reenviar'));
+    test('discloses the native widget snapshot', () {
+      expect(privacy, contains('widget do sistema'));
+      expect(privacy, contains('mês e do total mensal'));
+      expect(privacy, contains('fora do aplicativo'));
     });
 
-    test('explains local logout without promising remote revocation', () {
-      final answer = InformationContent.helpSections
-          .expand((section) => section.questions)
-          .singleWhere(
-            (item) => item.question == 'O que acontece quando saio da conta?',
-          )
-          .answer;
+    test(
+      'provides privacy rights and support without demanding an account',
+      () {
+        expect(privacy, contains('LGPD'));
+        expect(privacy, contains('Autoridade Nacional'));
+        expect(privacy, contains('Não é necessário fornecer uma conta'));
+        expect(privacy, contains(InformationContent.email));
+        expect(help, contains(InformationContent.email));
+        expect(help, contains('Não envie senhas'));
+      },
+    );
 
-      expect(
-        answer,
-        contains('sem invalidar cópias da credencial no servidor'),
-      );
-      expect(answer, contains('redefina sua senha'));
-      expect(answer, contains('Essa ação não exclui sua conta'));
+    test('distinguishes voluntary support from app payment processing', () {
+      expect(terms, contains('voluntário'));
+      expect(terms, contains('não desbloqueia funcionalidades'));
+      expect(terms, contains('não processa nem confirma pagamentos'));
+      expect(privacy, contains('instituição financeira'));
     });
 
     test('groups unique questions with nonempty answers', () {
       expect(InformationContent.helpSections, isNotEmpty);
-      final titles = InformationContent.helpSections
-          .map((section) => section.title)
-          .toSet();
-      expect(titles, hasLength(InformationContent.helpSections.length));
-
-      final questions = <String>{};
+      expect(
+        InformationContent.helpSections.map((section) => section.title).toSet(),
+        hasLength(InformationContent.helpSections.length),
+      );
+      final uniqueQuestions = <String>{};
       for (final section in InformationContent.helpSections) {
         expect(section.title.trim(), isNotEmpty);
         expect(section.questions, isNotEmpty);
         for (final item in section.questions) {
           expect(item.question.trim(), isNotEmpty);
           expect(item.answer.trim(), isNotEmpty);
-          expect(questions.add(item.question), isTrue);
+          expect(uniqueQuestions.add(item.question), isTrue);
         }
       }
-    });
-
-    test('explains deletion without requiring app access or credentials', () {
-      final answer = InformationContent.helpSections
-          .expand((section) => section.questions)
-          .singleWhere(
-            (item) =>
-                item.question == 'Como peço exclusão sem acessar o aplicativo?',
-          )
-          .answer;
-
-      expect(answer, contains('Não envie senhas'));
-      expect(answer, contains(InformationContent.email));
-      expect(answer, contains('não precisa reinstalar'));
-      expect(answer, contains('Exclusão de conta Cordato'));
     });
   });
 }
