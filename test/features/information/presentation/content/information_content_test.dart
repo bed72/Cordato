@@ -21,7 +21,7 @@ void main() {
     });
 
     test('versions the local documents with an explicit update date', () {
-      expect(InformationContent.version, '2.0');
+      expect(InformationContent.version, '2.1');
       expect(InformationContent.updatedAt, '21/11/2026');
     });
 
@@ -82,16 +82,21 @@ void main() {
       expect(help, contains('podem ser perdidos'));
     });
 
-    test('distinguishes CSV export from a restorable backup', () {
-      expect(terms, contains('não um backup restaurável'));
-      expect(privacy, contains('restauração de CSV'));
+    test('does not advertise removed CSV or a future backup feature', () {
+      expect(terms, contains('não oferece exportação de despesas'));
+      expect(privacy, contains('não oferece exportação ou compartilhamento'));
       final answer = questions
           .singleWhere(
-            (item) => item.question == 'Exportar despesas é fazer um backup?',
+            (item) =>
+                item.question == 'Posso exportar despesas ou criar um backup?',
           )
           .answer;
-      expect(answer, contains('não importa nem restaura'));
-      expect(answer, contains('destino escolhido'));
+      expect(answer, contains('não oferece exportação de despesas'));
+      expect(answer, contains('não são um backup próprio'));
+      for (final text in [terms, privacy, help]) {
+        expect(text, isNot(contains('Configurações → Exportar despesas')));
+        expect(text, isNot(contains('CSV')));
+      }
     });
 
     test('explains local deletion without obsolete account actions', () {

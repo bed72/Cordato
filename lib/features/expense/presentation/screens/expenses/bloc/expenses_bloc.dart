@@ -201,12 +201,6 @@ final class ExpensesBloc({required final IExpenseRepository repository})
       }
 
       emit(ExpensesReregisterFailure(data: data, errors: error.errors));
-    } on MissingAuthenticatedUserException catch (error) {
-      if (isClosed || emit.isDone) {
-        return;
-      }
-
-      emit(ExpensesReregisterFailure(data: data, errors: error.errors));
     } catch (error, stackTrace) {
       if (isClosed || emit.isDone) {
         return;

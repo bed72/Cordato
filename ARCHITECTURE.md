@@ -38,18 +38,59 @@ Expense possui `expenseSchema` em infrastructure, com tabela `expenses`,
 ID sequencial automático em String, `amount` inteiro obrigatório com mínimo 1,
 `category` textual obrigatória com default `other`, `description` textual
 anulável e `occurred_on` datetime obrigatório com índice. Não há `owner`, TTL ou
-expulsão por capacidade. O schema não restringe categoria a um enum; a migração
-do repository deverá validar os valores de `ExpenseCategoryEnum`.
+expulsão por capacidade. O schema não restringe categoria a um enum; o repository
+e suas projeções validam os valores de `ExpenseCategoryEnum`.
 Datas civis devem ser gravadas como ISO 8601 de meia-noite UTC, sem conversão de
 fuso. O schema não impõe essa normalização nem possui default de timestamp:
-o padrão hoje no calendário local será calculado a cada criação no repository,
+o padrão hoje no calendário local é calculado a cada criação no repository,
 nunca na abertura do banco.
 
-Expense e Metrics ainda não migraram repositories, entidades, Blocs ou telas para
-os novos contratos locais. As referências restantes a PocketBase e fluxos removidos ainda
+Metrics ainda não migrou para armazenamento local. As referências restantes a PocketBase e fluxos removidos ainda
 bloqueiam análise/compilação globais. Testes focados exercitam banco real em
 diretórios temporários, reabertura, defaults, restrições, perfil e DI do core,
 sem UI; não comprovam que o app completo inicia nem substituem build nativo.
+
+### Despesas locais
+
+Expense usa o ToStore compartilhado diretamente, sem conta, owner ou sessão.
+O contrato de CRUD mantém IDs String, centavos inteiros positivos, categoria
+tipada, data civil e descrição textual. Datas são gravadas em ISO 8601 UTC à
+meia-noite pelos componentes do calendário, sem conversão de fuso. Descrição
+ausente/nula do schema é projetada como texto vazio; tipos incorretos, datas
+inválidas e categorias desconhecidas continuam erros inesperados.
+O repository não aplica trim; o SDK ToStore 3.6.3 normaliza nativamente campos
+textuais com trim na gravação. Não há wrapper para contornar esse comportamento.
+
+Atualizações enviam somente os campos fornecidos, sem ler e regravar snapshots.
+Uma atualização sem campos apenas consulta o registro. Consulta, atualização e
+exclusão de ID ausente geram ExpenseException com código expense_not_found.
+Escritas verificam hasErrors e a contagem de registros afetados; falhas esperadas
+preservam códigos nativos em ordem, sem expor mensagens do storage. Falhas de
+programação do SDK e de parsing não viram sucesso vazio.
+
+Listagem mantém paginação por número, limite mais um e offset, categoria e
+intervalo inclusivo de datas civis. O padrão é data/ID decrescentes; campos de
+ordenação são restritos aos campos locais e ID desempata ordens sem ID explícito.
+Não há snapshot transacional entre páginas. Sugestões percorrem lotes de 100
+em ordem decrescente de data/ID, com busca literal case-insensitive até 30
+correspondências antes da deduplicação; o LIKE nativo diferencia maiúsculas.
+A busca pode percorrer todo o histórico, mas não o carrega todo na memória.
+Descrição vazia/nula não gera sugestão. A categoria e o valor vêm da ocorrência
+mais recente. ID sequencial substitui o antigo desempate por created, ausente
+no schema local.
+
+Mutações reconhecidas solicitam refresh pelo client nativo compartilhado antes
+da releitura da entidade. Falha posterior de leitura não desfaz a gravação nem
+gera retry automático. Metrics ainda determina o conteúdo publicado pelo widget
+e não foi migrado nesta mudança. Rotas Expense não exigem autenticação.
+O módulo único sem path e o ownership dos Blocs permanecem: Expense/Expenses
+pela screen com factories estáveis e sugestões exclusivamente pelo provide.
+
+O fluxo CSV foi removido após esta migração, por decisão explícita.
+Expense mantém somente CRUD, consultas e sugestões: não produz DocumentModel
+nem oferece contrato de exportação. Nenhuma despesa ou dado persistido foi
+apagado por essa remoção. Backup e restauração nativos do ToStore permanecem
+para uma tarefa posterior.
 
 ### Perfil User local
 
@@ -94,23 +135,20 @@ erros, concorrência, Blocs, parsing e resolução das rotas/DI, sem montar UI.
 
 Settings possui um único módulo sem path, com rotas completas `/settings` e
 `/settings/support`, sem exigência de sessão. SettingsScreen é StatelessWidget,
-com navegação pelo BuildContext e seções Perfil local, Dados, Informações e Apoio.
-Não há Bloc, mixin, confirmação ou testes de logout. ExportBloc continua
-exclusivamente no provide da rota e é recebido pelo ExportWidget sem transferência
-de ownership para a tela.
-
-A preparação/partilha de CSV e seus testes permanecem. O adapter de Settings
-preserva falhas de Expense e do client de compartilhamento, sem depender da
-exceção removida de identidade autenticada. Os contratos legados de documento e
-validação de proprietário de Expense não foram migrados nesta tarefa.
-A resolução isolada de Settings usa contratos de Expense/Share mockados:
-isso não comprova exportação offline enquanto o adapter de Expense estiver pendente.
+com navegação pelo BuildContext e seções Perfil local, Informações e Apoio.
+Não há Bloc, provide, mixin de exportação, confirmação ou testes de logout.
+Settings resolve suas rotas sem dependências de Expense ou compartilhamento.
+Foram removidos a ação Exportar despesas, seção Dados, contratos e adapters
+de CSV, DocumentModel/PreparedExportModel, serializer, Bloc/eventos/estados,
+widget/mixin e testes/doubles exclusivos do fluxo, além da dependência csv.
+Testes arquiteturais verificam a ausência do fluxo e preservam as rotas locais.
 
 Information mantém conteúdo local somente de apresentação. Termos e Privacidade
-passam à versão 2.0 de 21/11/2026; Ajuda acompanha perfil único, sem cadastro,
+passam à versão 2.1 de 21/11/2026; Ajuda acompanha perfil único, sem cadastro,
 login, gravação de áudio, IA, hospedagem do banco ou e-mails transacionais.
-Os textos distinguem dados locais, snapshot do widget, exportação CSV sem
-restauração, cópias do sistema operacional e comunicações voluntárias ao suporte.
+Os textos deixam explícita a ausência de exportação, criação de backup e
+restauração pelo app. Distinguem dados locais, snapshot do widget, arquivos
+exportados anteriormente, cópias do sistema e comunicações voluntárias ao suporte.
 Não prometem backup remoto, criptografia adicional ou recuperação pelo suporte.
 Remoção local não elimina cópias exportadas, backups do sistema ou dados enviados
 a terceiros. Apoio via Pix continua voluntário e externo ao processamento do app.
@@ -233,54 +271,17 @@ Invariantes financeiras:
 As garantias de autorização pertencem ao serviço responsável e exigem testes
 no backend; o aplicativo não as prova por ocultar ações na interface.
 
-## Exportação de despesas em CSV
+## Remoção da exportação CSV e limite de backup
 
-Settings possui a interação “Exportar despesas” por `ExportBloc`, criado somente
-no `provide` da rota e recebido explicitamente pela apresentação. LogoutBloc foi
-removido na transição local. O fluxo separa preparação e compartilhamento:
-o Bloc publica o anexo pronto e o listener da rota ativa solicita a abertura nativa.
-Uma preparação tardia após fechamento não abre o compartilhamento nem publica UI;
-isso não cancela HTTP/IO já iniciados.
-
-Cada feature possui `application/repositories/interface_export_repository.dart`
-com `IExportRepository` e implementação `ExportRepository` em infrastructure.
-O contrato de Expense consulta todas as páginas próprias no SDK compartilhado,
-fixando o owner e usando `PocketBase.filter` em cada página; confirma identidade
-antes/depois das leituras e antes do compartilhamento. Não limpa/atualiza sessão
-nem consulta dados familiares. O filtro explícito não substitui autorização remota.
-
-Expense produz `DocumentModel`, em `application/models/document_model.dart`, com
-identidade de origem e bytes imutáveis. Seu `CsvSerializer` puro formata UTF-8/BOM,
-CRLF, `;`, datas civis e centavos por operações inteiras, com categorias pelo enum
-value e proteção textual contra fórmulas. A consulta não oferece snapshot
-transacional diante de mutações simultâneas; páginas são processadas em sequência,
-mas os bytes finais permanecem em memória, sem promessa de escala ilimitada.
-
-O repository de Settings coordena o contrato de Expense e `IFileShareClient` do
-core, sem SDKs no Bloc ou plugins na apresentação. O AutoInjector resolve tipos
-pelo nome textual; aliases Dart não distinguem binds homônimos. Por isso, apenas
-o `IExportRepository` de Expense tem bind compartilhado. O `provide` de Settings
-compõe seu adapter explicitamente com o contrato de Expense e o client nativo e
-o entrega ao construtor de ExportBloc como seu contrato de aplicação, sem bind
-homônimo adicional. Settings resolve sem visita prévia às rotas de Expense.
-
-`FileShareClient` encapsula `share_plus` e `path_provider`, com anexo identificado
-por metadados puros e geometria opcional para iPad, nunca BuildContext ou caminhos
-nativos no estado do Bloc. Mantém um diretório temporário privado dedicado,
-descarta parciais/abandonados e limpa anexos expirados em novas exportações.
-Anexos cujo compartilhamento foi iniciado ficam retidos por 24 horas, inclusive
-se o sistema relatar falha depois do despacho, para não revogar leituras pendentes.
-Não há garantia de remoção pontual com o app fechado, de preservação do cache
-pelo sistema ou de exclusão em destinatários externos.
-
-Concorrência usa droppable e guardas por fase; vazio, erro ou retorno nativo
-permitem nova tentativa manual. Falhas esperadas preservam ErrorsEntity; inesperadas
-seguem addError e o observer seguro existente, sem logs de payload financeiro.
-Cancelamento e resultado nativo indisponível não são falhas nem confirmação de
-entrega durável. Não há backend novo, “Salvar como”, permissão ampla de armazenamento,
-exportação offline ou processamento em background. Testes cobrem serialização,
-SDK mockado, coordenação, lifecycle, temporários e DI sem UI; isso não comprova
-build nativo, Excel, compartilhamento real ou homologação remota.
+Exportação CSV não faz mais parte do produto atual. Specs e registros anteriores
+descrevem apenas o histórico; não autorizam restaurar contratos ou UI removidos.
+O client `IShareClient`/`ShareClient` do core, bind, modelos, exceção e testes
+exclusivos também foram removidos por não possuírem mais consumidores.
+As dependências csv e share_plus não fazem parte do app.
+A remoção não executa limpeza destrutiva de arquivos já compartilhados.
+Não foi implementada chamada a backup/restore do ToStore, seleção de arquivo,
+compartilhamento de backup ou restauração. Disponibilidade dessas APIs no SDK
+não comprova que o Cordato já ofereça ou tenha validado esses fluxos.
 
 ## Atalho de cadastro pela tela inicial do celular
 

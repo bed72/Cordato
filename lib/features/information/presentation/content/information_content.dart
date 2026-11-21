@@ -1,5 +1,5 @@
 abstract final class InformationContent {
-  static const version = '2.0';
+  static const version = '2.1';
   static const updatedAt = '21/11/2026';
   static const responsible = 'Gabriel Ramos';
   static const email = 'developer.bed@gmail.com';
@@ -62,9 +62,8 @@ abstract final class InformationContent {
         'Limpar os dados do aplicativo, desinstalá-lo, perder ou trocar '
             'o dispositivo pode apagar seus registros locais. Não mantenha '
             'no Cordato a única cópia de informações que precise preservar.',
-        'Uma exportação CSV é uma cópia para consulta e compartilhamento, '
-            'não um backup restaurável pelo Cordato. Não há importação ou '
-            'restauração de CSV no aplicativo.',
+        'Esta versão não oferece exportação de despesas, criação de backup '
+            'ou restauração de arquivos pelo aplicativo.',
         'Recursos de backup e transferência do sistema operacional dependem '
             'das configurações e dos serviços escolhidos por você. '
             'Não garantimos que incluam os registros ou permitam recuperá-los.',
@@ -88,7 +87,7 @@ abstract final class InformationContent {
             'conta remota para encerrar ou excluir. Para remover os dados locais, '
             'consulte as opções de armazenamento do sistema operacional, quando '
             'disponíveis, ou desinstale o aplicativo.',
-        'Essas ações não apagam arquivos exportados, cópias do sistema ou '
+        'Essas ações não apagam arquivos exportados anteriormente, cópias do sistema ou '
             'informações compartilhadas com outros aplicativos. '
             'O suporte não tem acesso ao banco local para apagá-lo remotamente.',
         'Podem ocorrer falhas e perda de registros. As limitações destes termos '
@@ -112,8 +111,7 @@ abstract final class InformationContent {
       'Nome, seed do avatar e despesas são armazenados no dispositivo. '
       'Não há conta remota nem envio desses registros a um servidor do Cordato. '
       'Não usamos publicidade, análise de comportamento ou processamento de áudio. '
-      'Exportar arquivos ou contatar o suporte pode compartilhar informações '
-      'por sua iniciativa.';
+      'Contatar o suporte pode compartilhar informações por sua iniciativa.';
 
   static const privacySections = [
     (
@@ -157,10 +155,10 @@ abstract final class InformationContent {
     (
       title: 'Compartilhamento por sua iniciativa',
       paragraphs: [
-        'Ao exportar e compartilhar um CSV, você escolhe o aplicativo ou destino '
-            'que receberá as despesas. A cópia pode conter descrição, valor, '
-            'data e categoria. Confira o conteúdo antes de compartilhar. '
-            'Os destinatários tratam a cópia segundo suas próprias condições.',
+        'Esta versão não oferece exportação ou compartilhamento de arquivos '
+            'de despesas pelo aplicativo. Cópias enviadas anteriormente a '
+            'outros aplicativos ou destinos continuam sob as condições '
+            'dos respectivos destinatários.',
         'Se você escrever ao suporte, o endereço de e-mail, o conteúdo e os '
             'anexos enviados serão tratados para responder ao pedido. O envio '
             'envolve os provedores de e-mail e pode incluir processamento '
@@ -198,8 +196,8 @@ abstract final class InformationContent {
         'Não existe conta remota para excluir. O suporte não tem acesso ao '
             'banco do dispositivo e não pode apagar ou recuperar seus registros '
             'remotamente. Não oferecemos sincronização, backup remoto próprio '
-            'ou restauração de CSV.',
-        'Excluir dados locais não remove arquivos exportados, cópias em backups '
+            'ou restauração de arquivos pelo aplicativo.',
+        'Excluir dados locais não remove arquivos exportados anteriormente, cópias em backups '
             'do sistema, mensagens de suporte ou cópias enviadas a terceiros. '
             'Gerencie essas cópias nos serviços e destinos utilizados.',
         'Mensagens recebidas no suporte são conservadas pelo tempo necessário '
@@ -297,12 +295,12 @@ abstract final class InformationContent {
       title: 'Dados, cópias e privacidade',
       questions: [
         (
-          question: 'Exportar despesas é fazer um backup?',
+          question: 'Posso exportar despesas ou criar um backup?',
           answer:
-              'Não. A opção Configurações → Exportar despesas prepara um '
-              'CSV para consulta ou compartilhamento. O Cordato não importa '
-              'nem restaura esse arquivo. Ao compartilhar, o destino escolhido '
-              'recebe uma cópia sob suas próprias condições.',
+              'Esta versão não oferece exportação de despesas, criação de '
+              'backup ou restauração de arquivos pelo aplicativo. Recursos '
+              'de cópia do sistema operacional dependem das suas configurações '
+              'e não são um backup próprio do Cordato.',
         ),
         (
           question: 'O que acontece se eu desinstalar ou trocar de aparelho?',
@@ -320,7 +318,7 @@ abstract final class InformationContent {
               'Não há conta remota para excluir. Você pode excluir despesas '
               'pela listagem. Para remover os dados locais do aplicativo, '
               'consulte as opções de armazenamento do sistema, quando disponíveis, '
-              'ou desinstale o app. Isso não apaga arquivos exportados, backups '
+              'ou desinstale o app. Isso não apaga arquivos exportados anteriormente, backups '
               'do sistema ou cópias compartilhadas. O suporte não pode apagar '
               'o banco local remotamente.',
         ),

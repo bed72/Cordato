@@ -1,4 +1,4 @@
-enum RouteEnum(final String path, {final bool authenticated = false}) {
+enum RouteEnum(final String path) {
   app('/'),
   user('/user'),
   welcome('/welcome'),
@@ -7,13 +7,15 @@ enum RouteEnum(final String path, {final bool authenticated = false}) {
   settingsSupport('/settings/support'),
   informationHelp('/information/help'),
   informationTerms('/information/terms'),
-  expense('/expense', authenticated: true),
+  expense('/expense'),
   informationPrivacy('/information/privacy'),
-  expenses('/expenses', authenticated: true),
+  expenses('/expenses'),
   dashboard('/dashboard'),
   authenticationSignIn('/authentication/sign-in'),
   authenticationSignUp('/authentication/sign-up'),
   authenticationConfirm('/authentication/confirm');
+
+  final bool authenticated = false;
 
   static Set<String> authenticatedPaths() => values
       .where((route) => route.authenticated)

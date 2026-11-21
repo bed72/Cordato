@@ -8,8 +8,8 @@ removidos pelo usuário. Não os restaure para sanar os erros legados. As instru
 PocketBase abaixo descrevem o estado anterior e não prevalecem sobre este escopo.
 
 A fundação cobre abertura ToStore, schema, perfil inicial, DI e testes. User foi
-migrado explicitamente para leitura/atualização local de nome e avatar. Não migrar
-Expense, Metrics ou outros fluxos incidentalmente.
+migrado explicitamente para leitura/atualização local de nome e avatar. Expense
+também usa ToStore; não migrar Metrics ou outros fluxos incidentalmente.
 `main` aguarda `createDependencies`; `ToStoreFactory.create` abre o banco em
 diretório persistente com schemas fornecidos pela composição, durabilidade
 `durable` e logs diagnósticos desativados. `createAppModule` e `createCoreModule`
@@ -18,8 +18,18 @@ User usa KV `profile.name` e `profile.avatar`, sem ID, nome inicial `Cordato` e
 seed aleatória persistida.
 Expense usa schema próprio sem `owner`: ID automático, centavos inteiros positivos,
 categoria padrão `other`, descrição anulável e data civil obrigatória.
-Default hoje e validação de categoria pertencem à futura criação no repository;
-schema não normaliza datas nem restringe o enum. Não prometa app funcional,
+Default hoje e validação de categoria pertencem ao repository;
+schema não normaliza datas nem restringe o enum. Expense usa CRUD/queries nativos,
+datas ISO UTC pelos componentes civis, paginação por offset/limite mais um e
+ordem determinística por data/ID. Descrição nula vira texto vazio na projeção;
+SDK aplica trim nativo nos campos textuais, sem normalização extra no repository.
+Sugestões percorrem lotes de 100 até 30 correspondências literais case-insensitive
+antes de deduplicar; preservam categoria/valor da ocorrência mais recente.
+Escritas verificam hasErrors e registros afetados; ID ausente gera ExpenseException.
+Atualizações enviam somente campos fornecidos; sem campos apenas leem, sem refresh.
+Mutações reconhecidas solicitam refresh nativo, sem alterar Metrics ou formato
+do widget. Expense/Expenses preservam ownership pela screen e sugestões pelo provide.
+Não prometa app funcional,
 backup, criptografia ou validação global a partir dos testes focados.
 
 UserEntity não possui ID/e-mail. IUserRepository expõe `getProfile` e `update`,
@@ -39,13 +49,18 @@ Não separar dependências em outro módulo nem restringir o repository ao lifec
 da rota; Dashboard o consome sem precisar visitar User.
 
 Settings também usa um único módulo sem path e rotas completas, sem autenticação.
-SettingsScreen é StatelessWidget: recebe ExportBloc do provide, não o cria/fecha
-e navega por BuildContext. Não restaure LogoutBloc, confirmação de saída ou
-callbacks de navegação na composição da rota. Exportação ainda consome o contrato
-legado de Expense; não migre Expense incidentalmente ao manter Settings.
-Information continua somente apresentação. Os documentos 2.0 de 21/11/2026
+SettingsScreen é StatelessWidget, sem Bloc ou provide, e navega por BuildContext.
+Não restaure LogoutBloc, confirmação de saída ou callbacks de navegação na rota.
+CSV foi removido explicitamente: ação/seção Dados, DocumentModel, serializer,
+contratos, repositories, Bloc, widgets, testes exclusivos e dependência csv.
+Não restaure esse fluxo a partir de specs históricas. A infraestrutura de
+compartilhamento sem consumidores também foi removida do core, incluindo
+bind, contratos, modelos, adapter, testes exclusivos e dependência share_plus.
+Backup/restore nativo do ToStore será uma tarefa posterior; não o implemente
+incidentalmente nem anuncie backup disponível nesta etapa.
+Information continua somente apresentação. Os documentos 2.1 de 21/11/2026
 descrevem perfil/dados locais, sem cadastro, backend, e-mails transacionais ou IA.
-Distinga exportação CSV de backup restaurável, suporte de acesso remoto ao banco,
+Distinga arquivos exportados anteriormente de backup restaurável, suporte de acesso remoto ao banco,
 cópias do sistema de backup próprio e apoio Pix de processamento de pagamentos.
 Não prometa criptografia, recuperação ou conformidade jurídica já verificadas.
 
@@ -66,7 +81,7 @@ retry automático ou proteção de rotas por sessão na apresentação Root.
 
 Testes ToStore usam SDK real com diretórios temporários e fechamento explícito,
 sem UI. Mocks do SDK são restritos a injeção de falhas e controle de operações
-pendentes do inicializador/repository User, com double em
+pendentes do inicializador/repositories User e Expense, com doubles em
 `test/support/core/mocks/`. Preserve e registre os erros legados fora do escopo.
 
 ## Client Atual: SDK PocketBase

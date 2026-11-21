@@ -20,13 +20,16 @@ void main() {
     }
   });
 
-  test('Settings receives the export Bloc without owning its lifecycle', () {
+  test('Settings stays stateless without a CSV action or export Bloc', () {
     final source = File(
       'lib/features/settings/presentation/screens/settings/settings_screen.dart',
     ).readAsStringSync();
 
     expect(source, contains('extends StatelessWidget'));
-    expect(source, contains('required final ExportBloc exportBloc'));
+    expect(source, isNot(contains('ExportBloc')));
+    expect(source, isNot(contains('ExportWidget')));
+    expect(source, isNot(contains('Exportar despesas')));
+    expect(source, isNot(contains("label: 'Dados'")));
     expect(source, isNot(contains('.close(')));
     expect(source, isNot(contains('onPersonalDataPressed')));
     expect(source, contains('RouteEnum.user.path'));
@@ -39,6 +42,8 @@ void main() {
     expect(source, contains('RouteEnum.settings.path'));
     expect(source, contains('RouteEnum.settingsSupport.path'));
     expect(source, isNot(contains('path:')));
-    expect(source, contains('scope.addBloc<ExportBloc>'));
+    expect(source, isNot(contains('provide:')));
+    expect(source, isNot(contains('features/expense/')));
+    expect(source, contains('const SettingsScreen()'));
   });
 }

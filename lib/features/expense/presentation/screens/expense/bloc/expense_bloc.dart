@@ -82,12 +82,6 @@ final class ExpenseBloc({required final IExpenseRepository repository})
       if (isClosed || emit.isDone) return;
       if (revision != _revision) return;
       emit(ExpenseSubmissionFailure(errors: error.errors, expense: previous));
-    } on MissingAuthenticatedUserException catch (error) {
-      if (isClosed || emit.isDone || revision != _revision) {
-        return;
-      }
-
-      emit(ExpenseSubmissionFailure(errors: error.errors, expense: previous));
     } catch (error, stackTrace) {
       if (isClosed || emit.isDone) return;
       if (revision != _revision) return;

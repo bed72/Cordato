@@ -169,10 +169,7 @@ void main() {
                     targetPath ==
                         'application/repositories/interface_audio_repository.dart') ||
                 isFeatureRepositoryContract ||
-                isRootWidgetContract ||
-                (targetContext == 'settings' &&
-                    targetPath ==
-                        'application/repositories/interface_export_repository.dart');
+                isRootWidgetContract;
             final isOuterAdapter =
                 targetPath.startsWith('application/clients/') ||
                 targetPath.startsWith('application/repositories/') ||

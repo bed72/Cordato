@@ -25,6 +25,11 @@ void main() {
     expect(RouteEnum.settingsSupport.authenticated, isFalse);
     expect(RouteEnum.settingsSupport.path, '/settings/support');
     expect(matches.single.route.path, RouteEnum.settingsSupport.path);
+    final settings = boot.routes.match(Uri.parse(RouteEnum.settings.path));
+    expect(settings, hasLength(1));
+    expect(settings!.single.route.provide, isNull);
+    boot.manager.enter('settings-local-test', settings.single.route.ownerTags);
+    boot.manager.leave('settings-local-test', settings.single.route.ownerTags);
     expect(
       boot.routes.routes.map((route) => route.path),
       unorderedEquals([

@@ -11,8 +11,9 @@ com nome `Cordato` e seed aleatória de avatar persistida, sem ID ou conta.
 
 O schema de `expenses` contém ID automático, valor positivo em centavos,
 categoria padrão `other`, descrição anulável e data civil obrigatória, sem
-`owner`. O default de data hoje e a validação das categorias entrarão na migração
-do repository; não há default de timestamp no schema.
+`owner`. Expense já usa o ToStore para CRUD, listagem, filtros, paginação e
+sugestões. O repository aplica o default hoje no calendário local e valida
+categorias; não há default de timestamp no schema.
 
 User já consome esse armazenamento para consultar perfil e atualizar nome/avatar.
 Não há ID, e-mail, alteração de senha ou exclusão de conta nesse fluxo. O nome
@@ -23,7 +24,7 @@ chaves KV independentes (`profile.name` e `profile.avatar`), sem fila ou estado
 pendente no repository. Atualizar ambos usa duas gravações, sem rollback conjunto.
 O inicializador completa apenas chaves ausentes e não substitui valores válidos.
 O objeto KV `profile` da etapa anterior não é migrado nesta branch sem usuários.
-Expense e Metrics ainda aguardam migração. As remoções anteriores
+Metrics ainda aguarda migração. As remoções anteriores
 de Authentication, Session, PocketBase, áudio, backend e worker deixam referências
 legadas e erros globais de análise/compilação; o app ainda não está pronto para
 publicação. Os estados e instruções PocketBase abaixo são anteriores à transição.
@@ -60,6 +61,55 @@ Verificação da migração User:
 - Suíte global e builds nativos não executados; não há confirmação de execução
   do app completo nem conferência visual.
 
+### Verificação da remoção de CSV
+
+- `flutter pub get`: concluído; csv e share_plus removidos do lockfile.
+- Análise focada de Expense, Settings, Information, módulo core e testes:
+  sem problemas.
+- Regressão de Expense, Settings, Information, User, Root, Bloc da Dashboard,
+  ToStore/DI e arquitetura local: **612 aprovados**.
+- `flutter analyze --no-pub`: 515 ocorrências legadas fora do escopo,
+  sem novas referências pendentes de CSV/compartilhamento.
+- `flutter test --no-pub test/architecture --reporter failures-only`:
+  89 aprovados e as mesmas 4 falhas legadas de autenticação/compilador.
+- `git diff --check`: sem problemas.
+- Suíte global e builds nativos não repetidos nesta remoção; sem conferência
+  visual ou garantia de funcionamento do app completo.
+
+Comando da regressão:
+
+```sh
+flutter test --no-pub test/features/expense test/features/settings test/features/information test/features/user test/features/root test/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc_test.dart test/features/core/infrastructure/clients/tostore test/features/core/tostore_module_test.dart test/architecture/csv_removal_test.dart test/architecture/settings_local_architecture_test.dart test/architecture/expense_local_architecture_test.dart test/architecture/expense_presentation_test.dart test/architecture/bounded_context_dependencies_test.dart --reporter failures-only
+```
+
+### Histórico da verificação de Expense e CSV locais
+
+Os números abaixo registram a migração anterior. O fluxo CSV foi removido
+posteriormente; os comandos que citam arquivos exclusivos dele são históricos.
+
+- `flutter pub get`: concluído, sem novas dependências.
+- Análise focada de Expense, Settings e seus testes: sem problemas.
+- `flutter test --no-pub test/features/expense test/features/settings
+  --reporter failures-only`: 371 aprovados na primeira verificação.
+- Regressão incluindo User, Root, Bloc da Dashboard, ToStore/DI e arquitetura
+  de Expense: 637 aprovados, incluindo testes adicionais do mapper local.
+- `flutter analyze --no-pub`: 515 ocorrências legadas restantes (559 antes).
+- `flutter test --no-pub test/architecture --reporter failures-only`:
+  88 aprovados e 4 falhas por rotas/arquivos de autenticação removidos e
+  encerramento do compilador em cascata.
+- `flutter test --no-pub --reporter failures-only`: 985 aprovados e 15 falhas
+  legadas de carregamento/arquitetura fora do escopo.
+- Builds nativos e conferência visual não executados. Metrics, dependências
+  antigas da Dashboard e testes de composição ainda bloqueiam o app completo.
+
+Os testes de banco real cobrem reabertura, centavos, data civil, filtros,
+paginação, sugestões e CSV com múltiplos lotes. O SDK aplica trim nativo
+nas descrições; o repository não acrescenta normalização. A exportação continua
+sem garantia de snapshot contra edições simultâneas.
+
+Detalhes dos comandos e bloqueios em
+[`verification.md`](openspec/changes/migrate-expense-to-tostore/verification.md).
+
 ### Entrada local e widgets do sistema
 
 Root inicia na Dashboard, sem login ou Welcome na entrada padrão. Os atalhos do
@@ -83,17 +133,18 @@ Verificação do Root local:
   86 aprovados e 4 falhas, por referências legadas a rotas de autenticação
   removidas, um erro de compilador em cascata e os arquivos Sign-in/Sign-up ausentes.
 - Suíte global e builds nativos não executados; navegação e widgets do sistema
-  ainda exigem conferência manual quando Expense e Metrics estiverem migrados.
+  ainda exigem conferência manual quando Metrics estiver migrado.
 
 ### Configurações e informações locais
 
 Configurações usa um único módulo sem path e destinos sem autenticação. A tela
 não mantém estado de logout e organiza Perfil local, Dados, Informações e Apoio.
-Os documentos de Termos de uso e Política de Privacidade estão na versão 2.0,
+Os documentos de Termos de uso e Política de Privacidade estão na versão 2.1,
 de 21/11/2026, e a Ajuda acompanha o perfil sem cadastro, armazenamento local,
-ausência de áudio/IA, perda de dados e limites de cópias/exportação.
+ausência de áudio/IA, perda de dados e limites de cópias do sistema.
 Os textos não prometem criptografia adicional, sincronização, backup remoto
-ou recuperação pelo suporte. A exportação CSV não é restaurável no Cordato.
+ou recuperação pelo suporte. A exportação CSV foi removida e o backup nativo
+do ToStore ainda não foi implementado no aplicativo.
 Publicação web da política, declarações no Play e revisão jurídica são separadas.
 
 Verificação desta etapa:
@@ -122,36 +173,20 @@ mantendo “Copiar Pix” acessível.
 Não há confirmação de pagamento
 ou consulta bancária no app; a chave e o destinatário exigem conferência no banco.
 
-### Exportar despesas
+### Exportação e backup
 
-Em **Configurações → Dados → Exportar despesas**, a apresentação e o adapter de
-compartilhamento continuam preservados. A fonte das despesas ainda usa o contrato
-legado de Expense e aguarda migração para ToStore: esta etapa não comprova
-exportação offline funcional.
+A exportação CSV e a ação “Exportar despesas” foram removidas, incluindo a seção
+Dados em Configurações, contratos, modelos, serializer, repositories e Bloc.
+O client de compartilhamento sem consumidores, seus testes exclusivos e as
+dependências csv/share_plus também foram removidos.
+Configurações mantém Perfil local, Informações e Apoio. Despesas e perfil
+persistidos não são apagados por essa remoção.
 
-O fluxo prepara um CSV no dispositivo para compartilhamento nativo Android/iOS.
-A tela precisa estar ativa durante a preparação; não há filtros,
-dados de familiares/perfil, processamento em background ou seletor “Salvar como”.
-Histórico vazio mostra um aviso; falhas permitem tentar novamente sem compartilhar
-um arquivo parcial.
-
-O CSV contém Identificador, Data, Descrição, Categoria e Valor (BRL), com UTF-8/BOM,
-separador `;`, data civil `dd/MM/yyyy` e decimal com vírgula, sem perda por `double`.
-Categorias usam os valores estáveis (`food`, `other`, etc.). Textos potencialmente
-interpretados como fórmulas recebem proteção somente na cópia exportada.
-A leitura paginada não é um snapshot transacional contra mudanças simultâneas.
-
-Arquivos ficam no cache privado; parciais/abandonados são descartados. Anexos
-entregues ao compartilhamento são conservados por pelo menos 24 horas enquanto o
-cache existir e limpos em exportações posteriores, sem prazo exato de remoção.
-Destinos dependem do sistema e dos apps instalados; o retorno do compartilhamento
-não comprova entrega ou salvamento durável. Dados enviados a outros aplicativos
-ficam fora do controle de Cordato.
-
-Verificação histórica anterior à migração local: `flutter pub get`, `flutter analyze` sem problemas
-e `flutter test --reporter failures-only` com **1531 testes aprovados**. Não houve
-build nativo, conferência visual Android/iOS/iPad, abertura no Excel ou homologação
-remota nesta implementação.
+O backup/restore nativo do ToStore fica para uma próxima etapa: o Cordato ainda
+não oferece criação, compartilhamento ou restauração de backups.
+Recursos de cópia do sistema dependem das configurações do dispositivo.
+Arquivos exportados anteriormente não são excluídos; cópias enviadas a outros
+aplicativos continuam fora do controle do Cordato.
 
 > Cada pessoa é dona dos próprios dados. A família é uma lente de leitura,
 > nunca dona do dinheiro ou autorizada a escrever nos dados de outro membro.

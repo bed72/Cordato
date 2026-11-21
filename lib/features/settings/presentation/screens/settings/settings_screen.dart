@@ -6,15 +6,10 @@ import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_item_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_section_widget.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/bloc/export_bloc.dart';
-import 'package:cordato/features/settings/presentation/screens/settings/widgets/export_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_app_bar_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_support_badge_widget.dart';
 
-final class const SettingsScreen({
-  super.key,
-  required final ExportBloc exportBloc,
-}) extends StatelessWidget {
+final class const SettingsScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,13 +42,6 @@ final class const SettingsScreen({
                                   context.pushNamed(RouteEnum.user.path),
                             ),
                           ],
-                        ),
-                      ),
-                      const SizedBox(height: 24.0),
-                      MenuSectionWidget(
-                        label: 'Dados',
-                        child: MenuCardWidget(
-                          children: [ExportWidget(bloc: exportBloc)],
                         ),
                       ),
                       const SizedBox(height: 24.0),

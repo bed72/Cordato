@@ -1,838 +1,534 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
+import 'package:tostore/tostore.dart';
 
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
+import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
-import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
-import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
-import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
+import 'package:cordato/features/expense/infrastructure/schemas/expense_schema.dart';
 
-import '../../../../support/core/fakes/pocketbase_fixture.dart';
-import '../../../../support/core/mocks/auth_store_mock.dart';
 import '../../../../support/core/mocks/home_widget_client_mock.dart';
+import '../../../../support/core/mocks/tostore_mock.dart';
 
 void main() {
-  const attributes = {
-    'amount': 1500,
-    'description': ' Ônibus e metrô ',
-    'category': 'transport',
-    'occurred_on': '2026-10-05 00:00:00.000Z',
-  };
-  const resource = {'id': '8', ...attributes};
-  const listing = {
-    'items': [resource],
-    'page': 1,
-    'perPage': 30,
-    'totalItems': 2,
-    'totalPages': 2,
-  };
-  late PocketBaseFixture fixture;
-  late IExpenseRepository repository;
+  late Directory directory;
+  late ToStore database;
+  late ExpenseRepository repository;
   late HomeWidgetClientMock homeWidgetClient;
 
-  setUp(() {
-    fixture = PocketBaseFixture();
-    fixture.authenticate(id: 'owner-id');
-    fixture.respond = (_) => PocketBaseFixture.jsonResponse(resource);
+  setUp(() async {
+    directory = await Directory.systemTemp.createTemp('cordato-expense-repo-');
+    database = await ToStoreFactory.create(
+      directory: directory.path,
+      schemas: [expenseSchema],
+    );
     homeWidgetClient = HomeWidgetClientMock();
     repository = ExpenseRepository(
-      pocketBase: fixture.client,
-      homeWidgetClient: homeWidgetClient,
+      database: database,
+      client: homeWidgetClient,
     );
-    addTearDown(fixture.client.close);
   });
 
-  Map<String, dynamic> bodyOf(http.Request request) => request.body.isEmpty
-      ? <String, dynamic>{}
-      : jsonDecode(request.body) as Map<String, dynamic>;
-
-  group('Individual records and mutations', () {
-    for (final operation in ['create', 'update', 'delete']) {
-      test(
-        '$operation notifies the widget only after remote success',
-        () async {
-          final response = Completer<http.Response>();
-          final started = Completer<void>();
-          fixture.respond = (_) {
-            started.complete();
-            return response.future;
-          };
-
-          final pending = switch (operation) {
-            'create' => repository.create(cents: 1500, description: 'Mercado'),
-            'update' => repository.update(id: '8', cents: 1500),
-            _ => repository.delete(id: '8'),
-          };
-          await started.future;
-          verifyNever(homeWidgetClient.requestMonthlyRefresh);
-
-          response.complete(switch (operation) {
-            'delete' => http.Response('', 204),
-            _ => PocketBaseFixture.jsonResponse(resource),
-          });
-          await pending;
-
-          verify(homeWidgetClient.requestMonthlyRefresh).called(1);
-        },
-      );
-    }
-
-    test(
-      'reads the encoded ID and maps the remote record without synchronization',
-      () async {
-        const id = ' a/b?c#d ';
-
-        final expense = await repository.getById(id: id);
-
-        expect(expense.id, '8');
-        expect(expense.cents.cents, 1500);
-        expect(expense.description, ' Ônibus e metrô ');
-        expect(expense.category, ExpenseCategoryEnum.transport);
-        expect(expense.occurredOn, DateTime(2026, 10, 5));
-        final request = fixture.requests.single;
-        expect(request.method, 'GET');
-        expect(request.url.pathSegments.last, id);
-        expect(request.url.query, isEmpty);
-        expect(request.url.fragment, isEmpty);
-        expect(request.body, isEmpty);
-        expect(request.headers['Authorization'], PocketBaseFixture.token);
-        verifyNever(homeWidgetClient.requestMonthlyRefresh);
-      },
-    );
-
-    for (final owner in <String?>[null, '', '   ']) {
-      test('rejects missing auth owner "$owner" before HTTP', () async {
-        if (owner == null) {
-          fixture.client.authStore.clear();
-        } else {
-          fixture.authenticate(id: owner);
-        }
-
-        await expectLater(
-          repository.create(cents: 100, description: 'Game'),
-          throwsA(isA<MissingAuthenticatedUserException>()),
-        );
-
-        expect(fixture.requests, isEmpty);
-        verifyNever(homeWidgetClient.requestMonthlyRefresh);
-      });
-    }
-
-    test('preserves the original auth ID without trimming', () async {
-      fixture.authenticate(id: ' owner-id ');
-
-      await repository.create(cents: 100, description: 'Game');
-
-      expect(bodyOf(fixture.requests.single)['owner'], ' owner-id ');
-    });
-
-    test('reads the current owner for each creation without caching', () async {
-      await repository.create(cents: 100, description: 'First');
-      fixture.authenticate(id: 'new-owner');
-      await repository.create(cents: 100, description: 'Second');
-
-      expect(fixture.requests.map((request) => bodyOf(request)['owner']), [
-        'owner-id',
-        'new-owner',
-      ]);
-    });
-
-    test('propagates auth record lookup failures without HTTP', () async {
-      final store = AuthStoreMock();
-      final failure = StateError('auth record unavailable');
-      when(() => store.record).thenThrow(failure);
-      final client = PocketBase(
-        fixture.client.baseURL,
-        authStore: store,
-        httpClientFactory: fixture.client.httpClientFactory,
-      );
-      addTearDown(client.close);
-      final failingRepository = ExpenseRepository(
-        pocketBase: client,
-        homeWidgetClient: homeWidgetClient,
-      );
-
-      await expectLater(
-        failingRepository.create(cents: 100, description: 'Game'),
-        throwsA(same(failure)),
-      );
-
-      expect(fixture.requests, isEmpty);
-      verifyNever(homeWidgetClient.requestMonthlyRefresh);
-    });
-
-    test(
-      'creates a native record with owner, default category and civil UTC date',
-      () async {
-        final expense = await repository.create(
-          cents: 9007199254740991,
-          description: ' Game ',
-          occurredOn: DateTime.utc(2026, 9, 1, 23),
-        );
-
-        expect(expense.cents.cents, 1500);
-        final request = fixture.requests.single;
-        expect(request.method, 'POST');
-        expect(request.url.path, '/api/collections/expenses/records');
-        expect(bodyOf(request), {
-          'owner': 'owner-id',
-          'category': 'other',
-          'amount': 9007199254740991,
-          'description': ' Game ',
-          'occurred_on': '2026-09-01 00:00:00.000Z',
-        });
-        expect(request.url.query, isEmpty);
-      },
-    );
-
-    for (final category in ExpenseCategoryEnum.values) {
-      test('creates with the persisted ${category.value} category', () async {
-        final expense = await repository.create(
-          cents: 1500,
-          description: ' Original ',
-          category: category,
-          occurredOn: DateTime(2026, 10, 5),
-        );
-
-        expect(bodyOf(fixture.requests.single), {
-          'owner': 'owner-id',
-          'amount': 1500,
-          'description': ' Original ',
-          'category': category.value,
-          'occurred_on': '2026-10-05 00:00:00.000Z',
-        });
-        expect(expense.category, ExpenseCategoryEnum.transport);
-      });
-
-      test(
-        'patches only ${category.value} without requiring an auth owner',
-        () async {
-          fixture.client.authStore.clear();
-
-          final expense = await repository.update(id: '8', category: category);
-
-          final request = fixture.requests.single;
-          expect(request.method, 'PATCH');
-          expect(request.url.path, '/api/collections/expenses/records/8');
-          expect(bodyOf(request), {'category': category.value});
-          expect(expense.category, ExpenseCategoryEnum.transport);
-        },
-      );
-    }
-
-    test('uses the current civil date only when create has no date', () async {
-      final before = DateTime.now();
-
-      await repository.create(cents: 100, description: 'Game');
-
-      final after = DateTime.now();
-      final date = DateTime.parse(
-        bodyOf(fixture.requests.single)['occurred_on'] as String,
-      );
-      expect(
-        date.isBefore(DateTime.utc(before.year, before.month, before.day)),
-        isFalse,
-      );
-      expect(
-        date.isAfter(DateTime.utc(after.year, after.month, after.day)),
-        isFalse,
-      );
-    });
-
-    for (final input in [
-      (
-        cents: 0,
-        description: ' Novo nome ',
-        date: DateTime.utc(2026, 9, 30, 23),
-      ),
-      (cents: null, description: null, date: null),
-    ]) {
-      test('patches only supplied attributes: $input', () async {
-        final expense = await repository.update(
-          id: 'a/b',
-          cents: input.cents,
-          description: input.description,
-          occurredOn: input.date,
-        );
-
-        expect(expense.id, '8');
-        final request = fixture.requests.single;
-        expect(request.method, 'PATCH');
-        expect(request.url.pathSegments.last, 'a/b');
-        expect(bodyOf(request), {
-          'amount': ?input.cents,
-          'description': ?input.description,
-          if (input.date != null) 'occurred_on': '2026-09-30 00:00:00.000Z',
-        });
-        expect(request.url.query, isEmpty);
-      });
-    }
-
-    for (final status in [200, 201, 202, 204]) {
-      test('uses native SDK deletion success semantics for $status', () async {
-        fixture.respond = (_) => http.Response('', status);
-
-        await repository.delete(id: 'a/b?c#d');
-
-        final request = fixture.requests.single;
-        expect(request.method, 'DELETE');
-        expect(request.url.pathSegments.last, 'a/b?c#d');
-        expect(request.url.query, isEmpty);
-        expect(request.body, isEmpty);
-        verify(homeWidgetClient.requestMonthlyRefresh).called(1);
-      });
-    }
+  tearDown(() async {
+    await database.close();
+    await directory.delete(recursive: true);
   });
 
-  group('Listing, filters and pagination', () {
-    setUp(
-      () => fixture.respond = (_) => PocketBaseFixture.jsonResponse(listing),
-    );
+  group('Local records and mutations', () {
+    test('creates exact cents, defaults and a generated string ID', () async {
+      final created = await repository.create(
+        cents: 9007199254740991,
+        description: ' Mercado ',
+        occurredOn: DateTime(2026, 11, 8, 23, 59),
+      );
+
+      expect(created.id, isNotEmpty);
+      expect(created.cents.cents, 9007199254740991);
+      expect(created.description, 'Mercado');
+      expect(created.category, ExpenseCategoryEnum.other);
+      expect(created.occurredOn, DateTime(2026, 11, 8));
+      final stored = await database.query('expenses').first();
+      expect(stored!['occurred_on'], '2026-11-08T00:00:00.000Z');
+      expect(stored.containsKey('owner'), isFalse);
+      verify(homeWidgetClient.requestMonthlyRefresh).called(1);
+    });
 
     test(
-      'escapes category filter values without allowing new expressions',
+      'uses today at creation time without a schema timestamp default',
       () async {
-        await repository.get(category: 'food" || amount > 0 \\');
+        final before = DateTime.now();
+        final created = await repository.create(cents: 1, description: 'Hoje');
+        final after = DateTime.now();
 
         expect(
-          fixture.requests.single.url.queryParameters['filter'],
-          r'category = "food\" || amount > 0 \\"',
+          created.occurredOn,
+          anyOf(
+            DateTime(before.year, before.month, before.day),
+            DateTime(after.year, after.month, after.day),
+          ),
         );
       },
     );
 
     for (final date in [
-      (end: DateTime(2028, 2, 29), next: '2028-03-01'),
-      (end: DateTime(2026, 12, 31), next: '2027-01-01'),
+      DateTime(2026, 10, 5, 23),
+      DateTime.utc(2026, 10, 5, 23),
     ]) {
-      test('uses exclusive next-day bound after ${date.end}', () async {
-        await repository.get(to: date.end);
-
-        expect(
-          fixture.requests.single.url.queryParameters['filter'],
-          'occurred_on < "${date.next} 00:00:00.000Z"',
-        );
-      });
-    }
-
-    test('preserves response order and returns the next page number', () async {
-      fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-        ...listing,
-        'items': [
-          resource,
-          {'id': '2', ...attributes},
-        ],
-        'page': 2,
-        'totalPages': 3,
-      });
-
-      final page = await repository.get(page: 2);
-
-      expect(page.items.map((item) => item.id), ['8', '2']);
-      expect(page.nextPage, 3);
-      expect(() => page.items.clear(), throwsUnsupportedError);
-      expect(fixture.requests.single.url.queryParameters['page'], '2');
-      verifyNever(homeWidgetClient.requestMonthlyRefresh);
-    });
-
-    for (final size in [0, -1, 6, 20]) {
       test(
-        'accepts empty pages and preserves the page-size fallback for $size',
+        'preserves civil components from ${date.isUtc ? 'UTC' : 'local'} input',
         () async {
-          fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-            'items': [],
-            'page': 1,
-            'totalPages': 0,
-          });
-
-          final page = await repository.get(pageSize: size);
-
-          expect(page.items, isEmpty);
-          expect(page.nextPage, isNull);
-          expect(
-            fixture.requests.single.url.queryParameters['perPage'],
-            '${size > 0 ? size : 30}',
+          final created = await repository.create(
+            cents: 100,
+            description: 'Data',
+            occurredOn: date,
           );
+
+          expect(created.occurredOn, DateTime(2026, 10, 5));
         },
       );
     }
 
-    test(
-      'applies explicit civil period, category and sort to the requested page',
-      () async {
-        await repository.get(
-          pageSize: 20,
-          category: 'food',
-          sort: 'occurred_on',
-          from: DateTime.utc(2026, 9, 1, 23),
-          to: DateTime(2026, 9, 30, 12),
-          page: 2,
-        );
+    test('persists CRUD and nullable descriptions across reopening', () async {
+      final inserted = await database.insert('expenses', {
+        'amount': 500,
+        'occurred_on': '2026-11-08T00:00:00.000Z',
+      });
+      final id = inserted.firstPrimaryKey!;
+      expect((await repository.getById(id: id)).description, '');
 
-        expect(fixture.requests.single.url.queryParameters, {
-          'page': '2',
-          'perPage': '20',
-          'sort': 'occurred_on',
-          'skipTotal': 'false',
-          'filter': 'category = "food" && occurred_on >= "2026-09-01 00:00:00.000Z" && occurred_on < "2026-10-01 00:00:00.000Z"',
-        });
+      await repository.update(id: id, description: 'Café', category: .food);
+      await database.close();
+      database = await ToStoreFactory.create(
+        directory: directory.path,
+        schemas: [expenseSchema],
+      );
+      repository = ExpenseRepository(
+        database: database,
+        client: homeWidgetClient,
+      );
+      final reopened = await repository.getById(id: id);
+      expect(reopened.description, 'Café');
+      expect(reopened.cents.cents, 500);
+      expect(reopened.category, ExpenseCategoryEnum.food);
+
+      await repository.delete(id: id);
+      expect((await repository.get()).items, isEmpty);
+      await expectLater(
+        repository.getById(id: id),
+        throwsA(isA<ExpenseException>()),
+      );
+    });
+
+    test(
+      'updates only supplied fields and accepts an empty description',
+      () async {
+        final original = await repository.create(
+          cents: 500,
+          description: 'Original',
+          category: .food,
+          occurredOn: DateTime(2026, 10, 5),
+        );
+        final changed = await repository.update(id: original.id, cents: 700);
+        expect(changed.cents.cents, 700);
+        expect(changed.description, 'Original');
+        expect(changed.category, ExpenseCategoryEnum.food);
+        expect(changed.occurredOn, original.occurredOn);
+
+        final cleared = await repository.update(
+          id: original.id,
+          description: '',
+          category: .other,
+          occurredOn: DateTime.utc(2026, 12, 1, 22),
+        );
+        expect(cleared.description, '');
+        expect(cleared.category, ExpenseCategoryEnum.other);
+        expect(cleared.occurredOn, DateTime(2026, 12, 1));
+        verify(homeWidgetClient.requestMonthlyRefresh).called(3);
       },
     );
 
-    for (final limits in [
-      (
-        from: DateTime.utc(2026, 9, 1, 23),
-        to: null,
-        filter: 'occurred_on >= "2026-09-01 00:00:00.000Z"',
-      ),
-      (
-        from: null,
-        to: DateTime(2026, 9, 30, 12),
-        filter: 'occurred_on < "2026-10-01 00:00:00.000Z"',
-      ),
-    ]) {
-      test(
-        'does not complete incomplete civil intervals: ${limits.filter}',
-        () async {
-          await repository.get(from: limits.from, to: limits.to);
-
-          expect(
-            fixture.requests.single.url.queryParameters['filter'],
-            limits.filter,
-          );
-        },
+    test('empty update reads without announcing a mutation', () async {
+      final original = await repository.create(
+        cents: 1,
+        description: 'Original',
       );
-    }
+      clearInteractions(homeWidgetClient);
 
-    for (final pageNumber in [1, 2, 3]) {
-      test('derives the next page for page $pageNumber of 3', () async {
-        fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-          ...listing,
-          'page': pageNumber,
-          'totalPages': 3,
-        });
-
-        final page = await repository.get(page: pageNumber);
-
-        expect(page.nextPage, pageNumber < 3 ? pageNumber + 1 : null);
-      });
-    }
-
-    for (final malformed in [
-      {'items': [], 'page': '1', 'totalPages': 1},
-      {
-        'items': [null],
-        'page': 1,
-        'totalPages': 1,
-      },
-    ]) {
-      test('propagates invalid native page data: $malformed', () async {
-        fixture.respond = (_) => PocketBaseFixture.jsonResponse(malformed);
-
-        await expectLater(repository.get(), throwsA(isA<TypeError>()));
-      });
-    }
-  });
-
-  group('Suggestions', () {
-    test('uses filtered recent history and deduplicates descriptions ignoring case', () async {
-      fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-        'items': [
-          {
-            'id': 'rent',
-            'description': 'Aluguel',
-            'amount': 160000,
-            'category': 'housing',
-          },
-          {
-            'id': 'market',
-            'description': 'Mercado',
-            'amount': 20000,
-            'category': 'food',
-          },
-          {
-            'id': 'old-rent',
-            'description': 'ALUGUEL',
-            'amount': 150000,
-            'category': 'other',
-          },
-        ],
-      });
-      const query = r" [Demo] Aluguél ' || amount > 0 \ & ?/# ";
-
-      final suggestions = await repository.suggestions(query: query);
-
-      expect(suggestions.map((item) => item.id), ['rent', 'market']);
-      expect(suggestions.map((item) => item.cents), [160000, 20000]);
-      expect(suggestions.map((item) => item.category), [
-        ExpenseCategoryEnum.housing,
-        ExpenseCategoryEnum.food,
-      ]);
-      expect(() => suggestions.clear(), throwsUnsupportedError);
-      final request = fixture.requests.single;
-      expect(request.url.path, '/api/collections/expenses/records');
-      expect(request.url.queryParameters, {
-        'page': '1',
-        'perPage': '30',
-        'sort': '-occurred_on,-created,-id',
-        'filter':
-            r'''description ~ " [Demo] Aluguél ' || amount > 0 \\ & ?/# "''',
-        'skipTotal': 'true',
-        'fields': 'id,description,amount,category',
-      });
-      expect(request.body, isEmpty);
+      expect((await repository.update(id: original.id)).id, original.id);
       verifyNever(homeWidgetClient.requestMonthlyRefresh);
     });
 
-    test('empty suggestions succeed', () async {
-      fixture.respond = (_) => PocketBaseFixture.jsonResponse({'items': []});
-
-      expect(await repository.suggestions(query: 'Mer'), isEmpty);
-    });
-
-    test('uses native SDK defaults for absent list items', () async {
-      fixture.respond = (_) => PocketBaseFixture.jsonResponse({});
-
-      expect(await repository.suggestions(query: 'Mer'), isEmpty);
-    });
-
-    for (final items in [
-      <String, dynamic>{},
-      [
-        {'id': 'bad', 'description': 10, 'amount': 100},
-      ],
-    ]) {
-      test('malformed suggestions propagate: $items', () async {
-        fixture.respond = (_) =>
-            PocketBaseFixture.jsonResponse({'items': items});
-
-        await expectLater(
-          repository.suggestions(query: 'Mer'),
-          throwsA(isA<TypeError>()),
+    test(
+      'independent concurrent updates do not overwrite omitted fields',
+      () async {
+        final original = await repository.create(
+          cents: 1,
+          description: 'Original',
         );
+        final other = ExpenseRepository(
+          database: database,
+          client: homeWidgetClient,
+        );
+
+        await Future.wait([
+          repository.update(id: original.id, cents: 99),
+          other.update(id: original.id, description: 'Atualizada'),
+        ]);
+
+        final stored = await repository.getById(id: original.id);
+        expect(stored.cents.cents, 99);
+        expect(stored.description, 'Atualizada');
+      },
+    );
+
+    for (final operation in ['get', 'update', 'empty update', 'delete']) {
+      test('$operation rejects a missing record without refresh', () async {
+        final pending = switch (operation) {
+          'get' => repository.getById(id: '999'),
+          'update' => repository.update(id: '999', cents: 10),
+          'empty update' => repository.update(id: '999'),
+          _ => repository.delete(id: '999'),
+        };
+
+        await expectLater(pending, throwsA(isA<ExpenseException>()));
+        verifyNever(homeWidgetClient.requestMonthlyRefresh);
       });
     }
 
-    test(
-      'invalid historical category propagates without a partial response',
-      () async {
-        fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-          'items': [
-            resource,
-            {...resource, 'id': 'invalid', 'category': 'unknown'},
-          ],
-        });
+    for (final cents in [0, -1]) {
+      test(
+        'rejects $cents cents on create and update without refresh',
+        () async {
+          final original = await repository.create(
+            cents: 1,
+            description: 'Original',
+          );
+          clearInteractions(homeWidgetClient);
 
+          await expectLater(
+            repository.create(cents: cents, description: 'Inválido'),
+            throwsA(isA<ExpenseException>()),
+          );
+          await expectLater(
+            repository.update(id: original.id, cents: cents),
+            throwsA(isA<ExpenseException>()),
+          );
+
+          expect((await repository.getById(id: original.id)).cents.cents, 1);
+          expect((await repository.get()).items, hasLength(1));
+          verifyNever(homeWidgetClient.requestMonthlyRefresh);
+        },
+      );
+    }
+  });
+
+  group('Filtered pages', () {
+    test('keeps inclusive civil dates and category on every page', () async {
+      for (final day in [7, 8, 9, 10]) {
+        for (final category in [
+          ExpenseCategoryEnum.food,
+          ExpenseCategoryEnum.other,
+        ]) {
+          await repository.create(
+            cents: day,
+            description: '${category.value} $day',
+            category: category,
+            occurredOn: DateTime.utc(2026, 11, day, 23),
+          );
+        }
+      }
+      final first = await repository.get(
+        category: 'food',
+        from: DateTime(2026, 11, 8, 23),
+        to: DateTime(2026, 11, 9, 1),
+        pageSize: 1,
+      );
+      final second = await repository.get(
+        category: 'food',
+        from: DateTime(2026, 11, 8),
+        to: DateTime(2026, 11, 9),
+        pageSize: 1,
+        page: first.nextPage!,
+      );
+
+      expect(first.items.single.description, 'food 9');
+      expect(second.items.single.description, 'food 8');
+      expect(second.nextPage, isNull);
+      expect(() => first.items.clear(), throwsUnsupportedError);
+    });
+
+    test(
+      'orders tied dates by sequential ID, not insertion-dependent pages',
+      () async {
+        final ids = <String>[];
+        for (int index = 0; index < 12; index++) {
+          final expense = await repository.create(
+            cents: 100,
+            description: '$index',
+            occurredOn: DateTime(2026, 11, 8),
+          );
+          ids.add(expense.id);
+        }
+
+        final first = await repository.get(pageSize: 6);
+        final second = await repository.get(pageSize: 6, page: 2);
+        expect(
+          [...first.items, ...second.items].map((item) => item.id),
+          ids.reversed,
+        );
+        expect(second.nextPage, isNull);
+        expect((await repository.get(page: 3, pageSize: 6)).items, isEmpty);
+      },
+    );
+
+    test(
+      'supports Dashboard oldest date and explicit local ordering',
+      () async {
+        await repository.create(
+          cents: 300,
+          description: 'Novo',
+          occurredOn: DateTime(2026, 11, 9),
+        );
+        final oldest = await repository.create(
+          cents: 100,
+          description: 'Antigo',
+          occurredOn: DateTime(2026, 11, 8),
+        );
+
+        expect(
+          (await repository.get(
+            sort: 'occurred_on',
+            pageSize: 1,
+          )).items.single.id,
+          oldest.id,
+        );
+        expect(
+          (await repository.get(sort: '-amount')).items.first.cents.cents,
+          300,
+        );
+        expect((await repository.get(pageSize: 0)).items, hasLength(2));
+      },
+    );
+
+    test(
+      'does not disguise invalid query arguments as storage errors',
+      () async {
+        await expectLater(repository.get(page: 0), throwsArgumentError);
+        await expectLater(repository.get(sort: 'owner'), throwsArgumentError);
         await expectLater(
-          repository.suggestions(query: 'Mer'),
+          repository.get(category: 'unknown'),
           throwsStateError,
         );
       },
     );
   });
 
-  group('Shared failures and pending operations', () {
-    for (final operation in [
-      'getById',
-      'get',
-      'create',
-      'update',
-      'delete',
-      'suggestions',
-    ]) {
-      Future<Object?> execute() async {
-        if (operation == 'delete') {
-          await repository.delete(id: '8');
-          return null;
-        }
-
-        return switch (operation) {
-          'getById' => repository.getById(id: '8'),
-          'get' => repository.get(),
-          'suggestions' => repository.suggestions(query: 'Mer'),
-          'create' => repository.create(
-            cents: 0,
-            description: ' Original ',
-            category: .transport,
-          ),
-          'update' => repository.update(
-            id: '8',
-            cents: 0,
-            category: .transport,
-          ),
-          _ => throw StateError('Unknown expense operation'),
-        };
-      }
-
-      Map<String, dynamic> payload(Map<String, dynamic> record) =>
-          switch (operation) {
-            'get' || 'suggestions' => {
-              ...listing,
-              'items': [record],
-            },
-            _ => record,
-          };
-
-      test(
-        '$operation preserves native error order, status, code, pointer and parameter',
-        () async {
-          fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-            'message': 'Failed to save record.',
-            'data': {
-              'amount': {
-                'code': 'validation_min_greater_equal_than_required',
-                'message': 'Invalid amount.',
-              },
-              'description': {
-                'code': 'validation_length_out_of_range',
-                'message': 'Invalid description.',
-              },
-              'category': {
-                'code': 'validation_in_invalid',
-                'message': 'Invalid category.',
-              },
-            },
-          }, status: 400);
-
-          await expectLater(
-            execute(),
-            throwsA(
-              isA<ExpenseException>().having(
-                (failure) => failure.errors.errors
-                    .map(
-                      (error) => (
-                        error.status,
-                        error.code,
-                        error.pointer,
-                        error.parameter,
-                        error.detail,
-                      ),
-                    )
-                    .toList(),
-                'ordered metadata',
-                [
-                  (
-                    '400',
-                    'validation_min_greater_equal_than_required',
-                    '/amount',
-                    'amount',
-                    'Invalid amount.',
-                  ),
-                  (
-                    '400',
-                    'validation_length_out_of_range',
-                    '/description',
-                    'description',
-                    'Invalid description.',
-                  ),
-                  (
-                    '400',
-                    'validation_in_invalid',
-                    '/category',
-                    'category',
-                    'Invalid category.',
-                  ),
-                ],
-              ),
-            ),
-          );
-          verifyNever(homeWidgetClient.requestMonthlyRefresh);
-        },
-      );
-
-      for (final status in [401, 403, 404, 422, 503]) {
-        test(
-          '$operation maps HTTP $status without managing sessions or notifying the widget',
-          () async {
-            fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-              'message': 'Remote failure',
-            }, status: status);
-            final record = fixture.client.authStore.record;
-
-            await expectLater(
-              execute(),
-              throwsA(
-                isA<ExpenseException>().having(
-                  (failure) => failure.errors.errors.single.status,
-                  'status',
-                  '$status',
-                ),
-              ),
-            );
-
-            expect(fixture.client.authStore.token, PocketBaseFixture.token);
-            expect(fixture.client.authStore.record, same(record));
-            verifyNever(homeWidgetClient.requestMonthlyRefresh);
-          },
+  group('Suggestions', () {
+    test(
+      'matches case-insensitively and keeps the latest category and cents',
+      () async {
+        await repository.create(
+          cents: 100,
+          description: 'Café',
+          category: .food,
+          occurredOn: DateTime(2026, 11, 7),
         );
-      }
+        final latest = await repository.create(
+          cents: 200,
+          description: 'CAFÉ',
+          category: .other,
+          occurredOn: DateTime(2026, 11, 8),
+        );
+        await repository.create(
+          cents: 300,
+          description: 'Outra',
+          occurredOn: DateTime(2026, 11, 9),
+        );
 
-      for (final response in <Map<String, dynamic>>[
-        {},
-        {'errors': []},
-        {'errors': 'invalid'},
+        final suggestions = await repository.suggestions(query: 'cAfÉ');
+        expect(suggestions.single.id, latest.id);
+        expect(suggestions.single.category, ExpenseCategoryEnum.other);
+        expect(suggestions.single.cents, 200);
+        expect(() => suggestions.clear(), throwsUnsupportedError);
+      },
+    );
+
+    test('treats wildcard and query syntax as literal descriptions', () async {
+      for (final description in [
+        '100%_\\ café',
+        '100XX café',
+        '" || category != "',
       ]) {
-        test(
-          '$operation preserves HTTP status when field errors are absent: $response',
-          () async {
-            fixture.respond = (_) =>
-                PocketBaseFixture.jsonResponse(response, status: 503);
-
-            await expectLater(
-              execute(),
-              throwsA(
-                isA<ExpenseException>().having(
-                  (failure) => failure.errors.errors.single.status,
-                  'status',
-                  '503',
-                ),
-              ),
-            );
-          },
-        );
+        await repository.create(cents: 1, description: description);
       }
 
-      test('$operation maps transport failures to a safe fallback', () async {
-        fixture.respond = (_) => throw const SocketException('offline');
+      expect(
+        (await repository.suggestions(query: '%_\\')).single.description,
+        '100%_\\ café',
+      );
+      expect(
+        (await repository.suggestions(query: '" ||')).single.description,
+        '" || category != "',
+      );
+    });
+
+    test('stops at 30 matching records before deduplication', () async {
+      await repository.create(cents: 1, description: 'Café antigo');
+      for (int index = 0; index < 30; index++) {
+        await repository.create(cents: 1, description: 'Café repetido');
+      }
+
+      expect(
+        (await repository.suggestions(query: 'café')).single.description,
+        'Café repetido',
+      );
+    });
+
+    test(
+      'searches older batches and skips absent or empty descriptions',
+      () async {
+        final older = await repository.create(cents: 1, description: 'Agulha');
+        for (int index = 0; index < 101; index++) {
+          await repository.create(cents: 1, description: 'Palha');
+        }
+        await repository.create(cents: 1, description: '');
+        await database.insert('expenses', {
+          'amount': 1,
+          'occurred_on': DateTime.now().toIso8601String(),
+        });
+
+        expect(
+          (await repository.suggestions(query: 'AGULHA')).single.id,
+          older.id,
+        );
+      },
+    );
+  });
+
+  group('Storage failures and parsing', () {
+    test(
+      'preserves expected diagnostics without native messages or refresh',
+      () async {
+        final failing = ToStoreMock();
+        when(() => failing.insert('expenses', any())).thenAnswer(
+          (_) async => DbResult.error(
+            type: ResultType.sysIoGeneric,
+            message: 'private path and data',
+          ),
+        );
+        final local = ExpenseRepository(
+          database: failing,
+          client: homeWidgetClient,
+        );
 
         await expectLater(
-          execute(),
+          local.create(cents: 1, description: 'Teste'),
           throwsA(
-            isA<ExpenseException>().having(
-              (failure) => failure.errors.errors.single.title,
-              'title',
-              'Erro desconhecido',
-            ),
+            isA<ExpenseException>()
+                .having(
+                  (error) => error.errors.errors.single.code,
+                  'code',
+                  ResultType.sysIoGeneric.codeKey,
+                )
+                .having(
+                  (error) => error.errors.errors.single.detail,
+                  'detail',
+                  isNull,
+                ),
           ),
         );
-
-        expect(fixture.client.authStore.token, PocketBaseFixture.token);
         verifyNever(homeWidgetClient.requestMonthlyRefresh);
-      });
+      },
+    );
 
-      for (final failure in [
-        StateError('private detail'),
-        const FormatException('invalid payload'),
-      ]) {
-        for (final synchronous in [true, false]) {
-          test(
-            '$operation propagates ${failure.runtimeType} unchanged (synchronous: $synchronous)',
-            () async {
-              fixture.respond = (_) {
-                if (synchronous) {
-                  throw failure;
-                }
-                return Future<http.Response>.error(failure);
-              };
+    test('does not announce a pending or failed insert', () async {
+      final failing = ToStoreMock();
+      final pending = Completer<DbResult>();
+      when(() => failing.insert('expenses', any()))
+          .thenAnswer((_) => pending.future);
+      final local = ExpenseRepository(
+        database: failing,
+        client: homeWidgetClient,
+      );
+      final created = local.create(cents: 1, description: 'Teste');
+      final assertion = expectLater(created, throwsA(isA<ExpenseException>()));
+      verifyNever(homeWidgetClient.requestMonthlyRefresh);
 
-              await expectLater(execute(), throwsA(same(failure)));
+      pending.complete(
+        DbResult.error(type: ResultType.sysIoGeneric, message: 'private'),
+      );
+      await assertion;
+      verifyNever(homeWidgetClient.requestMonthlyRefresh);
+    });
 
-              verifyNever(homeWidgetClient.requestMonthlyRefresh);
-            },
-          );
-        }
-      }
+    test('maps filesystem failures without retry', () async {
+      final failing = ToStoreMock();
+      when(() => failing.query('expenses'))
+          .thenThrow(const FileSystemException('private'));
+      final local = ExpenseRepository(
+        database: failing,
+        client: homeWidgetClient,
+      );
 
-      test('$operation waits for SDK completion', () async {
-        final response = Completer<http.Response>();
-        final started = Completer<void>();
-        fixture.respond = (_) {
-          started.complete();
-          return response.future;
-        };
-        var completed = false;
-        final pending = execute().then((value) {
-          completed = true;
-          return value;
-        });
-        await started.future;
+      await expectLater(local.get(), throwsA(isA<ExpenseException>()));
+      verify(() => failing.query('expenses')).called(1);
+    });
 
-        expect(completed, isFalse);
-        response.complete(switch (operation) {
-          'delete' => http.Response('', 204),
-          _ => PocketBaseFixture.jsonResponse(payload(resource)),
-        });
-        await pending;
-
-        expect(completed, isTrue);
-      });
-
-      if (operation == 'delete') {
-        continue;
-      }
-
-      for (final malformed in [
-        'shape',
-        'date',
-        'category',
-        'amount',
-        'fraction',
-      ]) {
-        if (operation == 'suggestions' &&
-            (malformed == 'date' || malformed == 'amount')) {
-          continue;
-        }
-        test(
-          '$operation propagates invalid $malformed without partial success or widget notification',
-          () async {
-            final invalid = switch (malformed) {
-              'shape' => <String, dynamic>{},
-              _ => {
-                'id': 'invalid',
-                ...attributes,
-                if (malformed == 'date') 'occurred_on': 'not-a-date',
-                if (malformed == 'category') 'category': 'unknown',
-                if (malformed == 'amount') 'amount': 0,
-                if (malformed == 'fraction') 'amount': 1.5,
-              },
-            };
-            fixture.respond = (_) =>
-                PocketBaseFixture.jsonResponse(switch (operation) {
-                  'get' || 'suggestions' => {
-                    ...listing,
-                    'items': [resource, invalid],
-                  },
-                  _ => invalid,
-                });
-
-            await expectLater(
-              execute(),
-              throwsA(switch (malformed) {
-                'date' => isA<FormatException>(),
-                'category' => isA<StateError>(),
-                'amount' => isA<ArgumentError>(),
-                _ => isA<TypeError>(),
-              }),
-            );
-
-            verifyNever(homeWidgetClient.requestMonthlyRefresh);
-          },
-        );
-      }
-
-      test('$operation preserves large integer cents in responses', () async {
-        fixture.respond = (_) => PocketBaseFixture.jsonResponse(
-          payload({...resource, 'amount': 9007199254740991}),
+    for (final failure in [
+      StateError('private'),
+      const FormatException('private'),
+    ]) {
+      test('classifies ${failure.runtimeType} without retry', () async {
+        final failing = ToStoreMock();
+        when(() => failing.query('expenses')).thenThrow(failure);
+        final local = ExpenseRepository(
+          database: failing,
+          client: homeWidgetClient,
         );
 
-        final confirmedExpenses = await execute();
-
-        final cents = switch (confirmedExpenses) {
-          List<ExpenseSuggestionEntity>() => confirmedExpenses.single.cents,
-          ExpenseEntity() => confirmedExpenses.cents.cents,
-          ExpensePageEntity() => confirmedExpenses.items.single.cents.cents,
-          _ => throw StateError('Unexpected expense response'),
-        };
-        expect(cents, 9007199254740991);
+        await expectLater(local.get(), throwsA(same(failure)));
+        verify(() => failing.query('expenses')).called(1);
       });
     }
+
+    test('propagates native developer failures', () async {
+      final failing = ToStoreMock();
+      final failure = DbException(
+        DbResult.error(
+          type: ResultType.devTableNotFound,
+          message: 'private',
+        ).statuses,
+      );
+      when(() => failing.query('expenses')).thenThrow(failure);
+      final local = ExpenseRepository(
+        database: failing,
+        client: homeWidgetClient,
+      );
+
+      await expectLater(local.get(), throwsA(same(failure)));
+    });
+
+    test('does not replace malformed stored category with other', () async {
+      final inserted = await database.insert('expenses', {
+        'amount': 1,
+        'description': 'Inválida',
+        'category': 'unknown',
+        'occurred_on': '2026-11-08T00:00:00.000Z',
+      });
+
+      await expectLater(repository.get(), throwsStateError);
+      await expectLater(
+        repository.getById(id: inserted.firstPrimaryKey!),
+        throwsStateError,
+      );
+      await expectLater(
+        repository.suggestions(query: 'Inválida'),
+        throwsStateError,
+      );
+    });
   });
 }
