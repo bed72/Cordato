@@ -50,12 +50,12 @@ void main() {
         ..._categories(3),
         const ExpenseCategoryMetricsEntity(
           category: 'zero',
-          totalAmount: 0,
+          total: 0,
           percentage: 0,
         ),
         const ExpenseCategoryMetricsEntity(
           category: 'negative',
-          totalAmount: -1,
+          total: -1,
           percentage: 0,
         ),
       ];
@@ -107,7 +107,7 @@ List<ExpenseCategoryMetricsEntity> _categories(int count) => [
   for (var index = 0; index < count; index++)
     ExpenseCategoryMetricsEntity(
       category: 'category-$index',
-      totalAmount: count - index,
+      total: count - index,
       percentage: 1.25,
     ),
 ];

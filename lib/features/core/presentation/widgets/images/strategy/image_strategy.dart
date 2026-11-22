@@ -8,7 +8,6 @@ abstract interface class ImageStrategy {
     required Color? color,
     required double? width,
     required double? height,
-    required bool showLoading,
     required String? fallback,
   });
 }

@@ -1,8 +1,0 @@
-.env
-.env.*
-!.env.example
-data/
-backups/
-node_modules/
-*_cred.json
-*.log

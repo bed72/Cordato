@@ -6,28 +6,24 @@ import 'package:cordato/features/metrics/presentation/extensions/expense_metrics
 void main() {
   test('filters nonpositive totals and stably sorts without changing input or percentages', () {
     const categories = [
+      ExpenseCategoryMetricsEntity(percentage: 0, total: 0, category: 'zero'),
       ExpenseCategoryMetricsEntity(
-        percentage: 0,
-        totalAmount: 0,
-        category: 'zero',
-      ),
-      ExpenseCategoryMetricsEntity(
-        totalAmount: 200,
+        total: 200,
         percentage: 12.34,
         category: 'first-tie',
       ),
       ExpenseCategoryMetricsEntity(
         percentage: 0,
-        totalAmount: -1,
+        total: -1,
         category: 'negative',
       ),
       ExpenseCategoryMetricsEntity(
         percentage: 50,
-        totalAmount: 300,
+        total: 300,
         category: 'largest',
       ),
       ExpenseCategoryMetricsEntity(
-        totalAmount: 200,
+        total: 200,
         percentage: 37.66,
         category: 'second-tie',
       ),
@@ -50,7 +46,7 @@ void main() {
             ExpenseCategoryMetricsEntity(
               percentage: 1.25,
               category: 'category-$index',
-              totalAmount: count - index,
+              total: count - index,
             ),
         ];
         final pages = categories.cardPages;
@@ -72,7 +68,7 @@ void main() {
       const [
         ExpenseCategoryMetricsEntity(
           percentage: 0,
-          totalAmount: 0,
+          total: 0,
           category: 'other',
         ),
       ].cardPages,

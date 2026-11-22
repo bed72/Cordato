@@ -33,8 +33,6 @@ void main() {
           final matches = boot.routes.match(Uri.parse(entry.value));
 
           expect(entry.key.path, entry.value);
-          expect(entry.key.authenticated, isFalse);
-          expect(RouteEnum.authenticatedPaths(), isNot(contains(entry.value)));
           expect(matches, hasLength(1));
 
           final route = matches!.single.route;

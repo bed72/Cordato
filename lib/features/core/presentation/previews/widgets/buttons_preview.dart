@@ -5,9 +5,7 @@ import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/hold_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/buttons/link_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/text_button_widget.dart';
-import 'package:cordato/features/core/presentation/widgets/buttons/danger_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/outline_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
@@ -38,30 +36,9 @@ Widget previewElevatedButtonWidget() =>
 Widget previewOutlineButtonWidget() =>
     _buttonShell(OutlineButtonWidget(label: 'Agora não', onTap: () {}));
 
-@CordatoPreview(
-  group: 'Core / Botões',
-  name: 'Perigo',
-  size: Size(390.0, 160.0),
-)
-Widget previewDangerButtonWidget() =>
-    _buttonShell(DangerButtonWidget(label: 'Excluir conta', onTap: () {}));
-
-@CordatoPreview(
-  group: 'Core / Botões',
-  name: 'Texto e link',
-  size: Size(390.0, 180.0),
-)
-Widget previewTextAndLinkButtonWidgets() => _buttonShell(
-  Column(
-    mainAxisSize: .min,
-    crossAxisAlignment: .start,
-    spacing: 20.0,
-    children: [
-      TextButtonWidget(label: 'Saiba mais', onTap: () {}),
-      LinkButtonWidget(label: 'Política de privacidade', onTap: () {}),
-    ],
-  ),
-);
+@CordatoPreview(group: 'Core / Botões', name: 'Texto', size: Size(390.0, 180.0))
+Widget previewTextButtonWidget() =>
+    _buttonShell(TextButtonWidget(label: 'Saiba mais', onTap: () {}));
 
 @CordatoPreview(
   group: 'Core / Botões',

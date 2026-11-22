@@ -28,7 +28,7 @@ final class const InformationDocumentWidget({
           ),
         ),
         SummaryCardWidget(summary: summary),
-        for (var index = 0; index < sections.length; index++)
+        for (int index = 0; index < sections.length; index++)
           InformationSectionWidget(
             title: '${index + 1}. ${sections[index].title}',
             paragraphs: sections[index].paragraphs,

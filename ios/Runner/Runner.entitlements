@@ -6,9 +6,5 @@
 	<array>
 		<string>group.com.bed.cordato</string>
 	</array>
-	<key>com.apple.developer.associated-domains</key>
-	<array>
-		<string>applinks:app.cordato.cloud</string>
-	</array>
 </dict>
 </plist>

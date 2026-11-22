@@ -5,7 +5,6 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
@@ -280,14 +279,12 @@ void main() {
 
   group('Creation failures', () {
     final errors = ErrorsEntity(errors: [ErrorEntity(status: '403')]);
-    const missingUser = MissingAuthenticatedUserException();
     for (final scenario in [
       (
         name: 'expense',
         failure: ExpenseException(errors: errors),
         errors: errors,
       ),
-      (name: 'missing user', failure: missingUser, errors: missingUser.errors),
     ]) {
       blocTest<ExpensesBloc, ExpensesState>(
         'preserves ${scenario.name} errors and items without retry or telemetry',

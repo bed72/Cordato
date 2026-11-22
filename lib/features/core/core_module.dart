@@ -1,23 +1,14 @@
-import 'package:pocketbase/pocketbase.dart';
+import 'package:localstore/localstore.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
-import 'package:cordato/features/core/infrastructure/clients/share/share_client.dart';
-import 'package:cordato/features/core/application/clients/interface_share_client.dart';
-import 'package:cordato/features/core/application/clients/interface_recording_client.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
-import 'package:cordato/features/core/infrastructure/clients/recording/recording_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
 
-Module createCoreModule({required PocketBase pocketBase}) => createModule(
+final coreModule = createModule(
   register: (context) => context
-    ..addInstance<PocketBase>(pocketBase)
-    ..addLazySingleton<IShareClient>(ShareClient.new)
-    ..addLazySingleton<IMoneyFormatter>(MoneyFormatter.new)
-    ..addLazySingleton<IDateFormatter>(() => DateFormatter())
-    ..addLazySingleton<IHomeWidgetClient>(HomeWidgetClient.new)
-    ..addLazySingleton<IRecordingClient>(() => RecordingClient()),
+    ..addInstance<Localstore>(Localstore.instance)
+    ..addLazySingleton<IWidgetClient>(WidgetClient.new)
+    ..addLazySingleton<IDateFormatter>(DateFormatter.new)
+    ..addLazySingleton<IMoneyFormatter>(MoneyFormatter.new),
 );

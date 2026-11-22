@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/presentation/widgets/expense_metrics_grid_widget.dart';
@@ -53,7 +53,7 @@ final class _ExpenseMetricsCarouselWidgetState
             SizedBox(
               height: pageHeight,
               child: PageView.builder(
-                controller: pageController,
+                controller: controller,
                 onPageChanged: onPageChanged,
                 itemCount: widget.pages.length,
                 itemBuilder: (_, index) => ExcludeSemantics(

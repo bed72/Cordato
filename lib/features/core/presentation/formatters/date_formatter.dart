@@ -1,6 +1,12 @@
 import 'package:intl/intl.dart';
 
-import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
+abstract interface class IDateFormatter {
+  String formatMonth(DateTime date);
+  String formatLongDate(DateTime date);
+  String formatShortDate(DateTime date);
+  String relativeGroupHeader(DateTime date);
+  String formatShortPeriod(DateTime start, DateTime end);
+}
 
 final class DateFormatter({DateTime Function()? now})
     implements IDateFormatter {
@@ -27,17 +33,6 @@ final class DateFormatter({DateTime Function()? now})
     final startLabel = formatShortDate(start);
 
     return startLabel == endLabel ? startLabel : '$startLabel até $endLabel';
-  }
-
-  @override
-  String formatPeriod(DateTime start, DateTime end) {
-    final currentYear = _now().year;
-    final endLabel = _withOptionalYear(end, currentYear);
-    final startLabel = _withOptionalYear(start, currentYear);
-
-    return _civilDay(start) == _civilDay(end)
-        ? startLabel
-        : '$startLabel até $endLabel';
   }
 
   @override

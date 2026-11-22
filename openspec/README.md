@@ -1,91 +1,98 @@
-# OpenSpec: Referência Atual E Histórico
+# OpenSpec: estado vigente e histórico
+
+Revisado em **22/11/2026** para a versão local com Localstore.
 
 ## Precedência
 
-As decisões atuais estão em [ARCHITECTURE.md](../ARCHITECTURE.md) e as regras de
-implementação em [AGENTS.md](../AGENTS.md). [README.md](../README.md) registra
-produto, execução e limitações. Specs e changes antigas podem descrever uma
-implementação que já foi substituída; não as use para restaurar Supabase/RPC,
-CommandIt, Either, data sources ou callbacks de navegação.
+1. [AGENTS.md](../AGENTS.md): regras de implementação e testes.
+2. [ARCHITECTURE.md](../ARCHITECTURE.md): decisões e contratos atuais.
+3. [README.md](../README.md): produto, execução, limites e verificação.
+4. Specs e changes: requisitos compatíveis, sujeitos às decisões atuais.
 
-Atualizar documentação não executa migrações, não conclui tarefas de changes
-antigas e não comprova DI, build ou E2E. O histórico de `changes/archive/` é
-preservado como registro temporal, não como guia de implementação vigente.
+O app é exclusivamente local. Authentication, Session, Welcome, PocketBase, backend,
+worker, áudio, IA, Insight, CSV e compartilhamento foram removidos.
+Não restaure essas funcionalidades para satisfazer uma spec anterior.
+Não há servidor necessário para executar o Flutter, identidade autenticada,
+`owner` em despesas ou backup/restauração disponível.
 
-## Backend Adotado E Integração Pendente
-
-O serviço atual é PocketBase 0.41.1 em [`backend/`](../backend/README.md), com
-coleções `users` e `expenses` e APIs nativas. O cliente Flutter ainda usa o
-contrato HTTP anterior. Specs que descrevem JSON:API, revogação de token,
-confirmação por URL assinada ou endpoints de métricas/insights/sugestões não
-comprovam suporte desses contratos pelo PocketBase nem autorizam recriá-los.
-
-Consulte os [limites de integração](../ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração)
-antes de implementar. Esta revisão é documental: não conclui a migração do
-cliente, não altera schema e não migra dados. Specs arquivadas permanecem intactas.
-
-## Arquitetura Vigente
+## Arquitetura vigente
 
 ```text
-Screen/Widget -> Bloc -> contrato em application
-                            ^
-                 repository em infrastructure -> clients do core
+Screen/Widget → Bloc → contrato em application
+                            ↑
+                 repository em infrastructure → Localstore / client nativo do core
 ```
 
-Contratos usam `Future<T>` e exceções de aplicação. Domain é puro, valores
-monetários são centavos inteiros e família é uma lente de leitura autorizada.
+Contratos usam Future e exceções de aplicação, sem Either, CommandIt ou data
+sources intermediários. Domain é puro; dinheiro usa centavos inteiros.
+Metrics é projeção mensal somente leitura das despesas locais.
+Seus totais mensal e por categoria usam `total` inteiro em centavos; os grupos
+são construídos em Dart, sem parser JSON de agregados ou Bloc próprio de Metrics.
 
-Modular V7 organiza DI e rotas com `createModule`. Para estado de página novo ou
-explicitamente migrado, prefira `provide` com `BlocScopedExtension.addBloc` do
-core: Modular cria e fecha a instância e a screen apenas a recebe. Sign-in e o
-novo `ExpenseSuggestionsBloc` usam esse padrão. As demais screens mantêm factories estáveis e ownership
-local; Session continua global sob AppWidget. Não duplique owners ou binds.
-Dependências entre features precisam estar disponíveis fora de seus escopos de
-rota. Authentication e Expense usam um módulo sem path por feature, com URLs
-completas e binds root-owned. Não fragmente em dependencies/form/list nem monte
-features irmãs em `/`, pois o Modular indexa seus binds pelo path. Factories
-continuam factories; ownership de página continua independente do módulo.
-O teste global de logout e a abertura de cadastro/edição/listagem/Settings na
-composição real passaram após essa correção.
+UserRepository cria o perfil padrão na primeira leitura, se ausente, sem
+inicializador no bootstrap. Usa um documento com nome e avatar. `coreModule` registra
+`Localstore.instance`; repositories recebem o SDK diretamente por construtor,
+sem client de persistência, schemas ou factory. O SDK vem do fork privado
+`bed72/localstore`, via Git com `ref: main` e commit resolvido no lockfile;
+não da versão do pub.dev. Atualizações usam `flutter pub upgrade localstore`.
+Dados antigos de ToStore não são migrados. Filtros, paginação, sugestões e
+métricas são calculados em Dart. O fork aguarda escritas e propaga erros de JSON;
+as limitações antigas de 1.4.0 não descrevem mais a implementação vigente.
+Limitações do SDK e confirmação de escrita estão em
+[ARCHITECTURE.md](../ARCHITECTURE.md#bootstrap-e-composição).
 
-Navegação ocorre pelo BuildContext do widget/mixin responsável. Argumentos levam
-dados, não funções. Edição devolve a entidade confirmada; ExpensesScreen não
-recebe callbacks de voltar, editar ou notificar alterações. Dashboard e Metrics
-recarregam ao retornar da listagem, mesmo sem mutação. Cadastro recarrega quando
-há resultado confirmado. Callbacks locais de composição visual são permitidos.
+ExpenseSuggestionsBloc pertence ao provide da rota. Os demais ownerships
+existentes são preservados: screens com factories estáveis e Root com os Blocs
+de launch/sync no AppWidget. Não há SessionBloc. Navegação nova usa BuildContext,
+argumentos transportam dados e retornos confirmados são tipados.
+Root usa `WidgetLaunchBloc`, `WidgetSyncBloc`, `IWidgetLaunchRepository` e
+`IWidgetSyncRepository`, com arquivos `widget_*`. Referências antigas a
+`HomeWidget*` em specs são históricas, não orientação para restaurar nomes.
+O plugin `home_widget` e a URI nativa com `homeWidget=true` permanecem.
 
-## Como Ler As Specs Existentes
+Testes devem espelhar nomes/pastas da implementação. A conferência atual,
+incluindo as sete exceções de correspondência exata, está em
+[ARCHITECTURE.md](../ARCHITECTURE.md#organização-e-espelhamento-dos-testes).
+Esta atualização não move testes, sincroniza specs nem altera checklists.
 
-A feature Insight foi removida do aplicativo. Specs e changes relacionadas a
-insights permanecem somente como histórico e não autorizam restaurar módulo,
-endpoint, seção da Dashboard, previews ou testes próprios.
+## Como ler as specs existentes
+
+O diretório `specs/` conserva requisitos de diferentes etapas e **ainda não foi
+integralmente sincronizado com a versão local**. A existência de um arquivo não
+torna seu mecanismo atual. Esta revisão não sincroniza deltas nem arquiva changes.
 
 | Documento | Uso atual |
 | --- | --- |
-| `specs/dashboard-monthly-navigation/` | Regras mensais e retorno da listagem; detalhes antigos de commands são substituídos por Bloc/contratos de aplicação. |
-| `specs/expense-category-metrics-cards/` | Apresentação dos cards e navegação por categoria/período; recarga ao retornar sem callback de rota. |
-| `specs/expenses-period-query/`, `specs/expenses-removable-filters/` | Comportamento de período/filtros; implementação segue Bloc e HTTP atuais. |
-| `specs/shared-error-screen/`, `specs/dart-primary-constructor-conventions/` | Requisitos visuais e de linguagem, subordinados às convenções atuais. |
-| `specs/settings-screen-ui/`, `specs/authentication-session-logout/` | Referência de UX; Authentication usa HTTP e Session é independente. Descrições Supabase são históricas. |
-| `specs/presentation-command-*`, `specs/expense-reactive-command-consumption/`, `specs/dashboard-reactive-command-coordination/`, `specs/insights-monthly-query/` | Intenções de UX/concorrência e regras de consulta continuam úteis; CommandIt/Either/data sources não são arquitetura atual. |
-| `changes/archive/2026-11-09-migrate-dashboard-to-bloc/` | Registro de uma migração anterior; resultados, contratos e política de recarga registrados na época não redefinem o checkout atual. |
-| `changes/archive/` | Histórico imutável de decisões/resultados daquela etapa; nunca comprova execução atual. |
+| `specs/dashboard-monthly-navigation/` | Regras mensais e retorno da listagem; implementação por Bloc e contratos locais. |
+| `specs/expense-category-metrics-cards/` | Cards e navegação por categoria/período; dados vêm do Localstore. |
+| `specs/expenses-period-query/`, `specs/expenses-removable-filters/` | Comportamento de datas/filtros; transporte HTTP e owner remoto não se aplicam. |
+| `specs/expense-reregistration/` | Referência do comportamento de novo cadastro; subordinada à implementação local atual. |
+| `specs/shared-error-screen/`, `specs/dart-primary-constructor-conventions/` | Requisitos visuais/linguagem sujeitos às convenções atuais. |
+| `specs/settings-screen-ui/` | Somente requisitos visuais compatíveis; não há logout ou seção Dados. |
+| `specs/authentication-session-logout/` | Histórico de funcionalidade removida. |
+| `specs/expense-csv-export/` | Histórico de funcionalidade removida; CSV não é backup restaurável. |
+| `specs/insights-monthly-query/` | Histórico de Insight removido; não confundir com Metrics atual. |
+| `specs/presentation-command-*`, `specs/expense-reactive-command-consumption/`, `specs/dashboard-reactive-command-coordination/` | Intenções de UX/concorrência compatíveis podem orientar; commands/Either não são arquitetura aprovada. |
+| `changes/migrate-expense-to-tostore/` | Registro histórico da migração de Expense, incluindo CSV removido depois. ToStore foi substituído por Localstore; a change não descreve a persistência vigente. |
+| `changes/archive/` | Histórico temporal de decisões/resultados, não guia vigente nem comprovação de execução atual. |
 
-Ao implementar uma spec antiga, preserve os requisitos de produto compatíveis,
-adapte o mecanismo à arquitetura canônica e registre conflitos reais. Não marque
-E2E aprovado nem enfraqueça testes para satisfazer uma descrição histórica.
+Ao implementar requisito antigo, adapte o mecanismo às decisões canônicas e
+registre conflitos. Não marque tarefas ou verificações pendentes como concluídas
+por atualizar documentação; não enfraqueça testes ou declare E2E aprovado.
+Históricos detalhados permanecem intactos.
 
-## Arquivamento de 09/11/2026
+## Registro do arquivamento de 09/11/2026
 
-Por solicitação explícita, as quatro changes ativas foram arquivadas sem sincronizar
-seus deltas com as specs principais. O arquivamento não declara implementação ou
-verificações pendentes como concluídas:
+As quatro changes então ativas foram arquivadas por solicitação explícita, sem
+sincronizar deltas com as specs principais e sem declarar pendências concluídas:
 
-- `add-pocketbase-audio-intake`: 19/19 tarefas concluídas; registro transferido para o projeto Go independente em `/Users/gabrielramos/Code/Me/BackEnd/Go/cordato`.
-- `add-authenticated-password-change`: 26/27; revisão visual em dispositivo pendente.
+- `add-pocketbase-audio-intake`: 19/19 tarefas; registro transferido na época
+  para projeto Go independente. Áudio não está disponível no app atual.
+- `add-authenticated-password-change`: 26/27; revisão visual histórica pendente.
 - `migrate-dashboard-to-bloc`: 39/40; validação visual histórica pendente, sem
   autorização para restaurar Maestro ou testes de UI.
 - `add-pocketbase-family-memberships`: sem proposta, design, specs ou tarefas.
 
-Os demais diretórios estão em `changes/archive/2026-11-09-<nome>/`, com seus arquivos e
-checklists preservados. Família continua planejada, não implementada.
+Os arquivos e checklists de `changes/archive/` permanecem preservados.
+Família continua planejada. Resultados de etapas locais estão no
+[histórico da transição](../docs/history/local-transition.md).

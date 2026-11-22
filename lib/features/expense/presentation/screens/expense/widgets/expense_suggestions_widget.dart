@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_suggestion_item_widget.dart';
 
 final class const ExpenseSuggestionsWidget({

@@ -1,8 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
-
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_event.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.dart';
@@ -19,6 +17,7 @@ final class EditBloc({required final IUserRepository repository})
     Emitter<EditState> emit,
   ) async {
     if (!state.canSubmit) return;
+
     emit(const EditSubmitting());
 
     try {
@@ -29,12 +28,6 @@ final class EditBloc({required final IUserRepository repository})
       emit(EditSuccess(user: user));
     } on UserException catch (error) {
       if (isClosed || emit.isDone) return;
-
-      emit(EditFailure(errors: error.errors));
-    } on MissingAuthenticatedUserException catch (error) {
-      if (isClosed || emit.isDone) {
-        return;
-      }
 
       emit(EditFailure(errors: error.errors));
     } catch (error, stackTrace) {

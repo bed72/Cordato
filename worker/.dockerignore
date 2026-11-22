@@ -1,8 +1,0 @@
-**
-!Dockerfile
-!settings.js
-!flows.json
-!middleware/
-!middleware/audio_upload_gate.js
-!docker/
-!docker/entrypoint.sh

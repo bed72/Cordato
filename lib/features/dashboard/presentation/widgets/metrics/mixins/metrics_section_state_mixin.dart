@@ -8,8 +8,7 @@ import 'package:cordato/features/dashboard/presentation/widgets/metrics/metrics_
 mixin MetricsSectionStateMixin on State<MetricsSectionWidget> {
   int? _previousTotalCents;
 
-  int? get displayedTotalCents =>
-      widget.metrics?.totalAmount ?? _previousTotalCents;
+  int? get displayedTotalCents => widget.metrics?.total ?? _previousTotalCents;
 
   ({DateTime from, DateTime to})? get metricsPeriod {
     final month = context.read<DashboardBloc?>()?.state.selectedMonth;
@@ -39,7 +38,7 @@ mixin MetricsSectionStateMixin on State<MetricsSectionWidget> {
     final metrics = widget.metrics;
     if (metrics == null) return;
 
-    _previousTotalCents = metrics.totalAmount;
+    _previousTotalCents = metrics.total;
   }
 
   VoidCallback? expensesChangedCallback() {

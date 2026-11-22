@@ -81,7 +81,7 @@ Widget _lastPage(int count, {double textScale = 1.0}) {
     ].take(count).indexed)
       ExpenseCategoryMetricsEntity(
         category: category,
-        totalAmount: 12000 - index * 1000,
+        total: 12000 - index * 1000,
         percentage: 18.0 - index,
       ),
   ].cardPages;

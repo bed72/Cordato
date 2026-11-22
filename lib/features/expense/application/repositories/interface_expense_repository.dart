@@ -5,9 +5,9 @@ import 'package:cordato/features/expense/domain/entities/expense_page_entity.dar
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 
 abstract interface class IExpenseRepository {
-  Future<List<ExpenseSuggestionEntity>> suggestions({required String query});
-
   Future<void> delete({required String id});
+  Future<ExpenseEntity> getById({required String id});
+  Future<List<ExpenseSuggestionEntity>> suggestions({required String query});
 
   Future<ExpensePageEntity> get({
     String? sort,
@@ -17,8 +17,6 @@ abstract interface class IExpenseRepository {
     int page = 1,
     int pageSize = 30,
   });
-
-  Future<ExpenseEntity> getById({required String id});
 
   Future<ExpenseEntity> update({
     required String id,

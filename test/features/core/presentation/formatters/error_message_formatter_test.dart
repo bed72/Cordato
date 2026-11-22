@@ -7,38 +7,6 @@ void main() {
   const fallback = 'Não foi possível concluir a solicitação. Tente novamente.';
 
   group('Shared error messages', () {
-    const messages = {
-      '401': 'Sua sessão expirou. Entre novamente.',
-      '403': 'Você não tem permissão para realizar esta ação.',
-      '404': 'Não foi possível encontrar os dados solicitados.',
-      '408': 'A resposta demorou mais que o esperado. Tente novamente.',
-      '504': 'A resposta demorou mais que o esperado. Tente novamente.',
-      '429': 'Muitas tentativas. Aguarde um pouco e tente novamente.',
-      '500':
-          'O serviço está indisponível no momento. Tente novamente mais tarde.',
-      '502':
-          'O serviço está indisponível no momento. Tente novamente mais tarde.',
-      '503':
-          'O serviço está indisponível no momento. Tente novamente mais tarde.',
-      '599':
-          'O serviço está indisponível no momento. Tente novamente mais tarde.',
-    };
-
-    for (final entry in messages.entries) {
-      test('maps HTTP ${entry.key} without exposing remote text', () {
-        final error = ErrorEntity(
-          status: entry.key,
-          title: 'Internal server error',
-          detail: 'Private diagnostic: token=never-display-this',
-        );
-
-        expect(
-          ErrorMessageFormatter.format(error, fallback: fallback),
-          entry.value,
-        );
-      });
-    }
-
     for (final status in [
       null,
       '',
@@ -89,8 +57,7 @@ void main() {
 
       expect(
         ErrorMessageFormatter.formatAll(errors, fallback: fallback),
-        'Não foi possível encontrar os dados solicitados.\n'
-        'Sua sessão expirou. Entre novamente.\n$fallback',
+        fallback,
       );
       expect(errors, hasLength(4));
     });

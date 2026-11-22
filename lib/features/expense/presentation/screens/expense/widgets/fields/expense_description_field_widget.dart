@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/autocomplete_text_field_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';

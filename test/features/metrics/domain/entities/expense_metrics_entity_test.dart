@@ -12,13 +12,13 @@ void main() {
         id: 'expense-metrics-id',
         startDate: startDate,
         endDate: endDate,
-        totalAmount: 389205,
+        total: 389205,
       );
 
       expect(metrics.id, 'expense-metrics-id');
       expect(metrics.startDate, same(startDate));
       expect(metrics.endDate, same(endDate));
-      expect(metrics.totalAmount, 389205);
+      expect(metrics.total, 389205);
       expect(metrics.categories, isNull);
     });
 
@@ -27,18 +27,18 @@ void main() {
         id: 'empty-metrics',
         startDate: DateTime(2026, 10, 1),
         endDate: DateTime(2026, 10, 31),
-        totalAmount: 0,
+        total: 0,
         categories: [],
       );
 
-      expect(metrics.totalAmount, 0);
+      expect(metrics.total, 0);
       expect(metrics.categories, isNotNull);
       expect(metrics.categories, isEmpty);
       expect(
         () => metrics.categories!.add(
           const ExpenseCategoryMetricsEntity(
             category: 'food',
-            totalAmount: 100,
+            total: 100,
             percentage: 100,
           ),
         ),
@@ -49,12 +49,12 @@ void main() {
     test('copies categories preserving their order and supplied values', () {
       const food = ExpenseCategoryMetricsEntity(
         category: 'food',
-        totalAmount: 100,
+        total: 100,
         percentage: 33.33,
       );
       const housing = ExpenseCategoryMetricsEntity(
         category: 'housing',
-        totalAmount: 200,
+        total: 200,
         percentage: 66.67,
       );
       final categories = [food, housing];
@@ -62,7 +62,7 @@ void main() {
         id: 'grouped-metrics',
         startDate: DateTime(2026, 10, 1),
         endDate: DateTime(2026, 10, 31),
-        totalAmount: 300,
+        total: 300,
         categories: categories,
       );
       categories.clear();

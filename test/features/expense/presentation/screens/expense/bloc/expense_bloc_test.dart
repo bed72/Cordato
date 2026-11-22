@@ -5,7 +5,6 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
@@ -205,12 +204,16 @@ void main() {
   });
 
   group('Failure handling', () {
-    const missingIdentity = MissingAuthenticatedUserException();
+    final missingExpense = ExpenseException(
+      errors: const ErrorsEntity(
+        errors: [ErrorEntity(code: 'expense_not_found')],
+      ),
+    );
     blocTest<ExpenseBloc, ExpenseState>(
-      'preserves shared identity errors and permits a manual retry',
+      'preserves local not-found errors and permits a manual retry',
       build: () {
         when(() => repository.create(cents: 1234, description: ' Original '))
-            .thenThrow(missingIdentity);
+            .thenThrow(missingExpense);
         return ExpenseBloc(repository: repository);
       },
       act: (bloc) async {
@@ -229,7 +232,7 @@ void main() {
             .having(
               (state) => state.errors,
               'errors',
-              same(missingIdentity.errors),
+              same(missingExpense.errors),
             )
             .having((state) => state.canSubmit, 'canSubmit', isTrue),
         isA<ExpenseSubmitting>(),
@@ -338,7 +341,6 @@ void main() {
     for (final failure in [
       null,
       ExpenseException(errors: .unknown()),
-      const MissingAuthenticatedUserException(),
       StateError('late'),
     ]) {
       blocTest<ExpenseBloc, ExpenseState>(

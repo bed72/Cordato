@@ -1,84 +1,71 @@
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:localstore/localstore.dart';
 
-import 'package:pocketbase/pocketbase.dart';
-
+import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
 import 'package:cordato/features/metrics/metrics_module.dart';
-import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_bloc.dart';
-import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_event.dart';
-import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_state.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
-import '../../support/core/fakes/pocketbase_fixture.dart';
-import '../../support/core/mocks/home_widget_client_mock.dart';
+import '../../support/core/mocks/widget_client_mock.dart';
+import '../../support/core/storage/localstore_test_storage.dart';
 
 void main() {
-  late PocketBaseFixture fixture;
+  TestWidgetsFlutterBinding.ensureInitialized();
+  final storage = LocalstoreTestStorage();
   late ModularBootstrap boot;
-  late DateTime first;
-  late DateTime last;
 
-  setUp(() {
-    final now = DateTime.now();
-    first = DateTime(now.year, now.month - 1);
-    last = DateTime(first.year, first.month + 1, 0);
-    fixture = PocketBaseFixture();
-    addTearDown(fixture.client.close);
-    fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-      'items': [
-        {
-          'id': 'metrics',
-          'categories': [],
-          'total_amount': '123',
-          'end_date': last.toIso8601String().split('T').first,
-          'start_date': first.toIso8601String().split('T').first,
-        },
-      ],
+  setUpAll(storage.open);
+  tearDownAll(storage.close);
+
+  setUp(() async {
+    await storage.expense(() async {
+      await storage.database.collection('expenses').doc('first').set({
+        'id': 'first',
+        'amount': 123,
+        'category': 'food',
+        'occurred_on': '2026-10-01T00:00:00.000Z',
+      });
     });
     boot = bootstrapModule(
       createModule(
         register: (context) {
-          context.addInstance<PocketBase>(fixture.client);
-          context.addInstance<IHomeWidgetClient>(HomeWidgetClientMock());
+          context.addInstance<Localstore>(storage.database);
+          context.addInstance<IWidgetClient>(WidgetClientMock());
           context.module(metricsModule);
         },
       ),
     );
-    addTearDown(boot.injector.dispose);
   });
 
-  test('resolves the shared SDK repository and independent Bloc factories without visiting routes', () async {
+  tearDown(() async {
+    boot.injector.dispose();
+    await storage.clear();
+  });
+
+  test('resolves the shared local repository without routes', () async {
     final repository = inject<IMetricsRepository>();
     expect(inject<IMetricsRepository>(), same(repository));
 
-    final bloc = inject<ExpenseMetricsBloc>();
-    final other = inject<ExpenseMetricsBloc>();
-
-    addTearDown(bloc.close);
-    addTearDown(other.close);
-
-    expect(bloc, isNot(same(other)));
-    expect(other.state, isA<ExpenseMetricsInitial>());
-
-    final ready = bloc.stream.firstWhere(
-      (state) => state is ExpenseMetricsSuccess,
+    final metrics = await repository.getExpenses(
+      startDate: DateTime(2026, 10),
+      endDate: DateTime(2026, 10, 31),
+      groupBy: .category,
     );
-    bloc.add(
-      ExpenseMetricsRequestedEvent(
-        startDate: first,
-        endDate: last,
-        groupBy: .category,
-      ),
-    );
-    final data = (await ready).metrics!;
 
-    expect(data.totalAmount, 123);
-    expect(data.categories, isEmpty);
-
-    expect(
-      fixture.requests.single.url.path,
-      '/api/collections/metrics/records',
-    );
+    expect(metrics.total, 123);
+    expect(metrics.categories!.single.category, 'food');
+    expect(metrics.categories!.single.percentage, 100);
   });
+
+  test(
+    'disposing the module does not close the bootstrap-owned database',
+    () async {
+      inject<IMetricsRepository>();
+      boot.injector.dispose();
+
+      final records = await storage.database.collection('expenses').get();
+
+      expect((records!.values.single as Map<String, dynamic>)['amount'], 123);
+    },
+  );
 }

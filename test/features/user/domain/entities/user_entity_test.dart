@@ -4,16 +4,18 @@ import 'package:cordato/features/user/domain/entities/user_entity.dart';
 
 void main() {
   group('UserEntity', () {
-    test('represents the user independently of the JSON:API envelope', () {
-      final user = UserEntity(
-        id: '10',
-        name: 'Cordato',
-        email: 'developer.bed@gmail.com',
-      );
+    test('represents local personalization without an account', () {
+      const user = UserEntity(name: 'Cordato', avatar: 'stable-seed');
 
-      expect(user.id, '10');
       expect(user.name, 'Cordato');
-      expect(user.email, 'developer.bed@gmail.com');
+      expect(user.avatar, 'stable-seed');
+    });
+
+    test('allows an absent avatar without changing the name', () {
+      const user = UserEntity(name: 'Cordato');
+
+      expect(user.avatar, isNull);
+      expect(user.name, 'Cordato');
     });
   });
 }

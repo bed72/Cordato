@@ -15,7 +15,7 @@ final class const ExpenseResponse({
     return ExpenseResponse(
       id: json['id'] as String,
       amount: json['amount'] as int,
-      description: json['description'] as String,
+      description: json['description'] as String? ?? '',
       occurredOn: DateTime(date.year, date.month, date.day),
       category: ExpenseCategoryEnum.values.firstWhere(
         (category) => category.value == json['category'] as String,

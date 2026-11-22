@@ -1,7 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 
-import 'package:cordato/features/core/application/exceptions/missing_authenticated_user_exception.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 
@@ -27,7 +26,7 @@ final class UserBloc({required final IUserRepository repository})
         case UserRequestedEvent():
           emit(const UserLoading());
 
-          final data = await repository.getById();
+          final data = await repository.get();
           if (isClosed || emit.isDone) return;
 
           emit(UserReady(data: data));
@@ -36,23 +35,15 @@ final class UserBloc({required final IUserRepository repository})
 
           final data = await repository.update(avatar: seed);
           if (isClosed || emit.isDone) return;
+
           if (data.avatar != seed) {
             emit(UserAvatarFailure(data: user, errors: .unknown()));
             return;
           }
 
           emit(UserAvatarSuccess(data: data));
-        case UserDeleteRequestedEvent():
-          emit(UserDeleting(data: user));
-
-          await repository.delete();
-          if (isClosed || emit.isDone) return;
-
-          emit(UserDeleteSuccess(data: user));
       }
     } on UserException catch (error) {
-      _fail(event, user, error.errors, emit);
-    } on MissingAuthenticatedUserException catch (error) {
       _fail(event, user, error.errors, emit);
     } catch (error, stackTrace) {
       if (isClosed || emit.isDone) return;
@@ -70,14 +61,11 @@ final class UserBloc({required final IUserRepository repository})
     Emitter<UserState> emit,
   ) {
     if (isClosed || emit.isDone) return;
+
     emit(switch (event) {
       UserRequestedEvent() => UserFailure(errors: errors),
       UserAvatarSubmittedEvent() => UserAvatarFailure(
         data: user!,
-        errors: errors,
-      ),
-      UserDeleteRequestedEvent() => UserDeleteFailure(
-        data: user,
         errors: errors,
       ),
     });

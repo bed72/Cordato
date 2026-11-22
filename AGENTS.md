@@ -1,217 +1,31 @@
 # AGENTS.md
 
-## Client Atual: SDK PocketBase
-
-A infraestrutura HTTP própria foi removida por solicitação explícita.
-Authentication, Session, User, Expense e Metrics já usam o SDK, com testes de
-repositories e DI migrados. Dio e talker_dio_logger não são dependências do app.
-A análise e a suíte Flutter globais estão limpas após adaptar os testes do core
-à factory e ao observer atuais. Isso não comprova build nativo nem homologação remota e não autoriza
-restaurar o client removido ou apagar/enfraquecer testes de comportamento.
-Por solicitação explícita, testes exclusivos de HTTP/Dio e seus mocks/fakes também
-foram removidos. A cobertura atual usa o SDK real com transporte mockado; não
-restaure os testes da abstração removida nem suas garantias de persistência.
-
-O bootstrap aguarda `createDependencies` de
-`lib/factory.dart`, que aguarda `PocketBaseFactory.create`; esta cria o storage
-antes de `runApp`. `createAppModule` e
-`createCoreModule` recebem somente o PocketBase pronto; repositories de
-infrastructure recebem diretamente o `PocketBase` compartilhado pela DI, sem
-Future de inicialização. Falhas de leitura inicial propagam antes de montar o app,
-sem ausência de sessão presumida, limpeza ou retry automático; SDK e
-`RecordModel` não atravessam os contratos
-de application nem chegam ao domínio ou à apresentação. Não crie wrapper de CRUD.
-O transporte dos repositories existentes foi migrado para o SDK. `IHttpClient`,
-`IStorageClient`, Requests, Responses, Dio e interceptors próprios não fazem parte
-da infraestrutura disponível. Homologação remota é uma verificação separada.
-
-`PocketBaseFactory.create` configura o `AsyncAuthStore` oficial com callbacks do
-`FlutterSecureStorage` diretamente, sem `IStorageClient`, classe AuthStore própria
-ou bind separado na DI. O storage não é exposto pelos módulos.
-No SDK PocketBase 0.26, a factory desativa `autoClearAuthStore` pela API nativa
-para preservar a política existente: expiração local e 401 de requests comuns
-não limpam a sessão. Session continua limpando explicitamente em 401 de refresh.
-Fixtures do SDK usam a mesma configuração, coberta por testes da factory com
-transporte mockado e storage pelo canal simulado.
-Expense não usa mais o storage legado. A única
-chave nova é `@cordato.pocketbase_auth`; não há leitura, cópia ou migração das
-chaves antigas. Sessões anteriores exigirão novo login.
-Por simplificação explicitamente aprovada, o SDK atualiza memória e publica
-mudanças de sessão antes de concluir a persistência. `save` e `clear` retornam
-void; não há Future `persistence`, rollback ou propagação das falhas de gravação
-ao Future de autenticação. Isso substitui as garantias anteriores de espera no
-login/logout. A leitura inicial ainda é aguardada e
-suas falhas propagam. Não prometa confirmação durável do logout nem atomicidade.
-Authentication e Session usam somente o AuthStore compartilhado para credenciais
-e observação, sem ler/gravar `StorageKeyEnum.token` ou `userId`. Cadastro não cria
-sessão e logout limpa apenas o AuthStore. Troca de senha lê o ID por
-`pocketBase.userId()`, atualiza pelo SDK e deixa o logout ao Bloc. Ausência de
-identidade propaga a exceção compartilhada do core e ChangePasswordBloc preserva
-seus erros como falha esperada, sem logout ou telemetry. O PATCH não captura
-snapshots nem limpa a sessão em 401; apenas `signOut()` executa a limpeza explícita.
-O SDK decide sucesso pelos seus
-contratos; repositories não reimplementam validação de status 2xx específicos.
-`PocketBaseMapper` preserva status, ordem, code, pointer e parameter nativos
-em `ErrorsEntity`, com fallback de transporte e propagação de Error/FormatException
-encapsulados pelo SDK. Tipos e mensagens remotas não chegam diretamente à UI.
-Session compartilha refresh pendente da mesma sessão e observa `authStore.onChange`.
-Por solicitação explícita de segurança, usa `send<Map<String, dynamic>>` do SDK
-compartilhado no endpoint nativo de auth-refresh e parsing por `RecordAuth`.
-Compara token, identidade do record e mudanças do AuthStore durante a operação
-antes de salvar ou limpar. Respostas e falhas esperadas obsoletas são descartadas;
-um refresh tardio não restaura logout nem substitui login novo. HTTP 401 limpa
-somente a sessão de origem ainda atual; 403/rede atuais preservam o AuthStore e falham.
-`PocketBaseExtension.hasSession` lê somente a presença local de token, sem validar
-JWT ou autorização. Parsing e defaults da resposta seguem o SDK.
-Não há refresh periódico nem retry automático. DTOs próprios de sign-in/refresh
-foram removidos; os contratos de application, Blocs, telas e rotas permanecem.
-
-User recebe o PocketBase pronto e usa `getOne`, `update` e `delete` de users.
-O ID vem do auth record atual em cada operação, nunca do storage legado.
-`PocketBaseExtension.userId()` centraliza a leitura e rejeita ID ausente, vazio
-ou só com espaços, sem normalizar ou alterar sessões. A falha propaga diretamente
-como `MissingAuthenticatedUserException` de application do core, com `ErrorsEntity`
-próprio; os consumidores de User a tratam como esperada, assim como `UserException`.
-`UserResponse` converte o record em entidade pura, com casts estritos e avatar
-vazio como ausência. Update envia somente nome/avatar fornecidos, sem normalizar;
-o SDK atualiza o auth record correspondente. Delete usa o sucesso nativo do SDK,
-que limpa o AuthStore da conta correspondente e notifica Session sem aguardar
-persistência durável. UserRepository não gerencia sessões: falhas, inclusive 401,
-são mapeadas sem limpar o AuthStore ou capturar snapshots de sessão. Os efeitos automáticos
-de update/delete seguem a comparação de ID/coleção do SDK, não uma garantia
-adicional de proteção contra respostas antigas para o mesmo usuário.
-
-## Objetivo E Fonte De Verdade
+## Fonte de verdade e escopo atual
 
 Estas regras orientam alterações no aplicativo Flutter Cordato e em seus testes.
-A arquitetura canônica está em [ARCHITECTURE.md](ARCHITECTURE.md); o início rápido
-e o estado do produto estão em [README.md](README.md).
+A arquitetura canônica está em [ARCHITECTURE.md](ARCHITECTURE.md); execução,
+estado do produto e pendências estão em [README.md](README.md).
+Resultados anteriores estão no [histórico](docs/history/local-transition.md).
 
-O serviço PocketBase independente está isolado em `backend/`, com orientações
-próprias em [backend/AGENTS.md](backend/AGENTS.md). A presença do backend neste
-repositório não comprova homologação remota: o Flutter já consome a API nativa pelo
-SDK. Não alterar o cliente Flutter nem executar deploy como parte de manutenção
-localizada do backend.
+O aplicativo na branch `tostore` usa persistência exclusivamente local.
+O usuário autorizou commit e push da branch; isso não introduz backend no app.
+Authentication, Session, Welcome, PocketBase, backend, worker, áudio, IA e Insight foram
+removidos pelo usuário. CSV e compartilhamento sem consumidores também foram
+removidos. Não restaure código, dependências, testes ou doubles desses fluxos
+para satisfazer specs históricas ou sanar referências legadas.
 
-PocketBase é o backend adotado. Sign-in, cadastro, solicitação e confirmação de verificação
-usam os endpoints nativos `collections/users/auth-with-password`,
-`collections/users/records`, `collections/users/request-verification` e
-`collections/users/confirm-verification`.
-Sign-out é local: chama `authStore.clear()`, sem endpoint HTTP ou revogação do JWT
-no servidor. Por solicitação explícita, não há saída global nem hook customizado
-de logout. A persistência assíncrona segue as limitações descritas acima.
-Expense usa o SDK compartilhado diretamente em `collections/expenses/records`
-para CRUD e sugestões por histórico, com JSON plano e paginação nativa.
-Criação lê `owner` por `pocketBase.userId()`; ausência propaga a exceção compartilhada
-do core e o ExpenseBloc preserva seus erros como falha esperada. Expense não
-gerencia sessões nem limpa o AuthStore em 401. Delete segue o sucesso nativo do SDK.
-Listagem recebe `int page = 1` e devolve `ExpensePageEntity` com `int? nextPage` e
-itens imutáveis; não há URLs, cursores opacos ou DTO próprio de página. O Bloc
-reenvia os filtros em cada página e retorna à primeira no refresh. Valores dos
-filtros são escapados por `PocketBase.filter`, sem parsing próprio de URL/query.
-Novas despesas enviam a categoria selecionada pelo valor de `ExpenseCategoryEnum`,
-com `other` como padrão quando não informada. Atualizações enviam categoria somente
-quando fornecida, inclusive `other`, sem alterar o proprietário. A data civil é
-representada como
-meia-noite UTC sem conversão de fuso; filtros finais incluem todo o dia escolhido.
-Sugestões consultam até 30 registros recentes e deduplicam descrições sem
-diferenciar maiúsculas/minúsculas, sem endpoint customizado ou classificação.
-Sugestões incluem a categoria tipada do registro mais recente para cada descrição;
-aceitar uma sugestão aplica essa categoria no formulário, inclusive `other`,
-preservando a data e o valor manual. A projeção consulta `id,description,amount,category`.
-Não há migração de registros existentes nem fallback para categoria/data vazias.
-Metrics consulta `collections/metrics/records`, uma view mensal
-somente leitura com isolamento por proprietário. Totais em centavos e percentuais
-são calculados no PocketBase, nunca no Flutter. O repository aceita meses civis
-completos; sem datas usa o mês atual, mas rejeita intervalo parcial/incompleto.
-Recebe o PocketBase compartilhado e usa `send<Map<String, dynamic>>` nativo no
-endpoint relativo `/api/collections/metrics/records`, com filtro por `PocketBase.filter`.
-`getList` não é usado nessa consulta porque seus defaults transformam `items`
-ausente/nulo em lista vazia; Metrics exige casts estritos antes de publicar zero.
-Não há wrapper HTTP/CRUD, filtros locais de proprietário ou gestão de sessão,
-inclusive em 401. Erros nativos passam por `PocketBaseMapper` para `MetricsException`.
-Lista vazia representa mês sem despesas; resposta inválida ou falha HTTP não
-vira sucesso com zero. UI, contratos de apresentação e navegação ficam preservados.
-User também usa `collections/users/records/{id}` para consulta, PATCH com JSON
-plano de nome/avatar e exclusão. Não há `status` em `UserEntity`; não o derive
-de `verified`. Nome vazio é exibido como `Cordato` somente na apresentação.
-Edição valida 2–32 caracteres Unicode após trim e mapeia erros 400 de `/name`
-ao campo. Avatar vazio do PocketBase vira ausência de seed em infrastructure.
-O JWT pertence ao AuthStore do SDK, persistido em `@cordato.pocketbase_auth`, sem
-migração das chaves anteriores. Cadastro não cria sessão. Após criar a conta, a
-tela de confirmação solicita automaticamente o primeiro e-mail de verificação.
-Falha de envio não refaz o cadastro e permite reenvio manual imediato.
-O cooldown de 60 segundos pertence ao ResendEmailBloc e começa somente após sucesso.
-Callback recebe exatamente um `token` na query, nunca uma URL remota para GET.
-Token de verificação não pertence ao estado do Bloc nem aos logs.
-Recuperação de senha usa `collections/users/request-password-reset` e
-`collections/users/confirm-password-reset`, pelos métodos públicos nativos do SDK.
-A confirmação do envio é neutra quanto à existência da conta. `EmailCooldown`
-compartilha os 60 segundos com a verificação, iniciados somente após sucesso.
-As duas etapas de solicitação compartilham o Bloc da rota. O callback de reset
-recebe exatamente um token não vazio na query e aguarda `signOut()` antes de
-habilitar o formulário; a exclusão durável não é aguardada pelo SDK. Senha segue as regras
-do cadastro e a confirmação deve coincidir. Token e senhas não ficam nos estados
-nem nos logs. O logger omite operações de reset e URLs com token. Sucesso e erro
-400 em `/token` voltam ao sign-in com toast; falhas de rede e de campos preservam
-a tela. Os novos Blocs de recuperação pertencem exclusivamente ao `provide` das
-rotas; screens e previews recebem instâncias com proprietário externo explícito.
-Senha usa regra única no app: 6–16 code points Unicode, com minúscula ASCII,
-maiúscula ASCII e número ASCII, sem trim/normalização; espaços contam no limite.
-Cadastro, sign-in, recuperação e troca usam `PasswordValidation` compartilhado.
-Dados pessoais abre `/authentication/change-password`, rota autenticada com
-`ChangePasswordBloc` pertencente exclusivamente ao `provide`. Authentication possui
-o fluxo e o contrato `changePassword(oldPassword:, password:, passwordConfirm:)`;
-User somente navega, sem importar sua apresentação. Senha atual é obrigatória,
-mas não passa pela política de criação. Nova senha deve diferir exatamente da
-atual; confirmação deve coincidir. PATCH nativo de users envia somente os três
-campos, lê ID do auth record e não faz logout internamente.
-Após confirmação remota, o Bloc aguarda `signOut`; falha de limpeza permite
-somente retry de logout, nunca novo PATCH. Controllers são limpos após o PATCH.
-Sucesso leva ao sign-in com “Senha alterada. Entre novamente”. A composição root
-possui `SessionRedirectDeferral`, não global, exposto por inherited widget do core:
-a tela adia redirecionamentos somente da própria rota enquanto a operação está
-pendente e libera ao falhar o PATCH, concluir a navegação ou ser descartada.
-Authentication e Session continuam sem importar uma à outra. Não há logger HTTP;
-o observer de debug registra somente lifecycle e tipos seguros dos Blocs, sem
-payloads, estados completos, credenciais ou URLs com token.
-Descrições JSON:API e token opaco em documentos históricos não são requisitos
-para recriar a API antiga no PocketBase. Não trate troca de `BASE_URL` como
-homologação da integração. Diferenças e lacunas
-estão em [ARCHITECTURE.md](ARCHITECTURE.md#backend-pocketbase-e-limite-de-integração);
-alterações de contrato exigem tarefa explícita com consumidores e testes.
+O app usa Localstore compartilhado por DI. Não há identidade autenticada, `owner`,
+sessão, backend, exportação ou backup/restauração pelo aplicativo.
+Budget e Family são planejados. Não crie `identity` para reproduzir o backend
+legado; `chat` está fora do escopo. Kotlin legado é referência de domínio,
+não de estrutura Flutter.
 
-Authentication/Sign-in é a implementação de referência para novas features e
-migrações. O padrão obrigatório é:
+Specs arquivadas e registros de execução são históricos. Em conflitos prevalecem
+estas regras e ARCHITECTURE.md; consulte [openspec/README.md](openspec/README.md).
+Não restaure Supabase/RPC, CommandIt, Either, data sources ou ownership antigo.
+Pendências documentadas não autorizam mudanças incidentais de comportamento.
 
-```text
-Screen/Widget -> Bloc -> contrato de repository em application
-                           ^
-                repository em infrastructure -> SDK PocketBase / clients do core
-```
-
-O Bloc chama o contrato; o módulo injeta a implementação. Contratos retornam
-dados por `Future<T>` e falhas esperadas por exceções de aplicação. Não use
-`Either`, `Left`/`Right`, `response<T>`, CommandIt ou data sources como padrão
-para código novo ou para um fluxo migrado.
-
-Há código legado incompatível com esse desenho. Sua existência não constitui
-uma exceção arquitetural aprovada. A migração do transporte para o SDK não implica
-migração de todo ownership de Bloc ou homologação remota. Não amplie uma tarefa
-localizada para migrar outros fluxos sem solicitação.
-Specs OpenSpec arquivadas e registros de execução são históricos. Em conflitos,
-prevalecem estas regras e `ARCHITECTURE.md`; consulte `openspec/README.md`.
-Não restaure Supabase/RPC, commands ou ownership antigo por uma descrição histórica.
-
-O serviço Node-RED independente está isolado em `worker/`, com orientações em
-[worker/AGENTS.md](worker/AGENTS.md). Inclui infraestrutura e flow importável de
-áudio → IA por Chat Completions → despesa PocketBase, configurado por `AI_BASE_URL`,
-`AI_MODEL` e `AI_API_KEY`, com OpenRouter como padrão e envio Flutter implementado,
-ainda sem homologação remota completa. Logs do worker são somente metadados,
-nunca conteúdo ou credenciais.
-Não alterar Flutter ou backend nem executar deploy incidentalmente ao manter esse serviço.
-
-## Antes De Alterar
+## Antes de alterar
 
 - Leia a feature afetada, os componentes compartilhados usados e seus testes.
 - Confira `git status` e preserve alterações existentes, inclusive fora do escopo.
@@ -221,63 +35,170 @@ Não alterar Flutter ou backend nem executar deploy incidentalmente ao manter es
 - Registre bloqueios reais de análise, compilação e testes, sem ocultá-los.
 - Não adicione comentários de linha, bloco ou documentação ao código. Explicações
   ficam em Markdown; preserve comentários existentes fora do escopo.
+- Não amplie uma tarefa localizada para migrar outras features ou ownerships.
 
-## Produto E Limites
+## Bootstrap e Localstore
 
-A captura de áudio na Dashboard usa `record`, sem transcrição ou logs de conteúdo,
-inclusive em debug. O widget, seus gestos e animações permanecem preservados.
-O adapter grava AAC em `.m4a` temporário por até 30 segundos; X, lifecycle e
-cancelamento da observação liberam o microfone e removem o arquivo. A seta finaliza
-a captura e envia multipart ao worker. Somente `202` válido confirma aceite para
-processamento, nunca cadastro da despesa; não há polling ou atualização automática.
-O usuário recarrega as despesas depois. O worker processa em memória, sem fila
-persistente; reinícios podem perder áudios aceitos e falhas posteriores ficam nos logs.
-O fluxo usa `IAudioRepository` → `AudioRepository` → `IRecordingClient` /
-`RecordingClient`. `RecordingEvent` é a única família de notificações de captura,
-repassada sem duplicação ou mapper; o Bloc e os tipos da Dashboard usam `Audio`,
-não `Speech`. O client separa preparação, observação, finalização e limpeza, sem
-misturar essas responsabilidades em callbacks extensos. O uso de `http` e
-`http_parser` em produção foi explicitamente autorizado para esse envio, diretamente
-no repository, sem restaurar o client HTTP genérico removido. `WORKER_URL` é uma
-origem HTTPS separada da `BASE_URL`; o JWT atual vai somente ao worker configurado,
-sem redirecionamentos, retries ou gestão da sessão nesse fluxo.
-O contrato remoto é POST `/api/collections/audio/process`, multipart
-com campo `file` de tipo `audio/mp4`; `202` representa somente aceite para
-processamento e `415` formato não suportado. A resposta `202` exige `request_id`
-não vazio e `status: processing`. Falha de transporte/timeout/resposta incerta
-orienta conferir despesas antes de reenviar. Isso não comprova homologação remota.
-Não interpretar nem cadastrar despesas no Flutter neste fluxo.
+`main` monta o app sem inicializar perfil ou storage. `appModule` é estático;
+`coreModule` registra
+`addInstance<Localstore>(Localstore.instance)`. Repositories recebem o SDK
+diretamente por construtor, sem client, wrapper CRUD, data source ou service
+locator. Não restaure factory, schemas ou dependência de ToStore.
 
-Cordato é um aplicativo de finanças pessoais e familiares. Cada pessoa é dona
-dos próprios dados; família é uma lente autorizada de leitura, não dona do dinheiro.
+Localstore vem do fork privado `bed72/localstore`, via Git HTTPS com `ref: main`
+no pubspec e commit resolvido fixado no lockfile, não do pub.dev.
+Atualize a revisão com `flutter pub upgrade localstore` e versione o lockfile.
+Repositories continuam usando o SDK
+diretamente; não crie client de persistência.
+O SDK usa seu diretório padrão e singleton próprios, sem abertura/fechamento
+explícitos. Não há migração dos dados antigos de ToStore, por decisão do usuário.
+O perfil padrão é responsabilidade do UserRepository, sem inicializador separado.
+O fork aguarda a escrita, propaga erros de filesystem/JSON e substitui arquivos
+por temporário com flush e rename no mesmo filesystem. Não confunda isso com
+durabilidade auditada após queda de energia. Não há cache de payload ou
+coordenação entre processos/isolates nem transação entre documentos.
+Somente ausência real retorna null; JSON inválido não cria perfil padrão.
+Não prometa durabilidade auditada, criptografia, backup ou app funcional com
+base apenas em testes focados.
 
-| Feature/contexto | Responsabilidade                                                                 |
-| ---------------- | -------------------------------------------------------------------------------- |
-| `authentication` | Entrada, cadastro, confirmação de e-mail, reenvio e logout.                      |
-| `session`        | Validação inicial via auth-refresh e observação da presença do token.            |
-| `user`           | Dados pessoais, nome, avatar e exclusão da conta.                                |
-| `expense`        | Fatos atômicos de gastos individuais.                                            |
-| `metrics`        | Agregações financeiras somente leitura.                                          |
-| `budget`         | Planejado: tetos por intervalo de datas.                                         |
-| `family`         | Planejado: organização de membros e leitura combinada.                           |
-| `dashboard`      | Apresentação e composição, não um bounded context financeiro.                    |
-| `root`           | Composição visual global e entrada do app.                                       |
-| `information`    | Termos, privacidade e ajuda públicos, com conteúdo local e sem camadas de dados. |
+## Contratos locais das features
 
-Não crie `identity` para reproduzir o backend legado. `chat` está fora do escopo.
-O Kotlin legado é referência de domínio, não de estrutura Flutter.
+### User
 
-Preserve as invariantes:
+UserEntity não possui ID/e-mail. IUserRepository expõe `get` e `update`,
+sem exclusão de conta. UserRepository usa coleção `user`, documento `profile`
+com campos `name` e `avatar`. `get` cria e salva `Cordato` com seed aleatória
+somente quando o documento está ausente; leituras seguintes preservam o perfil.
+Não crie inicializador externo, identidade, sessão ou cache adicional.
+Dados antigos não são migrados; payloads malformados não são substituídos por defaults.
+`avatar` é anulável; avatar ausente/nulo é aceito e texto vazio é preservado.
 
-- Dinheiro em centavos inteiros de BRL; nunca use `double` para valores monetários.
-- Gasto não referencia orçamento; pertencimento é derivado da data civil.
-- Orçamentos vivos da mesma pessoa não podem se sobrepor.
-- Família não concede escrita nos dados de outro membro.
-- Sair ou encerrar família não altera os dados individuais.
-- Visões combinadas são derivadas dos dados proprietários.
-- Não apresente autorização do backend como garantia implementada pelo Flutter.
+Updates preservam campos omitidos e gravam o documento completo, sem fila de
+Futures, transação ou estado pendente. Não há garantia de merge atômico entre
+updates concorrentes. Falhas esperadas expostas geram UserException; parsing
+e erros de programação propagam. Mensagens nativas do banco não chegam à UI.
 
-## Camadas E Arquivos
+User/Edit mantêm factories estáveis e ownership dos Blocs pela screen.
+Dashboard consulta somente o contrato atualizado. Rotas User não exigem sessão.
+User possui um único `userModule`, sem path, com binds e rotas completas.
+Não separe dependências em outro módulo nem restrinja o repository ao lifecycle
+da rota: Dashboard o consome sem visitar User.
+Nome é validado na apresentação com 2–32 code points Unicode após trim;
+Bloc/repository não normalizam a entrada.
+
+### Expense
+
+Expense usa coleção `expenses`, sem schema nem `owner`: ID gerado pelo SDK, centavos inteiros
+positivos, categoria padrão `other`, descrição anulável e data civil obrigatória.
+Default hoje, validação de centavos positivos e categoria pertencem ao repository.
+
+Use CRUD nativo. Listagem lê a coleção e filtra, ordena e pagina em Dart por
+offset/limite mais um. Datas são ISO UTC pelos componentes civis; ordem por
+data/ID textual é determinística, sem prometer ordem de criação por ID.
+Descrição nula vira texto vazio na projeção; o repository preserva o trim
+anterior na criação/atualização da descrição.
+
+Sugestões percorrem o histórico ordenado até 30 correspondências literais case-insensitive
+antes de deduplicar; preservam categoria/valor da ocorrência mais recente.
+Aceitar sugestão aplica categoria, inclusive `other`, preservando data/valor manual.
+
+ID ausente gera ExpenseException antes de update/delete. Updates leem o documento,
+aplicam somente campos fornecidos e gravam o documento completo; alterações
+concorrentes do mesmo documento não têm garantia de merge atômico. Sem campos
+apenas leem, sem refresh. Após o Future do SDK, mutações solicitam refresh nativo, sem alterar
+formato do widget. Expense/Expenses preservam ownership pela screen e sugestões
+pelo provide. Não restaure CSV, modelos de exportação ou compartilhamento.
+
+### Metrics
+
+Metrics é projeção local somente leitura de `expenses`, sem tabela própria,
+cache, triggers ou escritas em Expense. Recebe o Localstore compartilhado, lê
+`expenses` e filtra/agrega por mês/categoria em Dart, pelos componentes civis.
+Sem datas usa o mês atual;
+intervalos incompletos ou não mensais geram MetricsException antes da leitura.
+
+Total e distribuição vêm dos mesmos grupos; centavos são inteiros e percentuais
+são calculados em Metrics sem arredondamento antecipado. Categorias têm ordem
+textual determinística; ID sintético `monthly-yyyy-MM` é estável.
+Grupos usam `ExpenseCategoryMetricsResponse` em `infrastructure/responses/`;
+repository monta o resumo mensal, sem camada `projections/`.
+Sem agrupamento categories é null; mês vazio agrupado tem lista vazia imutável.
+Entidades mensal/de categoria e response usam `total` em centavos, não
+`totalAmount`. Grupos são construídos em Dart, sem parser JSON de agregados;
+despesas usam `amount`.
+`ExpenseMetricsPagesExtension` está em `expense_metrics_categories_extension.dart`.
+Paginação visual remove categorias não positivas, ordena por total decrescente
+com desempate estável e agrupa até três; a dica só aparece na última página com
+uma categoria quando existem várias páginas.
+
+Infrastructure valida categorias pelo enum puro de Expense, sem importar sua
+implementação ou criar dependência reversa. Parsing inválido, categorias
+desconhecidas, centavos não positivos, somas inválidas e overflow por categoria
+ou mensal são inesperados. JSON inválido propaga, sem omitir documentos ou
+publicar um zero fabricado; isso não comprova auditoria de corrupção.
+
+Falhas de filesystem expostas pelo SDK viram MetricsException segura,
+sem mensagens nativas na UI. Erros de programação
+propagam; não há fallback para zero nem retry automático. Só o mês atual captura
+revisão antes da leitura e aguarda publicação nativa, inclusive zero válido.
+Preserve IMetricsRepository, UI, ownership, módulo único sem path, formatos e
+revisões nativas.
+
+### Dashboard, Settings e Information
+
+Dashboard não contém áudio, speech, gravação, toque longo ou dependências de
+microfone, inclusive em previews. O botão manual usa IconButtonWidget do core,
+sem controller/lifecycle de captura.
+ActionButtonDashboardWidget abre Expense por BuildContext com retorno tipado e
+`returnToPrevious`; só solicita DashboardExpensesChanged após retornar despesa
+confirmada, com contexto montado e mesma instância viva do DashboardBloc.
+
+Settings usa módulo único sem path e rotas completas, sem autenticação.
+SettingsScreen é StatelessWidget, sem Bloc ou provide, e navega por BuildContext.
+Não restaure LogoutBloc, confirmação de saída, seção Dados, exportação ou
+callbacks de navegação na rota.
+
+Information é somente apresentação. Os documentos 2.1 de 21/11/2026 descrevem
+perfil/dados locais, sem cadastro, backend, e-mails transacionais ou IA.
+Distinga arquivos exportados anteriormente de backup restaurável, suporte de
+acesso remoto ao banco, cópias do sistema de backup próprio e apoio Pix de
+processamento de pagamentos. Não prometa criptografia, recuperação ou
+conformidade jurídica já verificadas. Backup/restore nativo será tarefa posterior.
+
+### Root e widgets nativos
+
+Root não depende de Session/Authentication. `main` abre Dashboard sem inicializar
+perfil/storage; `/` é fallback visual e sua política pura aponta à Dashboard.
+AppWidget possui somente WidgetLaunchBloc e WidgetSyncBloc por factories
+estáveis, com fechamento no lifecycle.
+Tipos de integração usam `WidgetLaunch*`/`WidgetSync*` e arquivos `widget_*`,
+incluindo eventos, estados, repositories e testes, sem prefixo `Home`/`home_`.
+O parâmetro nativo `homeWidget` da URI e o plugin `home_widget` permanecem.
+
+O atalho fica pendente até Navigator estar disponível e abre Dashboard → criação,
+preservando criações sem confundi-las com edição. Use RouteStates reais de
+`popUntil`: no Modular 7, `routeState` representa a base e Page.name não identifica
+rotas empilhadas. Não restaure políticas de sessão ou redirect deferral.
+
+Launch usa IWidgetLaunchRepository para leitura/observação; infrastructure
+filtra URIs antes de expor sinais. AppWidget não recebe client/streams nativos;
+plugin não entra na apresentação.
+
+WidgetSyncStartedEvent observa pedidos de atualização com `emit.onEach` em
+handler contínuo e solicita o resumo inicial. Refreshes restartable habilitam a
+publicação por IWidgetSyncRepository.enable antes de consultar Metrics.
+O adapter usa `setMonthly(active: true)` apenas como habilitação do
+client, não identidade ou sessão. Não há refresh periódico ou retry automático.
+
+Expense sinaliza mutações pelo client compartilhado sem importar Metrics/Root.
+Root compõe os contratos em WidgetSyncRepository. Preserve revisões e
+serialização para bloquear respostas obsoletas. Snapshot contém somente mês e
+centavos, sem credenciais; mês incompatível mostra “Abra para atualizar”.
+iOS usa `group.com.bed.cordato` nos dois targets. Não faça HTTP ou cadastro em
+background no widget nem converta dinheiro para double ao formatá-lo.
+Não altere formatos/implementações nativas incidentalmente.
+
+## Camadas e arquivos
 
 ```text
 lib/features/<feature>/
@@ -303,369 +224,255 @@ lib/features/<feature>/
     previews/
 ```
 
-Crie somente diretórios necessários. Features exclusivamente visuais não precisam
-de domínio ou repository. Não adicione use cases, inputs, outputs, services,
-data sources, BaseBloc ou stores globais sem necessidade concreta aprovada.
+- Crie somente diretórios necessários; features visuais não precisam de domínio
+  ou repository. Não adicione use cases, inputs, outputs, services, data sources,
+  BaseBloc ou stores globais sem necessidade concreta aprovada.
+- Domain é puro: sem Flutter, Bloc, SDK, storage ou application.
+- Application contém contratos e exceções, sem adapters/UI. Contratos de
+  repository não ficam em `domain/repositories/`.
+- Infrastructure implementa contratos, usa Localstore diretamente e converte
+  payloads em tipos próprios. Capacidades nativas usam clients do core.
+  `IWidgetClient` e `WidgetClient` ficam no mesmo
+  `core/infrastructure/clients/widget_client.dart`; isso não muda a localização
+  dos contratos de repository em application nem permite importar clients na UI.
+- Presentation conhece contratos/exceções, nunca repositories concretos ou clients.
+- Módulos fazem composição e podem importar implementações concretas.
+- Core contém capacidades compartilhadas; não mova regras para contornar limites.
+- Dashboard pode compor contratos consultados. Expense não depende de outros
+  contextos financeiros. Family futura consulta contextos por contratos/adapters,
+  sem dependência reversa.
 
-- `domain`: tipos e regras puros, sem Flutter, Bloc, HTTP, storage ou application.
-- `application`: contratos de operações e exceções esperadas, sem adapters ou UI.
-  Contratos de repository ficam aqui, não em `domain/repositories/`.
-- `infrastructure`: implementa os contratos, usa o SDK PocketBase compartilhado
-  diretamente e converte records/payloads em tipos próprios. Capacidades nativas
-  compartilhadas, como home_widget, usam contratos de clients do core.
-- `presentation`: Bloc, estados, eventos, telas, validação e feedback. Conhece
-  contratos e exceções de aplicação, nunca repositories concretos ou clients.
-- Módulos fazem a composição e podem importar implementações concretas.
-- `core` contém capacidades realmente compartilhadas; não mova regras de uma
-  feature para ele apenas para contornar um limite de dependência.
+Dinheiro é inteiro em centavos de BRL, nunca double. Gasto não referencia
+orçamento; pertencimento deriva da data civil. Orçamentos vivos da mesma pessoa
+não podem se sobrepor. Família não concede escrita nos dados de outro membro;
+sair/encerrar família não altera dados individuais. Visões combinadas são derivadas.
+Essas invariantes futuras não comprovam funcionalidades implementadas.
 
-Authentication e Session não importam uma à outra; comunicam-se pelo AuthStore
-do SDK compartilhado. Expense e Budget não dependem de outros contextos financeiros.
-Settings possui o Bloc da interação de logout e consome somente contrato e exceção
-de aplicação de Authentication, nunca sua apresentação ou repository concreto.
-Family deve consultar contextos proprietários por contratos próprios
-com adapters em infrastructure, sem dependência reversa. Dashboard pode compor
-contratos de aplicação dos contextos que consulta.
+## Repositories e falhas
 
-A feature Insight foi removida, incluindo composição, consulta remota, seção da
-Dashboard, previews e testes próprios. Não restaurá-la a partir de specs históricas.
+- Use parâmetros nomeados e tipos simples. Repository/Bloc não normalizam
+  entradas que pertencem ao formulário.
+- Retorne Future<void> quando somente a conclusão importa; não exponha DTO,
+  envelope ou tipo do SDK na apresentação/application.
+- Parsing e payload pertencem a infrastructure, com casts estritos. Não esconda
+  TypeError/FormatException como falhas de negócio.
+- Converta somente falhas esperadas para exceções específicas de aplicação.
+  Não introduza catch genérico para mascarar erros inesperados.
+- Preserve ordem e metadados dos erros em ErrorsEntity, incluindo code, pointer
+  e parameter quando presentes. Não converta falhas de storage em sucesso.
+- UI usa mensagens locais em português, nunca diagnósticos nativos diretamente.
+  Formatação por campo/operação pertence a formatters puros da feature.
+  ErrorMessageFormatter contém somente mensagens compartilhadas.
+- Preserve ErrorsEntity original nos contratos/estados e teste formatters sem UI.
+- Não coloque segredos, tokens ou credenciais em código, fixtures reais ou logs.
 
-## Repositories, HTTP E Falhas
+## Bloc, screens e lifecycle
 
-- Use parâmetros nomeados e tipos simples quando suficientes. Repository e Bloc
-  não normalizam entradas que pertencem ao formulário.
-- Retorne `Future<void>` quando o consumidor precisa somente da conclusão;
-  não exponha token, DTO ou envelope JSON:API à apresentação.
-- Parsing e montagem de payload pertencem a infrastructure. DTOs usam Dart puro
-  e casts; não esconda `TypeError` ou `FormatException` como falhas de negócio.
-- Repository usa o SDK PocketBase diretamente, sem data sources intermediários.
-  Trate `ClientException` e preserve os erros nativos convertidos para `ErrorsEntity`
-  por `PocketBaseMapper`; use fallback nas falhas de transporte.
-- Lance exceção específica de aplicação, como `AuthenticationException`.
-  Não introduza `catch` genérico no repository para mascarar erros inesperados.
-- Preserve ordem e metadados dos erros, incluindo `pointer` e `parameter`.
-  Não converta exceções inesperadas ou falhas de storage em sucesso.
-- Não exiba `title` ou `detail` remotos diretamente em campos, toasts ou telas.
-  A apresentação usa mensagens locais em português, mapeadas por status, código,
-  campo e contexto da operação, com fallback seguro. `ErrorMessageFormatter`
-  contém somente mensagens compartilhadas; regras de campos pertencem aos
-  formatadores de cada feature. Preserve o `ErrorsEntity` original nos contratos
-  e estados. Testes de formatadores são unitários, sem montar UI.
-- A persistência de autenticação segue o AsyncAuthStore nativo: não há espera
-  durável, transação ou rollback nas operações de login/logout.
-- Endpoints, payloads nativos e headers de autenticação são geridos pelo SDK.
-- Não coloque credenciais, tokens ou segredos no código, fixtures reais ou logs novos.
+- Use Bloc para operações assíncronas, sem commands. Eventos/estados ficam junto
+  ao Bloc da screen; prefira eventos concretos e estados sealed imutáveis.
+- Derive disponibilidade das ações do estado; não espelhe loading/erro/resultado
+  em flags locais. Defina concorrência explicitamente.
+- Submissões droppable descartam eventos durante envio; sucesso bloqueia novos
+  envios e falha permite retry manual, sem retry automático.
+- Falha esperada preserva ErrorsEntity. Inesperada usa fallback seguro e
+  `addError(error, stackTrace)`, sem client/callback de telemetry no Bloc.
+- Após await respeite `isClosed` e `emit.isDone`. Fechamento não cancela storage.
+  Use lifecycle nativo, sem flags paralelas ou override de close para imitá-lo.
+- Blocs de página novos/explicitamente migrados usam `provide` e
+  `scope.addBloc<MyBloc>(MyBloc.new)` pela BlocScopedExtension. Rota lê com
+  `context.read` e entrega à screen; Modular é o único dono do fechamento.
+  Não duplique bind no módulo. Testes/previews têm owner externo explícito.
+- Fluxos ainda com ownership pela screen recebem factory estável, criam em
+  initState, fecham em dispose e substituem em didUpdateWidget somente se a
+  factory mudar. Rebuild não cria outro Bloc. BlocProvider.value não muda o owner.
+- Use BlocBuilder para renderizar e listeners/consumers para efeitos únicos.
+  Não navegue, envie operação ou mostre toast durante build.
+- Formulário mantém entrada, validação e erros por campo; preserve entrada na
+  falha e limpe somente o erro do campo editado. Desabilite conforme o estado.
+- Ação next aponta explicitamente ao FocusNode do próximo campo por
+  onEditingComplete. Mixin possui/descarta nós; ação final preserva submissão.
+- Extraia lifecycle, controllers, timers e handlers substanciais para mixin
+  específico com `on State<Widget>`. Screen mantém composição visual.
+  Mixin não acessa repository/storage e descarta recursos que cria.
+- Helpers usam context do próprio State, sem repasse redundante. Lógica pura
+  de StatelessWidget pode usar mixin `on StatelessWidget`, sem recursos mutáveis
+  ou operações assíncronas.
 
-## Bloc E Estado De Tela
+## Dart, imports e componentes
 
-- Use Bloc para operações assíncronas e estado de execução da apresentação.
-  Não introduza commands nos fluxos novos ou migrados.
-- Organize eventos e estados em `screens/<screen>/bloc/`, junto ao Bloc.
-- Prefira eventos concretos e estados sealed, imutáveis, mutuamente exclusivos,
-  como `SignInInitial`, `SignInSubmitting`, `SignInSuccess` e `SignInFailure`.
-- Derive disponibilidade de ações do estado (`canSubmit`, `isSubmitting`);
-  não mantenha flags locais espelhando loading, resultado ou erro do Bloc.
-- Não armazene senha, token ou credenciais no estado. O evento de submissão pode
-  transportar a entrada somente pelo tempo necessário à operação.
-- Defina concorrência explicitamente. Submissões como sign-in usam `droppable`:
-  eventos durante envio são descartados, não enfileirados; sucesso bloqueia
-  novos envios e falha permite retry manual, sem retry automático.
-- Falha esperada preserva a mesma `ErrorsEntity` no estado. Falha inesperada
-  usa fallback seguro e `addError(error, stackTrace)`; não injete CrashClient
-  ou callback de telemetry no Bloc.
-- Antes de publicar após `await`, respeite `isClosed` e `emit.isDone`.
-  Fechar Bloc ou invalidar handler não cancela HTTP nem persistência.
-- Use o lifecycle nativo do Bloc, sem flags paralelas ou override de `close()`
-  para reproduzir o fechamento da biblioteca.
+- Não use `var`, inclusive em testes/previews/ferramentas. Use final quando
+  não há reatribuição e tipo explícito para variáveis mutáveis.
+- Não nomeie variáveis, parâmetros, campos ou getters como `result`.
+  Use nomes que expressem o dado/operação, não outro nome genérico.
+- Métodos têm responsabilidade identificável. Separe validação, erros de campo,
+  envio de eventos, feedback e navegação em handlers extensos.
+- Separe etapas por linhas em branco. Use chaves em if/else/laços; prefira guard
+  clauses e switch/pattern matching. Evite ternários aninhados e cascatas de if.
+- Extraia alternativas visuais substanciais em widgets públicos em arquivos
+  próprios, sem árvores de ternários; preserve foco/controllers/acessibilidade.
+- Não crie services/stores/flags/hierarquias de mixins/helpers genéricos apenas
+  para reduzir linhas. Revise consumidores sem deslocar complexidade.
+- Flutter >=3.50.0, Dart ^3.14.0. Use primary constructors em declarações novas
+  elegíveis, campos imutáveis explícitos e final; preserve const.
+  Parâmetros só de inicialização não induzem campos. Avalie semanticamente
+  construtores com lifecycle/múltiplos caminhos generativos.
+- Não introduza primary constructor vazio em interfaces, mixins, States ou mocks.
+- Widgets novos são públicos, final, sufixo Widget, arquivo próprio, parâmetros
+  nomeados, required e super.key; const quando possível.
+- Imports da aplicação usam `package:cordato/`, não relativos de lib.
+- UI Material usa `package:material_ui/material_ui.dart`, não flutter/material.
+  Imports Flutter especializados são permitidos para símbolos não exportados.
+  Remova imports sem uso; não crie barrels.
+- Reutilize botões, fields, BounceWidget, animações/imagens do core.
+  Botões compartilhados incorporam bounce.
+- Ícones usam Icons/IconData Material pelo IconWidget estático do core; não
+  adicione bibliotecas/controllers/scopes/listeners para animá-los.
+  Preserve semântica, tema e estado desabilitado.
+- Use context.colors, context.typography e context.radius; sem tokens/extensões
+  duplicados ou fundo fixo de Scaffold sem necessidade.
+- Contratos de formatação `IDateFormatter`/`IMoneyFormatter` ficam junto às
+  implementações em `date_formatter.dart`/`money_formatter.dart`, sem arquivos
+  `interface_*` separados.
+- Recuos externos de telas/bottom sheets são 16 pixels além de áreas seguras e
+  teclado. Voltar de 48 ocupa leading de 80 com simetria horizontal de 16.
+  Cabeçalho expandido começa 16 abaixo da toolbar. Preserve espaçamentos internos,
+  reservas para ações flutuantes e largura de leitura.
+- Animações respeitam MediaQuery.disableAnimationsOf (Android) ou reduceMotionOf
+  (iOS), sem substituir uma preferência pela outra.
+- Assets ficam em AssetEnum/pubspec.yaml; use ImageWidget.
+- Reutilize ErrorScreen; preserve rolagem, fonte ampliada e exclusão semântica
+  de imagens decorativas/skeletons.
+  O arquivo atual é `core/presentation/screens/error_screen.dart`.
 
-## Screens, Formulários E Lifecycle
+## Módulos e navegação
 
-- Sign-in usa o escopo de página do Modular V7: registre o Bloc somente no
-  `provide` da rota com `scope.addBloc<SignInBloc>(SignInBloc.new)`, usando a
-  extension do core. A screen recebe a instância e não cria nem fecha o Bloc;
-  Modular é o único dono do fechamento. Mantenha `BlocBuilder`/`BlocConsumer`
-  e listeners com a instância explícita. Testes/previews fornecem um proprietário
-  externo explícito. Não duplique o bind do Bloc no módulo.
-- Os demais fluxos ainda não migrados recebem uma factory estável
-  `Bloc Function()` por construtor, criam a instância e possuem seu fechamento.
-  Não converta essas telas incidentalmente: migre rota, consumidores, previews
-  e testes juntos quando a tarefa incluir a adoção do escopo Modular.
-- `ExpenseSuggestionsBloc` também usa `provide` e `addBloc` na rota de Expense;
-  screen/formulário recebem a instância e não a fecham. Isso não migra o
-  `ExpenseBloc`, que continua com factory estável e ownership pela screen.
-- Para os fluxos com ownership pela screen, crie em `initState`, feche em
-  `dispose` e feche/substitua em `didUpdateWidget`
-  somente quando a factory mudar. Rebuild comum não cria outro Bloc.
-- Use `BlocBuilder` para renderização e `BlocListener`/`BlocConsumer` para efeitos
-  únicos. Não mostre toast, navegue ou envie operações durante o build.
-- Se usar `BlocProvider.value`, a propriedade do fechamento continua com a screen.
-- Session é uma observação contínua com proprietário no nível da composição:
-  `AppWidget` recebe a factory estável, inicia e fecha seu único SessionBloc.
-  `AppScreen` é apenas visual; não cria, compartilha por singleton ou fecha outro
-  Bloc. A leitura inicial não sobrescreve eventos de token/watch mais recentes;
-  falha de storage não é ausência confirmada nem deve apagar o token.
-- Session valida o token inicial pelo endpoint nativo de auth-refresh via `send`
-  do SDK compartilhado e `RecordAuth`, salvando somente se a sessão de origem
-  continuar atual. Sem token não há request. Chamadas da mesma sessão compartilham
-  a operação; sessão substituta pode iniciar outra. Não há retry automático.
-  Respostas/falhas esperadas obsoletas não alteram o AuthStore; a observação temporária
-  é cancelada ao concluir. Erros atuais preservam `ErrorsEntity` em
-  `SessionException`/`SessionFailure`; 403/rede não apagam a sessão e 401 limpa
-  somente a sessão de origem. Não criar wrapper HTTP, AuthStore próprio ou DTO de refresh.
-- Não restaure o interceptor HTTP antigo. Autenticação dos requests pertence ao
-  SDK, que deve ser usado somente para a origem configurada do PocketBase.
-- Formulário mantém entrada, validação e erros por campo localmente. No sign-in,
-  o validator remove espaços do e-mail, mas preserva a senha; Bloc e repository
-  delegam os valores recebidos sem outra normalização.
-- Quando `next` leva a outro campo de texto, a ação aponta explicitamente ao
-  `FocusNode` desse campo por `onEditingComplete`, sem depender da ordem
-  automática que também inclui botões auxiliares. O mixin do formulário possui
-  e descarta esses nós; ações finais preservam a submissão existente.
-- Desabilite campos e envio conforme o estado. No sign-in, mapeie erros PocketBase
-  400 pelos pointers `/identity` (e-mail) e `/password`, preservando `code` e
-  `parameter` na conversão HTTP. Erros 422 legados conhecidos por pointer continuam
-  aceitos. Mostre somente os restantes em toast, com fallback seguro.
-- No cadastro, erros PocketBase 400 com `/email` vão ao e-mail e `/password` ou
-  `/passwordConfirm` à senha; preserve os erros 409/422 legados conhecidos.
-- Preserve entrada após falha; editar limpa somente o erro do campo correspondente.
-- No sign-in, sucesso não navega diretamente: a observação global da sessão
-  continua responsável pelo redirecionamento.
-- Ações de navegação novas usam as extensões de `BuildContext` do Modular no
-  widget responsável, não callbacks transportados pela rota nem `Modular.to`.
-  Preserve callbacks legados até migrar seus consumidores explicitamente.
+Use `createModule` do Modular 7. Registre contratos apontando a implementações.
+Blocs screen-owned usam factory/tear-off estável como `inject<ExpensesBloc>`,
+sem closures novas por rebuild nem singleton compartilhado entre telas.
 
-Extraia lifecycle, controllers, timers e handlers substanciais para mixin
-específico com `on State<Widget>`. A screen mantém composição visual. O mixin
-não acessa repository, HTTP ou storage e descarta todo recurso que cria.
-Helpers usam o `context` do próprio State, sem repasse redundante.
-Lógica visual pura de StatelessWidget pode usar mixin próprio com
-`on StatelessWidget`, sem recursos mutáveis ou operações assíncronas.
+Dependências entre features exigem binds disponíveis sem visitar rotas irmãs.
+User, Expense, Metrics e Settings têm módulo único sem path; não fragmente nem
+use path `/` em features irmãs. Módulos com paths exclusivos permanecem até
+migração explícita. Teste resolução, não apenas catálogo.
 
-## Dart, Imports E Componentes
+Navegação nova pertence ao widget/mixin por BuildContext, não callbacks de rota
+ou Modular.to. Preserve callbacks legados fora do escopo até migrar consumidores.
+Argumentos transportam dados. Use `pushNamed<T>` e `pop` com retorno tipado
+para dados confirmados. ExpensesScreen recebe ExpenseEntity? da edição.
+Dashboard/Metrics recarregam ao voltar da listagem, mesmo sem alteração, sem
+interceptar voltar/gesto para transportar flags. Callbacks visuais locais são permitidos.
 
-Strings nativas Android usam `<tipo>_<contexto>_<descricao>` em `snake_case`
-inglês, separadas em `res/values/strings_<contexto>.xml`; `strings.xml` pertence
-ao contexto `app`. Os prefixos são `failure_`, `success_`, `label_`, `action_`,
-`cd_`, `msg_` e `config_`, conforme `android/README.md`. Não misture strings com
-cores e estilos; agrupe tipos por linhas em branco, sem comentários no código.
-Configurações técnicas usam `translatable="false"`. Renomeações atualizam XML,
-Kotlin e testes de referências/app links na mesma mudança, preservando URLs e
-placeholders posicionais.
+Strings Android usam `<tipo>_<contexto>_<descricao>` em snake_case inglês,
+`res/values/strings_<contexto>.xml`; strings.xml pertence a app.
+Prefixos: failure_, success_, label_, action_, cd_, msg_, config_.
+Agrupe tipos por linhas em branco sem comentários; não misture cores/estilos.
+Configuração técnica usa translatable=false. Preserve placeholders posicionais,
+URLs e referências XML/Kotlin/testes ao renomear. Consulte android/README.md.
 
-### Legibilidade E Coesão
+## Testes obrigatórios
 
-- Não use `var`, inclusive em testes, previews e ferramentas. Use `final` para
-  variáveis que não são reatribuídas e tipo explícito para variáveis mutáveis.
-- Use nomes que expressem o significado do dado ou da operação. É proibido nomear
-  variáveis, parâmetros, campos ou getters como `result`, inclusive em testes,
-  previews e ferramentas. Prefira nomes como `passwordCheck`, `createdExpense`
-  ou `confirmedDate`; não substitua por outro nome genérico sem significado.
-- Métodos devem ter uma responsabilidade identificável. Separe validação,
-  atualização de erros de campo, envio de eventos, feedback e navegação quando
-  estiverem misturados em um handler extenso. O método coordenador deve deixar
-  explícita a sequência da operação, sem esconder efeitos em getters.
-- Separe etapas lógicas por linhas em branco. Use blocos com chaves em `if`,
-  `else` e laços; não comprima guarda e ação na mesma linha.
-- Prefira guard clauses para pré-condições e `switch` com pattern matching para
-  estados ou alternativas mutuamente exclusivas. Evite cascatas de `if/else`
-  e ternários aninhados; um `if` simples ou ternário simples continua permitido.
-- Formatação e classificação de erros remotos pertencem a formatters puros da
-  feature, com testes unitários, não a handlers de tela ou callbacks de build.
-- Estados visuais alternativos não devem formar árvores de ternários. Use seleção
-  explícita por estado e extraia blocos visuais substanciais em widgets públicos
-  em arquivos próprios, preservando ownership, foco, controllers e acessibilidade.
-- Não crie services, stores, flags espelhadas, hierarquias de mixins ou helpers
-  genéricos apenas para reduzir linhas. Extrações precisam reduzir acoplamento
-  ou nomear uma responsabilidade real, mantendo o comportamento e seus testes.
-- Estas regras valem para todo o projeto. Ao alterar um fluxo, revise também seus
-  consumidores; não mova complexidade para outro arquivo nem enfraqueça testes
-  para apenas aparentar conformidade.
+Espelhe produção em `test/features/<feature>/`. Não adicione Python.
+Para cada arquivo testado, preserve o caminho relativo e acrescente `_test`
+ao nome: `lib/features/.../widget_launch_bloc.dart` corresponde a
+`test/features/.../widget_launch_bloc_test.dart`. Suítes separadas por
+responsabilidade devem identificar a implementação comum, sem sugerir um
+arquivo de produção inexistente. Testes arquiteturais, de ferramentas,
+composição global e políticas nativas têm organização própria.
+Os desalinhamentos existentes estão registrados em
+[ARCHITECTURE.md](ARCHITECTURE.md#organização-e-espelhamento-dos-testes);
+documentá-los não os torna padrão nem autoriza reorganização incidental.
+Não mantenha/crie testes de UI, goldens, integração visual ou flows Maestro.
+Previews manuais permanecem; preserve testes unitários e arquiteturais.
 
-- Flutter `>=3.50.0` e SDK Dart `^3.14.0`; use primary constructors em declarações novas elegíveis.
-  Campos induzidos imutáveis têm tipo explícito e `final`; preserve `const`.
-- Parâmetros usados só para inicialização não induzem campos. Construtores com
-  lifecycle ou múltiplos caminhos generativos exigem avaliação semântica.
-- Não introduza construtor primary vazio em interfaces, mixins, States ou mocks.
-- Widgets novos são públicos, `final`, com sufixo `Widget`, arquivo próprio,
-  parâmetros nomeados, `required` e `super.key`; use `const` quando possível.
-- Não extraia componentes visuais privados dentro do arquivo de outra tela.
-- Imports da aplicação usam `package:cordato/`, nunca caminhos relativos de `lib/`.
-- UI Material usa `package:material_ui/material_ui.dart`, não
-  `package:flutter/material.dart`. Imports Flutter especializados são permitidos
-  para símbolos não exportados. Remova imports não utilizados; não crie barrels.
-- Reutilize botões, fields, `BounceWidget`, animações e imagens do core antes
-  de criar componentes. Botões compartilhados incorporam o bounce de pressão.
-- Ícones explícitos usam `Icons` e `IconData` do Material pelo `IconWidget`
-  estático do core. Não adicione bibliotecas, controllers, scopes ou listeners
-  para animar ícones. Preserve semântica, cores do tema e estado desabilitado.
-- Use `context.colors`, `context.typography` e `context.radius`; não duplique
-  extensões ou tokens. Scaffold herda o tema; não fixe fundo sem necessidade.
-- Recuos externos de telas e bottom sheets usam 16 pixels lógicos, além dos
-  insets seguros e do teclado. O botão de voltar de 48 ocupa uma área leading
-  de 80, centralizado ou com padding horizontal simétrico de 16. Cabeçalhos
-  expandidos começam 16 abaixo da toolbar. Preserve espaçamentos internos dos
-  componentes, reservas para ações flutuantes e limites de largura de leitura.
-- Animações customizadas respeitam `MediaQuery.disableAnimationsOf` (Android)
-  ou `MediaQuery.reduceMotionOf` (iOS), sem substituir uma preferência pela outra.
-  Os contratos de configuração do SDK, imports de design e leitura dessas
-  preferências são verificados em `test/architecture/`, sem montar UI.
-- Assets ficam em `AssetEnum` e `pubspec.yaml`; use `ImageWidget` para imagens.
-- Reutilize `ErrorScreen` para erro de tela; preserve acessibilidade, rolagem,
-  textos ampliados e exclusão semântica de imagens decorativas e skeletons.
+| Alvo | Cobertura mínima |
+| --- | --- |
+| Domain | Invariantes, imutabilidade e semântica, sem SDKs. |
+| Application | Contratos puros e preservação de erros nas exceções. |
+| Repository | SDK real, conversão, operações, parsing, falhas esperadas/inesperadas e persistência. |
+| Bloc | Estado inicial, sequência, delegação, erros, concorrência, retry e fechamento pendente. |
+| Modular/rotas | Catálogo, resolução e factories sem UI. |
+| Architecture | Imports, camadas, contextos e contratos; DI/rotas têm testes próprios. |
 
-## Módulos E Rotas
+- Use mocktail, bloc_test e flutter_test. Blocs mockam contrato de repository.
+- Localstore usa SDK real em diretórios temporários isolados via
+  `getInstance(customPath: ...)`, sem UI ou IOOverrides. Ao terminar, remova
+  arquivos e restaure a configuração do singleton com `getInstance()`.
+  Não há `close`; aguarde operações e cancele subscriptions antes da limpeza.
+  Mocks do SDK somente para delegação, falhas e operações pendentes dos
+  repositories User/Expense/Metrics, em `test/support/core/mocks/`.
+- Composição global não simula módulos inteiros; pode simular canal nativo,
+  sem montar UI. Preserve cobertura real de Metrics/composição.
+- Testes do core verificam formatadores/client nativo e registro do Localstore.
+  Teste do app verifica instância única no root e ausência de fechamento pela DI.
+- Não restaure testes/doubles exclusivos de PocketBase, sessão/identidade,
+  HTTP/Dio, recording, áudio, CSV ou compartilhamento removidos.
+- Testes de acessibilidade não enumeram telas removidas, não fazem skip por
+  existência nem relaxam asserções dos componentes atuais.
+- Use Completer/sinais observáveis, não sleeps arbitrários para concorrência.
+- Suítes extensas usam groups por responsabilidade. Separe preparo/ação/asserts;
+  helpers locais reduzem montagem repetida. Cenários com expectativas distintas
+  não usam condicionais nas asserções. Matrizes homogêneas têm nomes claros.
+- Tempo/debounce usa fake_async sem WidgetTester; crie/descarte recursos na zona.
+- Mocks/fakes/adapters públicos ficam em arquivo próprio em
+  `test/support/<feature>/mocks/` ou `fakes/`, nunca em *_test.dart ou lib.
+  Reutilize double por contrato; stubs/fixtures são locais. Imports de suporte
+  usam relativos explícitos.
+- Cancele subscriptions, conclua Futures controlados e descarte recursos.
+- Políticas nativas usam JUnit em android/app/src/test e XCTest em test/native/ios,
+  compilando produção sem UI. Execute `dart run tool/test_home_widget_native.dart`
+  com argumento opcional android/ios. Swift exige macOS/Xcode.
+  Não execute instâncias concorrentes de dart run: build hooks compartilham arquivos.
 
-O widget externo de cadastro usa `home_widget` por `IHomeWidgetClient`, contrato
-em `core/application/clients/`, com adapter em infrastructure. Esse client não
-entra em widgets/mixins/Blocs: Root usa `HomeWidgetLaunchBloc` →
-`IHomeWidgetLaunchRepository` para leitura inicial e observação de lançamentos;
-o repository filtra URIs nativas antes de expor sinais à apresentação. AppWidget
-recebe factories de Blocs, nunca o client nem streams nativos. Root possui o
-intent pendente e aguarda Session antes de abrir Dashboard → Nova despesa.
-Não importe o plugin na apresentação, não compartilhe JWT com o widget
-e não faça cadastro em background. Preserve criações abertas sem confundir edição
-por ID. No Modular 7, `routeState` representa a base e `Page.name` não identifica
-as rotas empilhadas; use os estados reais de `popUntil` na coordenação do atalho.
+## Previews e verificação
 
-O resumo mensal do widget usa somente o total do mês atual retornado por Metrics,
-nunca somas locais ou filtros históricos da Dashboard. Expense sinaliza mutações
-confirmadas pelo client compartilhado, sem importar Metrics/Root. Root compõe os
-contratos em `HomeWidgetSyncRepository` e possui um único `HomeWidgetSyncBloc`
-sob ownership do AppWidget. Não o registre como singleton nem o recrie em rebuild.
-O próprio Bloc observa pedidos de atualização pelo repository com `emit.onEach`,
-em handler contínuo distinto dos eventos restartable; não assine esse stream no
-widget. Launch e Sync usam o lifecycle nativo para cancelar suas observações.
-Preserve revisões e serialização de publicações/limpeza no client para bloquear
-respostas antigas após mutação/logout. Snapshot nativo contém somente mês e
-centavos, sem credenciais; mês incompatível mostra “Abra para atualizar”. iOS usa
-o App Group `group.com.bed.cordato` nos dois targets. Não faça HTTP no widget nativo
-nem converta dinheiro para double ao formatá-lo.
+Previews usam @CordatoPreview, tema real, localização e toast compartilhados em
+presentation/previews. Fakes não usam rede/storage/mocktail. Cada recurso tem
+owner único; sugestões de Expense recebem owner externo. Use PreviewResourceWidget
+quando o recurso não pertence à tela. `dart run tool/widget_preview.dart` serve
+o catálogo; `.widget_preview/` não é versionado.
 
-Use a API funcional `createModule` do `flutter_modular` 7. Registre contratos
-apontando para implementações. Para estado de página novo ou explicitamente
-migrado, prefira `provide: (scope) => scope.addBloc<MyBloc>(MyBloc.new)` com
-`BlocScopedExtension` em `core/presentation/extensions/`. A rota lê a instância
-por `context.read<MyBloc>()` e a entrega à screen. Não registre o mesmo Bloc
-também no módulo nem feche na tela uma instância pertencente ao escopo.
-
-Nos fluxos ainda com ownership pela screen, registre Bloc por factory e injete
-o tear-off estável, como `bloc: inject<ExpensesBloc>`, sem closures novas a cada
-rebuild. Nunca use singleton de Bloc compartilhado entre telas. Session continua
-global sob ownership de `AppWidget`; não o transforme em estado de página.
-
-Módulos com `path` possuem binds de feature, disponíveis somente enquanto uma
-rota da feature estiver ativa. Dependências consumidas entre features precisam
-de módulo compartilhado sem `path`; não dependa de ter visitado uma rota irmã.
-Registro no catálogo não comprova resolução de DI: teste o consumidor isoladamente.
-
-Módulos pertencem à feature. Authentication e Expense usam um único módulo por
-feature, sem `path`, com binds root-owned e URLs completas de `RouteEnum`.
-Não fragmente esses módulos em dependencies/form/list/routes nem use `path: '/'`
-em features irmãs: no Modular 7.1.1 o mesmo path identifica o mesmo escopo e seus
-binds podem ser sobrescritos. Sem path não significa singleton de Bloc: `add`
-continua factory e o dono da instância continua responsável pelo fechamento.
-`provide` mantém ownership de página independente do escopo do módulo.
-Outras features com paths exclusivos permanecem como estão até migração explícita.
-`app_module.dart` faz a composição global.
-
-Navegação pertence ao widget/mixin responsável, por extensões de `BuildContext`.
-Argumentos de rota transportam dados, não callbacks. Use resultados tipados de
-`pushNamed<T>` e `pop(result)` quando a operação devolve dados confirmados.
-`ExpensesScreen` abre edição diretamente e recebe `ExpenseEntity?` no retorno;
-Dashboard e Metrics recarregam ao voltar da listagem, mesmo sem alteração, sem
-interceptar botão do sistema ou gesto para transportar flags. Callbacks locais
-de composição visual, como Metrics notificar Dashboard, continuam permitidos.
-
-## Testes Obrigatórios
-
-Os testes seguem a mesma arquitetura, não o padrão antigo de data sources ou
-commands. Espelhe o caminho de produção em `test/features/<feature>/`.
-
-Não adicionar Python ao projeto, inclusive em scripts, fakes e fixtures.
-Não manter nem criar testes de UI: telas, widgets, goldens, integração visual
-ou flows Maestro. Previews manuais permanecem disponíveis. Preserve testes
-unitários de Bloc, validação, formatação, contratos, infraestrutura e arquitetura.
-
-| Alvo                         | Cobertura mínima                                                                                                               |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Domain                       | Invariantes, imutabilidade e semântica dos valores, sem SDKs.                                                                  |
-| Application                  | Contratos puros e preservação de erros nas exceções.                                                                           |
-| Repository em infrastructure | SDK real com transporte mockado; payload, conversão, erros nativos, parsing inválido, efeitos no AuthStore e falhas inesperadas. |
-| Bloc                         | Estado inicial, sequência de estados, delegação, falha esperada/inesperada, concorrência, retry e fechamento pendente.         |
-| Modular/rotas                | Catálogo de rotas e resolução de dependências/factories sem montar UI.                                                         |
-| Architecture                 | Imports, camadas, contextos e isolamento de contratos; DI/rotas exigem testes próprios.                                        |
-
-- Use `mocktail`, `bloc_test` e `flutter_test`. Em teste de Bloc, mocke o contrato
-  de repository, não o client HTTP. Em teste do repository PocketBase, use o SDK
-  real com transporte mockado; capacidades nativas auxiliares usam clients mockados.
-- Testes da factory usam o canal simulado do FlutterSecureStorage, sem injetar
-  storage na API de produção. HTTP do SDK pode usar `http.runWithClient` com
-  `MockClient`, sem servidor local. Testes do observer exercitam eventos, estados,
-  erros e lifecycle reais dos Blocs e restauram `Bloc.observer` ao terminar,
-  sem chamar métodos protegidos diretamente ou montar UI.
-- Controle operações pendentes com `Completer` ou sinais observáveis; não dependa
-  de sleeps arbitrários para provar concorrência.
-- Organize suítes extensas em `group` por operação ou responsabilidade. Separe
-  preparação, ação e verificações; extraia montagem repetida para helpers locais.
-  Sucesso e falha com expectativas diferentes ficam em cenários próprios, não em
-  condicionais dentro das asserções. Matrizes com o mesmo comportamento continuam
-  parametrizadas e precisam de nomes que identifiquem cada cenário.
-- Testes de tempo/debounce de lógica usam `fake_async`, sem `WidgetTester`
-  nem montagem de widgets. Crie e descarte recursos na zona de tempo do cenário.
-- Políticas puras dos widgets nativos usam JUnit em `android/app/src/test/` e
-  XCTest em `test/native/ios/`, compilando os arquivos de produção sem UI.
-  Execute `dart run tool/test_home_widget_native.dart`, com argumento opcional
-  `android` ou `ios`. Swift exige macOS/Xcode; isso não substitui build iOS ou
-  conferência manual de tamanhos, valores longos e acessibilidade. Não execute
-  instâncias concorrentes de `dart run`, pois os build hooks compartilham arquivos.
-- Mocks/fakes/adapters públicos ficam em arquivos próprios sob
-  `test/support/<feature>/mocks/` ou `fakes/`, nunca dentro de `*_test.dart` ou `lib/`.
-- Reutilize um double por contrato; instâncias, stubs e fixtures de cenário são
-  locais a cada teste. Imports de suporte usam caminhos relativos explícitos.
-- Cancele subscriptions, conclua Futures controlados e descarte recursos criados.
-
-## Previews E Verificação
-
-Previews usam `@CordatoPreview`, tema real, localização e toast compartilhados.
-Ficam em `presentation/previews/`; fakes de catálogo não usam rede, storage ou
-mocktail. Mantenha um único dono de cada recurso, inclusive Bloc. Sign-in e sugestões de Expense recebem
-uma instância com ownership externo; a screen não fecha o Bloc. Use
-`PreviewResourceWidget` quando o recurso não pertencer ao lifecycle da tela.
-Execute `dart run tool/widget_preview.dart`; `.widget_preview/` não é versionado.
-
-Quando aplicável, execute nesta ordem:
+Quando aplicável execute, nesta ordem:
 
 ```bash
 flutter pub get
 flutter analyze
-flutter test
+flutter test --reporter failures-only
 ```
 
-Verificação focada: `flutter test test/architecture` e testes da feature afetada.
-Registre os comandos executados, os resultados e os bloqueios anteriores à tarefa.
-Mudança exclusivamente documental não exige executar o app ou a suíte Flutter.
+Verificação focada inclui test/architecture e a feature. Registre comandos,
+resultados e bloqueios prévios. Não anuncie homologação nativa por testes
+unitários. Mudança exclusivamente documental não exige app/suíte Flutter.
 
-O release Android no GitHub usa `.github/workflows/android-release.yml`, manual
-e restrito à `main`, sem publicação no Play ou commits de versão. A versão visível
-vem do `pubspec.yaml`; `tool/android_release_version.sh` define o código por
-`GITHUB_RUN_NUMBER + 5`, com testes unitários em `test/architecture/`.
-Reexecuções mantêm o código; novos códigos exigem novo dispatch. Não alterar o
-offset ou recriar o workflow sem considerar o maior código já usado no Play.
-Secrets pertencem ao environment `android-release`, nunca ao código ou aos
-artefatos. Mudanças no workflow exigem `actionlint`, no script `shellcheck`, além
-das verificações Flutter aplicáveis. Setup e limites estão em `android/README.md`.
+Release Android usa `.github/workflows/android-release.yml`, manual e somente
+main, sem publicar no Play ou commits de versão. Versão visível vem do pubspec;
+tool/android_release_version.sh define código por GITHUB_RUN_NUMBER + 5.
+Reexecuções mantêm código; novo código exige novo dispatch. Não altere offset
+ou recrie workflow sem considerar maior código já usado no Play.
+Secrets pertencem a android-release. Mudanças de workflow exigem actionlint;
+script exige shellcheck, além das verificações Flutter aplicáveis.
+O fork privado requer `LOCALSTORE_READ_TOKEN` com leitura de Contents somente
+em `bed72/localstore`. O workflow usa helper Git com token em variável de ambiente
+somente na instalação de dependências, sem credencial em URL ou arquivo.
+Setup e limites estão em android/README.md. O BASE_URL legado do workflow não
+configura o banco local e não autoriza restaurar integração remota.
 
-## Revisão E Pendências
+## Revisão e documentação
 
-Mudanças estruturais atualizam `ARCHITECTURE.md`; convenções e testes atualizam
-este arquivo; estado do produto/configuração atualizam `README.md`. Release
-Android atualiza `android/README.md`.
+Mudanças estruturais atualizam ARCHITECTURE.md; convenções/testes atualizam este
+arquivo; produto/configuração atualizam README.md; release atualiza android/README.md.
+Preserve specs/changes históricas; identifique precedência em openspec/README.md.
+Resultados anteriores ficam em docs/history, sem se tornarem instruções vigentes.
+Componentes usados exclusivamente em previews de recursos removidos, seus fakes e
+testes não devem ser restaurados. Metrics não tem Bloc próprio: Dashboard e Root
+consultam seu repository. ImageWidget recebe somente caminhos de assets locais.
+Erros de formulário locais usam os códigos produzidos pelos repositories, sem
+classificação HTTP ou pointers do backend antigo; preserve os metadados originais.
 
-Antes de concluir, confira: camadas corretas, contrato puro, Bloc sem SDKs,
-efeitos fora do build, ownership único, testes nas camadas corretas, documentação
-coerente e ausência de comentários novos no código.
+Antes de concluir confira camadas, contrato puro, Bloc sem SDK, efeitos fora do
+build, ownership único, testes corretos, documentação coerente e ausência de
+comentários novos no código. Não enfraqueça arquitetura para aparentar conformidade.
 
-O estado de transição está registrado em `ARCHITECTURE.md`. Não restaure
-dependências removidas nem enfraqueça testes arquiteturais para tornar o legado
-aparentemente compatível. Migre cada fluxo completo, com seus consumidores e
-testes, quando isso fizer parte da tarefa solicitada.
+Welcome não possui arquivos, composição ou constante de rota; não restaure
+referências nos testes. Rotas/associações de autenticação, permissões de microfone,
+permissão de rede no manifest principal e BASE_URL no workflow foram removidos.
+Preserve o scheme cordato e o App Group usados pelo widget nativo.

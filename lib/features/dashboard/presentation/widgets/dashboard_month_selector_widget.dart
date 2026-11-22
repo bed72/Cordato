@@ -3,7 +3,7 @@ import 'package:skeletonizer/skeletonizer.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 
 final class const DashboardMonthSelectorWidget({
   super.key,

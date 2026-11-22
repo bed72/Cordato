@@ -20,8 +20,8 @@ final class const ExpenseSuggestionResponse({
 
   ExpenseSuggestionEntity toEntity() => ExpenseSuggestionEntity(
     id: id,
-    description: description,
     cents: amount,
     category: category,
+    description: description,
   );
 }

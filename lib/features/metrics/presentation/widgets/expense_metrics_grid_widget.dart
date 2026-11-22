@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/presentation/widgets/expense_category_card_widget.dart';

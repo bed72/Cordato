@@ -1,30 +1,28 @@
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pocketbase/pocketbase.dart';
+import 'package:localstore/localstore.dart';
 
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
+import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/expense_module.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
 
-import '../../support/core/fakes/pocketbase_fixture.dart';
-import '../../support/core/mocks/home_widget_client_mock.dart';
+import '../../support/core/mocks/widget_client_mock.dart';
+import '../../support/core/storage/localstore_test_storage.dart';
 
 void main() {
-  test('resolves the shared SDK repository without visiting an Expense route and keeps independent Bloc factories', () async {
-    final fixture = PocketBaseFixture();
-    fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-      'items': [],
-      'page': 1,
-      'totalPages': 0,
-    });
-    addTearDown(fixture.client.close);
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test('resolves local repositories without visiting Expense and preserves independent Bloc factories', () async {
+    final storage = LocalstoreTestStorage();
+    await storage.open();
+    addTearDown(storage.close);
     final boot = bootstrapModule(
       createModule(
         register: (context) => context
-          ..addInstance<PocketBase>(fixture.client)
-          ..addInstance<IHomeWidgetClient>(HomeWidgetClientMock())
+          ..addInstance<Localstore>(storage.database)
+          ..addInstance<IWidgetClient>(WidgetClientMock())
           ..module(expenseModule),
       ),
     );
@@ -43,8 +41,21 @@ void main() {
     expect(list, isNot(same(otherList)));
     expect(boot.injector.get<IExpenseRepository>(), same(repository));
     expect((await repository.get(pageSize: 6)).items, isEmpty);
-    final request = fixture.requests.single;
-    expect(request.url.path, '/api/collections/expenses/records');
-    expect(request.url.queryParameters['perPage'], '6');
+    final created = await storage.expense(
+      () => repository.create(cents: 1, description: 'Local'),
+    );
+    expect((await repository.getById(id: created.id)).description, 'Local');
+    expect(
+      boot.routes.routes.map((route) => route.path),
+      unorderedEquals([RouteEnum.expenses.path, RouteEnum.expense.path]),
+    );
+    expect(
+      boot.routes
+          .match(Uri.parse(RouteEnum.expense.path))!
+          .single
+          .route
+          .provide,
+      isNotNull,
+    );
   });
 }

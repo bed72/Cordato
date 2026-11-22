@@ -32,20 +32,23 @@ void main() {
       test('displays ${entry.key} in Brazilian Portuguese', () {
         final category = ExpenseCategoryMetricsEntity(
           percentage: 100,
-          totalAmount: 300,
+          total: 300,
           category: entry.key,
         );
 
         expect(category.label, entry.value);
         expect(
           category.asset.source,
-          'assets/images/categories/${entry.key == 'other' ? 'others' : entry.key}.webp',
+          'assets/images/categories/${switch (entry.key) {
+            'other' || 'gifts_and_donations' => 'others',
+            _ => entry.key,
+          }}.webp',
         );
         expect(category.asset.alt, switch (entry.key) {
           'financing' => 'Financiamentos',
           'pets' => 'Animais de estimação',
           'personal_care' => 'Cuidados pessoais',
-          'gifts_and_donations' => 'Presentes e doações',
+          'gifts_and_donations' => 'Outros',
           _ => entry.value,
         });
       });
@@ -55,7 +58,7 @@ void main() {
       const category = ExpenseCategoryMetricsEntity(
         category: 'future_category',
         percentage: 100,
-        totalAmount: 300,
+        total: 300,
       );
 
       expect(category.label, 'future_category');
@@ -87,7 +90,7 @@ void main() {
       test('uses the expense icon for ${entry.key}', () {
         final category = ExpenseCategoryMetricsEntity(
           category: entry.key,
-          totalAmount: 1,
+          total: 1,
           percentage: 1,
         );
 

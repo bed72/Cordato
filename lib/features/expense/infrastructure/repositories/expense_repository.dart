@@ -1,76 +1,77 @@
-import 'package:pocketbase/pocketbase.dart';
+import 'dart:io';
 
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+import 'package:localstore/localstore.dart';
 
-import 'package:cordato/features/core/infrastructure/serializers/date_serializer.dart';
-import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_mapper.dart';
-import 'package:cordato/features/core/infrastructure/clients/pocketbase/pocketbase_extension.dart';
+import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 
-import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
-import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
-
 import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_suggestion_response.dart';
 
+import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
+
 final class ExpenseRepository({
-  required final PocketBase _pocketBase,
-  required final IHomeWidgetClient _homeWidgetClient,
+  required final Localstore _database,
+  required final IWidgetClient _client,
 }) implements IExpenseRepository {
   @override
   Future<List<ExpenseSuggestionEntity>> suggestions({
     required String query,
   }) async {
     try {
-      final response = await _pocketBase
-          .collection('expenses')
-          .getList(
-            perPage: 30,
-            skipTotal: true,
-            sort: '-occurred_on,-created,-id',
-            fields: 'id,description,amount,category',
-            filter: _pocketBase.filter('description ~ {:query}', {
-              'query': query,
-            }),
-          );
+      int matches = 0;
+      final records = await _records();
+      _order(records, null);
 
       final descriptions = <String>{};
-      return .unmodifiable(
-        response.items
-            .map(
-              (item) =>
-                  ExpenseSuggestionResponse.fromJson(item.toJson()).toEntity(),
-            )
-            .where((item) => descriptions.add(item.description.toLowerCase())),
-      );
-    } on ClientException catch (exception) {
-      throw ExpenseException(errors: PocketBaseMapper.fromException(exception));
+      final search = query.toLowerCase();
+      final suggestions = <ExpenseSuggestionEntity>[];
+
+      for (final record in records) {
+        final description = record['description'] as String?;
+        if (description == null ||
+            description.isEmpty ||
+            !description.toLowerCase().contains(search)) {
+          continue;
+        }
+
+        final suggestion = ExpenseSuggestionResponse.fromJson(record);
+        matches++;
+        if (descriptions.add(description.toLowerCase())) {
+          suggestions.add(suggestion.toEntity());
+        }
+        if (matches == 30) break;
+      }
+
+      return .unmodifiable(suggestions);
+    } on FileSystemException {
+      throw ExpenseException(errors: .unknown());
     }
   }
 
   @override
   Future<ExpenseEntity> getById({required String id}) async {
     try {
-      final response = await _pocketBase.collection('expenses').getOne(id);
-
-      return ExpenseResponse.fromJson(response.toJson()).toEntity();
-    } on ClientException catch (exception) {
-      throw ExpenseException(errors: PocketBaseMapper.fromException(exception));
+      return ExpenseResponse.fromJson(await _record(id)).toEntity();
+    } on FileSystemException {
+      throw ExpenseException(errors: .unknown());
     }
   }
 
   @override
   Future<void> delete({required String id}) async {
     try {
-      await _pocketBase.collection('expenses').delete(id);
-
-      _homeWidgetClient.requestMonthlyRefresh();
-    } on ClientException catch (exception) {
-      throw ExpenseException(errors: PocketBaseMapper.fromException(exception));
+      await _record(id);
+      await _database.collection('expenses').doc(id).delete();
+      _client.monthlyRefresh();
+    } on FileSystemException {
+      throw ExpenseException(errors: .unknown());
     }
   }
 
@@ -83,39 +84,39 @@ final class ExpenseRepository({
     DateTime? from,
     String? category,
   }) async {
+    if (page < 1) throw ArgumentError.value(page, 'page');
+
+    if (category != null) {
+      ExpenseCategoryEnum.values.firstWhere((item) => item.value == category);
+    }
+
+    final size = pageSize > 0 ? pageSize : 30;
+    final first = from == null ? null : _date(from);
+    final last = to == null
+        ? null
+        : _date(DateTime.utc(to.year, to.month, to.day + 1));
+
     try {
-      final filters = [
-        if (category != null)
-          _pocketBase.filter('category = {:category}', {'category': category}),
+      final records = (await _records()).where((record) {
+        final date = record['occurred_on'] as String;
 
-        if (from != null)
-          _pocketBase.filter('occurred_on >= {:from}', {'from': _date(from)}),
+        return (category == null || record['category'] as String == category) &&
+            (first == null || date.compareTo(first) >= 0) &&
+            (last == null || date.compareTo(last) < 0);
+      }).toList();
 
-        if (to != null)
-          _pocketBase.filter('occurred_on < {:to}', {
-            'to': _date(DateTime.utc(to.year, to.month, to.day + 1)),
-          }),
-      ];
-
-      final response = await _pocketBase
-          .collection('expenses')
-          .getList(
-            page: page,
-            filter: filters.join(' && '),
-            sort: sort ?? '-occurred_on,-id',
-            perPage: pageSize > 0 ? pageSize : 30,
-          );
+      _order(records, sort);
+      final items = records.skip((page - 1) * size).take(size + 1).toList();
 
       return ExpensePageEntity(
-        nextPage: response.page < response.totalPages
-            ? response.page + 1
-            : null,
-        items: response.items
-            .map((item) => ExpenseResponse.fromJson(item.toJson()).toEntity())
+        nextPage: items.length > size ? page + 1 : null,
+        items: items
+            .take(size)
+            .map((record) => ExpenseResponse.fromJson(record).toEntity())
             .toList(),
       );
-    } on ClientException catch (exception) {
-      throw ExpenseException(errors: PocketBaseMapper.fromException(exception));
+    } on FileSystemException {
+      throw ExpenseException(errors: .unknown());
     }
   }
 
@@ -127,25 +128,24 @@ final class ExpenseRepository({
     DateTime? occurredOn,
     ExpenseCategoryEnum? category,
   }) async {
+    if (cents != null) _validateAmount(cents);
+
+    final fields = <String, dynamic>{
+      'amount': ?cents,
+      'description': ?description?.trim(),
+      'category': ?category?.value,
+      if (occurredOn != null) 'occurred_on': _date(occurredOn),
+    };
+    if (fields.isEmpty) return getById(id: id);
+
     try {
-      final response = await _pocketBase
-          .collection('expenses')
-          .update(
-            id,
-            body: {
-              'amount': ?cents,
-              'description': ?description,
-              'category': ?category?.value,
-              if (occurredOn != null) 'occurred_on': _date(occurredOn),
-            },
-          );
+      final record = {...await _record(id), ...fields};
+      await _database.collection('expenses').doc(id).set(record);
+      _client.monthlyRefresh();
 
-      final updated = ExpenseResponse.fromJson(response.toJson()).toEntity();
-      _homeWidgetClient.requestMonthlyRefresh();
-
-      return updated;
-    } on ClientException catch (exception) {
-      throw ExpenseException(errors: PocketBaseMapper.fromException(exception));
+      return ExpenseResponse.fromJson(record).toEntity();
+    } on FileSystemException {
+      throw ExpenseException(errors: .unknown());
     }
   }
 
@@ -156,28 +156,100 @@ final class ExpenseRepository({
     ExpenseCategoryEnum category = .other,
     DateTime? occurredOn,
   }) async {
+    _validateAmount(cents);
+
     try {
-      final owner = _pocketBase.userId();
-      final response = await _pocketBase
-          .collection('expenses')
-          .create(
-            body: {
-              'owner': owner,
-              'amount': cents,
-              'category': category.value,
-              'description': description,
-              'occurred_on': _date(occurredOn ?? .now()),
-            },
-          );
+      final document = _database.collection('expenses').doc();
+      final record = <String, dynamic>{
+        'id': document.id,
+        'amount': cents,
+        'category': category.value,
+        'description': description.trim(),
+        'occurred_on': _date(occurredOn ?? DateTime.now()),
+      };
 
-      final created = ExpenseResponse.fromJson(response.toJson()).toEntity();
-      _homeWidgetClient.requestMonthlyRefresh();
+      await document.set(record);
+      _client.monthlyRefresh();
 
-      return created;
-    } on ClientException catch (exception) {
-      throw ExpenseException(errors: PocketBaseMapper.fromException(exception));
+      return ExpenseResponse.fromJson(record).toEntity();
+    } on FileSystemException {
+      throw ExpenseException(errors: .unknown());
     }
   }
 
-  String _date(DateTime date) => '${dateSerializer(date)} 00:00:00.000Z';
+  Future<Map<String, dynamic>> _record(String id) async {
+    final record = await _database.collection('expenses').doc(id).get();
+    if (record == null) {
+      throw ExpenseException(
+        errors: const ErrorsEntity(
+          errors: [ErrorEntity(code: 'expense_not_found')],
+        ),
+      );
+    }
+
+    return record;
+  }
+
+  Future<List<Map<String, dynamic>>> _records() async {
+    final documents = await _database.collection('expenses').get();
+    return documents?.values
+            .map((document) => document as Map<String, dynamic>)
+            .toList() ??
+        [];
+  }
+
+  void _validateAmount(int cents) {
+    if (cents <= 0) {
+      throw ExpenseException(
+        errors: const ErrorsEntity(
+          errors: [ErrorEntity(code: 'invalid_amount', parameter: 'amount')],
+        ),
+      );
+    }
+  }
+
+  String _date(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day).toIso8601String();
+
+  void _order(List<Map<String, dynamic>> records, String? sort) {
+    final fields = (sort ?? '-occurred_on,-id').split(',');
+    final ordering = <({String field, bool descending})>[];
+
+    for (final fieldOrder in fields) {
+      final descending = fieldOrder.startsWith('-');
+      final field = descending ? fieldOrder.substring(1) : fieldOrder;
+      if (!const {
+        'id',
+        'amount',
+        'description',
+        'category',
+        'occurred_on',
+      }.contains(field)) {
+        throw ArgumentError.value(sort, 'sort');
+      }
+      ordering.add((field: field, descending: descending));
+    }
+    if (!ordering.any((item) => item.field == 'id')) {
+      ordering.add((field: 'id', descending: false));
+    }
+
+    records.sort((first, second) {
+      for (final item in ordering) {
+        final comparison = switch (item.field) {
+          'amount' => (first['amount'] as int).compareTo(
+            second['amount'] as int,
+          ),
+          'description' => (first['description'] as String? ?? '').compareTo(
+            second['description'] as String? ?? '',
+          ),
+          _ => (first[item.field] as String).compareTo(
+            second[item.field] as String,
+          ),
+        };
+        if (comparison != 0) return item.descending ? -comparison : comparison;
+      }
+
+      return 0;
+    });
+  }
 }

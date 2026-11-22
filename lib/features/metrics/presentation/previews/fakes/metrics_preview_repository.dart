@@ -13,7 +13,6 @@ final class MetricsPreviewRepository({
   final ExpenseMetricsEntity? data,
   final ErrorsEntity? failure,
   final bool loading = false,
-  final Duration delay = .zero,
 }) implements IMetricsRepository {
   @override
   Future<ExpenseMetricsEntity> getExpenses({
@@ -22,7 +21,6 @@ final class MetricsPreviewRepository({
     ExpenseMetricsGroupByEnum? groupBy,
   }) async {
     if (loading) return Completer<ExpenseMetricsEntity>().future;
-    if (delay != Duration.zero) await Future<void>.delayed(delay);
     if (failure != null) throw MetricsException(errors: failure!);
     if (data != null) return data!;
 
@@ -36,34 +34,34 @@ final class MetricsPreviewRepository({
     return ExpenseMetricsEntity(
       id: 'preview-${start.year}-${start.month}',
       startDate: start,
-      totalAmount: empty ? 0 : 389205,
+      total: empty ? 0 : 389205,
       endDate: endDate ?? DateTime(start.year, start.month + 1, 0),
       categories: empty
           ? []
           : const [
               ExpenseCategoryMetricsEntity(
                 percentage: 55.50,
-                totalAmount: 216000,
+                total: 216000,
                 category: 'housing',
               ),
               ExpenseCategoryMetricsEntity(
                 category: 'food',
                 percentage: 28.44,
-                totalAmount: 110700,
+                total: 110700,
               ),
               ExpenseCategoryMetricsEntity(
                 percentage: 7.77,
-                totalAmount: 30240,
+                total: 30240,
                 category: 'health',
               ),
               ExpenseCategoryMetricsEntity(
                 percentage: 6.24,
-                totalAmount: 24300,
+                total: 24300,
                 category: 'transport',
               ),
               ExpenseCategoryMetricsEntity(
                 percentage: 2.05,
-                totalAmount: 7965,
+                total: 7965,
                 category: 'subscriptions',
               ),
             ],

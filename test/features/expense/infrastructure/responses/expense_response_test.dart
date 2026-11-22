@@ -5,14 +5,13 @@ import 'package:cordato/features/expense/infrastructure/responses/expense_respon
 
 void main() {
   group('ExpenseResponse', () {
-    test('maps a native record into a validated civil-date domain entity', () {
+    test('maps a local record into a validated civil-date domain entity', () {
       final response = ExpenseResponse.fromJson({
         'id': '9',
         'amount': 300,
         'category': 'other',
         'description': 'Game',
         'occurred_on': '2026-10-05 00:00:00.000Z',
-        'created': '2026-10-06 19:24:29.000Z',
       });
 
       expect(response.amount, 300);
@@ -26,7 +25,7 @@ void main() {
     });
 
     for (final category in ExpenseCategoryEnum.values) {
-      test('recognizes the API category ${category.value}', () {
+      test('recognizes the stored category ${category.value}', () {
         final response = ExpenseResponse.fromJson({
           'id': '9',
           'amount': 300,
@@ -40,7 +39,7 @@ void main() {
       });
     }
 
-    test('rejects categories outside the API contract', () {
+    test('rejects categories outside the local contract', () {
       expect(
         () => ExpenseResponse.fromJson({
           'id': '9',
@@ -50,6 +49,53 @@ void main() {
           'occurred_on': '2026-10-05 00:00:00.000Z',
         }),
         throwsStateError,
+      );
+    });
+
+    test('projects a nullable stored description as empty text', () {
+      final response = ExpenseResponse.fromJson({
+        'id': '9',
+        'amount': 300,
+        'category': 'other',
+        'description': null,
+        'occurred_on': '2026-10-05T00:00:00.000Z',
+      });
+
+      expect(response.toEntity().description, '');
+    });
+
+    for (final invalid in <String, Object?>{
+      'id': 9,
+      'amount': '300',
+      'description': 5,
+      'occurred_on': 0,
+      'category': null,
+    }.entries) {
+      test('rejects invalid ${invalid.key} type', () {
+        expect(
+          () => ExpenseResponse.fromJson({
+            'id': '9',
+            'amount': 300,
+            'description': 'Café',
+            'category': 'other',
+            'occurred_on': '2026-10-05T00:00:00.000Z',
+            invalid.key: invalid.value,
+          }),
+          throwsA(isA<TypeError>()),
+        );
+      });
+    }
+
+    test('does not hide a malformed stored date', () {
+      expect(
+        () => ExpenseResponse.fromJson({
+          'id': '9',
+          'amount': 300,
+          'description': 'Café',
+          'category': 'other',
+          'occurred_on': 'not-a-date',
+        }),
+        throwsFormatException,
       );
     });
 

@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/metrics/animated_expense_total_widget.dart';
 import 'package:cordato/features/dashboard/presentation/widgets/metrics/mixins/metrics_section_state_mixin.dart';
 
@@ -56,7 +56,7 @@ final class _MetricsSectionWidgetState extends State<MetricsSectionWidget>
 
     final pages = metrics.categories?.cardPages ?? [];
 
-    return switch ((metrics.totalAmount, pages)) {
+    return switch ((metrics.total, pages)) {
       (0, _) => _buildMessage(
         message: 'Nenhuma despesa registrada neste período.',
       ),

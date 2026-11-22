@@ -1,5 +1,5 @@
 final class const ExpenseCategoryMetricsEntity({
+  required final int total,
   required final String category,
-  required final int totalAmount,
   required final double percentage,
 });

@@ -8,35 +8,35 @@ void main() {
       const category = ExpenseCategoryMetricsEntity(
         category: 'housing',
         percentage: 55.50,
-        totalAmount: 216000,
+        total: 216000,
       );
 
       expect(category.percentage, 55.50);
       expect(category.category, 'housing');
-      expect(category.totalAmount, 216000);
+      expect(category.total, 216000);
     });
 
     test('preserves unknown categories without substituting other', () {
       const category = ExpenseCategoryMetricsEntity(
-        totalAmount: 7965,
+        total: 7965,
         percentage: 2.05,
         category: 'future_category',
       );
 
       expect(category.percentage, 2.05);
-      expect(category.totalAmount, 7965);
+      expect(category.total, 7965);
       expect(category.category, 'future_category');
     });
 
     test('represents a category with no expenses', () {
       const category = ExpenseCategoryMetricsEntity(
         percentage: 0,
-        totalAmount: 0,
+        total: 0,
         category: 'food',
       );
 
       expect(category.percentage, 0);
-      expect(category.totalAmount, 0);
+      expect(category.total, 0);
     });
   });
 }
