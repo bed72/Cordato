@@ -27,7 +27,7 @@ mixin ExpenseDescriptionFieldStateMixin
         if (state.revision != revision || pending.isCompleted) return;
         switch (state) {
           case ExpenseSuggestionsSuccess(:final suggestions):
-            pending.complete(suggestions);
+            pending.complete(suggestions.take(1));
           case ExpenseSuggestionsFailure() || ExpenseSuggestionsIdle():
             pending.complete(const []);
           case ExpenseSuggestionsLoading():

@@ -49,10 +49,11 @@ final class _ExpenseDescriptionFieldState
         textCapitalization: .sentences,
         onSubmitted: widget.onSubmitted,
         displayStringForOption: (option) => option.description,
-        optionsViewBuilder: (context, select, options) =>
+        optionsViewBuilder: (context, options, dismiss, select) =>
             ExpenseSuggestionsWidget(
               onSelected: select,
-              suggestions: options.toList(),
+              onDismiss: dismiss,
+              suggestion: options.first,
               moneyFormatter: widget.moneyFormatter,
               hasManualAmount: widget.hasManualAmount,
             ),

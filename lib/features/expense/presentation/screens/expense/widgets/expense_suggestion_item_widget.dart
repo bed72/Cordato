@@ -1,9 +1,10 @@
-import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
-import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+
+import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
+import 'package:cordato/features/core/presentation/widgets/buttons/icon_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
@@ -13,6 +14,7 @@ final class const ExpenseSuggestionItemWidget({
   required final bool selected,
   required final VoidCallback onTap,
   required final bool hasManualAmount,
+  required final VoidCallback onDismiss,
   required final IMoneyFormatter moneyFormatter,
   required final ExpenseSuggestionEntity suggestion,
 }) extends StatelessWidget {
@@ -42,7 +44,7 @@ final class const ExpenseSuggestionItemWidget({
           child: InkWell(
             onTap: onTap,
             child: Padding(
-              padding: const .all(16.0),
+              padding: const .fromLTRB(16.0, 16.0, 2.0, 16.0),
               child: Row(
                 spacing: 12.0,
                 children: [
@@ -62,7 +64,7 @@ final class const ExpenseSuggestionItemWidget({
                       children: [
                         Text(
                           suggestion.description,
-                          style: context.typography.bodyMedium?.copyWith(
+                          style: context.typography.bodyLarge?.copyWith(
                             fontWeight: .w600,
                             color: colors.onSurface,
                           ),
@@ -70,18 +72,23 @@ final class const ExpenseSuggestionItemWidget({
                         if (amount != null)
                           Text(
                             moneyFormatter.formatCents(amount),
-                            style: context.typography.bodySmall?.copyWith(
+                            style: context.typography.bodyMedium?.copyWith(
+                              fontWeight: .w500,
                               color: colors.onSurfaceVariant,
                             ),
                           ),
                       ],
                     ),
                   ),
-                  ExcludeSemantics(
-                    child: IconWidget(
-                      size: 24.0,
-                      icon: Icons.chevron_right,
-                      color: colors.onSurfaceVariant,
+                  Semantics(
+                    label: 'Fechar sugestão',
+                    child: IconButtonWidget(
+                      icon: Icons.close,
+                      iconSize: 20.0,
+                      iconColor: colors.onSurfaceVariant,
+                      backgroundColor: colors.surfaceContainerLow,
+                      withoutBackground: true,
+                      onPress: onDismiss,
                     ),
                   ),
                 ],

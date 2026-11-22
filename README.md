@@ -80,6 +80,8 @@ a data de criação não é fornecida. Datas preservam os componentes do calend�
 sem deslocamento de fuso. O repository aplica trim à descrição, preservando
 o comportamento anterior. Filtros, ordenação, paginação e sugestões são
 processados em Dart sobre a coleção completa, sem IA.
+O formulário mostra uma sugestão por vez; o X fecha a sugestão sem aplicar
+seus dados. Selecioná-la continua preservando a data do formulário.
 Updates gravam o documento completo; não há merge atômico entre updates
 concorrentes.
 
