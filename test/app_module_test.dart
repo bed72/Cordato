@@ -51,7 +51,6 @@ void main() {
       final destinations = [
         RouteEnum.app,
         RouteEnum.dashboard,
-        RouteEnum.welcome,
         RouteEnum.user,
         RouteEnum.userEdit,
         RouteEnum.expense,

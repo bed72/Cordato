@@ -19,7 +19,8 @@ O estado vigente está no [README](../../README.md) e na
 6. O ToStore passou a ser registrado diretamente no módulo raiz, sem repasse
    entre módulos e sem singleton global manual.
 7. Durante a revisão documental, Welcome foi removida em paralelo da composição
-   e dos arquivos da feature. A suíte desta sessão antecede essa remoção.
+   e dos arquivos da feature. Uma etapa posterior removeu a constante de rota e
+   referências nos testes; análise limpa e 946 testes aprovados após essa conclusão.
 
 Não há migração de dados PocketBase ou de sessões anteriores. Não há backup
 restaurável pelo app, mesmo que um CSV tenha sido exportado em versões anteriores.

@@ -163,8 +163,7 @@ a interface.
 
 ## Verificação e pendências
 
-Última verificação de código nesta sessão, após simplificar a DI e antes da
-remoção paralela de Welcome:
+Última verificação em 22/11/2026, após concluir a remoção de Welcome:
 
 | Comando | Resultado |
 | --- | --- |
@@ -172,17 +171,15 @@ remoção paralela de Welcome:
 | `flutter analyze` | Sem problemas. |
 | `flutter test --reporter failures-only` | 946 testes aprovados. |
 
-Esta revisão documental não repete esses comandos nem valida as alterações
-paralelas posteriores. Não comprova build nativo,
-navegação real, renderização dos widgets ou prontidão para publicação.
+Esses resultados não comprovam build nativo, navegação real, renderização dos
+widgets ou prontidão para publicação.
 
 Pendências observadas no checkout, sem correção de código nesta revisão:
 
-- Welcome foi removida da composição e dos arquivos da feature durante esta
-  revisão. Seu antigo fluxo por e-mail não está disponível.
-- `RouteEnum` conserva constantes antigas de Welcome e autenticação; elas não
-  significam rotas disponíveis. A remoção paralela exige alinhar consumidores
-  e expectativas do catálogo nos testes.
+- Welcome foi removida, incluindo composição, arquivos, constante da rota e
+  referências nos testes. Seu antigo fluxo por e-mail não está disponível.
+- `RouteEnum` conserva constantes antigas de autenticação; elas não significam
+  rotas disponíveis.
 - O manifest Android mantém `RECORD_AUDIO` e app links antigos de autenticação.
   A ferramenta `tool/app_links.dart` também conserva associações antigas.
   Isso não representa funcionalidade de áudio ou autenticação disponível.

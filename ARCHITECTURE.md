@@ -282,11 +282,9 @@ nunca build. Lifecycle substancial fica em mixin específico da screen.
 /information/help
 ```
 
-Não há proteção por sessão. Constantes de Welcome e autenticação ainda presentes
-em RouteEnum não equivalem a rotas registradas. Welcome foi removida da composição
-e dos arquivos da feature em alteração paralela à revisão documental.
-Seus consumidores e testes precisam acompanhar essa remoção, sem restaurar
-Authentication.
+Não há proteção por sessão. Constantes de autenticação ainda presentes em
+RouteEnum não equivalem a rotas registradas. Welcome foi removida, incluindo
+composição, arquivos, constante de rota e referências nos testes.
 
 Navegação nova usa extensões de BuildContext no widget/mixin responsável.
 Argumentos levam dados, não callbacks. Preserve callbacks legados fora do escopo
@@ -379,17 +377,16 @@ Testes nativos: `dart run tool/test_home_widget_native.dart`, opcionalmente
 `android` ou `ios`, sem instâncias concorrentes de `dart run`.
 Não substituem build nativo ou inspeção manual.
 
-Última execução de código nesta sessão, antes da remoção paralela de Welcome:
-dependências resolvidas, análise sem problemas e 946 testes Flutter aprovados.
-A revisão exclusivamente documental não repete a suíte e não valida as alterações
-paralelas posteriores. Resultados antigos estão no histórico, não são bloqueios atuais.
+Última verificação em 22/11/2026, após concluir a remoção de Welcome:
+`flutter pub get` concluído, `flutter analyze` sem problemas e
+`flutter test --reporter failures-only` com 946 testes aprovados.
+Resultados antigos estão no histórico, não são bloqueios atuais.
 
 ## Limites e pendências
 
 - Não há backup/restauração, migração remota, criptografia auditada ou garantia
   de recuperação.
-- Constantes antigas de Welcome/autenticação e consumidores do catálogo exigem
-  alinhamento após a remoção paralela de Welcome.
+- Constantes antigas de autenticação permanecem sem rotas registradas.
 - Android ainda declara microfone e app links antigos; iOS e ferramentas de
   associação também exigem revisão antes da distribuição.
 - O workflow passa `BASE_URL` legado, sem configurar o armazenamento local.

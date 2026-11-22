@@ -430,6 +430,7 @@ Antes de concluir confira camadas, contrato puro, Bloc sem SDK, efeitos fora do
 build, ownership único, testes corretos, documentação coerente e ausência de
 comentários novos no código. Não enfraqueça arquitetura para aparentar conformidade.
 
-Pendências conhecidas incluem constantes/consumidores após remoção de Welcome,
-associações de autenticação legadas, permissões nativas remanescentes e BASE_URL no workflow.
+Welcome não possui arquivos, composição ou constante de rota; não restaure
+referências nos testes. Pendências conhecidas incluem constantes/associações de
+autenticação legadas, permissões nativas remanescentes e BASE_URL no workflow.
 Documentá-las não autoriza removê-las/restaurar fluxos incidentalmente.

@@ -17,9 +17,9 @@ Pendências nativas observadas, sem alteração nesta revisão documental:
 - Builds, permissões, links e comportamento distribuído precisam ser revistos
   em tarefa própria antes de publicação. Não restaure autenticação ou áudio.
 
-Última verificação Flutter da composição local, anterior à remoção paralela
-de Welcome: análise limpa e 946 testes aprovados. Builds nativos, suíte após
-essa remoção e a Action não foram executados nesta revisão documental.
+Última verificação Flutter da composição local, após concluir a remoção de
+Welcome: análise limpa e 946 testes aprovados. Builds nativos e a Action não
+foram executados nesta etapa.
 Resultados de builds citados em seções históricas abaixo não homologam a versão local.
 
 Android release builds require a dedicated signing key. Never use the Android

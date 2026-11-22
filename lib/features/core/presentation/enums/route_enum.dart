@@ -1,7 +1,6 @@
 enum RouteEnum(final String path) {
   app('/'),
   user('/user'),
-  welcome('/welcome'),
   settings('/settings'),
   userEdit('/user/edit'),
   settingsSupport('/settings/support'),
