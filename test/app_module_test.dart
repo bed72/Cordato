@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:tostore/tostore.dart';
@@ -10,17 +12,23 @@ import 'package:cordato/features/core/infrastructure/clients/home_widget/home_wi
 import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
+import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_event.dart';
+import 'package:cordato/features/dashboard/presentation/enums/dashboard_phase_enum.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 import 'package:cordato/features/expense/infrastructure/schemas/expense_schema.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
+import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
+import 'package:cordato/features/root/application/repositories/interface_home_widget_sync_repository.dart';
 import 'package:cordato/features/root/presentation/bloc/home_widget_launch_bloc.dart';
 import 'package:cordato/features/root/presentation/bloc/home_widget_sync_bloc.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 import 'package:cordato/features/user/infrastructure/storage/profile_initializer.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('Local route catalog and dependency resolution', () {
     late Directory directory;
     late ToStore database;
@@ -72,6 +80,74 @@ void main() {
     test('shares the ready database before visiting any feature', () {
       expect(boot.injector.get<ToStore>(), same(database));
       expect(boot.injector.get<ToStore>(), same(database));
+    });
+
+    test('Metrics reads Expense writes and Root refreshes through the local composition', () async {
+      const channel = MethodChannel('home_widget');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return true;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      final expenses = boot.injector.get<IExpenseRepository>();
+      final metrics = boot.injector.get<IMetricsRepository>();
+      final synchronization = boot.injector.get<IHomeWidgetSyncRepository>();
+      expect(boot.injector.get<IMetricsRepository>(), same(metrics));
+      await expenses.create(
+        cents: 123,
+        description: 'Mercado',
+        category: .food,
+      );
+
+      final monthly = await metrics.getExpenses(groupBy: .category);
+      expect(monthly.totalAmount, 123);
+      expect(monthly.categories!.single.category, 'food');
+
+      await synchronization.enable();
+      await synchronization.refresh();
+
+      final saved = calls.singleWhere(
+        (call) => call.method == 'saveWidgetData',
+      );
+      final arguments = saved.arguments as Map;
+      final now = DateTime.now();
+      expect(arguments['id'], 'monthly_summary');
+      expect(jsonDecode(arguments['data'] as String), {
+        'month': '${now.year}-${now.month.toString().padLeft(2, '0')}',
+        'cents': 123,
+      });
+      expect(calls.last.method, 'updateWidget');
+    });
+
+    test('Dashboard loads locally persisted metrics without visiting Expense or User', () async {
+      await boot.injector.get<IExpenseRepository>().create(
+        cents: 321,
+        description: 'Mercado',
+        category: .food,
+      );
+      final route = boot.routes.routes.singleWhere(
+        (route) => route.path == RouteEnum.dashboard.path,
+      );
+      boot.manager.enter('dashboard-metrics-test', route.ownerTags);
+      addTearDown(
+        () => boot.manager.leave('dashboard-metrics-test', route.ownerTags),
+      );
+      final bloc = boot.injector.get<DashboardBloc>();
+      addTearDown(bloc.close);
+      final loaded = bloc.stream.firstWhere(
+        (state) => state.phase == .ready || state.phase == .failure,
+      );
+
+      bloc.add(DashboardOpened());
+      final dashboard = await loaded;
+
+      expect(dashboard.phase, DashboardPhaseEnum.ready);
+      expect(dashboard.metrics!.totalAmount, 321);
+      expect(dashboard.metrics!.categories!.single.category, 'food');
+      expect(dashboard.expenses!.items.single.cents.cents, 321);
     });
 
     test(

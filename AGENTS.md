@@ -9,7 +9,7 @@ PocketBase abaixo descrevem o estado anterior e não prevalecem sobre este escop
 
 A fundação cobre abertura ToStore, schema, perfil inicial, DI e testes. User foi
 migrado explicitamente para leitura/atualização local de nome e avatar. Expense
-também usa ToStore; não migrar Metrics ou outros fluxos incidentalmente.
+e Metrics também usam ToStore; não migrar outros fluxos incidentalmente.
 `main` aguarda `createDependencies`; `ToStoreFactory.create` abre o banco em
 diretório persistente com schemas fornecidos pela composição, durabilidade
 `durable` e logs diagnósticos desativados. `createAppModule` e `createCoreModule`
@@ -27,10 +27,36 @@ Sugestões percorrem lotes de 100 até 30 correspondências literais case-insens
 antes de deduplicar; preservam categoria/valor da ocorrência mais recente.
 Escritas verificam hasErrors e registros afetados; ID ausente gera ExpenseException.
 Atualizações enviam somente campos fornecidos; sem campos apenas leem, sem refresh.
-Mutações reconhecidas solicitam refresh nativo, sem alterar Metrics ou formato
+Mutações reconhecidas solicitam refresh nativo, sem alterar o formato
 do widget. Expense/Expenses preservam ownership pela screen e sugestões pelo provide.
 Não prometa app funcional,
 backup, criptografia ou validação global a partir dos testes focados.
+
+Metrics é projeção local somente leitura de `expenses`, sem tabela própria,
+cache, triggers ou escritas em Expense. Recebe o ToStore compartilhado e usa
+`Agg.sum` por categoria em uma única consulta mensal: início inclusivo e próximo
+mês exclusivo, ISO UTC pelos componentes civis. Sem datas usa o mês atual;
+intervalos incompletos ou não mensais geram MetricsException antes da leitura.
+Total e distribuição vêm dos mesmos grupos; centavos permanecem inteiros e
+percentuais são calculados em Metrics, sem arredondamento antecipado. Categorias
+têm ordem textual determinística; ID sintético `monthly-yyyy-MM` é estável.
+Grupos locais usam `ExpenseCategoryMetricsResponse` em `infrastructure/responses/`;
+o repository monta o resumo mensal, sem camada `projections/`.
+Sem agrupamento categories é null; mês vazio agrupado tem lista vazia imutável.
+Infrastructure valida categorias pelo enum puro de Expense, sem importar sua
+implementação ou criar dependência reversa. Parsing inválido, categorias
+desconhecidas, grupos duplicados, somas inválidas e overflow projetado são
+inesperados. Schema garante tipo inteiro positivo; a agregação não audita
+corrupção dos registros que o motor ignora.
+Queries verificam hasErrors; falhas esperadas de banco/filesystem viram
+MetricsException com códigos, sem mensagens nativas na UI. Erros de programação
+propagam; não há fallback para zero nem retry automático. Só o mês atual captura
+revisão antes da leitura e aguarda publicação nativa, inclusive zero válido.
+Preserve IMetricsRepository, UI, ownership, módulo único sem path, formatos e
+revisões nativas. Testes usam SDK real e diretórios temporários; mocks do SDK em
+`test/support/core/mocks/` são permitidos apenas para falhas e operações pendentes
+de Metrics, além de User/Expense/inicializador. Composição global não simula
+módulos e pode usar canal nativo simulado, sem montar UI.
 
 UserEntity não possui ID/e-mail. IUserRepository expõe `getProfile` e `update`,
 sem exclusão de conta. UserRepository usa chaves independentes pelo ToStore pronto,
@@ -75,13 +101,13 @@ HomeWidgetSyncStartedEvent observa pedidos de atualização e solicita o resumo
 inicial sem autenticação. Cada refresh restartable habilita a publicação nativa
 por `IHomeWidgetSyncRepository.enable` antes de consultar Metrics. O adapter usa
 a API legada `setMonthlySessionActive(active: true)` somente como habilitação do
-client; isso não representa identidade ou sessão. Não migrar Metrics nem alterar
-formatos/implementações nativas nesta manutenção. Não há refresh periódico,
+client; isso não representa identidade ou sessão. Metrics já usa ToStore; não alterar
+formatos/implementações nativas incidentalmente. Não há refresh periódico,
 retry automático ou proteção de rotas por sessão na apresentação Root.
 
 Testes ToStore usam SDK real com diretórios temporários e fechamento explícito,
 sem UI. Mocks do SDK são restritos a injeção de falhas e controle de operações
-pendentes do inicializador/repositories User e Expense, com doubles em
+pendentes do inicializador/repositories User, Expense e Metrics, com doubles em
 `test/support/core/mocks/`. Preserve e registre os erros legados fora do escopo.
 
 Por solicitação explícita, testes exclusivos das implementações removidas de
@@ -91,8 +117,8 @@ removidos. O teste antigo do bootstrap PocketBase do core foi substituído pela
 cobertura atual de ToStore/DI em `test/features/core/tostore_module_test.dart`.
 Testes de composição global acompanham o contrato local e não devem mockar
 modules inteiros para ocultar dependências inválidas. Metrics e a composição
-do app ainda podem falhar enquanto suas implementações estiverem pendentes;
-preserve testes de comportamento desses fluxos existentes para a migração.
+do app acompanham os contratos locais; preserve seus testes de comportamento,
+sem restaurar dependências remotas a partir dos bloqueios históricos.
 Testes de acessibilidade deixam de enumerar arquivos de telas removidas, sem
 skip condicional por existência nem relaxamento das asserções dos componentes atuais.
 

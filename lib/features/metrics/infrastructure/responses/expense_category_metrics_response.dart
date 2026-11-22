@@ -1,23 +1,28 @@
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 
 final class const ExpenseCategoryMetricsResponse({
   required final String category,
   required final int totalAmount,
-  required final double percentage,
 }) {
-  factory ExpenseCategoryMetricsResponse.fromJson(Map<String, dynamic> json) =>
-      ExpenseCategoryMetricsResponse(
-        category: json['category'] as String,
-        percentage: (json['percentage'] as num).toDouble(),
-        totalAmount: int.parse(json['total_amount'] as String),
-      );
-}
+  factory ExpenseCategoryMetricsResponse.fromJson(Map<String, dynamic> json) {
+    final category = json['category'] as String;
+    ExpenseCategoryEnum.values.firstWhere((item) => item.value == category);
+    final amount = json['total_amount'] as int;
+    if (amount <= 0) {
+      throw const FormatException('Invalid expense aggregation');
+    }
 
-extension ExpenseCategoryMetricsResponseToEntity
-    on ExpenseCategoryMetricsResponse {
-  ExpenseCategoryMetricsEntity toEntity() => ExpenseCategoryMetricsEntity(
-    category: category,
-    percentage: percentage,
-    totalAmount: totalAmount,
-  );
+    return ExpenseCategoryMetricsResponse(
+      category: category,
+      totalAmount: amount,
+    );
+  }
+
+  ExpenseCategoryMetricsEntity toEntity({required int monthlyTotal}) =>
+      ExpenseCategoryMetricsEntity(
+        category: category,
+        totalAmount: totalAmount,
+        percentage: totalAmount / monthlyTotal * 100,
+      );
 }

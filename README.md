@@ -24,10 +24,11 @@ chaves KV independentes (`profile.name` e `profile.avatar`), sem fila ou estado
 pendente no repository. Atualizar ambos usa duas gravações, sem rollback conjunto.
 O inicializador completa apenas chaves ausentes e não substitui valores válidos.
 O objeto KV `profile` da etapa anterior não é migrado nesta branch sem usuários.
-Metrics ainda aguarda migração. As remoções anteriores
-de Authentication, Session, PocketBase, áudio, backend e worker deixam referências
-legadas e erros globais de análise/compilação; o app ainda não está pronto para
-publicação. Os estados e instruções PocketBase abaixo são anteriores à transição.
+Metrics também usa ToStore e agrega despesas locais por mês/categoria.
+Authentication, Session, PocketBase, áudio, backend e worker foram removidos.
+Os estados e instruções PocketBase abaixo são anteriores à transição; registros
+de análise/testes de cada etapa são históricos, não o estado atual do projeto.
+Esta migração não comprova prontidão para publicação nem execução nativa.
 Não há sincronização, importação remota, criptografia ou backup nesta entrega.
 Dados locais podem ser perdidos ao desinstalar o app ou trocar de dispositivo.
 
@@ -60,6 +61,40 @@ Verificação da migração User:
   83 aprovados e as mesmas 2 falhas por arquivos Sign-in/Sign-up removidos.
 - Suíte global e builds nativos não executados; não há confirmação de execução
   do app completo nem conferência visual.
+
+### Metrics local
+
+Metrics consulta o mesmo banco de Expense, sem tabela própria, cache ou servidor.
+A soma por categoria usa a agregação nativa do ToStore; total mensal e percentuais
+derivam desses mesmos grupos. Valores monetários permanecem em centavos inteiros;
+percentuais não são arredondados antes da apresentação.
+Os grupos locais são convertidos em `infrastructure/responses/`; o repository
+monta o resumo mensal, sem camada adicional de projeções.
+
+O contrato continua mensal: sem datas usa o mês civil atual, e filtros explícitos
+precisam cobrir um mês completo. Mês vazio retorna zero somente após leitura
+bem-sucedida. Falhas de banco ou parsing não viram zero nem retry automático.
+Dashboard e Root mantêm contratos e ownership; o resumo do widget recebe somente
+o mês atual, com a proteção existente por revisões. Não há mudança nos formatos
+ou renderizadores nativos, importação remota ou backup.
+
+Testes cobrem banco real, reabertura, reflexo de CRUD, limites civis, centavos
+acima do limite seguro JavaScript, percentuais, falhas e publicação. A composição
+global exercita Dashboard e Root com canal nativo simulado, sem montar UI.
+
+Verificação da migração Metrics:
+
+- `flutter pub get`: concluído, sem novas dependências.
+- `flutter analyze --no-pub`: sem problemas.
+- `flutter test --no-pub test/architecture test/features/metrics
+  test/features/dashboard test/features/root test/features/expense
+  test/app_module_test.dart --reporter failures-only`: **689 aprovados**.
+- `flutter test --no-pub --reporter failures-only`: **946 aprovados**, incluindo
+  arquitetura, Metrics, Dashboard, Root e composição global.
+- `git diff --check`: sem problemas.
+- Os bloqueios anteriores de compilação em Metrics/composição não apareceram
+  nesta verificação. Builds nativos e conferência em dispositivo não executados;
+  testes não comprovam renderização do widget, backup ou prontidão para publicação.
 
 ### Dashboard sem áudio
 

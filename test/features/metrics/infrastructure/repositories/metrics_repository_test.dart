@@ -1,45 +1,70 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:mocktail/mocktail.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
+import 'package:mocktail/mocktail.dart';
+import 'package:tostore/tostore.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
-
+import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
+import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
+import 'package:cordato/features/expense/infrastructure/schemas/expense_schema.dart';
+import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
-
 import 'package:cordato/features/metrics/infrastructure/repositories/metrics_repository.dart';
 
-import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
-import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
-
-import '../../../../support/core/fakes/pocketbase_fixture.dart';
 import '../../../../support/core/mocks/home_widget_client_mock.dart';
+import '../../../../support/core/mocks/tostore_mock.dart';
+import '../../../../support/core/mocks/tostore_query_builder_mock.dart';
 
 void main() {
-  const record = {
-    'id': 'metrics-id',
-    'owner': 'owner-id',
-    'total_amount': '389205',
-    'start_date': '2026-10-01',
-    'end_date': '2026-10-31',
-    'categories': [
-      {'category': 'housing', 'total_amount': '216000', 'percentage': 55.5},
-      {
-        'category': 'future_category',
-        'total_amount': '7965',
-        'percentage': 2.05,
-      },
-    ],
-  };
-  late PocketBaseFixture fixture;
+  late Directory directory;
+  late ToStore database;
+  late MetricsRepository repository;
   late HomeWidgetClientMock homeWidgetClient;
-  late IMetricsRepository repository;
 
-  void respond(Map<String, dynamic> body) {
-    fixture.respond = (_) => PocketBaseFixture.jsonResponse(body);
+  setUpAll(() {
+    registerFallbackValue(DateTime(2026));
+  });
+
+  setUp(() async {
+    directory = await Directory.systemTemp.createTemp('cordato-metrics-');
+    database = await ToStoreFactory.create(
+      directory: directory.path,
+      schemas: [expenseSchema],
+    );
+    homeWidgetClient = HomeWidgetClientMock();
+    when(homeWidgetClient.beginMonthlyRead).thenReturn(1);
+    when(
+      () => homeWidgetClient.publishMonthlyTotal(
+        revision: any(named: 'revision'),
+        month: any(named: 'month'),
+        cents: any(named: 'cents'),
+      ),
+    ).thenAnswer((_) async {});
+    repository = MetricsRepository(
+      database: database,
+      client: homeWidgetClient,
+    );
+  });
+
+  tearDown(() async {
+    await database.close();
+    await directory.delete(recursive: true);
+  });
+
+  Future<void> insert({
+    required int cents,
+    String category = 'other',
+    String date = '2026-10-15',
+  }) async {
+    final savedExpense = await database.insert('expenses', {
+      'amount': cents,
+      'category': category,
+      'occurred_on': '${date}T00:00:00.000Z',
+    });
+    expect(savedExpense.hasErrors, isFalse);
   }
 
   Future<ExpenseMetricsEntity> load({ExpenseMetricsGroupByEnum? groupBy}) =>
@@ -58,203 +83,119 @@ void main() {
     }
   }
 
-  setUpAll(() {
-    registerFallbackValue(DateTime(2026));
-  });
-  setUp(() {
-    fixture = PocketBaseFixture();
-    fixture.authenticate(id: 'owner-id');
-    addTearDown(fixture.client.close);
-    homeWidgetClient = HomeWidgetClientMock();
-    when(() => homeWidgetClient.beginMonthlyRead()).thenReturn(1);
-    when(
+  void verifyNoPublication() {
+    verifyNever(
       () => homeWidgetClient.publishMonthlyTotal(
         revision: any(named: 'revision'),
         month: any(named: 'month'),
         cents: any(named: 'cents'),
       ),
-    ).thenAnswer((_) async {});
-    repository = MetricsRepository(
-      pocketBase: fixture.client,
-      client: homeWidgetClient,
     );
-    respond({
-      'items': [record],
-    });
-  });
+  }
 
-  group('Monthly view requests', () {
+  group('Local monthly aggregation', () {
     test(
-      'awaits widget publication with the revision captured before HTTP',
+      'sums integer cents and derives unrounded category percentages',
       () async {
-        final now = DateTime.now();
-        final first = DateTime(now.year, now.month);
-        final last = DateTime(now.year, now.month + 1, 0);
-        final remote = Completer<http.Response>();
-        final started = Completer<void>();
-        final publishing = Completer<void>();
-        final published = Completer<void>();
-        when(() => homeWidgetClient.beginMonthlyRead()).thenReturn(7);
-        fixture.respond = (_) {
-          started.complete();
-          return remote.future;
-        };
-        when(
-          () => homeWidgetClient.publishMonthlyTotal(
-            revision: 7,
-            month: first,
-            cents: 389205,
-          ),
-        ).thenAnswer((_) {
-          publishing.complete();
-          return published.future;
-        });
-        var completed = false;
+        await insert(cents: 1, category: 'food');
+        await insert(cents: 1, category: 'food');
+        await insert(cents: 1, category: 'housing');
 
-        final pending = repository.getExpenses().then((metrics) {
-          completed = true;
-          return metrics;
-        });
-        await started.future;
-        verify(homeWidgetClient.beginMonthlyRead).called(1);
-        when(() => homeWidgetClient.beginMonthlyRead()).thenReturn(8);
-        remote.complete(
-          PocketBaseFixture.jsonResponse({
-            'items': [
-              {
-                ...record,
-                'start_date': first.toIso8601String().split('T').first,
-                'end_date': last.toIso8601String().split('T').first,
-              },
-            ],
-          }),
-        );
-        await publishing.future;
+        final metrics = await load(groupBy: .category);
 
-        expect(completed, isFalse);
-        published.complete();
-        expect((await pending).totalAmount, 389205);
-        expect(completed, isTrue);
+        expect(metrics.id, 'monthly-2026-10');
+        expect(metrics.totalAmount, 3);
+        expect(metrics.startDate, DateTime(2026, 10));
+        expect(metrics.endDate, DateTime(2026, 10, 31));
+        expect(metrics.categories!.map((category) => category.category), [
+          'food',
+          'housing',
+        ]);
+        expect(metrics.categories!.first.totalAmount, 2);
+        expect(metrics.categories!.first.percentage, closeTo(200 / 3, 1e-12));
+        expect(metrics.categories!.last.percentage, closeTo(100 / 3, 1e-12));
+        expect(() => metrics.categories!.clear(), throwsUnsupportedError);
+        verifyZeroInteractions(homeWidgetClient);
       },
     );
 
-    test('publishes the current month total returned by PocketBase', () async {
-      final now = DateTime.now();
-      final first = DateTime(now.year, now.month);
-      final last = DateTime(now.year, now.month + 1, 0);
-      respond({
-        'items': [
-          {
-            ...record,
-            'start_date': first.toIso8601String().split('T').first,
-            'end_date': last.toIso8601String().split('T').first,
-          },
-        ],
-      });
+    test('does not truncate the aggregation to an expense page', () async {
+      for (int index = 0; index < 135; index++) {
+        await insert(cents: 2);
+      }
 
-      final metrics = await repository.getExpenses();
-
-      expect(metrics.totalAmount, 389205);
-      verify(
-        () => homeWidgetClient.publishMonthlyTotal(
-          revision: 1,
-          month: first,
-          cents: 389205,
-        ),
-      ).called(1);
+      expect((await load(groupBy: .category)).totalAmount, 270);
     });
 
-    test('historical months never replace the widget total', () async {
-      final now = DateTime.now();
-      final first = DateTime(now.year, now.month - 1);
-      final last = DateTime(first.year, first.month + 1, 0);
-      respond({
-        'items': [
-          {
-            ...record,
-            'start_date': first.toIso8601String().split('T').first,
-            'end_date': last.toIso8601String().split('T').first,
-          },
-        ],
-      });
+    test('preserves cents beyond the JavaScript safe-integer limit', () async {
+      await insert(cents: 9007199254740991, category: 'food');
+      await insert(cents: 2, category: 'food');
+      await insert(cents: 2, category: 'other');
 
-      await repository.getExpenses(startDate: first, endDate: last);
+      final metrics = await load(groupBy: .category);
 
-      verifyNever(homeWidgetClient.beginMonthlyRead);
-      verifyNever(
-        () => homeWidgetClient.publishMonthlyTotal(
-          revision: any(named: 'revision'),
-          month: any(named: 'month'),
-          cents: any(named: 'cents'),
-        ),
-      );
+      expect(metrics.totalAmount, 9007199254740995);
+      expect(metrics.categories!.first.totalAmount, 9007199254740993);
     });
 
-    test('publishes zero only for a successful empty current month', () async {
-      final now = DateTime.now();
-      final first = DateTime(now.year, now.month);
-      respond({'items': []});
+    test('keeps categories absent when no grouping is requested', () async {
+      await insert(cents: 123);
 
-      await repository.getExpenses();
+      final metrics = await load();
 
-      verify(
-        () => homeWidgetClient.publishMonthlyTotal(
-          revision: 1,
-          month: first,
-          cents: 0,
-        ),
-      ).called(1);
+      expect(metrics.totalAmount, 123);
+      expect(metrics.categories, isNull);
     });
 
-    test('invalid responses never overwrite the widget with zero', () async {
-      respond({
-        'items': [
-          {...record, 'total_amount': 'invalid'},
-        ],
-      });
-
-      await expectLater(
-        repository.getExpenses(),
-        throwsA(isA<FormatException>()),
-      );
-
-      verifyNever(
-        () => homeWidgetClient.publishMonthlyTotal(
-          revision: any(named: 'revision'),
-          month: any(named: 'month'),
-          cents: any(named: 'cents'),
-        ),
-      );
-    });
     test(
-      'reads the native view without client-side aggregation or owner filters',
+      'returns a successful empty grouped month without fictitious categories',
       () async {
-        final data = await load();
+        final metrics = await load(groupBy: .category);
 
-        expect(data.id, 'metrics-id');
-        expect(data.totalAmount, 389205);
-        expect(data.startDate, DateTime(2026, 10));
-        expect(data.endDate, DateTime(2026, 10, 31));
-        expect(data.categories, isNull);
-        final captured = fixture.requests.single;
-        expect(captured.url.path, '/api/collections/metrics/records');
-        expect(captured.url.queryParameters, {
-          'page': '1',
-          'perPage': '2',
-          'filter': 'start_date = "2026-10-01"',
-          'skipTotal': 'true',
-        });
-        expect(captured.method, 'GET');
-        expect(captured.body, isEmpty);
-        expect(captured.headers['Authorization'], PocketBaseFixture.token);
+        expect(metrics.totalAmount, 0);
+        expect(metrics.categories, isEmpty);
+        expect(metrics.id, 'monthly-2026-10');
+        expect(metrics.startDate, DateTime(2026, 10));
+        expect(metrics.endDate, DateTime(2026, 10, 31));
+      },
+    );
+
+    test(
+      'returns zero and null categories for an empty ungrouped month',
+      () async {
+        final metrics = await load();
+
+        expect(metrics.totalAmount, 0);
+        expect(metrics.categories, isNull);
+      },
+    );
+
+    test('uses the same month ID before and after expense creation', () async {
+      final empty = await load();
+      await insert(cents: 1);
+
+      expect((await load()).id, empty.id);
+    });
+
+    test(
+      'includes both civil boundaries and excludes adjacent months',
+      () async {
+        await insert(cents: 1000, date: '2026-09-30');
+        await insert(cents: 2, date: '2026-10-01');
+        await insert(cents: 3, date: '2026-10-31');
+        await insert(cents: 1000, date: '2026-11-01');
+
+        expect((await load()).totalAmount, 5);
       },
     );
 
     for (final utc in [false, true]) {
-      test('uses civil dates for a leap month with utc=$utc', () async {
-        respond({'items': []});
+      test('uses civil components in a leap month with utc=$utc', () async {
+        await insert(cents: 1, date: '2024-02-01');
+        await insert(cents: 2, date: '2024-02-29');
+        await insert(cents: 1000, date: '2024-03-01');
 
-        final data = await repository.getExpenses(
+        final metrics = await repository.getExpenses(
           startDate: utc
               ? DateTime.utc(2024, 2, 1, 23)
               : DateTime(2024, 2, 1, 23),
@@ -263,32 +204,90 @@ void main() {
               : DateTime(2024, 2, 29, 23),
         );
 
-        expect(
-          fixture.requests.single.url.queryParameters['filter'],
-          'start_date = "2024-02-01"',
-        );
-        expect(data.startDate, DateTime(2024, 2));
-        expect(data.endDate, DateTime(2024, 2, 29));
+        expect(metrics.totalAmount, 3);
+        expect(metrics.startDate, DateTime(2024, 2));
+        expect(metrics.endDate, DateTime(2024, 2, 29));
       });
     }
 
+    test('handles the December to January boundary', () async {
+      await insert(cents: 1, date: '2025-12-31');
+      await insert(cents: 1000, date: '2026-01-01');
+
+      final metrics = await repository.getExpenses(
+        startDate: DateTime(2025, 12),
+        endDate: DateTime(2025, 12, 31),
+      );
+
+      expect(metrics.totalAmount, 1);
+      expect(metrics.endDate, DateTime(2025, 12, 31));
+    });
+
+    test('reads persisted expenses after reopening the database', () async {
+      await insert(cents: 123, category: 'food');
+      await database.close();
+      database = await ToStoreFactory.create(
+        directory: directory.path,
+        schemas: [expenseSchema],
+      );
+      repository = MetricsRepository(
+        database: database,
+        client: homeWidgetClient,
+      );
+
+      final metrics = await load(groupBy: .category);
+
+      expect(metrics.totalAmount, 123);
+      expect(metrics.categories!.single.category, 'food');
+    });
+
     test(
-      'defaults to the current civil month when both dates are absent',
+      'reflects CRUD, category changes and month moves without cached totals',
       () async {
-        respond({'items': []});
-        final now = DateTime.now();
-
-        final data = await repository.getExpenses();
-
-        expect(data.startDate, DateTime(now.year, now.month));
-        expect(data.endDate, DateTime(now.year, now.month + 1, 0));
-        expect(
-          fixture.requests.single.url.queryParameters['filter'],
-          contains(data.startDate.year.toString()),
+        final expenses = ExpenseRepository(
+          database: database,
+          client: homeWidgetClient,
         );
+        final created = await expenses.create(
+          cents: 100,
+          description: 'Mercado',
+          occurredOn: DateTime(2026, 10, 10),
+          category: .food,
+        );
+        expect((await load()).totalAmount, 100);
+
+        await expenses.update(id: created.id, cents: 200, category: .housing);
+        final changed = await load(groupBy: .category);
+        expect(changed.totalAmount, 200);
+        expect(changed.categories!.single.category, 'housing');
+
+        await expenses.update(
+          id: created.id,
+          occurredOn: DateTime(2026, 9, 30),
+        );
+        expect((await load()).totalAmount, 0);
+
+        await expenses.update(
+          id: created.id,
+          occurredOn: DateTime(2026, 10, 31),
+        );
+        expect((await load()).totalAmount, 200);
+
+        await expenses.delete(id: created.id);
+        expect((await load()).totalAmount, 0);
       },
     );
 
+    test('rejects unknown stored categories even without grouping', () async {
+      await insert(cents: 1, category: 'unknown');
+
+      await expectLater(load(), throwsStateError);
+      await expectLater(load(groupBy: .category), throwsStateError);
+      verifyNoPublication();
+    });
+  });
+
+  group('Monthly period validation', () {
     final invalidPeriods = [
       (name: 'start only', start: DateTime(2026, 10), end: null),
       (name: 'end only', start: null, end: DateTime(2026, 10, 31)),
@@ -311,349 +310,302 @@ void main() {
     ];
     for (final period in invalidPeriods) {
       test(
-        'rejects ${period.name} without HTTP or silently changing the period',
+        'rejects ${period.name} before accessing storage or the widget',
         () async {
+          final unused = ToStoreMock();
+          final local = MetricsRepository(
+            database: unused,
+            client: homeWidgetClient,
+          );
+
           final errors = await errorsOf(
-            repository.getExpenses(
-              startDate: period.start,
-              endDate: period.end,
-            ),
+            local.getExpenses(startDate: period.start, endDate: period.end),
           );
 
           expect(errors.errors.single.title, 'Período inválido');
           expect(errors.errors.single.parameter, 'period');
-          expect(fixture.requests, isEmpty);
+          verifyZeroInteractions(unused);
           verifyZeroInteractions(homeWidgetClient);
         },
       );
     }
   });
 
-  group('Server-calculated metrics', () {
-    test('preserves category totals, percentages and order without recomputing them', () async {
-      final data = await load(groupBy: .category);
-
-      expect(data.totalAmount, 389205);
-      expect(data.categories!.map((category) => category.category), [
-        'housing',
-        'future_category',
-      ]);
-      expect(data.categories!.first.totalAmount, 216000);
-      expect(data.categories!.first.percentage, 55.5);
-      expect(data.categories!.last.totalAmount, 7965);
-      expect(data.categories!.last.percentage, 2.05);
-      expect(() => data.categories!.clear(), throwsUnsupportedError);
-    });
-
-    for (final grouping in ExpenseMetricsGroupByEnum.values) {
-      test(
-        'returns an empty period for absent ${grouping.name} metrics',
-        () async {
-          respond({'items': []});
-
-          final data = await load(groupBy: grouping);
-
-          expect(data.totalAmount, 0);
-          expect(data.categories, isEmpty);
-          expect(data.startDate, DateTime(2026, 10));
-          expect(data.endDate, DateTime(2026, 10, 31));
-        },
-      );
-    }
-
+  group('Native monthly publication', () {
     test(
-      'returns zero with no grouping for an absent ungrouped period',
+      'defaults to the current month and publishes its local total',
       () async {
-        respond({'items': []});
+        final now = DateTime.now();
+        final first = DateTime(now.year, now.month);
+        final date = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+        await insert(cents: 123, date: date);
 
-        final data = await load();
+        final metrics = await repository.getExpenses();
 
-        expect(data.totalAmount, 0);
-        expect(data.categories, isNull);
+        expect(metrics.totalAmount, 123);
+        expect(metrics.startDate, first);
+        expect(metrics.endDate, DateTime(now.year, now.month + 1, 0));
+        verify(homeWidgetClient.beginMonthlyRead).called(1);
+        verify(
+          () => homeWidgetClient.publishMonthlyTotal(
+            revision: 1,
+            month: first,
+            cents: 123,
+          ),
+        ).called(1);
       },
     );
 
-    test('preserves a server record with zero totals', () async {
-      respond({
-        'items': [
-          {...record, 'total_amount': '0', 'categories': []},
-        ],
-      });
+    test('publishes a successful empty current month as zero', () async {
+      final now = DateTime.now();
 
-      final data = await load(groupBy: .category);
+      await repository.getExpenses();
 
-      expect(data.totalAmount, 0);
-      expect(data.categories, isEmpty);
-      expect(data.id, 'metrics-id');
+      verify(
+        () => homeWidgetClient.publishMonthlyTotal(
+          revision: 1,
+          month: DateTime(now.year, now.month),
+          cents: 0,
+        ),
+      ).called(1);
+    });
+
+    test('historical queries do not acquire revisions or publish', () async {
+      final now = DateTime.now();
+      final first = DateTime(now.year, now.month - 1);
+
+      await repository.getExpenses(
+        startDate: first,
+        endDate: DateTime(first.year, first.month + 1, 0),
+      );
+
+      verifyZeroInteractions(homeWidgetClient);
     });
 
     test(
-      'preserves integer cents larger than the JavaScript safe-integer limit',
+      'awaits publication with the revision captured before reading',
       () async {
-        respond({
-          'items': [
-            {...record, 'total_amount': '9007199254740993'},
-          ],
+        final publishing = Completer<void>();
+        final published = Completer<void>();
+        when(homeWidgetClient.beginMonthlyRead).thenReturn(7);
+        when(
+          () => homeWidgetClient.publishMonthlyTotal(
+            revision: 7,
+            month: any(named: 'month'),
+            cents: 0,
+          ),
+        ).thenAnswer((_) {
+          publishing.complete();
+          return published.future;
         });
+        bool completed = false;
 
-        expect((await load()).totalAmount, 9007199254740993);
+        final pending = repository.getExpenses().then((metrics) {
+          completed = true;
+          return metrics;
+        });
+        when(homeWidgetClient.beginMonthlyRead).thenReturn(8);
+        await publishing.future;
+
+        expect(completed, isFalse);
+        published.complete();
+        expect((await pending).totalAmount, 0);
+        expect(completed, isTrue);
       },
     );
 
-    test('waits for the view response before returning', () async {
-      final pending = Completer<http.Response>();
-      final started = Completer<void>();
-      fixture.respond = (_) {
-        started.complete();
-        return pending.future;
-      };
-      var completed = false;
-      final operation = load().then((value) {
-        completed = true;
-        return value;
-      });
-
-      await started.future;
-      expect(completed, isFalse);
-      pending.complete(
-        PocketBaseFixture.jsonResponse({
-          'items': [record],
-        }),
+    test('malformed local data never publishes a fabricated zero', () async {
+      final now = DateTime.now();
+      await insert(
+        cents: 1,
+        category: 'unknown',
+        date: '${now.year}-${now.month.toString().padLeft(2, '0')}-01',
       );
 
-      expect((await operation).totalAmount, 389205);
-      expect(completed, isTrue);
+      await expectLater(repository.getExpenses(), throwsStateError);
+
+      verifyNoPublication();
     });
   });
 
-  group('Malformed responses', () {
-    for (final envelope in <Map<String, dynamic>>[
-      {},
-      {'items': null},
-      {'data': record},
-    ]) {
-      test(
-        'invalid current-month envelope never becomes a published zero: $envelope',
-        () async {
-          respond(envelope);
+  group('Storage failures', () {
+    final invalidAggregations = <String, List<Map<String, dynamic>>>{
+      'duplicate category groups': [
+        {'category': 'food', 'total_amount': 1},
+        {'category': 'food', 'total_amount': 2},
+      ],
+      'overflowing monthly total': [
+        {'category': 'food', 'total_amount': 9223372036854775807},
+        {'category': 'other', 'total_amount': 1},
+      ],
+    };
+    for (final scenario in invalidAggregations.entries) {
+      test('rejects ${scenario.key} without publishing a total', () async {
+        final failing = ToStoreMock();
+        final query = ToStoreQueryBuilderMock();
+        when(() => failing.query('expenses')).thenAnswer((_) => query);
+        when(() => query.where(any(), any(), any())).thenAnswer((_) => query);
+        when(() => query.groupBy(any())).thenAnswer((_) => query);
+        when(() => query.selectAgg(any())).thenAnswer((_) => query);
+        when(() => query.future).thenAnswer(
+          (_) async => QueryResult<Map<String, dynamic>>(
+            type: ResultType.success,
+            data: scenario.value,
+          ),
+        );
+        final local = MetricsRepository(
+          database: failing,
+          client: homeWidgetClient,
+        );
 
-          await expectLater(
-            repository.getExpenses(),
-            throwsA(isA<TypeError>()),
-          );
+        await expectLater(local.getExpenses(), throwsFormatException);
 
-          verifyNever(
-            () => homeWidgetClient.publishMonthlyTotal(
-              revision: any(named: 'revision'),
-              month: any(named: 'month'),
-              cents: any(named: 'cents'),
-            ),
-          );
-        },
-      );
-    }
-
-    for (final body in ['', 'invalid JSON', '[]', 'null']) {
-      test('invalid successful response body propagates: "$body"', () async {
-        fixture.respond = (_) => http.Response(body, 200);
-
-        await expectLater(load(), throwsA(isA<TypeError>()));
+        verifyNoPublication();
       });
     }
 
-    final malformed = <String, Map<String, dynamic>>{
-      'missing items': {},
-      'null items': {'items': null},
-      'wrong envelope': {'data': record},
-      'invalid record': {
-        'items': [null],
-      },
-      'duplicate months': {
-        'items': [record, record],
-      },
-      'fractional amount': {
-        'items': [
-          {...record, 'total_amount': '3.50'},
-        ],
-      },
-      'numeric amount': {
-        'items': [
-          {...record, 'total_amount': 350},
-        ],
-      },
-      'invalid date': {
-        'items': [
-          {...record, 'start_date': 'invalid'},
-        ],
-      },
-      'different month': {
-        'items': [
-          {...record, 'start_date': '2026-09-01'},
-        ],
-      },
-      'different end': {
-        'items': [
-          {...record, 'end_date': '2026-10-30'},
-        ],
-      },
-      'missing grouping': {
-        'items': [
-          {...record, 'categories': null},
-        ],
-      },
-      'malformed category': {
-        'items': [
-          {
-            ...record,
-            'categories': [
-              {'category': 'food', 'total_amount': 'invalid', 'percentage': 1},
-            ],
-          },
-        ],
-      },
-    };
-    for (final scenario in malformed.entries) {
-      test(
-        'propagates ${scenario.key} instead of returning zero or a business failure',
-        () async {
-          respond(scenario.value);
-
-          await expectLater(
-            load(),
-            throwsA(anyOf(isA<TypeError>(), isA<FormatException>())),
-          );
-        },
+    test('preserves ordered native codes without storage messages', () async {
+      final failing = ToStoreMock();
+      final failure = DbException([
+        ...DbResult.error(
+          type: ResultType.sysIoGeneric,
+          message: 'private',
+        ).statuses,
+        ...DbResult.error(
+          type: ResultType.sysTimeout,
+          message: 'private',
+        ).statuses,
+      ]);
+      when(() => failing.query('expenses')).thenThrow(failure);
+      final local = MetricsRepository(
+        database: failing,
+        client: homeWidgetClient,
       );
-    }
-  });
 
-  group('Failure handling', () {
-    for (final status in [401, 403, 404, 422, 429, 500]) {
-      test(
-        'HTTP $status preserves the session and never publishes a current-month zero',
-        () async {
-          fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-            'message': 'Remote failure',
-          }, status: status);
-          final authRecord = fixture.client.authStore.record;
-
-          final errors = await errorsOf(repository.getExpenses());
-
-          expect(errors.errors.single.status, '$status');
-          expect(fixture.client.authStore.token, PocketBaseFixture.token);
-          expect(fixture.client.authStore.record, same(authRecord));
-          verifyNever(
-            () => homeWidgetClient.publishMonthlyTotal(
-              revision: any(named: 'revision'),
-              month: any(named: 'month'),
-              cents: any(named: 'cents'),
-            ),
-          );
-        },
-      );
-    }
-
-    test('preserves ordered PocketBase errors including codes, pointers and parameters', () async {
-      fixture.respond = (_) => PocketBaseFixture.jsonResponse({
-        'message': 'Filtro inválido',
-        'data': {
-          'filter': {
-            'code': 'validation_invalid_filter',
-            'message': 'Período inválido',
-          },
-          'sort': {
-            'code': 'validation_invalid_sort',
-            'message': 'Ordenação inválida',
-          },
-        },
-      }, status: 400);
-
-      final errors = (await errorsOf(load())).errors;
+      final errors = await errorsOf(local.getExpenses());
 
       expect(
-        errors
-            .map(
-              (error) => (
-                error.status,
-                error.code,
-                error.pointer,
-                error.parameter,
-                error.detail,
-              ),
-            )
-            .toList(),
-        [
-          (
-            '400',
-            'validation_invalid_filter',
-            '/filter',
-            'filter',
-            'Período inválido',
-          ),
-          (
-            '400',
-            'validation_invalid_sort',
-            '/sort',
-            'sort',
-            'Ordenação inválida',
-          ),
-        ],
+        errors.errors.map((error) => error.code),
+        failure.statuses.map((status) => status.codeKey),
       );
+      expect(errors.errors.every((error) => error.detail == null), isTrue);
+      expect(errors.errors.every((error) => error.title == null), isTrue);
+      verify(() => failing.query('expenses')).called(1);
+      verifyNoPublication();
     });
 
-    for (final body in <Map<String, dynamic>>[
-      {},
-      {'errors': []},
-      {'errors': 'invalid'},
-    ]) {
-      test(
-        'preserves HTTP status without native field errors: $body',
-        () async {
-          fixture.respond = (_) =>
-              PocketBaseFixture.jsonResponse(body, status: 503);
-
-          expect((await errorsOf(load())).errors.single.status, '503');
-        },
+    test('maps filesystem errors without retry or a published zero', () async {
+      final failing = ToStoreMock();
+      when(() => failing.query('expenses'))
+          .thenThrow(const FileSystemException('private'));
+      final local = MetricsRepository(
+        database: failing,
+        client: homeWidgetClient,
       );
-    }
 
-    for (final failure in <Exception>[
-      const SocketException('offline'),
-      TimeoutException('timeout'),
-      http.ClientException('connection closed'),
-    ]) {
-      test(
-        'translates ${failure.runtimeType} into a safe MetricsException',
-        () async {
-          fixture.respond = (_) => throw failure;
+      final errors = await errorsOf(local.getExpenses());
 
-          expect(
-            (await errorsOf(load())).errors.single.title,
-            'Erro desconhecido',
-          );
-        },
-      );
-    }
+      expect(errors.errors.single.title, 'Erro desconhecido');
+      verify(() => failing.query('expenses')).called(1);
+      verifyNoPublication();
+    });
 
     for (final failure in [
-      StateError('unexpected'),
-      const FormatException('invalid payload'),
+      StateError('private'),
+      const FormatException('private'),
+      DbException(
+        DbResult.error(
+          type: ResultType.devTableNotFound,
+          message: 'private',
+        ).statuses,
+      ),
     ]) {
-      for (final synchronous in [false, true]) {
-        test(
-          'propagates ${failure.runtimeType} unchanged with synchronous=$synchronous',
-          () async {
-            fixture.respond = (_) {
-              if (synchronous) {
-                throw failure;
-              }
-              return Future<http.Response>.error(failure);
-            };
+      test(
+        'propagates ${failure.runtimeType} as unexpected without retry',
+        () async {
+          final failing = ToStoreMock();
+          when(() => failing.query('expenses')).thenThrow(failure);
+          final local = MetricsRepository(
+            database: failing,
+            client: homeWidgetClient,
+          );
 
-            await expectLater(load(), throwsA(same(failure)));
-          },
-        );
-      }
+          await expectLater(local.getExpenses(), throwsA(same(failure)));
+
+          verify(() => failing.query('expenses')).called(1);
+          verifyNoPublication();
+        },
+      );
     }
+
+    test(
+      'checks query errors instead of publishing an empty success',
+      () async {
+        final failing = ToStoreMock();
+        final query = ToStoreQueryBuilderMock();
+        when(() => failing.query('expenses')).thenAnswer((_) => query);
+        when(() => query.where(any(), any(), any())).thenAnswer((_) => query);
+        when(() => query.groupBy(any())).thenAnswer((_) => query);
+        when(() => query.selectAgg(any())).thenAnswer((_) => query);
+        when(() => query.future).thenAnswer(
+          (_) async => QueryResult<Map<String, dynamic>>(
+            data: [],
+            type: ResultType.sysIoGeneric,
+            message: 'private',
+          ),
+        );
+        final local = MetricsRepository(
+          database: failing,
+          client: homeWidgetClient,
+        );
+
+        final errors = await errorsOf(local.getExpenses());
+
+        expect(errors.errors.single.code, ResultType.sysIoGeneric.codeKey);
+        expect(errors.errors.single.detail, isNull);
+        verifyNoPublication();
+      },
+    );
+
+    test(
+      'waits for a pending storage read and keeps its original revision',
+      () async {
+        final failing = ToStoreMock();
+        final query = ToStoreQueryBuilderMock();
+        final reading = Completer<QueryResult<Map<String, dynamic>>>();
+        when(() => failing.query('expenses')).thenAnswer((_) => query);
+        when(() => query.where(any(), any(), any())).thenAnswer((_) => query);
+        when(() => query.groupBy(any())).thenAnswer((_) => query);
+        when(() => query.selectAgg(any())).thenAnswer((_) => query);
+        when(() => query.future).thenAnswer((_) => reading.future);
+        when(homeWidgetClient.beginMonthlyRead).thenReturn(7);
+        final local = MetricsRepository(
+          database: failing,
+          client: homeWidgetClient,
+        );
+        final pending = local.getExpenses();
+
+        verify(homeWidgetClient.beginMonthlyRead).called(1);
+        verifyNoPublication();
+        when(homeWidgetClient.beginMonthlyRead).thenReturn(8);
+        reading.complete(
+          QueryResult<Map<String, dynamic>>(
+            type: ResultType.success,
+            data: [
+              {'category': 'food', 'total_amount': 123},
+            ],
+          ),
+        );
+
+        expect((await pending).totalAmount, 123);
+        verify(
+          () => homeWidgetClient.publishMonthlyTotal(
+            revision: 7,
+            month: any(named: 'month'),
+            cents: 123,
+          ),
+        ).called(1);
+      },
+    );
   });
 }

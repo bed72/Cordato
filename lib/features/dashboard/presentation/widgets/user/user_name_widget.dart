@@ -23,7 +23,7 @@ final class const UserNameWidget({
       user?.displayName ?? 'Cordato',
       seed: user == null
           ? 'cordato-placeholder'
-          : user?.avatar ?? 'cordato-user-${user?.id}',
+          : user?.avatar ?? 'cordato-user',
     );
   }
 

@@ -1,18 +1,18 @@
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'dart:io';
+
+import 'package:tostore/tostore.dart';
+
 import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
-
-import 'package:cordato/features/core/infrastructure/serializers/date_serializer.dart';
-
-import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
-import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
-
-import 'package:cordato/features/metrics/infrastructure/responses/expense_metrics_response.dart';
-
+import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
+import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
+import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
+import 'package:cordato/features/metrics/infrastructure/mappers/metrics_mapper.dart';
+import 'package:cordato/features/metrics/infrastructure/responses/expense_category_metrics_response.dart';
 
 final class MetricsRepository({
-  required final PocketBase _pocketBase,
+  required final ToStore _database,
   required final IHomeWidgetClient _client,
 }) implements IMetricsRepository {
   @override
@@ -21,13 +21,6 @@ final class MetricsRepository({
     DateTime? startDate,
     ExpenseMetricsGroupByEnum? groupBy,
   }) async {
-    final now = DateTime.now();
-    final start = startDate ?? DateTime(now.year, now.month);
-
-    final first = DateTime(start.year, start.month);
-    final last = DateTime(start.year, start.month + 1, 0);
-    final isCurrentMonth = first.year == now.year && first.month == now.month;
-
     if (!_isCompleteMonth(startDate: startDate, endDate: endDate)) {
       throw MetricsException(
         errors: const ErrorsEntity(
@@ -42,48 +35,37 @@ final class MetricsRepository({
       );
     }
 
+    final now = DateTime.now();
+    final start = startDate ?? now;
+    final first = DateTime(start.year, start.month);
+    final isCurrentMonth = first.year == now.year && first.month == now.month;
     final widgetRevision = isCurrentMonth ? _client.beginMonthlyRead() : null;
 
     try {
-      final response = await _pocketBase.send<Map<String, dynamic>>(
-        '/api/collections/metrics/records',
-        query: {
-          'page': 1,
-          'perPage': 2,
-          'skipTotal': true,
-          'filter': _pocketBase.filter('start_date = {:month}', {
-            'month': dateSerializer(first),
-          }),
-        },
+      final groups = await _database
+          .query('expenses')
+          .where(
+            'occurred_on',
+            '>=',
+            DateTime.utc(first.year, first.month).toIso8601String(),
+          )
+          .where(
+            'occurred_on',
+            '<',
+            DateTime.utc(first.year, first.month + 1).toIso8601String(),
+          )
+          .groupBy(['category'])
+          .selectAgg(['category', Agg.sum('amount', alias: 'total_amount')])
+          .future;
+      MetricsMapper.checkQuery(groups);
+
+      final metrics = _monthlyMetrics(
+        categories: groups.data
+            .map(ExpenseCategoryMetricsResponse.fromJson)
+            .toList(),
+        month: first,
+        groupBy: groupBy,
       );
-
-      final items = response['items'] as List;
-      if (items.isEmpty) {
-        if (widgetRevision != null) {
-          await _client.publishMonthlyTotal(
-            cents: 0,
-            month: first,
-            revision: widgetRevision,
-          );
-        }
-
-        return ExpenseMetricsEntity(
-          endDate: last,
-          totalAmount: 0,
-          startDate: first,
-          id: 'empty-${dateSerializer(first)}',
-          categories: groupBy == .category ? const [] : null,
-        );
-      }
-      if (items.length != 1) throw const FormatException('Métricas duplicadas');
-
-      final metrics = ExpenseMetricsResponse.fromJson(
-        items.single as Map<String, dynamic>,
-      ).toEntity();
-
-      if (metrics.startDate != first || metrics.endDate != last) {
-        throw const FormatException('Período das métricas inválido');
-      }
 
       if (widgetRevision != null) {
         await _client.publishMonthlyTotal(
@@ -93,21 +75,59 @@ final class MetricsRepository({
         );
       }
 
-      return ExpenseMetricsEntity(
-        id: metrics.id,
-        endDate: metrics.endDate,
-        startDate: metrics.startDate,
-        totalAmount: metrics.totalAmount,
-        categories: groupBy == .category ? metrics.categories : null,
-      );
-    } on ClientException catch (exception) {
-      throw MetricsException(errors: PocketBaseMapper.fromException(exception));
+      return metrics;
+    } on DbException catch (exception) {
+      throw MetricsMapper.failure(exception);
+    } on FileSystemException {
+      throw MetricsException(errors: .unknown());
     }
   }
 
+  ExpenseMetricsEntity _monthlyMetrics({
+    required List<ExpenseCategoryMetricsResponse> categories,
+    required DateTime month,
+    ExpenseMetricsGroupByEnum? groupBy,
+  }) {
+    int totalAmount = 0;
+    final categoryKeys = <String>{};
+
+    for (final category in categories) {
+      if (!categoryKeys.add(category.category)) {
+        throw const FormatException('Duplicate expense category group');
+      }
+
+      totalAmount += category.totalAmount;
+      if (totalAmount < category.totalAmount) {
+        throw const FormatException('Expense total overflow');
+      }
+    }
+
+    categories.sort(
+      (first, second) => first.category.compareTo(second.category),
+    );
+    final monthKey =
+        '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
+
+    return ExpenseMetricsEntity(
+      id: 'monthly-$monthKey',
+      startDate: month,
+      endDate: DateTime(month.year, month.month + 1, 0),
+      totalAmount: totalAmount,
+      categories: groupBy == .category
+          ? categories
+                .map((category) => category.toEntity(monthlyTotal: totalAmount))
+                .toList()
+          : null,
+    );
+  }
+
   bool _isCompleteMonth({DateTime? startDate, DateTime? endDate}) {
-    if (startDate == null && endDate == null) return true;
-    if (startDate == null || endDate == null) return false;
+    if (startDate == null && endDate == null) {
+      return true;
+    }
+    if (startDate == null || endDate == null) {
+      return false;
+    }
 
     final last = DateTime(startDate.year, startDate.month + 1, 0);
     return startDate.day == 1 &&

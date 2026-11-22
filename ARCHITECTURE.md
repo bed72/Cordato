@@ -45,10 +45,11 @@ fuso. O schema não impõe essa normalização nem possui default de timestamp:
 o padrão hoje no calendário local é calculado a cada criação no repository,
 nunca na abertura do banco.
 
-Metrics ainda não migrou para armazenamento local. As referências restantes a PocketBase e fluxos removidos ainda
-bloqueiam análise/compilação globais. Testes focados exercitam banco real em
-diretórios temporários, reabertura, defaults, restrições, perfil e DI do core,
-sem UI; não comprovam que o app completo inicia nem substituem build nativo.
+Metrics também usa o armazenamento local, como projeção somente leitura de
+`expenses`. As descrições PocketBase abaixo são históricas e não prevalecem
+sobre os contratos locais. Testes exercitam banco real em diretórios temporários,
+reabertura, defaults, restrições, perfil, métricas e DI, sem UI; não comprovam
+que o app completo inicia nem substituem build nativo.
 
 ### Despesas locais
 
@@ -82,7 +83,7 @@ no schema local.
 Mutações reconhecidas solicitam refresh pelo client nativo compartilhado antes
 da releitura da entidade. Falha posterior de leitura não desfaz a gravação nem
 gera retry automático. Metrics ainda determina o conteúdo publicado pelo widget
-e não foi migrado nesta mudança. Rotas Expense não exigem autenticação.
+e agora lê os dados locais. Rotas Expense não exigem autenticação.
 O módulo único sem path e o ownership dos Blocs permanecem: Expense/Expenses
 pela screen com factories estáveis e sugestões exclusivamente pelo provide.
 
@@ -91,6 +92,62 @@ Expense mantém somente CRUD, consultas e sugestões: não produz DocumentModel
 nem oferece contrato de exportação. Nenhuma despesa ou dado persistido foi
 apagado por essa remoção. Backup e restauração nativos do ToStore permanecem
 para uma tarefa posterior.
+
+### Métricas locais
+
+Metrics mantém `IMetricsRepository.getExpenses`, entidades, Bloc restartable e
+ownership existentes. O único `metricsModule`, sem path, registra o repository
+compartilhado e factories independentes de Bloc, disponíveis antes de visitar
+qualquer rota. Infrastructure recebe o mesmo ToStore pronto do bootstrap e não
+fecha o banco. Não há tabela de métricas, cache, materialização, triggers ou
+escritas em Expense.
+
+Cada consulta agrega `amount` por `category` nativamente com `Agg.sum`, filtrando
+`occurred_on` desde a meia-noite UTC do primeiro dia até o início exclusivo do mês
+seguinte. Os componentes civis são preservados sem conversão de fuso. Ausência
+de ambas as datas seleciona o mês civil atual; uma data isolada, intervalo parcial,
+invertido ou de vários meses gera MetricsException antes de acessar storage.
+Horário e indicação UTC das entradas não mudam o período civil.
+
+`ExpenseCategoryMetricsResponse`, em `infrastructure/responses/`, converte cada
+grupo local com casts estritos, valida categoria/centavos e produz a entidade
+de categoria com seu percentual. O repository coordena o total, período, ID,
+ordem e agrupamento do resumo mensal; não há camada `projections/`.
+
+Total mensal e distribuição vêm dos mesmos grupos retornados, sem consulta
+separada de total ou carregamento de despesas pela paginação pública de Expense.
+A soma mantém centavos inteiros e rejeita overflow do total projetado. Percentuais
+são derivados em Metrics por categoria/total × 100, sem arredondamento antecipado;
+somente os percentuais usam double. Categorias são ordenadas por chave textual
+para desempate estável na apresentação. O ID sintético `monthly-yyyy-MM` permanece
+igual no mês vazio e após mutações. Sem agrupamento, categories é null; com
+agrupamento e mês vazio, é uma lista imutável vazia, com total zero.
+
+Infrastructure de Metrics lê a tabela local e usa somente o enum puro de Expense
+para validar categorias, sem importar seu repository, DTO, schema ou apresentação.
+Expense não depende de Metrics. Categorias desconhecidas, grupos duplicados,
+somas não inteiras/não positivas e parsing inválido propagam como erros inesperados.
+O schema de Expense continua responsável pelo tipo inteiro positivo dos registros;
+a agregação nativa ignora valores não numéricos e não constitui uma auditoria
+de corrupção dos dados subjacentes.
+
+Falhas esperadas de ToStore e filesystem geram MetricsException. Queries com
+hasErrors são verificadas antes da projeção; códigos nativos são preservados sem
+mensagens de storage. Erros nativos de programação não são mascarados. Nenhuma
+falha vira sucesso vazio, publicação de zero ou retry automático.
+
+Para o mês atual, Metrics captura a revisão nativa antes da leitura e aguarda
+a publicação do total válido, inclusive zero. Consultas históricas não obtêm
+revisão nem publicam. Root continua habilitando o client e solicitando Metrics sem
+filtros; Expense mantém o sinal de refresh após mutações reconhecidas. Formatos
+e implementações nativas não mudaram. A revisão/serialização do client continua
+responsável por bloquear publicação obsoleta.
+
+Testes usam ToStore real com diretórios temporários e fechamento explícito para
+agregação, centavos acima do limite seguro JavaScript, períodos, reabertura e
+reflexo de CRUD. Doubles do SDK ficam restritos à injeção de falhas e leituras
+pendentes. Composição global exercita Dashboard e o adapter de Root reais com
+canal nativo simulado, sem montar UI; isso não homologa execução no dispositivo.
 
 ### Perfil User local
 
@@ -203,8 +260,9 @@ O adapter de Root usa `setMonthlySessionActive(active: true)` da capacidade nati
 existente como habilitação idempotente de publicação, não autenticação. O nome
 legado e as revisões/serialização do client permanecem para evitar uma migração
 incidental de core e widgets nativos. A atualização de valores continua dependente
-da migração de Metrics para armazenamento local; testes isolados de Root usam seu
-contrato mockado, sem comprovar o app inteiro ou atualização real do widget.
+de Metrics local; testes isolados de Root usam seu contrato mockado e testes de
+composição exercitam o banco real com canal nativo simulado, sem comprovar o app
+inteiro ou a renderização real do widget.
 Testes exclusivos das políticas de sessão removidas são substituídos por políticas
 locais, testes de navegação/concorrência/DI e arquitetura, sem UI.
 
@@ -212,8 +270,9 @@ Na manutenção posterior dos testes, suítes exclusivas de implementações rem
 (PocketBase/identidade, recording e áudio) e doubles sem uso foram eliminados por
 solicitação explícita. O core mantém testes do SDK ToStore real e DI local;
 a composição global é testada pelo contrato local, sem simular módulos para
-ocultar falhas de produção. Testes de Metrics e da composição do app continuam
-registrando bloqueios enquanto as implementações pendentes não compilarem.
+ocultar falhas de produção. Testes de Metrics e da composição do app agora
+acompanham o contrato local; bloqueios registrados nas etapas anteriores são
+históricos, não autorização para remover testes de comportamento.
 
 ## Decisão Canônica
 

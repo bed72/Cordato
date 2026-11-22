@@ -3,47 +3,60 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/metrics/infrastructure/responses/expense_category_metrics_response.dart';
 
 void main() {
-  test(
-    'preserves integer cents, numeric percentages and unknown categories',
-    () {
-      final entity = ExpenseCategoryMetricsResponse.fromJson({
-        'percentage': 2.05,
-        'category': 'future_category',
-        'total_amount': '9007199254740993',
-      }).toEntity();
+  group('Local aggregate conversion', () {
+    test('preserves integer cents and derives an unrounded percentage', () {
+      final response = ExpenseCategoryMetricsResponse.fromJson({
+        'category': 'food',
+        'total_amount': 2,
+      });
+      final category = response.toEntity(monthlyTotal: 3);
 
-      expect(entity.category, 'future_category');
-      expect(entity.totalAmount, 9007199254740993);
-      expect(entity.percentage, 2.05);
-    },
-  );
+      expect(response.category, 'food');
+      expect(response.totalAmount, 2);
+      expect(category.category, 'food');
+      expect(category.totalAmount, 2);
+      expect(category.percentage, closeTo(200 / 3, 1e-12));
+    });
 
-  test('accepts an integer zero percentage without calculating it', () {
-    final entity = ExpenseCategoryMetricsResponse.fromJson({
-      'category': 'food',
-      'total_amount': '0',
-      'percentage': 0,
-    }).toEntity();
+    final invalidGroups = <String, Map<String, dynamic>>{
+      'missing category': {'total_amount': 1},
+      'null category': {'category': null, 'total_amount': 1},
+      'non-text category': {'category': 1, 'total_amount': 1},
+      'missing sum': {'category': 'food'},
+      'null sum': {'category': 'food', 'total_amount': null},
+      'textual sum': {'category': 'food', 'total_amount': '123'},
+      'floating sum': {'category': 'food', 'total_amount': 123.0},
+      'fractional sum': {'category': 'food', 'total_amount': 1.5},
+    };
+    for (final scenario in invalidGroups.entries) {
+      test('propagates ${scenario.key} as a parsing failure', () {
+        expect(
+          () => ExpenseCategoryMetricsResponse.fromJson(scenario.value),
+          throwsA(isA<TypeError>()),
+        );
+      });
+    }
 
-    expect(entity.totalAmount, 0);
-    expect(entity.percentage, 0.0);
-  });
+    for (final amount in [0, -1]) {
+      test('rejects nonpositive aggregated cents: $amount', () {
+        expect(
+          () => ExpenseCategoryMetricsResponse.fromJson({
+            'category': 'food',
+            'total_amount': amount,
+          }),
+          throwsFormatException,
+        );
+      });
+    }
 
-  final malformed = <String, Map<String, dynamic>>{
-    'fractional cents': {'total_amount': '79.65', 'percentage': 2.05},
-    'numeric cents': {'total_amount': 7965, 'percentage': 2.05},
-    'string percentage': {'total_amount': '7965', 'percentage': '2.05'},
-    'null percentage': {'total_amount': '7965', 'percentage': null},
-  };
-  for (final scenario in malformed.entries) {
-    test('rejects ${scenario.key}', () {
+    test('does not turn unknown categories into other', () {
       expect(
         () => ExpenseCategoryMetricsResponse.fromJson({
-          'category': 'food',
-          ...scenario.value,
+          'category': 'future_category',
+          'total_amount': 1,
         }),
-        throwsA(anyOf(isA<TypeError>(), isA<FormatException>())),
+        throwsStateError,
       );
     });
-  }
+  });
 }
