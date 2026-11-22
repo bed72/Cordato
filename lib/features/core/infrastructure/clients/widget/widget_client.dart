@@ -5,9 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+import 'package:cordato/features/core/application/clients/interface_widget_client.dart';
 
-final class HomeWidgetClient implements IHomeWidgetClient {
+final class WidgetClient implements IWidgetClient {
   int _revision = 0;
   bool _sessionActive = false;
 

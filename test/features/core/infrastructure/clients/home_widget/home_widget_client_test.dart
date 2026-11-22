@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/widget/widget_client.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +37,7 @@ void main() {
             return launchUri.toString();
           });
 
-          final initialUri = await HomeWidgetClient().initialLaunch();
+          final initialUri = await WidgetClient().initialLaunch();
 
           expect(initialUri, launchUri);
           expect(calls.single.arguments, isNull);
@@ -48,7 +48,7 @@ void main() {
       test('an ordinary app launch has no widget intent', () async {
         messenger.setMockMethodCallHandler(channel, (_) async => null);
 
-        expect(await HomeWidgetClient().initialLaunch(), isNull);
+        expect(await WidgetClient().initialLaunch(), isNull);
       });
 
       test(
@@ -59,7 +59,7 @@ void main() {
             calls.add(call);
             return true;
           });
-          final client = HomeWidgetClient();
+          final client = WidgetClient();
           await client.setMonthlySessionActive(active: true);
           final revision = client.beginMonthlyRead();
 
@@ -94,7 +94,7 @@ void main() {
           calls.add(call);
           return true;
         });
-        final client = HomeWidgetClient();
+        final client = WidgetClient();
         await client.setMonthlySessionActive(active: true);
         final olderRead = client.beginMonthlyRead();
         final newerRead = client.beginMonthlyRead();
@@ -122,7 +122,7 @@ void main() {
             calls.add(call);
             return true;
           });
-          final client = HomeWidgetClient();
+          final client = WidgetClient();
           await client.setMonthlySessionActive(active: true);
           final revision = client.beginMonthlyRead();
 
@@ -156,7 +156,7 @@ void main() {
             }
             return true;
           });
-          final client = HomeWidgetClient();
+          final client = WidgetClient();
           await client.setMonthlySessionActive(active: true);
           final publication = client.publishMonthlyTotal(
             revision: client.beginMonthlyRead(),
@@ -182,7 +182,7 @@ void main() {
         messenger.setMockMethodCallHandler(channel, (_) async {
           throw PlatformException(code: 'temporarily-unavailable');
         });
-        final client = HomeWidgetClient();
+        final client = WidgetClient();
         await client.setMonthlySessionActive(active: true);
 
         await client.publishMonthlyTotal(
@@ -212,7 +212,7 @@ void main() {
         });
 
         await expectLater(
-          HomeWidgetClient().initialLaunch(),
+          WidgetClient().initialLaunch(),
           throwsA(isA<PlatformException>()),
         );
       });
@@ -232,7 +232,7 @@ void main() {
             return null;
           });
           final delivered = Completer<Uri?>();
-          final subscription = HomeWidgetClient().launches.listen(
+          final subscription = WidgetClient().launches.listen(
             delivered.complete,
           );
           addTearDown(subscription.cancel);
@@ -263,7 +263,7 @@ void main() {
         calls.add(call);
         return true;
       });
-      final client = HomeWidgetClient();
+      final client = WidgetClient();
       await client.setMonthlySessionActive(active: true);
 
       await client.publishMonthlyTotal(
@@ -278,7 +278,7 @@ void main() {
   );
 
   test('mutation refresh requests are observable and subscriptions are cancellable', () async {
-    final client = HomeWidgetClient();
+    final client = WidgetClient();
     final delivered = Completer<void>();
     final subscription = client.monthlyRefreshRequests.listen(
       (_) => delivered.complete(),
@@ -294,7 +294,7 @@ void main() {
     'unsupported platforms neither invoke native code nor emit launches',
     () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.linux;
-      final client = HomeWidgetClient();
+      final client = WidgetClient();
 
       expect(await client.initialLaunch(), isNull);
       expect(await client.launches.toList(), isEmpty);

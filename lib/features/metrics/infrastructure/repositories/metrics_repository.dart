@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:tostore/tostore.dart';
 
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+import 'package:cordato/features/core/application/clients/interface_widget_client.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
@@ -13,7 +13,7 @@ import 'package:cordato/features/metrics/infrastructure/responses/expense_catego
 
 final class MetricsRepository({
   required final ToStore _database,
-  required final IHomeWidgetClient _client,
+  required final IWidgetClient _client,
 }) implements IMetricsRepository {
   @override
   Future<ExpenseMetricsEntity> getExpenses({

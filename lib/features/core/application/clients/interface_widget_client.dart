@@ -1,4 +1,4 @@
-abstract interface class IHomeWidgetClient {
+abstract interface class IWidgetClient {
   Stream<Uri?> get launches;
   Stream<void> get monthlyRefreshRequests;
 

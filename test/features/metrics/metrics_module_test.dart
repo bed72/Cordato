@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:tostore/tostore.dart';
 
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+import 'package:cordato/features/core/application/clients/interface_widget_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
 import 'package:cordato/features/expense/infrastructure/schemas/expense_schema.dart';
 import 'package:cordato/features/metrics/metrics_module.dart';
@@ -36,7 +36,7 @@ void main() {
       createModule(
         register: (context) {
           context.addInstance<ToStore>(database);
-          context.addInstance<IHomeWidgetClient>(HomeWidgetClientMock());
+          context.addInstance<IWidgetClient>(HomeWidgetClientMock());
           context.module(metricsModule);
         },
       ),

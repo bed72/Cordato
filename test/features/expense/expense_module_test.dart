@@ -4,7 +4,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tostore/tostore.dart';
 
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+import 'package:cordato/features/core/application/clients/interface_widget_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
@@ -32,7 +32,7 @@ void main() {
       createModule(
         register: (context) => context
           ..addInstance<ToStore>(database)
-          ..addInstance<IHomeWidgetClient>(HomeWidgetClientMock())
+          ..addInstance<IWidgetClient>(HomeWidgetClientMock())
           ..module(expenseModule),
       ),
     );

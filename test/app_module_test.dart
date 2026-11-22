@@ -7,8 +7,8 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:tostore/tostore.dart';
 
 import 'package:cordato/app_module.dart';
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/home_widget/home_widget_client.dart';
+import 'package:cordato/features/core/application/clients/interface_widget_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/widget/widget_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
@@ -80,6 +80,15 @@ void main() {
     test('shares the ready database before visiting any feature', () {
       expect(boot.injector.get<ToStore>(), same(database));
       expect(boot.injector.get<ToStore>(), same(database));
+    });
+
+    test('root registration does not take ownership of the database', () async {
+      boot.injector.dispose();
+
+      final savedSetting = await database.setValue('after-dispose', true);
+
+      expect(savedSetting.hasErrors, isFalse);
+      expect(await database.getValue('after-dispose'), isTrue);
     });
 
     test('Metrics reads Expense writes and Root refreshes through the local composition', () async {
@@ -165,10 +174,10 @@ void main() {
     test(
       'native widget client resolves before any feature route is visited',
       () {
-        final client = boot.injector.get<IHomeWidgetClient>();
+        final client = boot.injector.get<IWidgetClient>();
 
-        expect(client, isA<HomeWidgetClient>());
-        expect(boot.injector.get<IHomeWidgetClient>(), same(client));
+        expect(client, isA<WidgetClient>());
+        expect(boot.injector.get<IWidgetClient>(), same(client));
       },
     );
 

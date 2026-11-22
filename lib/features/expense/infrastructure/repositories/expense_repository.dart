@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:tostore/tostore.dart';
 
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+import 'package:cordato/features/core/application/clients/interface_widget_client.dart';
 
 import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 
@@ -19,7 +19,7 @@ import 'package:cordato/features/expense/application/repositories/interface_expe
 
 final class ExpenseRepository({
   required final ToStore _database,
-  required final IHomeWidgetClient _client,
+  required final IWidgetClient _client,
 }) implements IExpenseRepository {
   @override
   Future<List<ExpenseSuggestionEntity>> suggestions({

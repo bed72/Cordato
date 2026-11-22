@@ -2,7 +2,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:cordato/features/core/application/clients/interface_home_widget_client.dart';
+import 'package:cordato/features/core/application/clients/interface_widget_client.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/root/root_module.dart';
@@ -45,7 +45,7 @@ void main() {
     boot = bootstrapModule(
       createModule(
         register: (context) => context
-          ..addInstance<IHomeWidgetClient>(client)
+          ..addInstance<IWidgetClient>(client)
           ..addInstance<IMetricsRepository>(metrics)
           ..module(rootModule),
       ),
