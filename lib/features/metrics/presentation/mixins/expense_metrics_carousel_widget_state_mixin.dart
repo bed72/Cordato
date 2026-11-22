@@ -5,18 +5,20 @@ import 'package:cordato/features/metrics/presentation/widgets/expense_metrics_ca
 
 mixin ExpenseMetricsCarouselWidgetStateMixin
     on State<ExpenseMetricsCarouselWidget> {
-  PageController pageController = PageController(keepPage: false);
   int currentPage = 0;
+  PageController controller = PageController(keepPage: false);
 
   void configureViewport(double width) {
     final viewportFraction = (width - 20.0) / width;
-    if (pageController.viewportFraction == viewportFraction) return;
-    final previousController = pageController;
-    pageController = PageController(
+    if (controller.viewportFraction == viewportFraction) return;
+
+    final previousController = controller;
+    controller = PageController(
       keepPage: false,
       initialPage: currentPage,
       viewportFraction: viewportFraction,
     );
+
     previousController.dispose();
   }
 
@@ -29,7 +31,7 @@ mixin ExpenseMetricsCarouselWidgetStateMixin
       widget.pages.expand((page) => page).toList(),
     )) {
       currentPage = 0;
-      if (pageController.hasClients) pageController.jumpToPage(0);
+      if (controller.hasClients) controller.jumpToPage(0);
     }
   }
 
@@ -39,7 +41,7 @@ mixin ExpenseMetricsCarouselWidgetStateMixin
 
   @override
   void dispose() {
-    pageController.dispose();
+    controller.dispose();
     super.dispose();
   }
 }

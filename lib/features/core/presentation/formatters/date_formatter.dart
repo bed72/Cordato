@@ -1,6 +1,13 @@
 import 'package:intl/intl.dart';
 
-import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
+abstract interface class IDateFormatter {
+  String formatMonth(DateTime date);
+  String formatLongDate(DateTime date);
+  String formatShortDate(DateTime date);
+  String relativeGroupHeader(DateTime date);
+  String formatPeriod(DateTime start, DateTime end);
+  String formatShortPeriod(DateTime start, DateTime end);
+}
 
 final class DateFormatter({DateTime Function()? now})
     implements IDateFormatter {

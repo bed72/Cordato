@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:cordato/features/core/presentation/widgets/header_widget.dart';
-import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
+import 'package:cordato/features/core/presentation/screens/error_screen.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_card_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/menu/menu_item_widget.dart';
 

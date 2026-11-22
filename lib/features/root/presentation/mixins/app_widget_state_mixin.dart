@@ -5,29 +5,29 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/root/presentation/widgets/app_widget.dart';
-import 'package:cordato/features/root/presentation/bloc/home_widget_sync_bloc.dart';
-import 'package:cordato/features/root/presentation/bloc/home_widget_sync_event.dart';
-import 'package:cordato/features/root/presentation/bloc/home_widget_launch_bloc.dart';
-import 'package:cordato/features/root/presentation/bloc/home_widget_launch_event.dart';
-import 'package:cordato/features/root/presentation/bloc/home_widget_launch_state.dart';
+import 'package:cordato/features/root/presentation/bloc/widget_sync_bloc.dart';
+import 'package:cordato/features/root/presentation/bloc/widget_sync_event.dart';
+import 'package:cordato/features/root/presentation/bloc/widget_launch_bloc.dart';
+import 'package:cordato/features/root/presentation/bloc/widget_launch_event.dart';
+import 'package:cordato/features/root/presentation/bloc/widget_launch_state.dart';
 import 'package:cordato/features/root/presentation/navigation/app_navigation_policy.dart';
-import 'package:cordato/features/root/presentation/navigation/home_widget_expense_navigation.dart';
+import 'package:cordato/features/root/presentation/navigation/widget_expense_navigation.dart';
 
 mixin AppWidgetStateMixin on State<AppWidget> {
   bool _pendingExpenseLaunch = false;
 
-  late HomeWidgetSyncBloc homeWidgetSyncBloc;
-  late HomeWidgetLaunchBloc homeWidgetLaunchBloc;
+  late WidgetSyncBloc widgetSyncBloc;
+  late WidgetLaunchBloc widgetLaunchBloc;
 
   @override
   void initState() {
     super.initState();
 
-    homeWidgetSyncBloc = widget.homeWidgetSyncBloc();
-    homeWidgetLaunchBloc = widget.homeWidgetLaunchBloc();
+    widgetSyncBloc = widget.widgetSyncBloc();
+    widgetLaunchBloc = widget.widgetLaunchBloc();
 
-    homeWidgetSyncBloc.add(const HomeWidgetSyncStartedEvent());
-    homeWidgetLaunchBloc.add(const HomeWidgetLaunchStartedEvent());
+    widgetSyncBloc.add(const WidgetSyncStartedEvent());
+    widgetLaunchBloc.add(const WidgetLaunchStartedEvent());
 
     _scheduleNavigation();
   }
@@ -36,17 +36,17 @@ mixin AppWidgetStateMixin on State<AppWidget> {
   void didUpdateWidget(covariant AppWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.homeWidgetLaunchBloc != widget.homeWidgetLaunchBloc) {
-      unawaited(homeWidgetLaunchBloc.close());
-      homeWidgetLaunchBloc = widget.homeWidgetLaunchBloc();
-      homeWidgetLaunchBloc.add(const HomeWidgetLaunchStartedEvent());
+    if (oldWidget.widgetLaunchBloc != widget.widgetLaunchBloc) {
+      unawaited(widgetLaunchBloc.close());
+      widgetLaunchBloc = widget.widgetLaunchBloc();
+      widgetLaunchBloc.add(const WidgetLaunchStartedEvent());
       _scheduleNavigation();
     }
 
-    if (oldWidget.homeWidgetSyncBloc != widget.homeWidgetSyncBloc) {
-      unawaited(homeWidgetSyncBloc.close());
-      homeWidgetSyncBloc = widget.homeWidgetSyncBloc();
-      homeWidgetSyncBloc.add(const HomeWidgetSyncStartedEvent());
+    if (oldWidget.widgetSyncBloc != widget.widgetSyncBloc) {
+      unawaited(widgetSyncBloc.close());
+      widgetSyncBloc = widget.widgetSyncBloc();
+      widgetSyncBloc.add(const WidgetSyncStartedEvent());
     }
 
     if (oldWidget.navigatorKey != widget.navigatorKey) {
@@ -56,14 +56,14 @@ mixin AppWidgetStateMixin on State<AppWidget> {
 
   @override
   void dispose() {
-    unawaited(homeWidgetSyncBloc.close());
-    unawaited(homeWidgetLaunchBloc.close());
+    unawaited(widgetSyncBloc.close());
+    unawaited(widgetLaunchBloc.close());
 
     super.dispose();
   }
 
-  void handleHomeWidgetLaunch(HomeWidgetLaunchState state) {
-    if (state is! HomeWidgetLaunchRequested) return;
+  void handleWidgetLaunch(WidgetLaunchState state) {
+    if (state is! WidgetLaunchRequested) return;
 
     _pendingExpenseLaunch = true;
     _scheduleNavigation();
@@ -71,12 +71,12 @@ mixin AppWidgetStateMixin on State<AppWidget> {
 
   void _scheduleNavigation() {
     final key = widget.navigatorKey;
-    final owner = homeWidgetLaunchBloc;
+    final owner = widgetLaunchBloc;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted ||
           owner.isClosed ||
-          homeWidgetLaunchBloc != owner ||
+          widgetLaunchBloc != owner ||
           widget.navigatorKey != key) {
         return;
       }
@@ -97,15 +97,15 @@ mixin AppWidgetStateMixin on State<AppWidget> {
           target.navigate(RouteEnum.dashboard.path);
         case .newExpense:
           _pendingExpenseLaunch = false;
-          _openExpenseFromHomeWidget(target);
+          _openExpenseFromWidget(target);
       }
     });
 
     WidgetsBinding.instance.ensureVisualUpdate();
   }
 
-  void _openExpenseFromHomeWidget(BuildContext target) {
-    HomeWidgetExpenseNavigation.open(
+  void _openExpenseFromWidget(BuildContext target) {
+    WidgetExpenseNavigation.open(
       popUntil: target.popUntil,
       baseRoute: target.routeState(listen: false),
       showDashboard: () => target.navigate(RouteEnum.dashboard.path),

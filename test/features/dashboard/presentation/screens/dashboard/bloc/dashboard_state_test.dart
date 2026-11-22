@@ -27,7 +27,7 @@ void main() {
     id: 'metrics',
     startDate: month,
     endDate: DateTime(2026, 11, 30),
-    totalAmount: cents,
+    total: cents,
     categories: const [],
   );
 

@@ -1,49 +1,53 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:tostore/tostore.dart';
+import 'package:localstore/localstore.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
 import 'package:cordato/features/user/user_module.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
-import 'package:cordato/features/user/infrastructure/storage/profile_initializer.dart';
+
+import '../../support/core/storage/localstore_test_storage.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test(
-    'profile changes survive a new database and module composition',
+    'loads existing JSON and preserves changes across module compositions',
     () async {
-      final directory = await Directory.systemTemp.createTemp(
-        'cordato-user-local-',
+      final storage = LocalstoreTestStorage();
+      await storage.open();
+      addTearDown(storage.close);
+      final directory = Directory('${storage.directory.path}/user');
+      await directory.create();
+      await File('${directory.path}/profile').writeAsString(
+        jsonEncode({'name': 'Existing name', 'avatar': 'existing-seed'}),
       );
-      addTearDown(() => directory.delete(recursive: true));
-      ToStore database = await ToStoreFactory.create(
-        directory: directory.path,
-        schemas: const [],
-      );
-      addTearDown(() => database.close());
-      await initializeProfile(database: database);
+
       final first = bootstrapModule(
         createModule(
           register: (context) => context
-            ..addInstance<ToStore>(database)
+            ..addInstance<Localstore>(storage.database)
             ..module(userModule),
         ),
       );
       final repository = first.injector.get<IUserRepository>();
+      final original = await repository.get();
 
-      await repository.update(name: 'Gabriel', avatar: 'chosen-seed');
+      expect(original.name, 'Existing name');
+      expect(original.avatar, 'existing-seed');
+      expect(first.injector.get<Localstore>(), same(storage.database));
+
+      await storage.writing({
+        'Gabriel',
+        'chosen-seed',
+      }, () => repository.update(name: 'Gabriel', avatar: 'chosen-seed'));
       first.injector.dispose();
-      await database.close();
-      database = await ToStoreFactory.create(
-        directory: directory.path,
-        schemas: const [],
-      );
-      await initializeProfile(database: database);
       final second = bootstrapModule(
         createModule(
           register: (context) => context
-            ..addInstance<ToStore>(database)
+            ..addInstance<Localstore>(storage.database)
             ..module(userModule),
         ),
       );
@@ -52,6 +56,10 @@ void main() {
 
       expect(reopened.name, 'Gabriel');
       expect(reopened.avatar, 'chosen-seed');
+      expect(
+        jsonDecode(await File('${directory.path}/profile').readAsString()),
+        {'name': 'Gabriel', 'avatar': 'chosen-seed'},
+      );
     },
   );
 }

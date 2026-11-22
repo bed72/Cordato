@@ -2,7 +2,7 @@ import 'package:cordato/features/metrics/domain/entities/expense_category_metric
 
 final class ExpenseMetricsEntity({
   required final String id,
-  required final int totalAmount,
+  required final int total,
   required final DateTime endDate,
   required final DateTime startDate,
   List<ExpenseCategoryMetricsEntity>? categories,

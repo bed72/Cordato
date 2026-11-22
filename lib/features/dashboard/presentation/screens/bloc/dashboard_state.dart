@@ -22,9 +22,7 @@ final class DashboardState({
   bool get isLoading => phase == .loading;
   bool get hasFinancialError => phase == .failure;
   bool get isEmpty =>
-      phase == .ready &&
-      expenses?.items.isEmpty == true &&
-      metrics?.totalAmount == 0;
+      phase == .ready && expenses?.items.isEmpty == true && metrics?.total == 0;
   DateTime get selectedMonth => _selectedMonth ?? currentMonth;
   DateTime get currentMonth =>
       DateTime(_referenceDate.year, _referenceDate.month);

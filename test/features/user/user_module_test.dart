@@ -1,13 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:tostore/tostore.dart';
+import 'package:localstore/localstore.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
-import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
 import 'package:cordato/features/user/user_module.dart';
-import 'package:cordato/features/user/infrastructure/storage/profile_initializer.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_bloc.dart';
 import 'package:cordato/features/user/presentation/screens/user/bloc/user_event.dart';
@@ -16,22 +12,22 @@ import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_bloc.d
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_event.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.dart';
 
+import '../../support/core/storage/localstore_test_storage.dart';
+
 void main() {
-  late Directory directory;
-  late ToStore database;
+  TestWidgetsFlutterBinding.ensureInitialized();
+  final storage = LocalstoreTestStorage();
   late ModularBootstrap boot;
 
+  setUpAll(storage.open);
+  tearDownAll(storage.close);
+
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('cordato-user-module-');
-    database = await ToStoreFactory.create(
-      directory: directory.path,
-      schemas: const [],
-    );
-    await initializeProfile(database: database);
+    await storage.initialize();
     boot = bootstrapModule(
       createModule(
         register: (context) => context
-          ..addInstance<ToStore>(database)
+          ..addInstance<Localstore>(storage.database)
           ..module(userModule),
       ),
     );
@@ -39,8 +35,7 @@ void main() {
 
   tearDown(() async {
     boot.injector.dispose();
-    await database.close();
-    await directory.delete(recursive: true);
+    await storage.clear();
   });
 
   test(
@@ -94,8 +89,10 @@ void main() {
     final original = await repository.get();
     final finished = first.stream.firstWhere((state) => state is EditSuccess);
 
-    first.add(const EditSubmittedEvent(name: 'Gabriel'));
-    await finished;
+    await storage.writing({'Gabriel'}, () async {
+      first.add(const EditSubmittedEvent(name: 'Gabriel'));
+      await finished;
+    });
     final saved = await repository.get();
 
     expect(first, isNot(same(second)));
@@ -122,7 +119,9 @@ void main() {
       );
 
       boot.manager.enter('profile', route.ownerTags);
-      await repository.update(name: 'Gabriel');
+      await storage.writing({
+        'Gabriel',
+      }, () => repository.update(name: 'Gabriel'));
       boot.manager.leave('profile', route.ownerTags);
       final sharedRepository = boot.injector.get<IUserRepository>();
       final profile = await sharedRepository.get();

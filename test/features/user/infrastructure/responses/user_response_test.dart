@@ -12,12 +12,12 @@ void main() {
     expect(user.avatar, 'chosen-avatar');
   });
 
-  test('preserves an empty name and maps an empty avatar to absence', () {
+  test('preserves empty name and avatar without normalization', () {
     final user = UserResponse.fromJson({...record, 'name': '', 'avatar': ''})
         .toEntity();
 
     expect(user.name, isEmpty);
-    expect(user.avatar, isNull);
+    expect(user.avatar, isEmpty);
   });
 
   test('preserves the original name and avatar seed', () {
@@ -32,7 +32,7 @@ void main() {
   });
 
   for (final field in ['name', 'avatar']) {
-    for (final invalid in [null, 123, false]) {
+    for (final invalid in [123, false]) {
       test('rejects invalid $field: $invalid', () {
         expect(
           () => UserResponse.fromJson({...record, field: invalid}),
@@ -40,13 +40,33 @@ void main() {
         );
       });
     }
-
-    test('rejects missing $field', () {
-      final json = {...record}..remove(field);
-      expect(() => UserResponse.fromJson(json), throwsA(isA<TypeError>()));
-    });
   }
 
+  test('rejects a null name', () {
+    expect(
+      () => UserResponse.fromJson({...record, 'name': null}),
+      throwsA(isA<TypeError>()),
+    );
+  });
+
+  test('rejects a missing name', () {
+    final json = {...record}..remove('name');
+
+    expect(() => UserResponse.fromJson(json), throwsA(isA<TypeError>()));
+  });
+
+  test('accepts an absent avatar', () {
+    final json = {...record}..remove('avatar');
+
+    expect(UserResponse.fromJson(json).toEntity().avatar, isNull);
+  });
+
+  test('accepts an explicitly null avatar', () {
+    expect(
+      UserResponse.fromJson({...record, 'avatar': null}).toEntity().avatar,
+      isNull,
+    );
+  });
   test('rejects the legacy JSON:API envelope', () {
     expect(
       () => UserResponse.fromJson({'data': record}),

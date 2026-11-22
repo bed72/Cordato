@@ -11,8 +11,8 @@ import 'package:cordato/features/core/presentation/widgets/fields/amount_field_w
 import 'package:cordato/features/core/presentation/widgets/fields/date_field_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/text_button_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/hold_button_widget.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';

@@ -10,5 +10,5 @@ o catálogo. Confira manualmente a abertura e a transição para Flutter nos tem
 e tamanhos suportados; testes unitários não comprovam o resultado visual.
 
 O app atual usa armazenamento local, sem login. Estes assets não configuram
-ToStore, assinatura, App Group ou o widget WidgetKit.
+Localstore, assinatura, App Group ou o widget WidgetKit.
 Consulte o [README do projeto](../../../../README.md) para execução e limites.

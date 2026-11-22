@@ -1,6 +1,10 @@
 import 'package:intl/intl.dart';
 
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+abstract interface class IMoneyFormatter {
+  String formatCents(int cents);
+  int parseToCents(String value);
+  String formatCentsWithoutSymbol(int cents);
+}
 
 final class MoneyFormatter implements IMoneyFormatter {
   static final _currencyPrefix = RegExp(r'^R\$\s*');

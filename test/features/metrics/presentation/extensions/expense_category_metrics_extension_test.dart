@@ -32,7 +32,7 @@ void main() {
       test('displays ${entry.key} in Brazilian Portuguese', () {
         final category = ExpenseCategoryMetricsEntity(
           percentage: 100,
-          totalAmount: 300,
+          total: 300,
           category: entry.key,
         );
 
@@ -55,7 +55,7 @@ void main() {
       const category = ExpenseCategoryMetricsEntity(
         category: 'future_category',
         percentage: 100,
-        totalAmount: 300,
+        total: 300,
       );
 
       expect(category.label, 'future_category');
@@ -87,7 +87,7 @@ void main() {
       test('uses the expense icon for ${entry.key}', () {
         final category = ExpenseCategoryMetricsEntity(
           category: entry.key,
-          totalAmount: 1,
+          total: 1,
           percentage: 1,
         );
 

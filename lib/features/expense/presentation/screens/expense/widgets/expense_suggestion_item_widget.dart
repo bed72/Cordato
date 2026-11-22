@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';

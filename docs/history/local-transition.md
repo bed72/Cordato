@@ -21,6 +21,14 @@ O estado vigente está no [README](../../README.md) e na
 7. Durante a revisão documental, Welcome foi removida em paralelo da composição
    e dos arquivos da feature. Uma etapa posterior removeu a constante de rota e
    referências nos testes; análise limpa e 946 testes aprovados após essa conclusão.
+8. Em 22/11/2026, Localstore substituiu ToStore em User, Expense e Metrics,
+   injetado diretamente pelo Modular, sem client de persistência, fork ou
+   migração de dados antigos. Filtros, paginação e agregação passaram a Dart.
+   As limitações de confirmação de escrita e leitura de JSON do SDK foram aceitas.
+9. A criação do perfil padrão passou ao UserRepository, em um documento com nome
+   e avatar; o inicializador separado e sua chamada no `main` foram removidos.
+   Root e seus testes/mocks passaram de `HomeWidget*` para `Widget*`, preservando
+   nomes e contratos do plugin e das implementações nativas.
 
 Não há migração de dados PocketBase ou de sessões anteriores. Não há backup
 restaurável pelo app, mesmo que um CSV tenha sido exportado em versões anteriores.
@@ -39,10 +47,17 @@ restaurável pelo app, mesmo que um CSV tenha sido exportado em versões anterio
 | Dashboard sem áudio | 531 testes focados; suíte com 900 aprovados e 3 falhas de carregamento; análise com 25 ocorrências. |
 | Metrics local/composição | Análise limpa; 689 testes focados e 946 globais aprovados. |
 | Registro do ToStore no módulo raiz | `flutter pub get` concluído; `flutter analyze` sem problemas; 946 testes globais aprovados. |
+| Substituição por Localstore | `flutter pub get` concluído; `flutter analyze` sem problemas; 909 testes globais aprovados. |
+| Perfil inicial no UserRepository | `flutter pub get` concluído; `flutter analyze` sem problemas; 904 testes globais aprovados. |
+| Renomeação de Root para Widget | `flutter pub get` concluído; `flutter analyze` sem problemas; 904 testes globais aprovados. |
 
 Os números são retratos de etapas diferentes, não contagens cumulativas.
 Os bloqueios de compilação/análise acima não apareceram na última verificação.
 Nenhum resultado comprova build nativo atual, UI, backup ou prontidão de release.
+As execuções acima precedem a revisão documental e não homologam edições
+posteriores de código no checkout. A revisão de nomes/pastas contou 64 arquivos
+de testes de features, 57 com espelhamento exato; essa contagem não é cobertura
+e não representa reorganização dos sete casos restantes.
 
 O registro detalhado de Expense/CSV permanece em
 [verification.md](../../openspec/changes/migrate-expense-to-tostore/verification.md);

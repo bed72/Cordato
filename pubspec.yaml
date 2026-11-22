@@ -37,8 +37,7 @@ dependencies:
   bloc_concurrency: ^0.3.0
 
   intl: ^0.20.3
-  tostore: ^3.6.3
-  path_provider: ^2.1.6
+  localstore: ^1.4.0
   flutter_modular: ^7.1.1
 
   home_widget: ^0.10.0

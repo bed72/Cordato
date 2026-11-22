@@ -5,11 +5,9 @@ final class const UserResponse({
   final String? avatar,
 }) {
   factory UserResponse.fromJson(Map<String, dynamic> json) {
-    final avatar = json['avatar'] as String;
-
     return UserResponse(
       name: json['name'] as String,
-      avatar: avatar.isEmpty ? null : avatar,
+      avatar: json['avatar'] as String?,
     );
   }
 }

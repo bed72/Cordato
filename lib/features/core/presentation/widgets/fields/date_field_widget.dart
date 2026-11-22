@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
+
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/fields/text_field_widget.dart';
 

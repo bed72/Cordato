@@ -1,6 +1,6 @@
 # OpenSpec: estado vigente e histórico
 
-Revisado em **22/11/2026** para a versão local com ToStore.
+Revisado em **22/11/2026** para a versão local com Localstore.
 
 ## Precedência
 
@@ -20,22 +20,36 @@ Não há servidor necessário para executar o Flutter, identidade autenticada,
 ```text
 Screen/Widget → Bloc → contrato em application
                             ↑
-                 repository em infrastructure → ToStore / client nativo do core
+                 repository em infrastructure → Localstore / client nativo do core
 ```
 
 Contratos usam Future e exceções de aplicação, sem Either, CommandIt ou data
 sources intermediários. Domain é puro; dinheiro usa centavos inteiros.
 Metrics é projeção mensal somente leitura das despesas locais.
+Seus totais mensal e por categoria usam `total` inteiro em centavos; o payload
+interno de grupos ainda pode usar `total_amount`.
 
-O bootstrap abre o banco e inicializa o perfil antes de runApp.
-Somente `createAppModule` recebe o ToStore e registra `addInstance` no módulo
-raiz. `coreModule` e features não recebem o banco por parâmetro. Repositories
-usam injeção por construtor, sem singleton global manual.
+UserRepository cria o perfil padrão na primeira leitura, se ausente, sem
+inicializador no bootstrap. Usa um documento com nome e avatar. `coreModule` registra
+`Localstore.instance`; repositories recebem o SDK diretamente por construtor,
+sem client de persistência, schemas ou factory. Dados antigos de ToStore não
+são migrados. Filtros, paginação, sugestões e métricas são calculados em Dart.
+Limitações do SDK e confirmação de escrita estão em
+[ARCHITECTURE.md](../ARCHITECTURE.md#bootstrap-e-composição).
 
 ExpenseSuggestionsBloc pertence ao provide da rota. Os demais ownerships
 existentes são preservados: screens com factories estáveis e Root com os Blocs
 de launch/sync no AppWidget. Não há SessionBloc. Navegação nova usa BuildContext,
 argumentos transportam dados e retornos confirmados são tipados.
+Root usa `WidgetLaunchBloc`, `WidgetSyncBloc`, `IWidgetLaunchRepository` e
+`IWidgetSyncRepository`, com arquivos `widget_*`. Referências antigas a
+`HomeWidget*` em specs são históricas, não orientação para restaurar nomes.
+O plugin `home_widget` e a URI nativa com `homeWidget=true` permanecem.
+
+Testes devem espelhar nomes/pastas da implementação. A conferência atual,
+incluindo as sete exceções de correspondência exata, está em
+[ARCHITECTURE.md](../ARCHITECTURE.md#organização-e-espelhamento-dos-testes).
+Esta atualização não move testes, sincroniza specs nem altera checklists.
 
 ## Como ler as specs existentes
 
@@ -46,7 +60,7 @@ torna seu mecanismo atual. Esta revisão não sincroniza deltas nem arquiva chan
 | Documento | Uso atual |
 | --- | --- |
 | `specs/dashboard-monthly-navigation/` | Regras mensais e retorno da listagem; implementação por Bloc e contratos locais. |
-| `specs/expense-category-metrics-cards/` | Cards e navegação por categoria/período; dados vêm do ToStore. |
+| `specs/expense-category-metrics-cards/` | Cards e navegação por categoria/período; dados vêm do Localstore. |
 | `specs/expenses-period-query/`, `specs/expenses-removable-filters/` | Comportamento de datas/filtros; transporte HTTP e owner remoto não se aplicam. |
 | `specs/expense-reregistration/` | Referência do comportamento de novo cadastro; subordinada à implementação local atual. |
 | `specs/shared-error-screen/`, `specs/dart-primary-constructor-conventions/` | Requisitos visuais/linguagem sujeitos às convenções atuais. |
@@ -55,7 +69,7 @@ torna seu mecanismo atual. Esta revisão não sincroniza deltas nem arquiva chan
 | `specs/expense-csv-export/` | Histórico de funcionalidade removida; CSV não é backup restaurável. |
 | `specs/insights-monthly-query/` | Histórico de Insight removido; não confundir com Metrics atual. |
 | `specs/presentation-command-*`, `specs/expense-reactive-command-consumption/`, `specs/dashboard-reactive-command-coordination/` | Intenções de UX/concorrência compatíveis podem orientar; commands/Either não são arquitetura aprovada. |
-| `changes/migrate-expense-to-tostore/` | Registro da migração de Expense, incluindo CSV removido depois. Não descreve todo o produto atual. |
+| `changes/migrate-expense-to-tostore/` | Registro histórico da migração de Expense, incluindo CSV removido depois. ToStore foi substituído por Localstore; a change não descreve a persistência vigente. |
 | `changes/archive/` | Histórico temporal de decisões/resultados, não guia vigente nem comprovação de execução atual. |
 
 Ao implementar requisito antigo, adapte o mecanismo às decisões canônicas e

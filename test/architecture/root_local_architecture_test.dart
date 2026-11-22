@@ -3,10 +3,11 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('bootstrap opens Dashboard after awaiting local dependencies', () {
+  test('bootstrap opens Dashboard without initializing profile or storage', () {
     final source = File('lib/main.dart').readAsStringSync();
 
-    expect(source, contains('await createDependencies()'));
+    expect(source, isNot(contains('initializeProfile')));
+    expect(source, isNot(contains('Localstore')));
     expect(source, contains('initialRoute: RouteEnum.dashboard.path'));
     expect(source, isNot(contains('SessionBloc')));
   });
@@ -36,21 +37,21 @@ void main() {
       'lib/features/root/presentation/mixins/app_widget_state_mixin.dart',
     ).readAsStringSync();
 
-    expect(widget, contains('HomeWidgetSyncBloc Function()'));
-    expect(widget, contains('HomeWidgetLaunchBloc Function()'));
+    expect(widget, contains('WidgetSyncBloc Function()'));
+    expect(widget, contains('WidgetLaunchBloc Function()'));
     expect(widget, contains('ToastProviderWidget'));
     expect(
       lifecycle,
-      contains('oldWidget.homeWidgetLaunchBloc != widget.homeWidgetLaunchBloc'),
+      contains('oldWidget.widgetLaunchBloc != widget.widgetLaunchBloc'),
     );
     expect(
       lifecycle,
-      contains('oldWidget.homeWidgetSyncBloc != widget.homeWidgetSyncBloc'),
+      contains('oldWidget.widgetSyncBloc != widget.widgetSyncBloc'),
     );
-    expect(lifecycle, contains('unawaited(homeWidgetLaunchBloc.close())'));
-    expect(lifecycle, contains('unawaited(homeWidgetSyncBloc.close())'));
+    expect(lifecycle, contains('unawaited(widgetLaunchBloc.close())'));
+    expect(lifecycle, contains('unawaited(widgetSyncBloc.close())'));
     expect(lifecycle, isNot(contains('.listen(')));
-    expect(lifecycle, isNot(contains('IHomeWidgetClient')));
+    expect(lifecycle, isNot(contains('IWidgetClient')));
   });
 
   test('navigation waits for the navigator and protects disposed or replaced owners', () {
@@ -60,11 +61,11 @@ void main() {
 
     expect(lifecycle, contains('addPostFrameCallback'));
     expect(lifecycle, contains('!mounted'));
-    expect(lifecycle, contains('homeWidgetLaunchBloc != owner'));
+    expect(lifecycle, contains('widgetLaunchBloc != owner'));
     expect(lifecycle, contains('owner.isClosed'));
     expect(lifecycle, contains('widget.navigatorKey != key'));
     expect(lifecycle, contains('if (target == null)'));
     expect(lifecycle, contains('AppNavigationPolicy.action'));
-    expect(lifecycle, contains('HomeWidgetExpenseNavigation.open'));
+    expect(lifecycle, contains('WidgetExpenseNavigation.open'));
   });
 }

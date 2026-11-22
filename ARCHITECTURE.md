@@ -15,7 +15,7 @@ Não há identidade autenticada, `owner` nas despesas ou autorização remota.
 ```text
 Screen/Widget → Bloc → contrato de repository em application
                             ↑
-                 repository em infrastructure → ToStore compartilhado
+                 repository em infrastructure → Localstore compartilhado
                                             → contrato de client nativo do core
 ```
 
@@ -48,38 +48,36 @@ a múltiplos perfis, família ou orçamento.
 
 ```text
 main
- └─ await createDependencies()
-     ├─ getApplicationSupportDirectory()
-     ├─ await ToStoreFactory.create(schemas, directory)
-     ├─ await initializeProfile(database)
-     └─ createAppModule(database)
-         ├─ addInstance<ToStore>(database)
-         ├─ coreModule
-         └─ módulos das features
+ └─ runApp(ModularApp(module: appModule))
+     ├─ coreModule → addInstance<Localstore>(Localstore.instance)
+     └─ módulos das features → repositories com injeção por construtor
 ```
 
-Somente `createAppModule` recebe o banco pronto. `coreModule` e os módulos das
-features não o recebem por parâmetro. Repositories continuam com injeção por
-construtor e acesso direto ao SDK em infrastructure. Não há singleton estático
-manual, service locator nos repositories ou Future de abertura na DI.
+`appModule` e `coreModule` não recebem banco por parâmetro. O core registra
+o singleton fornecido pelo próprio Localstore. Repositories acessam o SDK
+diretamente em infrastructure, sem client de persistência, wrapper CRUD,
+data source, fork ou service locator.
 
-A factory recebe diretório e schemas da composição, sem importar features.
-Abre `cordato` em diretório persistente com `RecoveryDurability.durable` e logs
-diagnósticos desativados, inclusive em debug. Isso não comprova criptografia,
-backup, auditoria de durabilidade ou proteção contra desinstalação.
+Não há factory, schemas, abertura ou fechamento explícito. O SDK usa seu
+diretório padrão: Documents em Android/iOS e diretório corrente no desktop.
+Dados anteriores de ToStore não são migrados, por decisão explícita.
 
-`main` aguarda banco e perfil antes de `runApp`. Falha de abertura propaga;
-falha na preparação após abertura tenta fechar o banco e preserva a falha
-original. Não há limpeza, reset, retry ou fallback para banco vazio.
-A instância pertence ao bootstrap. Descartar a DI ou trocar rotas não fecha o
-banco; testes fecham explicitamente suas instâncias. Encerramento abrupto depende
-da recuperação do motor, não de um `dispose` garantido pelo sistema.
+`main` não inicializa perfil ou storage. UserRepository cria o perfil sob demanda.
+Localstore 1.4.0 não aguarda a escrita interna em `set`; o Future público
+não comprova persistência em disco e nem toda falha de escrita é propagada.
+Leituras podem tratar JSON inválido como ausência/omitir documentos.
+Essas limitações foram aceitas. Não há garantia adicional de atomicidade,
+recuperação, criptografia ou backup.
 
 ### Escopos Modular
 
-A composição usa a API funcional `createModule` do Modular 7. `addInstance`
-compartilha o banco; não cria outro mecanismo de lifecycle. `coreModule` registra
-formatadores e `IHomeWidgetClient`, sem propriedade sobre o ToStore.
+A composição usa a API funcional `createModule` do Modular 7. `coreModule`
+registra Localstore, formatadores e `IWidgetClient`, sem lifecycle de storage.
+`IWidgetClient` e `WidgetClient` ficam juntos em
+`core/infrastructure/clients/widget_client.dart`; os contratos de repository de
+Root continuam em `root/application/repositories/`. `IDateFormatter` e
+`IMoneyFormatter` ficam nos próprios arquivos `date_formatter.dart` e
+`money_formatter.dart`, em `core/presentation/formatters/`.
 
 User, Expense, Metrics e Settings usam um módulo por feature, sem path, com
 rotas completas quando existentes. Binds consumidos por outras features ficam
@@ -121,7 +119,7 @@ ou domínio artificiais.
 
 - **Domain:** tipos e invariantes puros, sem Flutter, Bloc, SDK ou application.
 - **Application:** contratos e exceções esperadas, sem implementação, UI ou SDK.
-- **Infrastructure:** acesso ao ToStore e conversão de dados com casts estritos.
+- **Infrastructure:** acesso ao Localstore e conversão de dados com casts estritos.
 - **Presentation:** Bloc, formulário, renderização, feedback e navegação.
 - **Módulos:** composição, podendo importar implementações concretas.
 - **Core:** apenas capacidades realmente compartilhadas, não regras deslocadas
@@ -136,70 +134,71 @@ Root compõe Metrics e o client nativo através de seus próprios repositories.
 
 ### Perfil User local
 
-O bootstrap usa chaves KV independentes:
+UserRepository usa um único documento `profile` na coleção `user`:
 
-| Chave | Valor inicial |
+| Campo | Valor inicial |
 | --- | --- |
-| `profile.name` | `Cordato` |
-| `profile.avatar` | Seed aleatória de 16 bytes em hexadecimal, persistida. |
+| `name` | `Cordato` |
+| `avatar` | Seed aleatória de 16 bytes em hexadecimal, persistida. |
 
-O inicializador grava somente chaves ausentes e verifica `hasErrors`. Valores
-válidos existentes são preservados; valores presentes malformados são rejeitados.
-Uma inicialização interrompida pode completar a chave ausente na próxima abertura.
-Não há ID, e-mail, tabela de usuários, sessão ou migração do antigo objeto KV
-`profile` ou de dados remotos.
+`get` cria e salva o perfil padrão quando o documento não existe.
+Documentos existentes são convertidos sem substituição por defaults;
+payloads malformados propagam como falhas de parsing.
+Não há ID, e-mail, tabela de usuários, sessão ou migração de dados antigos.
 
 `IUserRepository` expõe `get` e `update`, sem exclusão de conta.
-O repository lê o perfil a cada chamada, não cria defaults silenciosos e grava
-somente os campos fornecidos, verificando os reconhecimentos e relendo a entidade.
+O repository lê o perfil a cada chamada. Updates preservam campos omitidos e gravam
+o documento completo, aguardando o Future público e retornando o perfil atualizado.
 Nome e avatar não são derivados um do outro.
 
 Não há cache, fila de Futures, estado pendente ou transação no repository.
-Atualizações de campos diferentes não se sobrescrevem. Atualizar ambos usa duas
-gravações e não é atômico; falha na segunda não desfaz a primeira. Leituras também
-não são snapshots atômicos. Concorrência na mesma chave segue o motor.
+Atualizações concorrentes do documento não têm garantia de merge atômico.
+O SDK mantém cache próprio de documentos; o repository
+não garante releitura física do disco nem cria cache adicional.
 
-Ausência de perfil e falhas esperadas geram UserException. Parsing e erros de
+Falhas esperadas expostas pelo SDK geram UserException. Parsing e erros de
 programação propagam como inesperados. A apresentação valida nome com 2–32 code
 points Unicode após trim; Bloc e repository não normalizam entradas.
-Avatar vazio é ausência na projeção, sem fallback por identidade.
+Avatar pode ser nulo; texto vazio é preservado, sem fallback por identidade.
 
 ### Despesas locais
 
-`expenseSchema`, em infrastructure de Expense, define a tabela `expenses`:
+Cada documento da coleção `expenses` contém:
 
-- ID sequencial automático em String.
+- ID String gerado pelo Localstore, também salvo no documento.
 - `amount` inteiro obrigatório, positivo, em centavos.
 - `category` textual obrigatória, default `other`.
 - `description` textual anulável.
-- `occurred_on` datetime obrigatório, indexado.
+- `occurred_on` String ISO UTC civil obrigatória.
 
-Não há `owner`, TTL ou expulsão por capacidade. O schema não restringe o enum,
-normaliza datas ou define timestamp padrão; o repository valida categorias e
-define hoje na criação quando não recebe data.
+Não há schema, índices, `owner`, TTL ou expulsão por capacidade. O repository
+valida centavos positivos e categorias e define hoje na criação quando não recebe data.
 
 Datas são ISO UTC à meia-noite pelos componentes civis, sem conversão de fuso.
 Filtros finais incluem todo o dia escolhido. Descrição nula vira texto vazio
-na projeção. O SDK aplica trim nativo aos campos textuais; o repository não
-adiciona normalização. Tipos, datas ou categorias inválidos são inesperados.
+na projeção. O repository aplica trim à descrição para preservar o comportamento
+anterior do ToStore. Tipos, datas ou categorias inválidos são inesperados.
 
-CRUD usa operações nativas. Escritas verificam `hasErrors` e registros afetados;
-ID ausente gera ExpenseException. Updates enviam somente campos fornecidos.
+CRUD usa operações nativas. ID ausente gera ExpenseException antes de update/delete.
+Updates leem o documento, aplicam os campos fornecidos e gravam o documento
+completo; updates concorrentes do mesmo documento podem sobrescrever campos.
 Sem campos, update apenas lê a entidade e não solicita refresh.
 
-Listagem recebe página numérica, usa offset/limite mais um e retorna itens
-imutáveis com `nextPage` opcional. A ordem padrão é data/ID decrescentes; ID
-desempata outras ordens. Filtros são reenviados pelo Bloc a cada página, e refresh
-retorna à primeira. Não há snapshot transacional entre páginas.
+Listagem lê a coleção inteira, filtra/ordena em Dart, usa offset/limite mais um
+e retorna itens imutáveis com `nextPage` opcional. A ordem padrão é data/ID
+decrescentes; ID textual desempata outras ordens, sem representar ordem de
+criação. Filtros são reenviados pelo Bloc a cada página, e refresh retorna à
+primeira. Não há snapshot transacional entre páginas.
 
-Sugestões percorrem lotes de 100 até 30 correspondências literais
+Sugestões percorrem o histórico ordenado até 30 correspondências literais
 case-insensitive antes de deduplicar descrições. Preservam categoria e valor da
 ocorrência mais recente e ignoram descrições vazias/nulas. A busca pode percorrer
-todo o histórico, sem carregá-lo inteiro na memória. Aceitar sugestão aplica
+todo o histórico, carregado em memória. Aceitar sugestão aplica
 categoria, inclusive `other`, preservando data e valor manual do formulário.
 
-Mutações reconhecidas solicitam refresh pelo client nativo antes da releitura
-da entidade. Falha posterior não desfaz a escrita nem gera retry automático.
+Após o Future público de mutação, o repository solicita refresh pelo client
+nativo. Isso não garante escrita concluída; uma consulta da coleção pode observar
+um estado anterior. Falha posterior não desfaz escrita nem gera retry automático.
 Não há exportação CSV ou contrato de compartilhamento.
 
 ### Métricas locais
@@ -212,23 +211,33 @@ mês civil atual; intervalo incompleto, parcial, invertido ou de vários meses
 gera MetricsException antes da leitura. Horário e indicação UTC da entrada não
 alteram seus componentes civis.
 
-Uma única consulta agrupa por categoria usando `Agg.sum`, desde o início
-inclusivo do mês até o início exclusivo do próximo mês, em ISO UTC civil.
+Uma leitura da coleção fornece as despesas, filtradas pelo mês civil e somadas
+por categoria em Dart.
 Total e distribuição vêm dos mesmos grupos. Centavos permanecem inteiros;
 percentuais são calculados em Metrics sem arredondamento antecipado.
+`ExpenseMetricsEntity`, `ExpenseCategoryMetricsEntity` e
+`ExpenseCategoryMetricsResponse` usam o campo `total`, não `totalAmount`.
+O parser JSON de grupos ainda lê `total_amount`; os documentos de despesas
+continuam usando `amount`.
 
 `ExpenseCategoryMetricsResponse`, em `infrastructure/responses/`, converte os
 grupos; o repository monta o resumo, sem camada `projections/`. Categorias têm
 ordem textual determinística. O ID `monthly-yyyy-MM` é estável. Sem agrupamento,
 `categories` é null; mês vazio agrupado tem lista vazia imutável.
 
-Queries verificam `hasErrors`. Categorias desconhecidas, grupos duplicados,
-parsing inválido, somas inválidas e overflow projetado são inesperados.
-O schema garante o inteiro positivo dos registros; agregação não audita corrupção
-que o motor ignora. Nenhuma falha é convertida em zero ou retry automático.
+Categorias desconhecidas, parsing inválido, centavos não positivos e overflow
+por categoria ou mensal são inesperados. O SDK pode omitir JSON inválido;
+a projeção não audita corrupção que o SDK oculta.
+Falhas expostas não são convertidas em zero ou retry automático.
 
 Somente a consulta do mês atual captura revisão antes da leitura e aguarda a
 publicação nativa, inclusive para zero válido. Consultas históricas não publicam.
+
+Na apresentação, `cardPages` remove categorias não positivas, ordena por
+`total` decrescente com desempate estável e monta páginas de até três categorias.
+`ExpenseMetricsPagesExtension` fica no mesmo arquivo
+`expense_metrics_categories_extension.dart`; a dica aparece somente na última
+página com uma categoria, quando há mais de uma página.
 
 ## Falhas e apresentação
 
@@ -257,7 +266,7 @@ nunca build. Lifecycle substancial fica em mixin específico da screen.
   a factory mudar.
 - ExpenseSuggestionsBloc pertence exclusivamente ao `provide` da rota, com
   `scope.addBloc`; formulário/screen recebem a instância e não a fecham.
-- AppWidget possui HomeWidgetLaunchBloc e HomeWidgetSyncBloc por factories
+- AppWidget possui WidgetLaunchBloc e WidgetSyncBloc por factories
   estáveis, sem singleton ou SessionBloc.
 - Settings e Information não possuem Bloc.
 - Para estados de página novos ou explicitamente migrados, prefira `provide`
@@ -298,7 +307,12 @@ mesma instância viva do DashboardBloc. Cancelamento não solicita atualização
 
 ## Widgets nativos e Root
 
-HomeWidgetLaunchBloc usa `IHomeWidgetLaunchRepository` para lançamento inicial
+Blocs, eventos, estados e repositories usam nomes `WidgetLaunch*`/`WidgetSync*`
+e arquivos `widget_*`, sem prefixo `Home`/`home_`. Navegação usa
+`WidgetExpenseNavigation` e o serializer usa `isWidgetExpenseLaunch`.
+O plugin `home_widget` e o parâmetro de URI `homeWidget=true` não mudam.
+
+WidgetLaunchBloc usa `IWidgetLaunchRepository` para lançamento inicial
 e observação. Infrastructure filtra URIs antes de expor sinais. AppWidget não
 recebe clients ou streams nativos; seu mixin coordena navegação e lifecycle.
 
@@ -306,10 +320,10 @@ O intent fica pendente até o Navigator estar disponível. A navegação usa os
 RouteStates reais de `popUntil`, preserva criação existente e distingue edição
 por ID. Não há SessionRoutePolicy, HomeWidgetLaunchPolicy ou redirect deferral.
 
-HomeWidgetSyncStartedEvent mantém uma observação via `emit.onEach`, separada dos
+WidgetSyncStartedEvent mantém uma observação via `emit.onEach`, separada dos
 refreshes restartable, e solicita atualização inicial. Cada refresh aguarda
-`IHomeWidgetSyncRepository.enable` e depois consulta Metrics sem filtros.
-`setMonthlySessionActive(active: true)` é apenas a API legada de habilitação do
+`IWidgetSyncRepository.enable` e depois consulta Metrics sem filtros.
+`setMonthly(active: true)` é apenas a API de habilitação do
 client, não identidade. Não há timer, retry automático ou publicação fictícia.
 
 O client preserva revisões e serialização para impedir publicações obsoletas.
@@ -343,6 +357,8 @@ botões reutilizam bounce compartilhado. Recuos externos são 16 pixels além da
 áreas seguras e teclado. Cabeçalhos recolhíveis de Expense/Information usam
 slivers e respeitam movimento reduzido. Preserve rolagem, fonte ampliada,
 ErrorScreen e semântica de imagens decorativas/skeletons.
+ErrorScreen fica em `core/presentation/screens/error_screen.dart`, sem subpasta
+`error/`.
 Previews são manuais, com tema/localização reais e owner explícito dos recursos.
 
 ## Testes e verificação
@@ -351,19 +367,58 @@ Não há testes de UI, goldens, integração visual ou flows Maestro. Cobertura 
 unitária de domínio, contratos, repositories, Blocs, validação, formatação,
 arquitetura, DI/rotas e políticas nativas.
 
-ToStore é real em diretórios temporários com fechamento explícito. Mocks do SDK
-são restritos a falhas e operações pendentes do inicializador e repositories
+Localstore é real em diretórios temporários isolados. Mocks do SDK
+são restritos a delegação, falhas e operações pendentes dos repositories
 User, Expense e Metrics, em `test/support/core/mocks/`. Blocs mockam contratos.
 Composição global não mocka módulos inteiros e pode simular o canal nativo sem UI.
 
-`test/app_module_test.dart` verifica o banco compartilhado no módulo raiz,
+Testes aguardam sinais do SDK antes de limpar arquivos, sem prometer durabilidade
+pelo Future público. Não há `close` ou reabertura da instância singleton.
+
+`test/app_module_test.dart` verifica o Localstore compartilhado na composição,
 ausência de ownership do banco pela DI, catálogo local e consumidores reais.
-`test/features/core/tostore_module_test.dart` verifica formatadores e client
-nativo sem receber ou abrir ToStore.
+`test/features/core/core_module_test.dart` verifica formatadores, client
+nativo e registro do Localstore, sem abrir banco.
 
 Use Completer/sinais observáveis para concorrência e `fake_async` para tempo.
 Doubles públicos ficam em arquivos próprios de suporte. Cancele observações,
 conclua Futures controlados e descarte recursos.
+
+### Organização e espelhamento dos testes
+
+O padrão é `lib/features/<feature>/<caminho>/<arquivo>.dart` →
+`test/features/<feature>/<caminho>/<arquivo>_test.dart`. O nome do teste deve
+identificar o arquivo ou tipo efetivamente testado. Suítes separadas por
+responsabilidade não representam implementações adicionais e devem deixar
+claro o alvo comum.
+
+Mocks e adapters compartilhados ficam em `test/support/<feature>/`, com nome
+do tipo e arquivo coerentes, sem doubles públicos dentro de `*_test.dart`.
+Root e WidgetClient já usam nomes `widget_*` também nos testes e mocks.
+`test/architecture/` cobre regras transversais, `test/tool/` cobre ferramentas
+e `test/app_module_test.dart` cobre composição global; não precisam de um
+arquivo correspondente em `lib/features/`. Políticas nativas seguem as pastas
+JUnit/XCTest documentadas em AGENTS.md.
+
+Conferência de nomes e caminhos em 22/11/2026: 64 arquivos `*_test.dart` em
+`test/features/`, dos quais 57 têm correspondência exata após remover `_test`.
+Os sete restantes são:
+
+| Teste (relativo a `test/features/`) | Implementação/alinhamento |
+| --- | --- |
+| `dashboard/presentation/screens/dashboard/bloc/dashboard_bloc_test.dart` | `lib/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart`; a pasta extra `dashboard/` não existe na produção. |
+| `dashboard/presentation/screens/dashboard/bloc/dashboard_state_test.dart` | `lib/features/dashboard/presentation/screens/bloc/dashboard_state.dart`; mesmo desvio de pasta. |
+| `core/presentation/enums/app_route_test.dart` | Testa `route_enum.dart`; nome legado. |
+| `core/presentation/widgets/toast/toast_icons_test.dart` | Testa ícones definidos em `toast.dart`; nome especializado, não um arquivo `toast_icons.dart`. |
+| `expense/presentation/screens/expenses/bloc/expenses_reregistration_test.dart` | Suíte de recadastro do `ExpensesBloc`, separada por responsabilidade. |
+| `metrics/presentation/extensions/expense_metrics_pages_extension_test.dart` | Testa `ExpenseMetricsPagesExtension`, declarada em `expense_metrics_categories_extension.dart`. |
+| `user/user_local_module_test.dart` | Suíte de persistência pela composição de `user_module.dart`, separada por responsabilidade. |
+
+Essa conferência não mede cobertura nem declara todas as implementações testadas.
+Nomes/pastas ainda não foram integralmente alinhados; atualizar documentação
+não autoriza mover ou consolidar testes sem uma tarefa de código.
+
+### Execução
 
 Verificações, nesta ordem:
 
@@ -377,10 +432,13 @@ Testes nativos: `dart run tool/test_home_widget_native.dart`, opcionalmente
 `android` ou `ios`, sem instâncias concorrentes de `dart run`.
 Não substituem build nativo ou inspeção manual.
 
-Última verificação em 22/11/2026, após concluir a remoção de Welcome:
+Última execução registrada em 22/11/2026, após Localstore, perfil no
+UserRepository e renomeação de Root para `Widget*`:
 `flutter pub get` concluído, `flutter analyze` sem problemas e
-`flutter test --reporter failures-only` com 946 testes aprovados.
-Resultados antigos estão no histórico, não são bloqueios atuais.
+`flutter test --reporter failures-only` com 904 testes aprovados.
+Os comandos não foram repetidos nesta revisão documental e não validam
+alterações de código posteriores à execução. Resultados antigos estão no
+histórico, não são bloqueios atuais.
 
 ## Limites e pendências
 
@@ -390,6 +448,8 @@ Resultados antigos estão no histórico, não são bloqueios atuais.
 - Android ainda declara microfone e app links antigos; iOS e ferramentas de
   associação também exigem revisão antes da distribuição.
 - O workflow passa `BASE_URL` legado, sem configurar o armazenamento local.
+- O espelhamento de nomes/pastas dos testes tem as exceções e pendências
+  registradas acima.
 - Builds atuais, assinatura, comportamento em dispositivo, widget, declarações
   de loja, publicação web e revisão jurídica não foram validados nesta revisão.
 

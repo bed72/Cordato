@@ -1,7 +1,7 @@
 # Cordato
 
-Aplicativo Flutter de finanças pessoais, em transição para uma versão
-exclusivamente local com ToStore. Estado documental revisado em **22/11/2026**.
+Aplicativo Flutter de finanças pessoais, exclusivamente local com Localstore.
+Estado documental revisado em **22/11/2026**.
 
 ## Estado atual
 
@@ -42,35 +42,40 @@ Os testes não montam UI; a execução em dispositivo é uma verificação separ
 
 ### Inicialização e persistência
 
-`main` aguarda `createDependencies` antes de `runApp`. O bootstrap:
+`main` monta o app sem preparar perfil ou storage. O `appModule` compõe o
+`coreModule`, que registra
+`addInstance<Localstore>(Localstore.instance)`. Repositories recebem a mesma
+instância pelo Modular e usam o SDK diretamente, sem client de persistência.
 
-1. Obtém o diretório persistente de suporte do aplicativo.
-2. Abre o banco `cordato` com `ToStoreFactory.create` e o schema de despesas.
-3. Inicializa somente as chaves ausentes do perfil local.
-4. Entrega o banco pronto a `createAppModule`.
+Não há factory, schemas ou abertura/fechamento de banco. Localstore usa arquivos
+JSON no diretório padrão do SDK: Documents em Android/iOS e diretório corrente
+no desktop. Não há migração dos dados anteriores de ToStore.
 
-**Somente o módulo raiz recebe o ToStore por parâmetro** e registra
-`addInstance<ToStore>(database)`. Não há repasse entre módulos nem singleton
-global manual. Repositories recebem a mesma instância por injeção de dependências.
-`coreModule` não recebe o banco.
-
-A factory usa durabilidade `durable` e desativa logs diagnósticos do SDK.
-Falhas de preparação propagam antes de montar o app, sem retry, reset ou fallback
-para banco vazio. A instância pertence ao bootstrap, não às rotas.
+Limitações aceitas da versão 1.4.0: o Future de `set` não aguarda a gravação
+interna; sucesso na UI não comprova persistência em disco. JSON inválido pode
+ser tratado como documento ausente. Não há garantia adicional de atomicidade
+ou recuperação; falhas expostas não disparam reset ou retry.
 
 ### Perfil e despesas
 
-O perfil usa `profile.name` e `profile.avatar`, com nome inicial `Cordato` e seed
-aleatória persistida. Atualizações de nome/avatar são independentes; atualizar
-ambos não é uma operação atômica. Não há exclusão de conta.
+O UserRepository cria o perfil na primeira leitura, se ainda não existir:
+coleção `user`, documento `profile` com campos `name` e `avatar`, nome inicial
+`Cordato` e seed aleatória persistida. Atualizações preservam campos omitidos
+e gravam o documento completo, sem merge atômico entre updates concorrentes.
+Não há inicializador externo nem exclusão de conta.
 
-Despesas têm ID automático, valor inteiro positivo, categoria padrão `other`,
-descrição opcional e data civil obrigatória. O repository define hoje quando
+Despesas usam coleção `expenses`, com ID gerado pelo SDK, valor inteiro positivo,
+categoria padrão `other`, descrição opcional e data civil obrigatória.
+O repository define hoje quando
 a data de criação não é fornecida. Datas preservam os componentes do calendário,
-sem deslocamento de fuso. O SDK aplica seu trim nativo aos campos textuais.
-Sugestões usam o histórico, sem IA.
+sem deslocamento de fuso. O repository aplica trim à descrição, preservando
+o comportamento anterior. Filtros, ordenação, paginação e sugestões são
+processados em Dart sobre a coleção completa, sem IA.
+Updates gravam o documento completo; não há merge atômico entre updates
+concorrentes.
 
-Metrics agrega o mesmo banco por mês e categoria, sem tabela própria ou cache.
+Metrics lê a mesma coleção e agrega por mês/categoria em Dart, sem coleção
+própria ou cache. As entidades mensal e de categoria usam `total` em centavos.
 Sem filtros usa o mês civil atual; filtros explícitos exigem um mês completo.
 Um mês vazio retorna zero apenas após leitura bem-sucedida. Falhas não viram
 zero nem disparam retry automático.
@@ -85,15 +90,21 @@ O toque abre Dashboard → Nova despesa, sem login. Uma criação já aberta man
 a entrada; edição por ID não é confundida com criação. O resumo mostra somente
 o mês atual, independentemente do filtro histórico da Dashboard.
 
-O app solicita atualização ao iniciar e após mutações reconhecidas de despesas.
+O app solicita atualização ao iniciar e após o Future de mutação de despesas.
+Com Localstore, a leitura pode ocorrer antes de a escrita interna terminar.
 Não há consulta HTTP ou cadastro em background, refresh periódico ou retry
 automático. Falhas preservam o último resumo válido; mês incompatível mostra
 **Abra para atualizar**. A virada do mês depende do agendamento nativo.
 
 O snapshot compartilhado contém somente mês e centavos inteiros na chave JSON
 `monthly_summary`, sem perfil ou credenciais. Revisões bloqueiam publicações
-obsoletas. O nome legado `setMonthlySessionActive` habilita a publicação nativa;
+obsoletas. `setMonthly` habilita a publicação nativa;
 não representa autenticação ou sessão.
+
+No Flutter, Root usa `WidgetLaunchBloc` e `WidgetSyncBloc`, seus eventos/estados
+e os contratos `IWidgetLaunchRepository` e `IWidgetSyncRepository`. Arquivos usam
+`widget_*`, sem prefixo `home_`. O plugin `home_widget`, o parâmetro nativo
+`homeWidget=true` e os nomes Android/iOS não foram renomeados.
 
 Android permite redimensionamento conforme a grade do launcher. iOS oferece
 famílias pequena e média. Temas, tamanhos compactos, valores longos, texto
@@ -135,7 +146,7 @@ verificações externas; textos e testes não comprovam conformidade ou aprovaç
 ```text
 Screen/Widget → Bloc → contrato em application
                             ↑
-                 repository em infrastructure → ToStore / client nativo do core
+                 repository em infrastructure → Localstore / client nativo do core
 ```
 
 Domain e contratos são puros. Repositories retornam `Future<T>` e falhas
@@ -161,18 +172,34 @@ dart run tool/widget_preview.dart
 `.widget_preview/` não é versionado. Compilar o catálogo não equivale a inspecionar
 a interface.
 
+### Organização dos testes
+
+Testes de implementação devem espelhar `lib/features/` em `test/features/`,
+mantendo caminho e nome do arquivo com sufixo `_test.dart`. Mocks e recursos
+compartilhados ficam em `test/support/<feature>/`. Testes arquiteturais,
+ferramentas e políticas nativas têm organização própria.
+
+A conferência de 22/11/2026 encontrou 57 dos 64 arquivos de testes de features
+com espelhamento exato. Há nomes/caminhos legados e suítes separadas por
+responsabilidade; os sete casos estão detalhados em
+[ARCHITECTURE.md](ARCHITECTURE.md#organização-e-espelhamento-dos-testes).
+Isso não é uma medição de cobertura. Esta revisão documental não move testes.
+
 ## Verificação e pendências
 
-Última verificação em 22/11/2026, após concluir a remoção de Welcome:
+Última execução registrada em 22/11/2026, após Localstore, criação do perfil
+pelo UserRepository e renomeação de Root para `Widget*`:
 
 | Comando | Resultado |
 | --- | --- |
 | `flutter pub get` | Concluído. |
 | `flutter analyze` | Sem problemas. |
-| `flutter test --reporter failures-only` | 946 testes aprovados. |
+| `flutter test --reporter failures-only` | 904 testes aprovados. |
 
 Esses resultados não comprovam build nativo, navegação real, renderização dos
-widgets ou prontidão para publicação.
+widgets ou prontidão para publicação. Os comandos não foram repetidos nesta
+revisão exclusivamente documental; alterações de código posteriores à execução
+registrada não são homologadas por esses números.
 
 Pendências observadas no checkout, sem correção de código nesta revisão:
 
@@ -184,6 +211,7 @@ Pendências observadas no checkout, sem correção de código nesta revisão:
   A ferramenta `tool/app_links.dart` também conserva associações antigas.
   Isso não representa funcionalidade de áudio ou autenticação disponível.
 - O workflow Android ainda passa `BASE_URL` legado. Esse parâmetro não configura
-  o ToStore e não indica dependência remota do app local.
+  o Localstore e não indica dependência remota do app local.
 - Backup/restauração, builds atuais, homologação em dispositivo, assinatura iOS
   e revisão de distribuição continuam separados da aprovação dos testes.
+- O espelhamento de nomes/pastas dos testes ainda não é integral.

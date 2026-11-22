@@ -54,7 +54,7 @@ void main() {
         id: 'metrics',
         startDate: month,
         endDate: DateTime(month.year, month.month + 1, 0),
-        totalAmount: cents,
+        total: cents,
         categories: const [],
       );
 
@@ -158,7 +158,7 @@ void main() {
         DashboardPhaseEnum.ready,
       ]);
       expect(bloc.state.user, same(profile));
-      expect(bloc.state.metrics!.totalAmount, 0);
+      expect(bloc.state.metrics!.total, 0);
       expect(bloc.state.expenses!.items, isEmpty);
       expect(bloc.state.firstMonth, DateTime(2024, 1));
       await send(DashboardOpened());
@@ -601,7 +601,7 @@ void main() {
           await send(DashboardOpened());
           stubMetrics(() async => totals(DateTime(2026, 10), cents: 700));
           await send(DashboardExpensesChanged());
-          expect(bloc.state.metrics!.totalAmount, 700);
+          expect(bloc.state.metrics!.total, 700);
           final ready = bloc.state;
           if (staleError) {
             pending.completeError(StateError('obsolete'));

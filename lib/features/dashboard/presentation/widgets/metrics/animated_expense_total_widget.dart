@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 
 final class const AnimatedExpenseTotalWidget({
   super.key,

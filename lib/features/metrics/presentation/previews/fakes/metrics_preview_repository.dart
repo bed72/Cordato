@@ -36,34 +36,34 @@ final class MetricsPreviewRepository({
     return ExpenseMetricsEntity(
       id: 'preview-${start.year}-${start.month}',
       startDate: start,
-      totalAmount: empty ? 0 : 389205,
+      total: empty ? 0 : 389205,
       endDate: endDate ?? DateTime(start.year, start.month + 1, 0),
       categories: empty
           ? []
           : const [
               ExpenseCategoryMetricsEntity(
                 percentage: 55.50,
-                totalAmount: 216000,
+                total: 216000,
                 category: 'housing',
               ),
               ExpenseCategoryMetricsEntity(
                 category: 'food',
                 percentage: 28.44,
-                totalAmount: 110700,
+                total: 110700,
               ),
               ExpenseCategoryMetricsEntity(
                 percentage: 7.77,
-                totalAmount: 30240,
+                total: 30240,
                 category: 'health',
               ),
               ExpenseCategoryMetricsEntity(
                 percentage: 6.24,
-                totalAmount: 24300,
+                total: 24300,
                 category: 'transport',
               ),
               ExpenseCategoryMetricsEntity(
                 percentage: 2.05,
-                totalAmount: 7965,
+                total: 7965,
                 category: 'subscriptions',
               ),
             ],

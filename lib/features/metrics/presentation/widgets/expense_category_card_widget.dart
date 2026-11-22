@@ -10,7 +10,7 @@ import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/core/presentation/widgets/bounce_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/images/image_widget.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 import 'package:cordato/features/metrics/presentation/extensions/expense_category_metrics_extension.dart';
@@ -45,7 +45,7 @@ final class const ExpenseCategoryCardWidget({
         ? null
         : () => _openExpenses(context);
     final color = category.color(context);
-    final amount = formatter.formatCents(category.totalAmount);
+    final amount = formatter.formatCents(category.total);
     final percentage = _buildPercentageLabel(percentage: category.percentage);
 
     final card = Semantics(
@@ -214,7 +214,7 @@ final class const ExpenseCategoryCardWidget({
         8.0 +
         _buildTextHeight(
           context: context,
-          text: formatter.formatCents(category.totalAmount),
+          text: formatter.formatCents(category.total),
           style: buildAmountStyle(context: context),
           width: double.infinity,
           maxLines: 1,

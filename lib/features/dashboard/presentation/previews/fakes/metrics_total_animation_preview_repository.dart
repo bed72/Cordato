@@ -18,7 +18,7 @@ final class MetricsTotalAnimationPreviewRepository
 
     return ExpenseMetricsEntity(
       id: 'preview-${start.year}-${start.month}-$total',
-      totalAmount: total,
+      total: total,
       startDate: start,
       endDate: endDate ?? DateTime(start.year, start.month + 1, 0),
     );

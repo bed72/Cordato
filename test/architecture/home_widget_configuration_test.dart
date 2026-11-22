@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/root/infrastructure/serializers/home_widget_launch_serializer.dart';
+import 'package:cordato/features/root/infrastructure/serializers/widget_launch_serializer.dart';
 
 void main() {
   test('iOS shares only the monthly cache through the same App Group in both targets', () {
@@ -56,7 +56,7 @@ void main() {
           .firstMatch(source)!
           .group(0)!;
 
-      expect(isHomeWidgetExpenseLaunch(Uri.parse(address)), isTrue);
+      expect(isWidgetExpenseLaunch(Uri.parse(address)), isTrue);
     }
   });
 

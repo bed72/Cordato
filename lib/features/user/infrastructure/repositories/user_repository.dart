@@ -1,8 +1,7 @@
 import 'dart:io';
+import 'dart:math';
 
-import 'package:tostore/tostore.dart';
-
-import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:localstore/localstore.dart';
 
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
 import 'package:cordato/features/user/infrastructure/responses/user_response.dart';
@@ -10,27 +9,28 @@ import 'package:cordato/features/user/infrastructure/responses/user_response.dar
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
-final class UserRepository({required final ToStore database})
+final class UserRepository({required final Localstore database})
     implements IUserRepository {
   @override
   Future<UserEntity> get() async {
     try {
-      final [name, avatar] = await Future.wait([
-        database.getValue('profile.name'),
-        database.getValue('profile.avatar'),
-      ]);
+      final document = database.collection('user').doc('profile');
+      final stored = await document.get();
 
-      if (name == null || avatar == null) {
-        throw UserException(
-          errors: const ErrorsEntity(
-            errors: [ErrorEntity(code: 'profile_missing')],
-          ),
-        );
-      }
+      if (stored != null) return UserResponse.fromJson(stored).toEntity();
 
-      return UserResponse.fromJson({'name': name, 'avatar': avatar}).toEntity();
-    } on DbException catch (exception) {
-      throw _failure(exception);
+      final random = Random.secure();
+      final profile = {
+        'name': 'Cordato',
+        'avatar': List.generate(
+          16,
+          (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+        ).join(),
+      };
+
+      await document.set(profile);
+
+      return UserResponse.fromJson(profile).toEntity();
     } on FileSystemException {
       throw UserException(errors: .unknown());
     }
@@ -42,38 +42,17 @@ final class UserRepository({required final ToStore database})
 
     if (name == null && avatar == null) return current;
 
-    final fields = {'profile.name': ?name, 'profile.avatar': ?avatar};
+    final profile = {
+      'name': name ?? current.name,
+      'avatar': avatar ?? current.avatar,
+    };
 
     try {
-      for (final field in fields.entries) {
-        final saved = await database.setValue(field.key, field.value);
+      await database.collection('user').doc('profile').set(profile);
 
-        if (saved.hasErrors) throw _failure(DbException(saved.statuses));
-      }
-
-      return await get();
-    } on DbException catch (exception) {
-      throw _failure(exception);
+      return UserResponse.fromJson(profile).toEntity();
     } on FileSystemException {
       throw UserException(errors: .unknown());
     }
-  }
-
-  UserException _failure(DbException exception) {
-    if (exception.statuses.any((status) => status.isDeveloperError)) {
-      throw exception;
-    }
-
-    return UserException(
-      errors: ErrorsEntity(
-        errors: exception.statuses.isEmpty
-            ? ErrorsEntity.unknown().errors
-            : .unmodifiable(
-                exception.statuses.map(
-                  (status) => ErrorEntity(code: status.codeKey),
-                ),
-              ),
-      ),
-    );
   }
 }

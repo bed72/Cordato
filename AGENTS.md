@@ -7,13 +7,14 @@ A arquitetura canônica está em [ARCHITECTURE.md](ARCHITECTURE.md); execução,
 estado do produto e pendências estão em [README.md](README.md).
 Resultados anteriores estão no [histórico](docs/history/local-transition.md).
 
-A branch `tostore` é exclusivamente local por decisão explícita.
+O aplicativo na branch `tostore` usa persistência exclusivamente local.
+O usuário autorizou commit e push da branch; isso não introduz backend no app.
 Authentication, Session, Welcome, PocketBase, backend, worker, áudio, IA e Insight foram
 removidos pelo usuário. CSV e compartilhamento sem consumidores também foram
 removidos. Não restaure código, dependências, testes ou doubles desses fluxos
 para satisfazer specs históricas ou sanar referências legadas.
 
-O app usa ToStore compartilhado por DI. Não há identidade autenticada, `owner`,
+O app usa Localstore compartilhado por DI. Não há identidade autenticada, `owner`,
 sessão, backend, exportação ou backup/restauração pelo aplicativo.
 Budget e Family são planejados. Não crie `identity` para reproduzir o backend
 legado; `chat` está fora do escopo. Kotlin legado é referência de domínio,
@@ -36,23 +37,21 @@ Pendências documentadas não autorizam mudanças incidentais de comportamento.
   ficam em Markdown; preserve comentários existentes fora do escopo.
 - Não amplie uma tarefa localizada para migrar outras features ou ownerships.
 
-## Bootstrap e ToStore
+## Bootstrap e Localstore
 
-`main` aguarda `createDependencies` antes de `runApp`.
-`ToStoreFactory.create` recebe diretório persistente e schemas fornecidos pela
-composição, usa `RecoveryDurability.durable` e desativa logs diagnósticos.
-A factory não importa regras das features.
+`main` monta o app sem inicializar perfil ou storage. `appModule` é estático;
+`coreModule` registra
+`addInstance<Localstore>(Localstore.instance)`. Repositories recebem o SDK
+diretamente por construtor, sem client, wrapper CRUD, data source ou service
+locator. Não restaure factory, schemas ou dependência de ToStore.
 
-Somente `createAppModule` recebe o ToStore pronto e registra
-`addInstance<ToStore>(database)` no módulo raiz. Não repasse o banco entre módulos.
-`coreModule` não recebe o banco; repositories recebem a mesma instância pela DI.
-Não crie singleton global manual, wrapper genérico de CRUD, Future de abertura
-na DI ou service locator dentro dos repositories.
-
-O bootstrap inicializa o perfil antes de montar o app. Falhas propagam, sem
-reset, retry ou fallback para banco vazio; falha após abertura tenta fechar
-o banco e preserva a falha original. A instância pertence ao bootstrap, não a
-rotas ou telas; descartar a DI não deve fechá-la.
+O SDK usa seu diretório padrão e singleton próprios, sem abertura/fechamento
+explícitos. Não há migração dos dados antigos de ToStore, por decisão do usuário.
+O perfil padrão é responsabilidade do UserRepository, sem inicializador separado.
+Na versão 1.4.0, `set` não aguarda a escrita interna: aguardar seu Future não
+comprova persistência em disco nem propaga todas as falhas de filesystem.
+O SDK também pode tratar JSON inválido como documento ausente. Esses limites
+foram aceitos; não introduza fork ou persistência própria para contorná-los.
 Não prometa durabilidade auditada, criptografia, backup ou app funcional com
 base apenas em testes focados.
 
@@ -61,18 +60,17 @@ base apenas em testes focados.
 ### User
 
 UserEntity não possui ID/e-mail. IUserRepository expõe `get` e `update`,
-sem exclusão de conta. UserRepository usa KV `profile.name` e `profile.avatar`
-com o ToStore pronto. O perfil inicial é `Cordato` com seed aleatória persistida.
+sem exclusão de conta. UserRepository usa coleção `user`, documento `profile`
+com campos `name` e `avatar`. `get` cria e salva `Cordato` com seed aleatória
+somente quando o documento está ausente; leituras seguintes preservam o perfil.
+Não crie inicializador externo, identidade, sessão ou cache adicional.
+Dados antigos não são migrados; payloads malformados não são substituídos por defaults.
+`avatar` é anulável; avatar ausente/nulo é aceito e texto vazio é preservado.
 
-O inicializador preenche somente chaves ausentes, preserva valores válidos e
-rejeita valores presentes malformados. Não crie identidade, sessão, cache ou
-inicialização silenciosa no repository. O objeto KV antigo `profile` não é migrado.
-
-Escritas verificam `hasErrors` e incluem somente campos fornecidos, sem fila de
-Futures, transação ou estado pendente. Atualizações concorrentes de campos
-diferentes não se sobrescrevem; atualizar ambos não é atômico.
-Ausência de perfil e falhas esperadas geram UserException; parsing e erros de
-programação propagam. Mensagens nativas do banco não chegam à UI.
+Updates preservam campos omitidos e gravam o documento completo, sem fila de
+Futures, transação ou estado pendente. Não há garantia de merge atômico entre
+updates concorrentes. Falhas esperadas expostas geram UserException; parsing
+e erros de programação propagam. Mensagens nativas do banco não chegam à UI.
 
 User/Edit mantêm factories estáveis e ownership dos Blocs pela screen.
 Dashboard consulta somente o contrato atualizado. Rotas User não exigem sessão.
@@ -84,32 +82,33 @@ Bloc/repository não normalizam a entrada.
 
 ### Expense
 
-Expense usa schema próprio sem `owner`: ID automático, centavos inteiros
+Expense usa coleção `expenses`, sem schema nem `owner`: ID gerado pelo SDK, centavos inteiros
 positivos, categoria padrão `other`, descrição anulável e data civil obrigatória.
-Default hoje e validação de categoria pertencem ao repository; schema não
-normaliza datas nem restringe o enum.
+Default hoje, validação de centavos positivos e categoria pertencem ao repository.
 
-Use CRUD/queries nativos, datas ISO UTC pelos componentes civis, paginação por
-offset/limite mais um e ordem determinística por data/ID. Descrição nula vira
-texto vazio na projeção; SDK aplica trim nativo nos campos textuais, sem
-normalização extra no repository.
+Use CRUD nativo. Listagem lê a coleção e filtra, ordena e pagina em Dart por
+offset/limite mais um. Datas são ISO UTC pelos componentes civis; ordem por
+data/ID textual é determinística, sem prometer ordem de criação por ID.
+Descrição nula vira texto vazio na projeção; o repository preserva o trim
+anterior na criação/atualização da descrição.
 
-Sugestões percorrem lotes de 100 até 30 correspondências literais case-insensitive
+Sugestões percorrem o histórico ordenado até 30 correspondências literais case-insensitive
 antes de deduplicar; preservam categoria/valor da ocorrência mais recente.
 Aceitar sugestão aplica categoria, inclusive `other`, preservando data/valor manual.
 
-Escritas verificam `hasErrors` e registros afetados; ID ausente gera
-ExpenseException. Updates enviam somente campos fornecidos; sem campos apenas
-leem, sem refresh. Mutações reconhecidas solicitam refresh nativo, sem alterar
+ID ausente gera ExpenseException antes de update/delete. Updates leem o documento,
+aplicam somente campos fornecidos e gravam o documento completo; alterações
+concorrentes do mesmo documento não têm garantia de merge atômico. Sem campos
+apenas leem, sem refresh. Após o Future do SDK, mutações solicitam refresh nativo, sem alterar
 formato do widget. Expense/Expenses preservam ownership pela screen e sugestões
 pelo provide. Não restaure CSV, modelos de exportação ou compartilhamento.
 
 ### Metrics
 
 Metrics é projeção local somente leitura de `expenses`, sem tabela própria,
-cache, triggers ou escritas em Expense. Recebe o ToStore compartilhado e usa
-`Agg.sum` por categoria em uma única consulta mensal: início inclusivo e próximo
-mês exclusivo, ISO UTC pelos componentes civis. Sem datas usa o mês atual;
+cache, triggers ou escritas em Expense. Recebe o Localstore compartilhado, lê
+`expenses` e filtra/agrega por mês/categoria em Dart, pelos componentes civis.
+Sem datas usa o mês atual;
 intervalos incompletos ou não mensais geram MetricsException antes da leitura.
 
 Total e distribuição vêm dos mesmos grupos; centavos são inteiros e percentuais
@@ -118,15 +117,21 @@ textual determinística; ID sintético `monthly-yyyy-MM` é estável.
 Grupos usam `ExpenseCategoryMetricsResponse` em `infrastructure/responses/`;
 repository monta o resumo mensal, sem camada `projections/`.
 Sem agrupamento categories é null; mês vazio agrupado tem lista vazia imutável.
+Entidades mensal/de categoria e response usam `total` em centavos, não
+`totalAmount`. O JSON de grupo ainda lê `total_amount`; despesas usam `amount`.
+`ExpenseMetricsPagesExtension` está em `expense_metrics_categories_extension.dart`.
+Paginação visual remove categorias não positivas, ordena por total decrescente
+com desempate estável e agrupa até três; a dica só aparece na última página com
+uma categoria quando existem várias páginas.
 
 Infrastructure valida categorias pelo enum puro de Expense, sem importar sua
 implementação ou criar dependência reversa. Parsing inválido, categorias
-desconhecidas, grupos duplicados, somas inválidas e overflow projetado são
-inesperados. Schema garante inteiro positivo; agregação não audita corrupção
-dos registros que o motor ignora.
+desconhecidas, centavos não positivos, somas inválidas e overflow por categoria
+ou mensal são inesperados. O SDK pode omitir documentos com JSON inválido;
+não prometa auditoria de corrupção.
 
-Queries verificam `hasErrors`; falhas esperadas de banco/filesystem viram
-MetricsException com códigos, sem mensagens nativas na UI. Erros de programação
+Falhas de filesystem expostas pelo SDK viram MetricsException segura,
+sem mensagens nativas na UI. Erros de programação
 propagam; não há fallback para zero nem retry automático. Só o mês atual captura
 revisão antes da leitura e aguarda publicação nativa, inclusive zero válido.
 Preserve IMetricsRepository, UI, ownership, módulo único sem path, formatos e
@@ -155,28 +160,31 @@ conformidade jurídica já verificadas. Backup/restore nativo será tarefa poste
 
 ### Root e widgets nativos
 
-Root não depende de Session/Authentication. `main` abre Dashboard após aguardar
-dependências locais; `/` é fallback visual e sua política pura aponta à Dashboard.
-AppWidget possui somente HomeWidgetLaunchBloc e HomeWidgetSyncBloc por factories
+Root não depende de Session/Authentication. `main` abre Dashboard sem inicializar
+perfil/storage; `/` é fallback visual e sua política pura aponta à Dashboard.
+AppWidget possui somente WidgetLaunchBloc e WidgetSyncBloc por factories
 estáveis, com fechamento no lifecycle.
+Tipos de integração usam `WidgetLaunch*`/`WidgetSync*` e arquivos `widget_*`,
+incluindo eventos, estados, repositories e testes, sem prefixo `Home`/`home_`.
+O parâmetro nativo `homeWidget` da URI e o plugin `home_widget` permanecem.
 
 O atalho fica pendente até Navigator estar disponível e abre Dashboard → criação,
 preservando criações sem confundi-las com edição. Use RouteStates reais de
 `popUntil`: no Modular 7, `routeState` representa a base e Page.name não identifica
 rotas empilhadas. Não restaure políticas de sessão ou redirect deferral.
 
-Launch usa IHomeWidgetLaunchRepository para leitura/observação; infrastructure
+Launch usa IWidgetLaunchRepository para leitura/observação; infrastructure
 filtra URIs antes de expor sinais. AppWidget não recebe client/streams nativos;
 plugin não entra na apresentação.
 
-HomeWidgetSyncStartedEvent observa pedidos de atualização com `emit.onEach` em
+WidgetSyncStartedEvent observa pedidos de atualização com `emit.onEach` em
 handler contínuo e solicita o resumo inicial. Refreshes restartable habilitam a
-publicação por IHomeWidgetSyncRepository.enable antes de consultar Metrics.
-O adapter usa `setMonthlySessionActive(active: true)` apenas como habilitação do
+publicação por IWidgetSyncRepository.enable antes de consultar Metrics.
+O adapter usa `setMonthly(active: true)` apenas como habilitação do
 client, não identidade ou sessão. Não há refresh periódico ou retry automático.
 
 Expense sinaliza mutações pelo client compartilhado sem importar Metrics/Root.
-Root compõe os contratos em HomeWidgetSyncRepository. Preserve revisões e
+Root compõe os contratos em WidgetSyncRepository. Preserve revisões e
 serialização para bloquear respostas obsoletas. Snapshot contém somente mês e
 centavos, sem credenciais; mês incompatível mostra “Abra para atualizar”.
 iOS usa `group.com.bed.cordato` nos dois targets. Não faça HTTP ou cadastro em
@@ -215,8 +223,11 @@ lib/features/<feature>/
 - Domain é puro: sem Flutter, Bloc, SDK, storage ou application.
 - Application contém contratos e exceções, sem adapters/UI. Contratos de
   repository não ficam em `domain/repositories/`.
-- Infrastructure implementa contratos, usa ToStore diretamente e converte
+- Infrastructure implementa contratos, usa Localstore diretamente e converte
   payloads em tipos próprios. Capacidades nativas usam clients do core.
+  `IWidgetClient` e `WidgetClient` ficam no mesmo
+  `core/infrastructure/clients/widget_client.dart`; isso não muda a localização
+  dos contratos de repository em application nem permite importar clients na UI.
 - Presentation conhece contratos/exceções, nunca repositories concretos ou clients.
 - Módulos fazem composição e podem importar implementações concretas.
 - Core contém capacidades compartilhadas; não mova regras para contornar limites.
@@ -312,6 +323,9 @@ Essas invariantes futuras não comprovam funcionalidades implementadas.
   Preserve semântica, tema e estado desabilitado.
 - Use context.colors, context.typography e context.radius; sem tokens/extensões
   duplicados ou fundo fixo de Scaffold sem necessidade.
+- Contratos de formatação `IDateFormatter`/`IMoneyFormatter` ficam junto às
+  implementações em `date_formatter.dart`/`money_formatter.dart`, sem arquivos
+  `interface_*` separados.
 - Recuos externos de telas/bottom sheets são 16 pixels além de áreas seguras e
   teclado. Voltar de 48 ocupa leading de 80 com simetria horizontal de 16.
   Cabeçalho expandido começa 16 abaixo da toolbar. Preserve espaçamentos internos,
@@ -321,6 +335,7 @@ Essas invariantes futuras não comprovam funcionalidades implementadas.
 - Assets ficam em AssetEnum/pubspec.yaml; use ImageWidget.
 - Reutilize ErrorScreen; preserve rolagem, fonte ampliada e exclusão semântica
   de imagens decorativas/skeletons.
+  O arquivo atual é `core/presentation/screens/error_screen.dart`.
 
 ## Módulos e navegação
 
@@ -350,6 +365,15 @@ URLs e referências XML/Kotlin/testes ao renomear. Consulte android/README.md.
 ## Testes obrigatórios
 
 Espelhe produção em `test/features/<feature>/`. Não adicione Python.
+Para cada arquivo testado, preserve o caminho relativo e acrescente `_test`
+ao nome: `lib/features/.../widget_launch_bloc.dart` corresponde a
+`test/features/.../widget_launch_bloc_test.dart`. Suítes separadas por
+responsabilidade devem identificar a implementação comum, sem sugerir um
+arquivo de produção inexistente. Testes arquiteturais, de ferramentas,
+composição global e políticas nativas têm organização própria.
+Os desalinhamentos existentes estão registrados em
+[ARCHITECTURE.md](ARCHITECTURE.md#organização-e-espelhamento-dos-testes);
+documentá-los não os torna padrão nem autoriza reorganização incidental.
 Não mantenha/crie testes de UI, goldens, integração visual ou flows Maestro.
 Previews manuais permanecem; preserve testes unitários e arquiteturais.
 
@@ -363,12 +387,14 @@ Previews manuais permanecem; preserve testes unitários e arquiteturais.
 | Architecture | Imports, camadas, contextos e contratos; DI/rotas têm testes próprios. |
 
 - Use mocktail, bloc_test e flutter_test. Blocs mockam contrato de repository.
-- ToStore usa SDK real, diretórios temporários e fechamento explícito, sem UI.
-  Mocks do SDK somente para falhas/operações pendentes do inicializador e
+- Localstore usa SDK real em diretórios temporários isolados, sem UI.
+  Não há `close` do SDK; testes aguardam sinais de escrita antes de limpar arquivos
+  e distinguem o Future público da conclusão real do filesystem.
+  Mocks do SDK somente para delegação, falhas e operações pendentes dos
   repositories User/Expense/Metrics, em `test/support/core/mocks/`.
 - Composição global não simula módulos inteiros; pode simular canal nativo,
   sem montar UI. Preserve cobertura real de Metrics/composição.
-- Testes do core verificam formatadores/client nativo sem ToStore.
+- Testes do core verificam formatadores/client nativo e registro do Localstore.
   Teste do app verifica instância única no root e ausência de fechamento pela DI.
 - Não restaure testes/doubles exclusivos de PocketBase, sessão/identidade,
   HTTP/Dio, recording, áudio, CSV ou compartilhamento removidos.

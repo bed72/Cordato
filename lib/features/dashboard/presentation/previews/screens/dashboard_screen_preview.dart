@@ -154,7 +154,7 @@ Widget _screenPreview({
                 id: 'empty-month',
                 endDate: end,
                 categories: [],
-                totalAmount: 0,
+                total: 0,
                 startDate: month,
               )
             : null,

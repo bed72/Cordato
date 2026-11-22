@@ -1,10 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
+import 'package:cordato/features/core/presentation/screens/error_screen.dart';
 import 'package:cordato/features/core/presentation/widgets/empty_state_widget.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_event.dart';

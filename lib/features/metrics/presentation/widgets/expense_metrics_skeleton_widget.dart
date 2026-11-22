@@ -28,17 +28,17 @@ final class const ExpenseMetricsSkeletonWidget({
                 categories: const [
                   ExpenseCategoryMetricsEntity(
                     percentage: 50.0,
-                    totalAmount: 100000,
+                    total: 100000,
                     category: 'housing',
                   ),
                   ExpenseCategoryMetricsEntity(
                     category: 'food',
                     percentage: 30.0,
-                    totalAmount: 60000,
+                    total: 60000,
                   ),
                   ExpenseCategoryMetricsEntity(
                     percentage: 20.0,
-                    totalAmount: 40000,
+                    total: 40000,
                     category: 'transport',
                   ),
                 ],

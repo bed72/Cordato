@@ -69,7 +69,7 @@ Widget previewYearBoundaryDashboardMonth() => _sectionPreview(month: 1);
 Widget previewManyExpenseMetricsCategories() => _sectionPreview(
   data: ExpenseMetricsEntity(
     id: 'many-categories',
-    totalAmount: 100000,
+    total: 100000,
     endDate: DateTime(2026, 10, 31),
     startDate: DateTime(2026, 10, 1),
     categories: [
@@ -86,7 +86,7 @@ Widget previewManyExpenseMetricsCategories() => _sectionPreview(
         ExpenseCategoryMetricsEntity(
           category: category,
           percentage: 12.50,
-          totalAmount: 12500,
+          total: 12500,
         ),
     ],
   ),
@@ -198,15 +198,11 @@ Widget previewEightMetricsCategories() =>
 Widget previewFilteredMetricsCategories() => _sectionPreview(
   data: ExpenseMetricsEntity(
     id: 'filtered',
-    totalAmount: 10000,
+    total: 10000,
     startDate: DateTime(2026, 10),
     endDate: DateTime(2026, 10, 31),
     categories: const [
-      ExpenseCategoryMetricsEntity(
-        category: 'food',
-        totalAmount: 0,
-        percentage: 0,
-      ),
+      ExpenseCategoryMetricsEntity(category: 'food', total: 0, percentage: 0),
     ],
   ),
 );
@@ -247,7 +243,7 @@ ExpenseMetricsEntity _categoriesResult(int count, {bool large = false}) =>
       id: 'categories-$count',
       startDate: DateTime(2026, 10),
       endDate: DateTime(2026, 10, 31),
-      totalAmount: large ? 99999999999 : 360000,
+      total: large ? 99999999999 : 360000,
       categories: [
         for (final (index, category) in [
           'food',
@@ -263,7 +259,7 @@ ExpenseMetricsEntity _categoriesResult(int count, {bool large = false}) =>
         ].take(count).indexed)
           ExpenseCategoryMetricsEntity(
             category: category,
-            totalAmount: large
+            total: large
                 ? 9999999999 - index
                 : index < 8
                 ? 80000 - index * 10000

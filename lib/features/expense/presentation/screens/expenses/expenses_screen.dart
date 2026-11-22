@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:cordato/features/core/presentation/widgets/empty_state_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 import 'package:cordato/features/core/presentation/widgets/headers/collapsible_header_widget.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';

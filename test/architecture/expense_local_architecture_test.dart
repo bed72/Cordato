@@ -46,7 +46,7 @@ void main() {
       expect(module, contains('expenseBloc: inject<ExpenseBloc>'));
       expect(module, contains('scope.addBloc<ExpenseSuggestionsBloc>'));
       expect(form, contains('ExpenseBloc Function()'));
-      expect(repository, contains('ToStore'));
+      expect(repository, contains('Localstore'));
       expect(repository, isNot(contains('.close(')));
     },
   );

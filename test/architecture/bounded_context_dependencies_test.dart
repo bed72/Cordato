@@ -9,6 +9,7 @@ final _importPattern = RegExp(
 const _financialContexts = {'expense', 'budget', 'family'};
 const _forbiddenDomainImports = {
   'package:tostore/',
+  'package:localstore/',
   'package:record/',
   'package:speech_to_text/',
   'package:pocketbase/',
@@ -27,6 +28,7 @@ const _forbiddenDomainImports = {
 };
 const _forbiddenPresentationImports = {
   'package:tostore/',
+  'package:localstore/',
   'package:record/',
   'package:speech_to_text/',
   'package:share_plus/',
@@ -161,8 +163,8 @@ void main() {
             final isRootWidgetContract =
                 targetContext == 'root' &&
                 {
-                  'application/repositories/interface_home_widget_sync_repository.dart',
-                  'application/repositories/interface_home_widget_launch_repository.dart',
+                  'application/repositories/interface_widget_sync_repository.dart',
+                  'application/repositories/interface_widget_launch_repository.dart',
                 }.contains(targetPath);
             final isApplicationContract =
                 isFeatureRepositoryContract || isRootWidgetContract;

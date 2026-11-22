@@ -12,9 +12,9 @@ void main() {
       final category = response.toEntity(monthlyTotal: 3);
 
       expect(response.category, 'food');
-      expect(response.totalAmount, 2);
+      expect(response.total, 2);
       expect(category.category, 'food');
-      expect(category.totalAmount, 2);
+      expect(category.total, 2);
       expect(category.percentage, closeTo(200 / 3, 1e-12));
     });
 

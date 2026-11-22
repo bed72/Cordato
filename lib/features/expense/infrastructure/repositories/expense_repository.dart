@@ -1,16 +1,15 @@
 import 'dart:io';
 
-import 'package:tostore/tostore.dart';
+import 'package:localstore/localstore.dart';
 
-import 'package:cordato/features/core/application/clients/interface_widget_client.dart';
-
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/core/domain/entities/errors_entity.dart';
+import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
+import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 
-import 'package:cordato/features/expense/infrastructure/mappers/expense_mapper.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_suggestion_response.dart';
 
@@ -18,7 +17,7 @@ import 'package:cordato/features/expense/application/exceptions/expense_exceptio
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
 final class ExpenseRepository({
-  required final ToStore _database,
+  required final Localstore _database,
   required final IWidgetClient _client,
 }) implements IExpenseRepository {
   @override
@@ -26,48 +25,31 @@ final class ExpenseRepository({
     required String query,
   }) async {
     try {
-      int offset = 0;
       int matches = 0;
+      final records = await _records();
+      _order(records, null);
 
       final descriptions = <String>{};
       final search = query.toLowerCase();
       final suggestions = <ExpenseSuggestionEntity>[];
 
-      while (matches < 30) {
-        final history = await _database
-            .query('expenses')
-            .orderByDesc('occurred_on')
-            .orderByDesc('id')
-            .offset(offset)
-            .limit(100)
-            .future;
-
-        ExpenseMapper.checkQuery(history);
-
-        for (final record in history.data) {
-          final description = record['description'] as String?;
-          if (description == null ||
-              description.isEmpty ||
-              !description.toLowerCase().contains(search)) {
-            continue;
-          }
-
-          final suggestion = ExpenseSuggestionResponse.fromJson(record);
-          matches++;
-          if (descriptions.add(description.toLowerCase())) {
-            suggestions.add(suggestion.toEntity());
-          }
-          if (matches == 30) break;
+      for (final record in records) {
+        final description = record['description'] as String?;
+        if (description == null ||
+            description.isEmpty ||
+            !description.toLowerCase().contains(search)) {
+          continue;
         }
 
-        if (history.data.length < 100) break;
-
-        offset += history.data.length;
+        final suggestion = ExpenseSuggestionResponse.fromJson(record);
+        matches++;
+        if (descriptions.add(description.toLowerCase())) {
+          suggestions.add(suggestion.toEntity());
+        }
+        if (matches == 30) break;
       }
 
-      return List.unmodifiable(suggestions);
-    } on DbException catch (exception) {
-      throw ExpenseMapper.failure(exception);
+      return .unmodifiable(suggestions);
     } on FileSystemException {
       throw ExpenseException(errors: .unknown());
     }
@@ -76,18 +58,7 @@ final class ExpenseRepository({
   @override
   Future<ExpenseEntity> getById({required String id}) async {
     try {
-      final records = await _database
-          .query('expenses')
-          .where('id', '=', id)
-          .limit(1)
-          .future;
-      ExpenseMapper.checkQuery(records);
-
-      if (records.data.isEmpty) throw ExpenseMapper.notFound();
-
-      return ExpenseResponse.fromJson(records.data.single).toEntity();
-    } on DbException catch (exception) {
-      throw ExpenseMapper.failure(exception);
+      return ExpenseResponse.fromJson(await _record(id)).toEntity();
     } on FileSystemException {
       throw ExpenseException(errors: .unknown());
     }
@@ -96,11 +67,9 @@ final class ExpenseRepository({
   @override
   Future<void> delete({required String id}) async {
     try {
-      final deleted = await _database.delete('expenses').where('id', '=', id);
-      ExpenseMapper.checkMutation(deleted);
-      _client.requestMonthlyRefresh();
-    } on DbException catch (exception) {
-      throw ExpenseMapper.failure(exception);
+      await _record(id);
+      await _database.collection('expenses').doc(id).delete();
+      _client.monthlyRefresh();
     } on FileSystemException {
       throw ExpenseException(errors: .unknown());
     }
@@ -122,36 +91,30 @@ final class ExpenseRepository({
     }
 
     final size = pageSize > 0 ? pageSize : 30;
+    final first = from == null ? null : _date(from);
+    final last = to == null
+        ? null
+        : _date(DateTime.utc(to.year, to.month, to.day + 1));
+
     try {
-      final query = _database.query('expenses');
-      if (category != null) query.where('category', '=', category);
+      final records = (await _records()).where((record) {
+        final date = record['occurred_on'] as String;
 
-      if (from != null) query.where('occurred_on', '>=', _date(from));
+        return (category == null || record['category'] as String == category) &&
+            (first == null || date.compareTo(first) >= 0) &&
+            (last == null || date.compareTo(last) < 0);
+      }).toList();
 
-      if (to != null) {
-        query.where(
-          'occurred_on',
-          '<',
-          _date(DateTime.utc(to.year, to.month, to.day + 1)),
-        );
-      }
-      _order(query, sort);
-
-      final records = await query
-          .offset((page - 1) * size)
-          .limit(size + 1)
-          .future;
-      ExpenseMapper.checkQuery(records);
+      _order(records, sort);
+      final items = records.skip((page - 1) * size).take(size + 1).toList();
 
       return ExpensePageEntity(
-        nextPage: records.data.length > size ? page + 1 : null,
-        items: records.data
+        nextPage: items.length > size ? page + 1 : null,
+        items: items
             .take(size)
             .map((record) => ExpenseResponse.fromJson(record).toEntity())
             .toList(),
       );
-    } on DbException catch (exception) {
-      throw ExpenseMapper.failure(exception);
     } on FileSystemException {
       throw ExpenseException(errors: .unknown());
     }
@@ -165,24 +128,22 @@ final class ExpenseRepository({
     DateTime? occurredOn,
     ExpenseCategoryEnum? category,
   }) async {
+    if (cents != null) _validateAmount(cents);
+
     final fields = <String, dynamic>{
       'amount': ?cents,
-      'description': ?description,
+      'description': ?description?.trim(),
       'category': ?category?.value,
       if (occurredOn != null) 'occurred_on': _date(occurredOn),
     };
     if (fields.isEmpty) return getById(id: id);
 
     try {
-      final updated = await _database
-          .update('expenses', fields)
-          .where('id', '=', id);
-      ExpenseMapper.checkMutation(updated);
-      _client.requestMonthlyRefresh();
+      final record = {...await _record(id), ...fields};
+      await _database.collection('expenses').doc(id).set(record);
+      _client.monthlyRefresh();
 
-      return await getById(id: id);
-    } on DbException catch (exception) {
-      throw ExpenseMapper.failure(exception);
+      return ExpenseResponse.fromJson(record).toEntity();
     } on FileSystemException {
       throw ExpenseException(errors: .unknown());
     }
@@ -195,38 +156,68 @@ final class ExpenseRepository({
     ExpenseCategoryEnum category = .other,
     DateTime? occurredOn,
   }) async {
+    _validateAmount(cents);
+
     try {
-      final created = await _database.insert('expenses', {
+      final document = _database.collection('expenses').doc();
+      final record = <String, dynamic>{
+        'id': document.id,
         'amount': cents,
         'category': category.value,
-        'description': description,
+        'description': description.trim(),
         'occurred_on': _date(occurredOn ?? DateTime.now()),
-      });
-      ExpenseMapper.checkMutation(created);
-      final id = created.firstPrimaryKey;
+      };
 
-      if (id == null) throw StateError('Missing generated expense ID');
+      await document.set(record);
+      _client.monthlyRefresh();
 
-      _client.requestMonthlyRefresh();
-
-      return await getById(id: id);
-    } on DbException catch (exception) {
-      throw ExpenseMapper.failure(exception);
+      return ExpenseResponse.fromJson(record).toEntity();
     } on FileSystemException {
       throw ExpenseException(errors: .unknown());
+    }
+  }
+
+  Future<Map<String, dynamic>> _record(String id) async {
+    final record = await _database.collection('expenses').doc(id).get();
+    if (record == null) {
+      throw ExpenseException(
+        errors: const ErrorsEntity(
+          errors: [ErrorEntity(code: 'expense_not_found')],
+        ),
+      );
+    }
+
+    return record;
+  }
+
+  Future<List<Map<String, dynamic>>> _records() async {
+    final documents = await _database.collection('expenses').get();
+    return documents?.values
+            .map((document) => document as Map<String, dynamic>)
+            .toList() ??
+        [];
+  }
+
+  void _validateAmount(int cents) {
+    if (cents <= 0) {
+      throw ExpenseException(
+        errors: const ErrorsEntity(
+          errors: [ErrorEntity(code: 'invalid_amount', parameter: 'amount')],
+        ),
+      );
     }
   }
 
   String _date(DateTime date) =>
       DateTime.utc(date.year, date.month, date.day).toIso8601String();
 
-  void _order(QueryBuilder query, String? sort) {
-    bool hasId = false;
+  void _order(List<Map<String, dynamic>> records, String? sort) {
     final fields = (sort ?? '-occurred_on,-id').split(',');
+    final ordering = <({String field, bool descending})>[];
 
-    for (final ordering in fields) {
-      final descending = ordering.startsWith('-');
-      final field = descending ? ordering.substring(1) : ordering;
+    for (final fieldOrder in fields) {
+      final descending = fieldOrder.startsWith('-');
+      final field = descending ? fieldOrder.substring(1) : fieldOrder;
       if (!const {
         'id',
         'amount',
@@ -236,11 +227,29 @@ final class ExpenseRepository({
       }.contains(field)) {
         throw ArgumentError.value(sort, 'sort');
       }
-
-      hasId = hasId || field == 'id';
-      (descending) ? query.orderByDesc(field) : query.orderByAsc(field);
+      ordering.add((field: field, descending: descending));
+    }
+    if (!ordering.any((item) => item.field == 'id')) {
+      ordering.add((field: 'id', descending: false));
     }
 
-    if (!hasId) query.orderByAsc('id');
+    records.sort((first, second) {
+      for (final item in ordering) {
+        final comparison = switch (item.field) {
+          'amount' => (first['amount'] as int).compareTo(
+            second['amount'] as int,
+          ),
+          'description' => (first['description'] as String? ?? '').compareTo(
+            second['description'] as String? ?? '',
+          ),
+          _ => (first[item.field] as String).compareTo(
+            second[item.field] as String,
+          ),
+        };
+        if (comparison != 0) return item.descending ? -comparison : comparison;
+      }
+
+      return 0;
+    });
   }
 }

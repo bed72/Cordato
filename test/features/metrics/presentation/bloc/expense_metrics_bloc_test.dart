@@ -17,7 +17,7 @@ void main() {
   late MetricsRepositoryMock repository;
   final metrics = ExpenseMetricsEntity(
     id: 'metrics',
-    totalAmount: 123,
+    total: 123,
     startDate: DateTime(2026, 10),
     endDate: DateTime(2026, 10, 31),
     categories: const [],
@@ -177,7 +177,7 @@ void main() {
         expect(bloc.state.metrics, isNull);
         final empty = ExpenseMetricsEntity(
           id: 'empty',
-          totalAmount: 0,
+          total: 0,
           startDate: metrics.startDate,
           endDate: metrics.endDate,
           categories: null,
@@ -189,7 +189,7 @@ void main() {
         bloc.add(const ExpenseMetricsRequestedEvent());
         await retriedLoad;
         expect(bloc.state.metrics, same(empty));
-        expect(bloc.state.metrics!.totalAmount, 0);
+        expect(bloc.state.metrics!.total, 0);
         expect(bloc.state.metrics!.categories, isNull);
         verify(() => repository.getExpenses()).called(3);
       },

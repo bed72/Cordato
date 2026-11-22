@@ -8,8 +8,8 @@ import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_e
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/text_button_widget.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_date_formatter.dart';
-import 'package:cordato/features/core/presentation/formatters/interface_money_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/widgets/expense_item_widget.dart';
 

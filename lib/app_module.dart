@@ -1,4 +1,3 @@
-import 'package:tostore/tostore.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/core_module.dart';
@@ -13,9 +12,8 @@ import 'package:cordato/features/information/information_module.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/root/presentation/screens/app_screen.dart';
 
-Module createAppModule({required ToStore database}) => createModule(
+final appModule = createModule(
   register: (context) => context
-    ..addInstance<ToStore>(database)
     ..module(coreModule)
     ..module(userModule)
     ..module(rootModule)

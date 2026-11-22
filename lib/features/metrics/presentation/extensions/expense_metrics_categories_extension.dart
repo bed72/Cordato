@@ -3,9 +3,9 @@ import 'package:cordato/features/metrics/domain/entities/expense_category_metric
 extension ExpenseMetricsCategoriesExtension
     on List<ExpenseCategoryMetricsEntity> {
   List<List<ExpenseCategoryMetricsEntity>> get cardPages {
-    final visible = indexed.where((entry) => entry.$2.totalAmount > 0).toList()
+    final visible = indexed.where((entry) => entry.$2.total > 0).toList()
       ..sort((a, b) {
-        final amountOrder = b.$2.totalAmount.compareTo(a.$2.totalAmount);
+        final amountOrder = b.$2.total.compareTo(a.$2.total);
         return amountOrder == 0 ? a.$1.compareTo(b.$1) : amountOrder;
       });
     return [

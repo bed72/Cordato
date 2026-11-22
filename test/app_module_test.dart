@@ -1,49 +1,42 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:tostore/tostore.dart';
+import 'package:localstore/localstore.dart';
 
 import 'package:cordato/app_module.dart';
-import 'package:cordato/features/core/application/clients/interface_widget_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/widget/widget_client.dart';
-import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
+import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_event.dart';
 import 'package:cordato/features/dashboard/presentation/enums/dashboard_phase_enum.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
-import 'package:cordato/features/expense/infrastructure/schemas/expense_schema.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/validators/expense_form_validator.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
-import 'package:cordato/features/root/application/repositories/interface_home_widget_sync_repository.dart';
-import 'package:cordato/features/root/presentation/bloc/home_widget_launch_bloc.dart';
-import 'package:cordato/features/root/presentation/bloc/home_widget_sync_bloc.dart';
+import 'package:cordato/features/root/application/repositories/interface_widget_sync_repository.dart';
+import 'package:cordato/features/root/presentation/bloc/widget_launch_bloc.dart';
+import 'package:cordato/features/root/presentation/bloc/widget_sync_bloc.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
-import 'package:cordato/features/user/infrastructure/storage/profile_initializer.dart';
+
+import 'support/core/storage/localstore_test_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Local route catalog and dependency resolution', () {
-    late Directory directory;
-    late ToStore database;
+    final storage = LocalstoreTestStorage();
     late ModularBootstrap boot;
 
+    setUpAll(storage.open);
+    tearDownAll(storage.close);
+
     setUp(() async {
-      directory = await Directory.systemTemp.createTemp('cordato-app-module-');
-      addTearDown(() => directory.delete(recursive: true));
-      database = await ToStoreFactory.create(
-        directory: directory.path,
-        schemas: [expenseSchema],
-      );
-      addTearDown(database.close);
-      await initializeProfile(database: database);
-      boot = bootstrapModule(createAppModule(database: database));
+      await storage.initialize();
+      addTearDown(storage.clear);
+      boot = bootstrapModule(appModule);
       addTearDown(boot.injector.dispose);
     });
 
@@ -77,17 +70,20 @@ void main() {
     });
 
     test('shares the ready database before visiting any feature', () {
-      expect(boot.injector.get<ToStore>(), same(database));
-      expect(boot.injector.get<ToStore>(), same(database));
+      expect(boot.injector.get<Localstore>(), same(storage.database));
+      expect(boot.injector.get<Localstore>(), same(storage.database));
     });
 
     test('root registration does not take ownership of the database', () async {
       boot.injector.dispose();
 
-      final savedSetting = await database.setValue('after-dispose', true);
-
-      expect(savedSetting.hasErrors, isFalse);
-      expect(await database.getValue('after-dispose'), isTrue);
+      expect(
+        (await storage.database
+            .collection('user')
+            .doc('profile')
+            .get())!['name'],
+        'Cordato',
+      );
     });
 
     test('Metrics reads Expense writes and Root refreshes through the local composition', () async {
@@ -102,16 +98,18 @@ void main() {
       addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
       final expenses = boot.injector.get<IExpenseRepository>();
       final metrics = boot.injector.get<IMetricsRepository>();
-      final synchronization = boot.injector.get<IHomeWidgetSyncRepository>();
+      final synchronization = boot.injector.get<IWidgetSyncRepository>();
       expect(boot.injector.get<IMetricsRepository>(), same(metrics));
-      await expenses.create(
-        cents: 123,
-        description: 'Mercado',
-        category: .food,
+      await storage.expense(
+        () => expenses.create(
+          cents: 123,
+          description: 'Mercado',
+          category: .food,
+        ),
       );
 
       final monthly = await metrics.getExpenses(groupBy: .category);
-      expect(monthly.totalAmount, 123);
+      expect(monthly.total, 123);
       expect(monthly.categories!.single.category, 'food');
 
       await synchronization.enable();
@@ -131,10 +129,12 @@ void main() {
     });
 
     test('Dashboard loads locally persisted metrics without visiting Expense or User', () async {
-      await boot.injector.get<IExpenseRepository>().create(
-        cents: 321,
-        description: 'Mercado',
-        category: .food,
+      await storage.expense(
+        () => boot.injector.get<IExpenseRepository>().create(
+          cents: 321,
+          description: 'Mercado',
+          category: .food,
+        ),
       );
       final route = boot.routes.routes.singleWhere(
         (route) => route.path == RouteEnum.dashboard.path,
@@ -153,7 +153,7 @@ void main() {
       final dashboard = await loaded;
 
       expect(dashboard.phase, DashboardPhaseEnum.ready);
-      expect(dashboard.metrics!.totalAmount, 321);
+      expect(dashboard.metrics!.total, 321);
       expect(dashboard.metrics!.categories!.single.category, 'food');
       expect(dashboard.expenses!.items.single.cents.cents, 321);
     });
@@ -161,9 +161,9 @@ void main() {
     test(
       'widget launch observation resolves independent factory-owned Blocs',
       () {
-        final first = boot.injector.get<HomeWidgetLaunchBloc>();
+        final first = boot.injector.get<WidgetLaunchBloc>();
         addTearDown(first.close);
-        final second = boot.injector.get<HomeWidgetLaunchBloc>();
+        final second = boot.injector.get<WidgetLaunchBloc>();
         addTearDown(second.close);
 
         expect(first, isNot(same(second)));
@@ -181,9 +181,9 @@ void main() {
     );
 
     test('widget synchronization resolves without visiting sibling routes', () {
-      final first = boot.injector.get<HomeWidgetSyncBloc>();
+      final first = boot.injector.get<WidgetSyncBloc>();
       addTearDown(first.close);
-      final second = boot.injector.get<HomeWidgetSyncBloc>();
+      final second = boot.injector.get<WidgetSyncBloc>();
       addTearDown(second.close);
 
       expect(first, isNot(same(second)));
@@ -235,9 +235,8 @@ void main() {
         final expenses = boot.injector.get<IExpenseRepository>();
 
         expect((await user.get()).name, 'Cordato');
-        final created = await expenses.create(
-          cents: 100,
-          description: 'Mercado',
+        final created = await storage.expense(
+          () => expenses.create(cents: 100, description: 'Mercado'),
         );
         expect((await expenses.getById(id: created.id)).description, 'Mercado');
         expect(boot.injector.get<IUserRepository>(), same(user));

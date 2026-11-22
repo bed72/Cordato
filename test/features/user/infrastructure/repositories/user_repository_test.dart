@@ -1,418 +1,333 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:tostore/tostore.dart';
 
-import 'package:cordato/features/core/infrastructure/clients/tostore/tostore_factory.dart';
 import 'package:cordato/features/user/application/exceptions/user_exception.dart';
 import 'package:cordato/features/user/infrastructure/repositories/user_repository.dart';
-import 'package:cordato/features/user/infrastructure/storage/profile_initializer.dart';
 
-import '../../../../support/core/mocks/tostore_mock.dart';
+import '../../../../support/core/mocks/collection_ref_mock.dart';
+import '../../../../support/core/mocks/document_ref_mock.dart';
+import '../../../../support/core/mocks/localstore_mock.dart';
+import '../../../../support/core/storage/localstore_test_storage.dart';
 
 void main() {
-  group('Persistent local profile', () {
-    late Directory directory;
-    late ToStore database;
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('Localstore profile', () {
+    final storage = LocalstoreTestStorage();
     late UserRepository repository;
 
+    setUpAll(storage.open);
+    tearDownAll(storage.close);
     setUp(() async {
-      directory = await Directory.systemTemp.createTemp('cordato-user-');
-      database = await ToStoreFactory.create(
-        directory: directory.path,
-        schemas: const [],
-      );
-      await initializeProfile(database: database);
-      repository = UserRepository(database: database);
+      await storage.initialize();
+      repository = UserRepository(database: storage.database);
     });
+    tearDown(storage.clear);
 
-    tearDown(() async {
-      await database.close();
-      await directory.delete(recursive: true);
-    });
-
-    test('reads initialized name and seed without an account', () async {
+    test('creates and persists the default profile on first read', () async {
       final profile = await repository.get();
+      final stored = jsonDecode(
+        await File('${storage.directory.path}/user/profile').readAsString(),
+      );
 
       expect(profile.name, 'Cordato');
       expect(profile.avatar, matches(RegExp(r'^[0-9a-f]{32}$')));
+      expect(stored, {'name': 'Cordato', 'avatar': profile.avatar});
     });
 
-    test(
-      'reads current storage on each call without a cached profile',
-      () async {
-        await repository.get();
-        final savedName = await database.setValue(
-          'profile.name',
-          'Updated externally',
-        );
-        final savedAvatar = await database.setValue(
-          'profile.avatar',
-          'external-seed',
-        );
-        expect(savedName.hasErrors, isFalse);
-        expect(savedAvatar.hasErrors, isFalse);
-
-        final profile = await repository.get();
-
-        expect(profile.name, 'Updated externally');
-        expect(profile.avatar, 'external-seed');
-      },
-    );
-
-    test('updates name without replacing the saved avatar', () async {
+    test('repeated reads preserve the saved avatar seed', () async {
       final original = await repository.get();
+      final reloaded = await UserRepository(database: storage.database).get();
 
-      final updated = await repository.update(name: '  Gabriel  ');
+      expect(reloaded.name, original.name);
+      expect(reloaded.avatar, original.avatar);
+    });
+
+    test('reads changes made through the injected SDK', () async {
+      await storage.writing({'External name'}, () async {
+        await storage.database.collection('user').doc('profile').set({
+          'name': 'External name',
+          'avatar': 'external-seed',
+        });
+      });
+
+      final profile = await repository.get();
+
+      expect(profile.name, 'External name');
+      expect(profile.avatar, 'external-seed');
+    });
+
+    test('updates name without normalizing or replacing avatar', () async {
+      final original = await repository.get();
+      final updated = await storage.writing({
+        '  Gabriel  ',
+      }, () => repository.update(name: '  Gabriel  '));
 
       expect(updated.name, '  Gabriel  ');
       expect(updated.avatar, original.avatar);
-      expect((await repository.get()).name, '  Gabriel  ');
     });
 
-    test('updates seed without replacing the saved name', () async {
-      final updated = await repository.update(avatar: '  selected-seed  ');
+    test('updates avatar without normalizing or replacing name', () async {
+      final updated = await storage.writing({
+        '  selected-seed  ',
+      }, () => repository.update(avatar: '  selected-seed  '));
 
       expect(updated.name, 'Cordato');
       expect(updated.avatar, '  selected-seed  ');
-      expect((await repository.get()).avatar, '  selected-seed  ');
     });
 
-    test('updates both supplied fields', () async {
-      final updated = await repository.update(name: 'Gabriel', avatar: 'seed');
+    test('persists both fields in one profile document', () async {
+      await storage.writing({
+        'Gabriel',
+        'chosen-seed',
+      }, () => repository.update(name: 'Gabriel', avatar: 'chosen-seed'));
+      final stored = jsonDecode(
+        await File('${storage.directory.path}/user/profile').readAsString(),
+      );
+      final reloaded = await UserRepository(database: storage.database).get();
 
-      expect(updated.name, 'Gabriel');
-      expect(updated.avatar, 'seed');
-      expect(await database.getValue('profile.name'), 'Gabriel');
-      expect(await database.getValue('profile.avatar'), 'seed');
+      expect(stored, {'name': 'Gabriel', 'avatar': 'chosen-seed'});
+      expect(reloaded.name, 'Gabriel');
+      expect(reloaded.avatar, 'chosen-seed');
     });
 
-    test('an empty update preserves the entire profile', () async {
+    test('empty update preserves both fields', () async {
       final original = await repository.get();
-
       final unchanged = await repository.update();
 
       expect(unchanged.name, original.name);
       expect(unchanged.avatar, original.avatar);
     });
 
-    test('persists name and seed across close and reopen', () async {
-      await repository.update(name: 'Gabriel', avatar: 'chosen-seed');
-      await database.close();
-      database = await ToStoreFactory.create(
-        directory: directory.path,
-        schemas: const [],
-      );
-      await initializeProfile(database: database);
-      repository = UserRepository(database: database);
-
-      final reopened = await repository.get();
-
-      expect(reopened.name, 'Gabriel');
-      expect(reopened.avatar, 'chosen-seed');
-    });
-
-    test(
-      'concurrent independent repositories preserve both updated fields',
-      () async {
-        await Future.wait([
-          repository.update(name: 'Gabriel'),
-          UserRepository(database: database).update(avatar: 'chosen-seed'),
-        ]);
-
-        final profile = await repository.get();
-
-        expect(profile.name, 'Gabriel');
-        expect(profile.avatar, 'chosen-seed');
-      },
-    );
-
-    test('missing profile fails without silently recreating it', () async {
-      await database.removeValue('profile.name');
-      await database.removeValue('profile.avatar');
-
-      await expectLater(
-        repository.get(),
-        throwsA(
-          isA<UserException>().having(
-            (exception) => exception.errors.errors.single.code,
-            'code',
-            'profile_missing',
-          ),
-        ),
-      );
-      await expectLater(
-        repository.update(name: 'Gabriel'),
-        throwsA(isA<UserException>()),
-      );
-
-      expect(await database.getValue('profile.name'), isNull);
-      expect(await database.getValue('profile.avatar'), isNull);
-    });
-
-    for (final invalidField in [
-      (key: 'profile.name', value: 123),
-      (key: 'profile.avatar', value: false),
-      (key: 'profile.name', value: <String, dynamic>{}),
-      (key: 'profile.avatar', value: <String>[]),
-    ]) {
+    for (final field in ['name', 'avatar']) {
       test(
-        'malformed ${invalidField.key} propagates ${invalidField.value.runtimeType}',
+        'malformed $field propagates without replacing the profile',
         () async {
-          final savedProfile = await database.setValue(
-            invalidField.key,
-            invalidField.value,
-          );
-          expect(savedProfile.hasErrors, isFalse);
+          await storage.writing({123}, () async {
+            await storage.database.collection('user').doc('profile').set({
+              'name': 'Cordato',
+              'avatar': 'seed',
+              field: 123,
+            });
+          });
 
           await expectLater(repository.get(), throwsA(isA<TypeError>()));
           await expectLater(
             repository.update(name: 'Gabriel'),
             throwsA(isA<TypeError>()),
           );
-
-          expect(await database.getValue(invalidField.key), invalidField.value);
+          final stored = await storage.database
+              .collection('user')
+              .doc('profile')
+              .get();
+          expect(stored![field], 123);
         },
       );
     }
+
+    test('preserves empty avatar when updating only name', () async {
+      await storage.writing({''}, () async {
+        await storage.database.collection('user').doc('profile').set({
+          'name': 'Cordato',
+          'avatar': '',
+        });
+      });
+
+      final updated = await storage.writing({
+        'Gabriel',
+      }, () => repository.update(name: 'Gabriel'));
+
+      expect(updated.name, 'Gabriel');
+      expect(updated.avatar, '');
+    });
   });
 
-  group('Injected storage failures', () {
-    late ToStoreMock database;
+  group('SDK delegation and failures', () {
+    late LocalstoreMock database;
+    late DocumentRefMock document;
     late UserRepository repository;
 
     setUp(() {
-      database = ToStoreMock();
+      database = LocalstoreMock();
+      final collection = CollectionRefMock();
+      document = DocumentRefMock();
+      when(() => database.collection('user')).thenReturn(collection);
+      when(() => collection.doc('profile')).thenReturn(document);
+      when(() => document.get())
+          .thenAnswer((_) async => {'name': 'Cordato', 'avatar': 'seed'});
       repository = UserRepository(database: database);
-      when(() => database.getValue('profile.name'))
-          .thenAnswer((_) async => 'Cordato');
-      when(() => database.getValue('profile.avatar'))
-          .thenAnswer((_) async => 'original-seed');
+    });
+
+    test('creates defaults only when the profile document is absent', () async {
+      when(() => document.get()).thenAnswer((_) async => null);
+      when(() => document.set(any())).thenAnswer((_) async {});
+
+      final profile = await repository.get();
+
+      expect(profile.name, 'Cordato');
+      expect(profile.avatar, matches(RegExp(r'^[0-9a-f]{32}$')));
+      verify(() => document.set({'name': 'Cordato', 'avatar': profile.avatar}))
+          .called(1);
+    });
+
+    test('existing profile does not trigger initialization writes', () async {
+      await repository.get();
+
+      verifyNever(() => document.set(any()));
+    });
+
+    test(
+      'update can create an absent profile before applying changes',
+      () async {
+        when(() => document.get()).thenAnswer((_) async => null);
+        when(() => document.set(any())).thenAnswer((_) async {});
+
+        final updated = await repository.update(name: 'Gabriel');
+
+        expect(updated.name, 'Gabriel');
+        expect(updated.avatar, matches(RegExp(r'^[0-9a-f]{32}$')));
+        verify(() => document.set(any())).called(2);
+      },
+    );
+
+    test('name update preserves avatar in the single document', () async {
+      when(() => document.set(any())).thenAnswer((_) async {});
+
+      final updated = await repository.update(name: 'Gabriel');
+
+      expect(updated.name, 'Gabriel');
+      expect(updated.avatar, 'seed');
+      verify(() => document.set({'name': 'Gabriel', 'avatar': 'seed'}))
+          .called(1);
+    });
+
+    test('empty update reads without writing', () async {
+      await repository.update();
+
+      verifyNever(() => document.set(any()));
+    });
+
+    test('name update preserves an absent avatar', () async {
+      when(() => document.get())
+          .thenAnswer((_) async => {'name': 'Cordato', 'avatar': null});
+      when(() => document.set(any())).thenAnswer((_) async {});
+
+      final updated = await repository.update(name: 'Gabriel');
+
+      expect(updated.avatar, isNull);
+      verify(() => document.set({'name': 'Gabriel', 'avatar': null})).called(1);
     });
 
     for (final operation in ['read', 'update']) {
-      test(
-        '$operation maps native storage errors without exposing messages',
-        () async {
-          final statuses = [
-            GeneralStatus(type: ResultType.engError, message: 'private data'),
-            GeneralStatus(
-              type: ResultType.sysDbClosed,
-              message: 'private path',
-            ),
-          ];
-          when(() => database.getValue('profile.name'))
-              .thenThrow(DbException(statuses));
-
-          final pendingProfile = operation == 'read'
-              ? repository.get()
-              : repository.update(name: 'Gabriel');
-
-          await expectLater(
-            pendingProfile,
-            throwsA(
-              isA<UserException>()
-                  .having(
-                    (exception) =>
-                        exception.errors.errors.map((error) => error.code),
-                    'codes',
-                    statuses.map((status) => status.codeKey),
-                  )
-                  .having(
-                    (exception) => exception.errors.errors.every(
-                      (error) => error.title == null && error.detail == null,
-                    ),
-                    'no raw storage messages',
-                    isTrue,
-                  ),
-            ),
-          );
-        },
-      );
-
-      test(
-        '$operation maps filesystem failures to safe expected errors',
-        () async {
-          when(() => database.getValue('profile.name'))
-              .thenThrow(const FileSystemException('private path'));
-
-          await expectLater(
-            operation == 'read'
-                ? repository.get()
-                : repository.update(name: 'Gabriel'),
-            throwsA(isA<UserException>()),
-          );
-        },
-      );
-    }
-
-    test(
-      'an unsuccessful write fails and permits a later manual retry',
-      () async {
-        int writes = 0;
-        when(() => database.setValue(any(), any()))
-            .thenAnswer((invocation) async {
-              writes += 1;
-              if (writes == 1) {
-                return DbResult(
-                  statuses: [
-                    GeneralStatus(
-                      type: ResultType.engError,
-                      message: 'write failed',
-                    ),
-                  ],
-                );
-              }
-              when(() => database.getValue('profile.avatar'))
-                  .thenAnswer((_) async => 'new-seed');
-              return DbResult(statuses: []);
-            });
+      test('$operation maps exposed filesystem failure safely', () async {
+        when(() => document.get())
+            .thenThrow(const FileSystemException('private diagnostic'));
 
         await expectLater(
-          repository.update(name: 'Gabriel'),
+          operation == 'read'
+              ? repository.get()
+              : repository.update(name: 'Gabriel'),
           throwsA(isA<UserException>()),
         );
-        final updated = await repository.update(avatar: 'new-seed');
-
-        expect(updated.name, 'Cordato');
-        expect(updated.avatar, 'new-seed');
-        verify(() => database.setValue('profile.name', 'Gabriel')).called(1);
-        verify(() => database.setValue('profile.avatar', 'new-seed')).called(1);
-      },
-    );
-
-    test(
-      'does not complete an update before storage acknowledges the write',
-      () async {
-        final writeStarted = Completer<void>();
-        final pendingWrite = Completer<DbResult>();
-        when(() => database.setValue('profile.name', any())).thenAnswer((_) {
-          writeStarted.complete();
-          return pendingWrite.future;
-        });
-        bool acknowledged = false;
-        final updating = repository.update(name: 'Gabriel').then((profile) {
-          acknowledged = true;
-          return profile;
-        });
-
-        await writeStarted.future;
-        expect(acknowledged, isFalse);
-        when(() => database.getValue('profile.name'))
-            .thenAnswer((_) async => 'Gabriel');
-        pendingWrite.complete(DbResult(statuses: []));
-        final updated = await updating;
-
-        expect(acknowledged, isTrue);
-        expect(updated.name, 'Gabriel');
-      },
-    );
+        verifyNever(() => document.set(any()));
+      });
+    }
 
     for (final failure in [
       StateError('unexpected'),
       const FormatException('invalid profile'),
     ]) {
-      test(
-        'unexpected ${failure.runtimeType} propagates without masking',
-        () async {
-          when(() => database.getValue('profile.name')).thenThrow(failure);
+      test('propagates unexpected ${failure.runtimeType}', () async {
+        when(() => document.get()).thenThrow(failure);
 
-          await expectLater(repository.get(), throwsA(same(failure)));
-          await expectLater(
-            repository.update(name: 'Gabriel'),
-            throwsA(same(failure)),
-          );
-        },
-      );
+        await expectLater(repository.get(), throwsA(same(failure)));
+        await expectLater(
+          repository.update(name: 'Gabriel'),
+          throwsA(same(failure)),
+        );
+        verifyNever(() => document.set(any()));
+      });
     }
 
-    test('a thrown write failure is not reported as success', () async {
-      final failure = StateError('unexpected write');
-      when(() => database.setValue('profile.name', any())).thenThrow(failure);
+    test('awaits the SDK Future when creating the default profile', () async {
+      when(() => document.get()).thenAnswer((_) async => null);
+      final started = Completer<void>();
+      final pendingWrite = Completer<void>();
+      when(() => document.set(any())).thenAnswer((_) {
+        started.complete();
+        return pendingWrite.future;
+      });
+      bool completed = false;
+      final reading = repository.get().then((profile) {
+        completed = true;
+        return profile;
+      });
 
-      await expectLater(
-        repository.update(name: 'Gabriel'),
-        throwsA(same(failure)),
-      );
-
-      verify(() => database.setValue('profile.name', any())).called(1);
+      await started.future;
+      expect(completed, isFalse);
+      pendingWrite.complete();
+      expect((await reading).name, 'Cordato');
+      expect(completed, isTrue);
     });
 
-    test('name update writes only its own key', () async {
-      when(() => database.setValue('profile.name', 'Gabriel'))
-          .thenAnswer((_) async {
-            when(() => database.getValue('profile.name'))
-                .thenAnswer((_) async => 'Gabriel');
-            return DbResult(statuses: []);
-          });
+    test('awaits the SDK Future when updating the profile', () async {
+      final started = Completer<void>();
+      final pendingWrite = Completer<void>();
+      when(() => document.set(any())).thenAnswer((_) {
+        started.complete();
+        return pendingWrite.future;
+      });
+      bool completed = false;
+      final updating = repository.update(name: 'Gabriel').then((profile) {
+        completed = true;
+        return profile;
+      });
 
-      await repository.update(name: 'Gabriel');
-
-      verify(() => database.setValue('profile.name', 'Gabriel')).called(1);
-      verifyNever(() => database.setValue('profile.avatar', any()));
+      await started.future;
+      expect(completed, isFalse);
+      pendingWrite.complete();
+      expect((await updating).name, 'Gabriel');
+      expect(completed, isTrue);
     });
 
     test(
-      'a second field failure does not hide an acknowledged first write',
+      'exposed initialization write failure is not returned as success',
       () async {
-        when(() => database.setValue('profile.name', 'Gabriel'))
-            .thenAnswer((_) async {
-              when(() => database.getValue('profile.name'))
-                  .thenAnswer((_) async => 'Gabriel');
-              return DbResult(statuses: []);
-            });
-        when(() => database.setValue('profile.avatar', 'new-seed')).thenAnswer(
-          (_) async => DbResult(
-            statuses: [
-              GeneralStatus(type: ResultType.engError, message: 'write failed'),
-            ],
-          ),
-        );
+        when(() => document.get()).thenAnswer((_) async => null);
+        when(() => document.set(any()))
+            .thenThrow(const FileSystemException('private path'));
 
-        await expectLater(
-          repository.update(name: 'Gabriel', avatar: 'new-seed'),
-          throwsA(isA<UserException>()),
-        );
-        final stored = await repository.get();
-
-        expect(stored.name, 'Gabriel');
-        expect(stored.avatar, 'original-seed');
-        verify(() => database.setValue('profile.name', 'Gabriel')).called(1);
-        verify(() => database.setValue('profile.avatar', 'new-seed')).called(1);
+        await expectLater(repository.get(), throwsA(isA<UserException>()));
+        verify(() => document.set(any())).called(1);
       },
     );
 
-    test('native developer errors remain unexpected failures', () async {
-      final failure = DbException([
-        GeneralStatus(
-          type: ResultType.devInvalidArgumentType,
-          message: 'developer mistake',
-        ),
-      ]);
-      when(() => database.getValue('profile.name')).thenThrow(failure);
+    test('exposed update failure allows manual retry', () async {
+      when(() => document.set(any()))
+          .thenThrow(const FileSystemException('private path'));
+      await expectLater(
+        repository.update(name: 'Gabriel'),
+        throwsA(isA<UserException>()),
+      );
+      when(() => document.set(any())).thenAnswer((_) async {});
 
-      await expectLater(repository.get(), throwsA(same(failure)));
+      expect((await repository.update(name: 'Gabriel')).name, 'Gabriel');
+      verify(() => document.set({'name': 'Gabriel', 'avatar': 'seed'}))
+          .called(2);
+    });
+
+    test('unexpected write failures propagate', () async {
+      final failure = StateError('unexpected write');
+      when(() => document.set(any())).thenThrow(failure);
+
       await expectLater(
         repository.update(name: 'Gabriel'),
         throwsA(same(failure)),
       );
-    });
-
-    test('thrown native write failures use safe application errors', () async {
-      when(() => database.setValue('profile.avatar', any())).thenThrow(
-        DbException([
-          GeneralStatus(type: ResultType.engError, message: 'private path'),
-        ]),
-      );
-
-      await expectLater(
-        repository.update(avatar: 'new-seed'),
-        throwsA(isA<UserException>()),
-      );
-
-      verify(() => database.setValue('profile.avatar', any())).called(1);
     });
   });
 }

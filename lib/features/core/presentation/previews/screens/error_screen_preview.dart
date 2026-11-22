@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
-import 'package:cordato/features/core/presentation/screens/error/error_screen.dart';
+import 'package:cordato/features/core/presentation/screens/error_screen.dart';
 import 'package:cordato/features/core/presentation/widgets/buttons/back_button_widget.dart';
 
 const _title = 'Não foi possível carregar sua Dashboard.';

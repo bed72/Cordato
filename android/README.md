@@ -2,7 +2,7 @@
 
 ## Estado atual: versão local
 
-Revisado em 22/11/2026. O aplicativo usa ToStore local, sem backend, login,
+Revisado em 22/11/2026. O aplicativo usa Localstore local, sem backend, login,
 sessão ou áudio. Consulte o [README](../README.md) e a
 [arquitetura](../ARCHITECTURE.md) para o estado canônico.
 Os comandos abaixo não exigem `BASE_URL`. O workflow ainda passa esse define
@@ -17,9 +17,11 @@ Pendências nativas observadas, sem alteração nesta revisão documental:
 - Builds, permissões, links e comportamento distribuído precisam ser revistos
   em tarefa própria antes de publicação. Não restaure autenticação ou áudio.
 
-Última verificação Flutter da composição local, após concluir a remoção de
-Welcome: análise limpa e 946 testes aprovados. Builds nativos e a Action não
-foram executados nesta etapa.
+Última execução Flutter registrada, após Localstore, perfil no UserRepository
+e renomeação de Root para `Widget*`: análise limpa e 904 testes aprovados.
+Os comandos não foram repetidos nesta revisão documental e não homologam
+edições de código posteriores. Builds nativos e a Action não foram executados
+nesta revisão.
 Resultados de builds citados em seções históricas abaixo não homologam a versão local.
 
 Android release builds require a dedicated signing key. Never use the Android
@@ -117,6 +119,12 @@ handler. `MainActivity` disables automatic deep linking only for that plugin
 action. Legacy authentication app-link declarations remain in native configuration,
 but their Flutter flows have been removed.
 
+Flutter coordination now uses `WidgetLaunchBloc`, `WidgetSyncBloc`,
+`WidgetLaunchRepository` and `WidgetSyncRepository`, with `widget_*` files.
+The plugin name, `homeWidget=true` URI parameter, Kotlin classes and Android
+resource names are unchanged. Flutter tests mirror these renamed types; native
+tests keep their JUnit layout under `android/app/src/test`.
+
 Before release, manually verify cold/warm launches directly into Dashboard,
 creation form deduplication with unsaved input, editing versus creation,
 return to Dashboard after saving/back, and system light/dark themes.
@@ -124,6 +132,9 @@ Also verify current-month totals while Dashboard uses a historical filter, a
 successful empty month, storage/publication failures retaining the last valid
 summary, and month rollover showing **Abra para atualizar** until a new sync.
 Totals come from local Metrics, without login, logout or background HTTP.
+Localstore 1.4.0 does not await its internal file write in `set`; a refresh may
+read the collection before that write finishes. Native policy tests do not
+validate Dart persistence timing, atomicity or recovery.
 `AddExpenseWidgetProvider` separates lifecycle, JSON parsing, BRL formatting,
 RemoteViews composition and alarm management; formatting keeps cents as integers
 and uses BigDecimal rather than floating-point money.
@@ -250,7 +261,7 @@ grep -F 'android.permission.INTERNET' \
   build/app/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
 ```
 
-The network permission is currently declared, not a requirement of ToStore.
+The network permission is currently declared, not a requirement of Localstore.
 Also review the remaining microphone declaration before distribution.
 The exact merged-manifest directory is Android Gradle Plugin-version specific;
 use the generated `build/app/intermediates/` path if this location changes.
@@ -305,7 +316,7 @@ com permissões restritas, e um passo `always()` remove o arquivo após o job.
 Não se deve habilitar debug de shell ou adicionar dumps do ambiente aos passos.
 
 O workflow ainda passa `BASE_URL=https://pocketbase.cordato.cloud` como resíduo
-da configuração anterior; esse define não configura o ToStore. Após o build, verifica a
+da configuração anterior; esse define não configura o Localstore. Após o build, verifica a
 presença da assinatura e executa `jarsigner -verify`. O único arquivo enviado é
 `build/app/outputs/bundle/release/app-release.aab`, em um artefato
 `cordato-<versão>-<código>-attempt-<tentativa>`, retido por **14 dias**. Baixar pelo
