@@ -90,7 +90,6 @@ extension ExpenseCategoryMetricsExtension on ExpenseCategoryMetricsEntity {
     'investments' => AssetEnum.categoryInvestments,
     'personal_care' => AssetEnum.categoryPersonalCare,
     'subscriptions' => AssetEnum.categorySubscriptions,
-    'gifts_and_donations' => AssetEnum.categoryGiftsAndDonations,
     _ => AssetEnum.categoryOthers,
   };
 }

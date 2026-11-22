@@ -57,7 +57,5 @@ void main() {
           .provide,
       isNotNull,
     );
-    expect(RouteEnum.expense.authenticated, isFalse);
-    expect(RouteEnum.expenses.authenticated, isFalse);
   });
 }

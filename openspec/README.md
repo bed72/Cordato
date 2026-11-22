@@ -26,14 +26,18 @@ Screen/Widget → Bloc → contrato em application
 Contratos usam Future e exceções de aplicação, sem Either, CommandIt ou data
 sources intermediários. Domain é puro; dinheiro usa centavos inteiros.
 Metrics é projeção mensal somente leitura das despesas locais.
-Seus totais mensal e por categoria usam `total` inteiro em centavos; o payload
-interno de grupos ainda pode usar `total_amount`.
+Seus totais mensal e por categoria usam `total` inteiro em centavos; os grupos
+são construídos em Dart, sem parser JSON de agregados ou Bloc próprio de Metrics.
 
 UserRepository cria o perfil padrão na primeira leitura, se ausente, sem
 inicializador no bootstrap. Usa um documento com nome e avatar. `coreModule` registra
 `Localstore.instance`; repositories recebem o SDK diretamente por construtor,
-sem client de persistência, schemas ou factory. Dados antigos de ToStore não
-são migrados. Filtros, paginação, sugestões e métricas são calculados em Dart.
+sem client de persistência, schemas ou factory. O SDK vem do fork privado
+`bed72/localstore`, via Git com `ref: main` e commit resolvido no lockfile;
+não da versão do pub.dev. Atualizações usam `flutter pub upgrade localstore`.
+Dados antigos de ToStore não são migrados. Filtros, paginação, sugestões e
+métricas são calculados em Dart. O fork aguarda escritas e propaga erros de JSON;
+as limitações antigas de 1.4.0 não descrevem mais a implementação vigente.
 Limitações do SDK e confirmação de escrita estão em
 [ARCHITECTURE.md](../ARCHITECTURE.md#bootstrap-e-composição).
 

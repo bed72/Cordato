@@ -52,7 +52,7 @@ void main() {
   });
 
   test(
-    'Metrics keeps shared repository binds and independent Bloc factories',
+    'Metrics keeps its shared repository bind without routes or page Blocs',
     () {
       final module = File('lib/features/metrics/metrics_module.dart')
           .readAsStringSync();
@@ -62,8 +62,7 @@ void main() {
         module,
         contains('addLazySingleton<IMetricsRepository>(MetricsRepository.new)'),
       );
-      expect(module, contains('..add(ExpenseMetricsBloc.new)'));
-      expect(module, isNot(contains('addLazySingleton<ExpenseMetricsBloc>')));
+      expect(module, isNot(contains('Bloc')));
     },
   );
 }

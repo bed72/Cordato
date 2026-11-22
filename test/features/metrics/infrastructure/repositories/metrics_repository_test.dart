@@ -73,6 +73,23 @@ void main() {
 
   group('Real Localstore monthly aggregation', () {
     test(
+      'invalid JSON fails instead of publishing a fabricated zero',
+      () async {
+        final file = File('${storage.directory.path}/expenses/invalid');
+        await file.parent.create(recursive: true);
+        await file.writeAsString('{invalid-json');
+
+        try {
+          await expectLater(repository.getExpenses(), throwsFormatException);
+
+          verifyNoPublication();
+        } finally {
+          await file.delete();
+        }
+      },
+    );
+
+    test(
       'derives exact integer total and unrounded ordered percentages',
       () async {
         await insert(cents: 1, category: 'food');

@@ -5,23 +5,22 @@
 Revisado em 22/11/2026. O aplicativo usa Localstore local, sem backend, login,
 sessão ou áudio. Consulte o [README](../README.md) e a
 [arquitetura](../ARCHITECTURE.md) para o estado canônico.
-Os comandos abaixo não exigem `BASE_URL`. O workflow ainda passa esse define
-legado; ele não configura o banco local e não comprova integração remota.
+Os comandos e o workflow não exigem nem passam `BASE_URL`.
+O manifest principal não declara `INTERNET`, `RECORD_AUDIO` ou app links de
+autenticação. Debug/profile preservam a permissão de rede de desenvolvimento.
+A ferramenta de associações e seus testes exclusivos foram removidos.
+O widget continua usando `home_widget`, sem autenticação ou HTTP.
+Builds assinados e comportamento distribuído ainda exigem homologação própria.
 
-Pendências nativas observadas, sem alteração nesta revisão documental:
-
-- O manifest ainda declara `INTERNET`, `RECORD_AUDIO` e app links antigos de
-  confirmação de e-mail/reset. Essas declarações não indicam fluxos disponíveis.
-- `tool/app_links.dart` conserva geração das associações antigas; não há mais
-  `app_links/README.md` ou backend neste checkout.
-- Builds, permissões, links e comportamento distribuído precisam ser revistos
-  em tarefa própria antes de publicação. Não restaure autenticação ou áudio.
-
-Última execução Flutter registrada, após Localstore, perfil no UserRepository
-e renomeação de Root para `Widget*`: análise limpa e 904 testes aprovados.
-Os comandos não foram repetidos nesta revisão documental e não homologam
-edições de código posteriores. Builds nativos e a Action não foram executados
-nesta revisão.
+Última execução após a limpeza de código morto, mantendo o fork privado
+`bed72/localstore` no commit `ac66df2`: análise limpa e 845 testes aprovados.
+As políticas nativas passaram em 39 testes Android e 27 iOS; Info.plist e
+entitlements do Runner passaram no plutil. Permanecem os avisos conhecidos de
+`android.newDsl=false` e da detecção de KGP em `home_widget`, sem suprimir validações.
+O workflow passou no actionlint; o helper Git foi validado localmente com
+credencial fictícia, sem rede. `LOCALSTORE_READ_TOKEN` ainda precisa ser
+cadastrado. Builds completos do app, Action e acesso remoto do CI ao fork não foram
+executados nesta etapa.
 Resultados de builds citados em seções históricas abaixo não homologam a versão local.
 
 Android release builds require a dedicated signing key. Never use the Android
@@ -64,18 +63,18 @@ strings with colors, styles or other resource types.
 
 | Prefix | Purpose | Example |
 | --- | --- | --- |
-| `failure_` | Validation failures | `failure_authentication_invalid_email` |
-| `success_` | Successful operation feedback | `success_authentication_email_sent` |
+| `failure_` | Validation failures | `failure_expense_invalid_amount` |
+| `success_` | Successful operation feedback | `success_expense_saved` |
 | `label_` | UI names, titles, labels and descriptions | `label_home_widget_name` |
 | `action_` | Buttons and other action text | `action_home_widget_add_expense` |
 | `cd_` | Accessibility descriptions | `cd_home_widget_monthly_summary` |
 | `msg_` | General messages, hints, toasts and snackbars | `msg_home_widget_update_required` |
-| `config_` | Technical configuration, not user-facing text | `config_authentication_link_host` |
+| `config_` | Technical configuration, not user-facing text | `config_home_widget_update_interval` |
 
-Current contexts are `app`, `authentication`, `common` and `home_widget`. Use
-`common` only for truly shared text, not as a catch-all. Keep authentication URL
-components together, with `translatable="false"`; the same applies to invariant
-brand names, currency symbols and symbol-only actions. Preserve numbered format
+Current contexts are `app`, `common` and `home_widget`. Use
+`common` only for truly shared text, not as a catch-all. Keep technical values,
+invariant brand names, currency symbols and symbol-only actions explicitly
+non-translatable. Preserve numbered format
 arguments such as `%1$s` and `%2$s` when renaming or translating resources.
 Accessibility descriptions have their own `cd_` resources rather than borrowing
 a UI label. New prefixes or contexts require updating this convention and its
@@ -85,7 +84,7 @@ names and context filenames as their default counterparts.
 
 `test/architecture/android_string_resources_test.dart` checks naming, context
 separation, duplicate declarations, non-translatable technical values and native
-references. App-link contract tests also verify the exact paths and host.
+references. Local runtime tests reject legacy microphone and authentication declarations.
 
 Historical verification before the local transition: `flutter pub get` succeeded,
 `flutter analyze` reported no issues, `flutter test --reporter failures-only`
@@ -116,8 +115,7 @@ Install a fresh
 build and add **Adicionar despesa** from the launcher's widget picker. Its single
 tap action is delivered through `home_widget`, not Flutter's automatic deep-link
 handler. `MainActivity` disables automatic deep linking only for that plugin
-action. Legacy authentication app-link declarations remain in native configuration,
-but their Flutter flows have been removed.
+action. Authentication app-link declarations and their association generator were removed.
 
 Flutter coordination now uses `WidgetLaunchBloc`, `WidgetSyncBloc`,
 `WidgetLaunchRepository` and `WidgetSyncRepository`, with `widget_*` files.
@@ -132,9 +130,11 @@ Also verify current-month totals while Dashboard uses a historical filter, a
 successful empty month, storage/publication failures retaining the last valid
 summary, and month rollover showing **Abra para atualizar** until a new sync.
 Totals come from local Metrics, without login, logout or background HTTP.
-Localstore 1.4.0 does not await its internal file write in `set`; a refresh may
-read the collection before that write finishes. Native policy tests do not
-validate Dart persistence timing, atomicity or recovery.
+The private `bed72/localstore` fork follows `main` in pubspec; the lockfile pins
+the resolved commit. Update it explicitly with `flutter pub upgrade localstore`.
+Its `set` awaits the internal write, and invalid JSON propagates instead of
+being silently omitted. Native policy tests do not validate Dart persistence,
+power-failure durability or recovery.
 `AddExpenseWidgetProvider` separates lifecycle, JSON parsing, BRL formatting,
 RemoteViews composition and alarm management; formatting keeps cents as integers
 and uses BigDecimal rather than floating-point money.
@@ -261,8 +261,8 @@ grep -F 'android.permission.INTERNET' \
   build/app/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
 ```
 
-The network permission is currently declared, not a requirement of Localstore.
-Also review the remaining microphone declaration before distribution.
+The main manifest does not declare network or microphone permissions.
+Inspect the final merged manifest because dependencies may contribute declarations.
 The exact merged-manifest directory is Android Gradle Plugin-version specific;
 use the generated `build/app/intermediates/` path if this location changes.
 
@@ -290,6 +290,18 @@ tem somente `contents: read`; o checkout não persiste suas credenciais Git.
 | `ANDROID_RELEASE_KEY_ALIAS` | Alias da chave de upload. |
 | `ANDROID_RELEASE_KEY_PASSWORD` | Senha da chave. |
 
+3. Cadastrar também **`LOCALSTORE_READ_TOKEN`**, um fine-grained PAT com
+   acesso somente a `bed72/localstore` e permissão **Contents: Read-only**.
+   O `GITHUB_TOKEN` do repositório Cordato não concede acesso automático ao fork
+   privado. O workflow falha antes de resolver dependências se esse secret
+   estiver ausente. Ele ainda precisa ser cadastrado no environment.
+
+O token de leitura é recebido somente no passo de dependências e fornecido ao
+Git por helper em variável de ambiente, limitado à URL do fork. Não é gravado
+em arquivo, URL do pubspec, cache de credenciais ou log. A configuração usa
+`credential.useHttpPath`; não habilite debug de shell ou dumps do ambiente.
+Os passos posteriores usam `--no-pub`, sem acesso ao token.
+
 No macOS, é possível copiar a codificação diretamente para o clipboard, sem
 imprimi-la no terminal, e colá-la no secret:
 
@@ -307,16 +319,16 @@ Depois que o workflow estiver na `main`, abrir Actions → **Android release** �
 **Run workflow**, selecionar `main` e executar. Outras branches são ignoradas.
 O job usa Ubuntu 24.04, Java 21, Android SDK 37 (pacote
 `platforms;android-37.0`), Build Tools 37.0.0 e Flutter **3.50.0 stable**.
-Instala dependências com o lockfile obrigatório, executa `flutter analyze` e a
-suíte Flutter unitária completa antes de acessar os secrets de assinatura.
+Instala dependências com o lockfile obrigatório e o secret de leitura do fork,
+executa `flutter analyze --no-pub` e a suíte Flutter unitária completa com
+`--no-pub` antes de acessar os secrets de assinatura.
 
 O Gradle recebe os valores de assinatura por variáveis de ambiente, usando sua
 validação existente sem fallback para debug. O keystore fica em `runner.temp`,
 com permissões restritas, e um passo `always()` remove o arquivo após o job.
 Não se deve habilitar debug de shell ou adicionar dumps do ambiente aos passos.
 
-O workflow ainda passa `BASE_URL=https://pocketbase.cordato.cloud` como resíduo
-da configuração anterior; esse define não configura o Localstore. Após o build, verifica a
+O workflow não injeta configuração de backend. Após o build, verifica a
 presença da assinatura e executa `jarsigner -verify`. O único arquivo enviado é
 `build/app/outputs/bundle/release/app-release.aab`, em um artefato
 `cordato-<versão>-<código>-attempt-<tentativa>`, retido por **14 dias**. Baixar pelo
@@ -379,17 +391,11 @@ sign-in failure was not reproduced before the change; this is not verification
 of every device or the Google Play release. The previously generated build 5 AAB
 predates these focus/splash changes and must not be presented as containing them.
 
-## App Links legados
+## Links do widget
 
-O manifest conserva `autoVerify` para confirmação de e-mail e reset de senha
-em `app.cordato.cloud`. Esses fluxos foram removidos do Flutter; publicar arquivos
-de associação não os torna funcionais. Não há instrução atual para ativar
-templates PocketBase ou hospedar essas associações.
-
-`tool/app_links.dart` e seus testes permanecem como ferramenta legada, não como
-comprovação de suporte aos links. Revisão/remoção das declarações nativas e
-associações é tarefa própria. O atalho do widget usa `home_widget` e não depende
-de recuperar autenticação.
+O atalho do widget usa `home_widget` e a URI `cordato://widget/add-expense?homeWidget=true`.
+Não há app links de autenticação, associated domains no iOS ou gerador de
+associações. O scheme `cordato` e o App Group foram preservados no iOS.
 
 ## Key Rotation
 

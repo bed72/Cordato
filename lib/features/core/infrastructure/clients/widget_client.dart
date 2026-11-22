@@ -23,7 +23,7 @@ abstract interface class IWidgetClient {
 
 final class WidgetClient implements IWidgetClient {
   int _revision = 0;
-  bool _sessionActive = false;
+  bool _monthlyActive = false;
 
   Future<void> _pendingWrite = Future.value();
   final Set<MultiStreamController<void>> _refreshListeners = {};
@@ -60,9 +60,9 @@ final class WidgetClient implements IWidgetClient {
 
   @override
   Future<void> setMonthly({required bool active}) {
-    if (_sessionActive != active || !active) _revision++;
+    if (_monthlyActive != active || !active) _revision++;
 
-    _sessionActive = active;
+    _monthlyActive = active;
     if (active) return Future.value();
 
     return _enqueueWrite(() => _writeSummary(null));
@@ -74,7 +74,7 @@ final class WidgetClient implements IWidgetClient {
     required int revision,
     required DateTime month,
   }) => _enqueueWrite(() async {
-    if (!_sessionActive || revision != _revision) return;
+    if (!_monthlyActive || revision != _revision) return;
 
     final monthKey = '${month.year}-${month.month.toString().padLeft(2, '0')}';
     await _writeSummary(jsonEncode({'month': monthKey, 'cents': cents}));

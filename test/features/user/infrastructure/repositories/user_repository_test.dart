@@ -47,6 +47,31 @@ void main() {
       expect(reloaded.avatar, original.avatar);
     });
 
+    test(
+      'awaiting update persists the profile without a stream barrier',
+      () async {
+        await repository.update(name: 'Gabriel', avatar: 'chosen-seed');
+
+        final stored = jsonDecode(
+          await File('${storage.directory.path}/user/profile').readAsString(),
+        );
+
+        expect(stored, {'name': 'Gabriel', 'avatar': 'chosen-seed'});
+      },
+    );
+
+    test(
+      'invalid profile JSON propagates without recreating defaults',
+      () async {
+        final file = File('${storage.directory.path}/user/profile');
+        await file.writeAsString('{invalid-json');
+
+        await expectLater(repository.get(), throwsFormatException);
+
+        expect(await file.readAsString(), '{invalid-json');
+      },
+    );
+
     test('reads changes made through the injected SDK', () async {
       await storage.writing({'External name'}, () async {
         await storage.database.collection('user').doc('profile').set({

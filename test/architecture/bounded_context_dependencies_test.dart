@@ -40,21 +40,26 @@ const _forbiddenPresentationImports = {
   'package:supabase_flutter/',
   'package:flutter_secure_storage/',
 };
-final _financialDirectWritePattern = RegExp(
-  r'''\.from\s*\(\s*(?:SupabaseTableEnum\.(?:expenses|budgets)\.value|['"](?:expenses|budgets)['"])\s*\)\s*\.(?:insert|update|delete)\s*\(''',
-  multiLine: true,
-);
 
 void main() {
   group('Bounded contexts and feature isolation', () {
     test('keeps out-of-scope backend contexts out of the app', () {
       final featuresDirectory = Directory('lib/features');
-      final outOfScope = ['identity', 'chat', 'insight']
-          .where(
-            (context) =>
-                Directory('${featuresDirectory.path}/$context').existsSync(),
-          )
-          .toList();
+      final outOfScope =
+          [
+                'identity',
+                'chat',
+                'insight',
+                'authentication',
+                'session',
+                'welcome',
+              ]
+              .where(
+                (context) =>
+                    Directory('${featuresDirectory.path}/$context')
+                        .existsSync(),
+              )
+              .toList();
 
       expect(
         outOfScope,
@@ -100,33 +105,6 @@ void main() {
 
       expect(violations, isEmpty, reason: violations.join('\n'));
     });
-
-    test('keeps session observation separate from authentication', () {
-      final violations = <String>[];
-
-      for (final file in _dartFiles()) {
-        final sourceContext = _contextFrom(file);
-        if (sourceContext != 'session' && sourceContext != 'authentication') {
-          continue;
-        }
-
-        for (final match in _importPattern.allMatches(
-          file.readAsStringSync(),
-        )) {
-          final targetContext = match.group(1)!;
-          if ((sourceContext == 'session' &&
-                  targetContext == 'authentication') ||
-              (sourceContext == 'authentication' &&
-                  targetContext == 'session')) {
-            violations.add(
-              '${file.path}: $sourceContext cannot import $targetContext',
-            );
-          }
-        }
-      }
-
-      expect(violations, isEmpty, reason: violations.join('\n'));
-    });
   });
 
   group('Layer boundaries and application contracts', () {
@@ -153,9 +131,7 @@ void main() {
             final targetContext = match.group(1)!;
             final targetPath = match.group(2)!;
             final isFeatureRepositoryContract =
-                (targetContext == 'authentication' ||
-                    targetContext == 'session' ||
-                    targetContext == 'user' ||
+                (targetContext == 'user' ||
                     targetContext == 'expense' ||
                     targetContext == 'metrics') &&
                 targetPath ==
@@ -214,9 +190,7 @@ void main() {
       final violations = <String>[];
       for (final file in _dartFiles().where(
         (file) =>
-            (file.uri.pathSegments.contains('authentication') ||
-                file.uri.pathSegments.contains('session') ||
-                file.uri.pathSegments.contains('user') ||
+            (file.uri.pathSegments.contains('user') ||
                 file.uri.pathSegments.contains('expense') ||
                 file.uri.pathSegments.contains('settings') ||
                 file.uri.pathSegments.contains('core') ||
@@ -240,37 +214,6 @@ void main() {
           );
         }
       }
-      expect(violations, isEmpty, reason: violations.join('\n'));
-    });
-
-    test('keeps Settings dependencies on Authentication contracts and exceptions', () {
-      final violations = <String>[];
-
-      for (final file in _dartFiles().where(
-        (file) => file.uri.pathSegments.contains('settings'),
-      )) {
-        for (final match in _importPattern.allMatches(
-          file.readAsStringSync(),
-        )) {
-          final targetContext = match.group(1)!;
-          final targetPath = match.group(2)!;
-          if (targetContext != 'authentication' ||
-              targetPath.startsWith('domain/') ||
-              targetPath ==
-                  'application/repositories/interface_authentication_repository.dart' ||
-              targetPath ==
-                  'application/exceptions/authentication_exception.dart') {
-            continue;
-          }
-
-          violations.add(
-            '${file.path}: Settings can only import Authentication domain, '
-            'repository contract or application exception, '
-            'not $targetPath',
-          );
-        }
-      }
-
       expect(violations, isEmpty, reason: violations.join('\n'));
     });
   });
@@ -332,21 +275,6 @@ void main() {
         expect(violations, isEmpty, reason: violations.join('\n'));
       },
     );
-
-    test('requires financial writes to use RPCs', () {
-      final violations = <String>[];
-
-      for (final file in _dartFiles()) {
-        if (!_financialContexts.contains(_contextFrom(file))) continue;
-        if (!_financialDirectWritePattern.hasMatch(file.readAsStringSync())) {
-          continue;
-        }
-
-        violations.add('${file.path}: direct financial table write detected');
-      }
-
-      expect(violations, isEmpty, reason: violations.join('\n'));
-    });
   });
 }
 

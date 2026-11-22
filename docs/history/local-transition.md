@@ -29,6 +29,16 @@ O estado vigente está no [README](../../README.md) e na
    e avatar; o inicializador separado e sua chamada no `main` foram removidos.
    Root e seus testes/mocks passaram de `HomeWidget*` para `Widget*`, preservando
    nomes e contratos do plugin e das implementações nativas.
+10. O pacote do pub.dev foi substituído pelo fork privado `bed72/localstore`,
+    fixado no commit `ac66df2`. O fork aguarda as escritas e propaga JSON inválido,
+    substituindo as limitações aceitas da versão 1.4.0. O workflow foi preparado
+    para autenticar a dependência com secret de leitura; o cadastro do secret
+    permanece pendente, sem execução remota do release.
+11. A limpeza de código morto removeu componentes sem consumidores, o Bloc
+    exclusivo de previews/testes de Metrics, parsers/formatadores remotos sem
+    produtor local, dependência de grid sem uso e configurações de autenticação,
+    microfone e backend. A categoria de presentes permanece, com imagem de Outros.
+    Main e previews não deixaram arquivos Dart desconectados em lib.
 
 Não há migração de dados PocketBase ou de sessões anteriores. Não há backup
 restaurável pelo app, mesmo que um CSV tenha sido exportado em versões anteriores.
@@ -50,6 +60,8 @@ restaurável pelo app, mesmo que um CSV tenha sido exportado em versões anterio
 | Substituição por Localstore | `flutter pub get` concluído; `flutter analyze` sem problemas; 909 testes globais aprovados. |
 | Perfil inicial no UserRepository | `flutter pub get` concluído; `flutter analyze` sem problemas; 904 testes globais aprovados. |
 | Renomeação de Root para Widget | `flutter pub get` concluído; `flutter analyze` sem problemas; 904 testes globais aprovados. |
+| Fork privado Localstore | `flutter pub get` concluído; análise limpa; 911 testes globais aprovados; actionlint aprovado; helper Git conferido com credencial fictícia, sem rede. |
+| Limpeza de código morto | `flutter pub get` concluído; análise limpa; 845 testes Flutter, 39 Android e 27 iOS aprovados; actionlint e plutil aprovados. Sem build completo do app ou homologação visual. |
 
 Os números são retratos de etapas diferentes, não contagens cumulativas.
 Os bloqueios de compilação/análise acima não apareceram na última verificação.

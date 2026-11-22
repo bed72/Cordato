@@ -5,7 +5,6 @@ import 'package:cordato/features/root/presentation/navigation/app_navigation_pol
 
 void main() {
   test('ordinary root entry opens Dashboard without session validation', () {
-    expect(RouteEnum.dashboard.authenticated, isFalse);
     expect(
       AppNavigationPolicy.action(
         path: RouteEnum.app.path,

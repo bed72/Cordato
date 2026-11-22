@@ -15,14 +15,8 @@ void main() {
       Uri.parse(RouteEnum.settingsSupport.path),
     );
 
-    expect(
-      RouteEnum.authenticatedPaths(),
-      isNot(contains(RouteEnum.settingsSupport.path)),
-    );
     expect(matches, hasLength(1));
     expect(matches!.single.route.provide, isNull);
-    expect(RouteEnum.settings.authenticated, isFalse);
-    expect(RouteEnum.settingsSupport.authenticated, isFalse);
     expect(RouteEnum.settingsSupport.path, '/settings/support');
     expect(matches.single.route.path, RouteEnum.settingsSupport.path);
     final settings = boot.routes.match(Uri.parse(RouteEnum.settings.path));

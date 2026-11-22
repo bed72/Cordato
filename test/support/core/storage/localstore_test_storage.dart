@@ -2,26 +2,17 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/services.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:localstore/localstore.dart';
 
 import 'package:cordato/features/user/infrastructure/repositories/user_repository.dart';
 
-import 'localstore_io_overrides.dart';
-
 final class LocalstoreTestStorage {
   late final Directory directory;
-  late final IOOverrides? previousOverrides;
   final Localstore database = Localstore.instance;
-  static const _channel = MethodChannel('plugins.flutter.io/path_provider');
 
   Future<void> open() async {
     directory = await Directory.systemTemp.createTemp('cordato-localstore-');
-    previousOverrides = IOOverrides.current;
-    IOOverrides.global = LocalstoreIoOverrides(directory: directory);
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(_channel, (_) async => directory.path);
+    Localstore.getInstance(customPath: directory.path);
   }
 
   Future<T> writing<T>(Set<Object> values, Future<T> Function() action) async {
@@ -76,8 +67,6 @@ final class LocalstoreTestStorage {
   Future<void> close() async {
     await clear();
     await directory.delete(recursive: true);
-    IOOverrides.global = previousOverrides;
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(_channel, null);
+    Localstore.getInstance();
   }
 }

@@ -56,17 +56,25 @@ main
 `appModule` e `coreModule` não recebem banco por parâmetro. O core registra
 o singleton fornecido pelo próprio Localstore. Repositories acessam o SDK
 diretamente em infrastructure, sem client de persistência, wrapper CRUD,
-data source, fork ou service locator.
+data source ou service locator.
+O pacote vem do fork privado `bed72/localstore`, via Git HTTPS com `ref: main`
+no pubspec. O lockfile fixa o commit resolvido para builds reproduzíveis.
+Para buscar alterações da main, execute `flutter pub upgrade localstore` e
+versione o lockfile. Não use URL com credenciais.
+A API usada pelos repositories continua compatível.
 
 Não há factory, schemas, abertura ou fechamento explícito. O SDK usa seu
-diretório padrão: Documents em Android/iOS e diretório corrente no desktop.
+diretório padrão: Documents em Android/iOS. Diretório corrente é fallback de
+testes host, não suporte a apps desktop.
 Dados anteriores de ToStore não são migrados, por decisão explícita.
 
 `main` não inicializa perfil ou storage. UserRepository cria o perfil sob demanda.
-Localstore 1.4.0 não aguarda a escrita interna em `set`; o Future público
-não comprova persistência em disco e nem toda falha de escrita é propagada.
-Leituras podem tratar JSON inválido como ausência/omitir documentos.
-Essas limitações foram aceitas. Não há garantia adicional de atomicidade,
+O fork aguarda a escrita interna e propaga erros de filesystem/JSON. As escritas
+usam arquivo temporário com flush e rename sobre o destino no mesmo filesystem.
+Leituras não criam arquivos; null representa ausência real. Payloads não ficam
+em cache. Operações são serializadas no isolate pelo SDK, sem coordenação entre
+processos/isolates ou transações entre documentos.
+Substituição atômica de arquivo não comprova durabilidade após queda de energia,
 recuperação, criptografia ou backup.
 
 ### Escopos Modular
@@ -153,8 +161,8 @@ Nome e avatar não são derivados um do outro.
 
 Não há cache, fila de Futures, estado pendente ou transação no repository.
 Atualizações concorrentes do documento não têm garantia de merge atômico.
-O SDK mantém cache próprio de documentos; o repository
-não garante releitura física do disco nem cria cache adicional.
+O SDK lê dados persistidos sem cache de payload; o repository não cria cache
+adicional. Uma leitura inválida não é substituída pelo perfil padrão.
 
 Falhas esperadas expostas pelo SDK geram UserException. Parsing e erros de
 programação propagam como inesperados. A apresentação valida nome com 2–32 code
@@ -197,8 +205,9 @@ todo o histórico, carregado em memória. Aceitar sugestão aplica
 categoria, inclusive `other`, preservando data e valor manual do formulário.
 
 Após o Future público de mutação, o repository solicita refresh pelo client
-nativo. Isso não garante escrita concluída; uma consulta da coleção pode observar
-um estado anterior. Falha posterior não desfaz escrita nem gera retry automático.
+nativo. O fork conclui a escrita antes desse Future; testes verificam leitura da
+coleção imediatamente após criar despesa, sem barreira de stream.
+Falha posterior não desfaz escrita nem gera retry automático.
 Não há exportação CSV ou contrato de compartilhamento.
 
 ### Métricas locais
@@ -217,8 +226,8 @@ Total e distribuição vêm dos mesmos grupos. Centavos permanecem inteiros;
 percentuais são calculados em Metrics sem arredondamento antecipado.
 `ExpenseMetricsEntity`, `ExpenseCategoryMetricsEntity` e
 `ExpenseCategoryMetricsResponse` usam o campo `total`, não `totalAmount`.
-O parser JSON de grupos ainda lê `total_amount`; os documentos de despesas
-continuam usando `amount`.
+Os grupos são construídos em Dart, sem parser JSON de agregados; os documentos
+de despesas continuam usando `amount`.
 
 `ExpenseCategoryMetricsResponse`, em `infrastructure/responses/`, converte os
 grupos; o repository monta o resumo, sem camada `projections/`. Categorias têm
@@ -226,8 +235,8 @@ ordem textual determinística. O ID `monthly-yyyy-MM` é estável. Sem agrupamen
 `categories` é null; mês vazio agrupado tem lista vazia imutável.
 
 Categorias desconhecidas, parsing inválido, centavos não positivos e overflow
-por categoria ou mensal são inesperados. O SDK pode omitir JSON inválido;
-a projeção não audita corrupção que o SDK oculta.
+por categoria ou mensal são inesperados. JSON inválido propaga pelo SDK, sem
+omitir documentos nem publicar um zero fabricado.
 Falhas expostas não são convertidas em zero ou retry automático.
 
 Somente a consulta do mês atual captura revisão antes da leitura e aguarda a
@@ -268,7 +277,8 @@ nunca build. Lifecycle substancial fica em mixin específico da screen.
   `scope.addBloc`; formulário/screen recebem a instância e não a fecham.
 - AppWidget possui WidgetLaunchBloc e WidgetSyncBloc por factories
   estáveis, sem singleton ou SessionBloc.
-- Settings e Information não possuem Bloc.
+- Settings, Information e Metrics não possuem Bloc próprio. Dashboard e Root
+  consultam o repository de Metrics.
 - Para estados de página novos ou explicitamente migrados, prefira `provide`
   com a extension `BlocScopedExtension`; migre todos os consumidores juntos.
 
@@ -291,9 +301,9 @@ nunca build. Lifecycle substancial fica em mixin específico da screen.
 /information/help
 ```
 
-Não há proteção por sessão. Constantes de autenticação ainda presentes em
-RouteEnum não equivalem a rotas registradas. Welcome foi removida, incluindo
-composição, arquivos, constante de rota e referências nos testes.
+Não há proteção por sessão, constantes de autenticação ou API `authenticated`
+em RouteEnum. Welcome foi removida, incluindo composição, arquivos, constante
+de rota e referências nos testes.
 
 Navegação nova usa extensões de BuildContext no widget/mixin responsável.
 Argumentos levam dados, não callbacks. Preserve callbacks legados fora do escopo
@@ -353,7 +363,10 @@ exportados anteriormente, cópias do sistema e comunicações ao suporte. Não
 prometem criptografia adicional, recuperação ou conformidade jurídica validada.
 
 UI usa `material_ui`, componentes e tokens do core. Ícones passam pelo IconWidget;
-botões reutilizam bounce compartilhado. Recuos externos são 16 pixels além das
+botões reutilizam bounce compartilhado.
+ImageWidget recebe somente assets locais, sem estratégia de rede ou loading remoto.
+Presentes e doações preserva sua categoria e usa a imagem existente de Outros.
+Recuos externos são 16 pixels além das
 áreas seguras e teclado. Cabeçalhos recolhíveis de Expense/Information usam
 slivers e respeitam movimento reduzido. Preserve rolagem, fonte ampliada,
 ErrorScreen e semântica de imagens decorativas/skeletons.
@@ -367,13 +380,18 @@ Não há testes de UI, goldens, integração visual ou flows Maestro. Cobertura 
 unitária de domínio, contratos, repositories, Blocs, validação, formatação,
 arquitetura, DI/rotas e políticas nativas.
 
-Localstore é real em diretórios temporários isolados. Mocks do SDK
+Localstore é real em diretórios temporários isolados por
+`getInstance(customPath: ...)`, sem trocar o diretório do processo nem simular
+path_provider. A configuração do singleton é restaurada ao terminar.
+Mocks do SDK
 são restritos a delegação, falhas e operações pendentes dos repositories
 User, Expense e Metrics, em `test/support/core/mocks/`. Blocs mockam contratos.
 Composição global não mocka módulos inteiros e pode simular o canal nativo sem UI.
 
-Testes aguardam sinais do SDK antes de limpar arquivos, sem prometer durabilidade
-pelo Future público. Não há `close` ou reabertura da instância singleton.
+Testes aguardam operações e cancelam observações antes de limpar arquivos.
+Há regressões para escrita aguardada e JSON inválido em User, Expense e Metrics.
+Não há `close` ou reabertura da instância singleton; a conclusão da escrita não
+comprova durabilidade após falha de energia.
 
 `test/app_module_test.dart` verifica o Localstore compartilhado na composição,
 ausência de ownership do banco pela DI, catálogo local e consumidores reais.
@@ -400,8 +418,8 @@ e `test/app_module_test.dart` cobre composição global; não precisam de um
 arquivo correspondente em `lib/features/`. Políticas nativas seguem as pastas
 JUnit/XCTest documentadas em AGENTS.md.
 
-Conferência de nomes e caminhos em 22/11/2026: 64 arquivos `*_test.dart` em
-`test/features/`, dos quais 57 têm correspondência exata após remover `_test`.
+Conferência de nomes e caminhos após a limpeza de 22/11/2026: 63 arquivos
+`*_test.dart` em `test/features/`, dos quais 56 têm correspondência exata após remover `_test`.
 Os sete restantes são:
 
 | Teste (relativo a `test/features/`) | Implementação/alinhamento |
@@ -432,26 +450,31 @@ Testes nativos: `dart run tool/test_home_widget_native.dart`, opcionalmente
 `android` ou `ios`, sem instâncias concorrentes de `dart run`.
 Não substituem build nativo ou inspeção manual.
 
-Última execução registrada em 22/11/2026, após Localstore, perfil no
-UserRepository e renomeação de Root para `Widget*`:
+Última execução registrada em 22/11/2026, após a limpeza de código morto,
+mantendo o fork privado `bed72/localstore` no commit `ac66df2`:
 `flutter pub get` concluído, `flutter analyze` sem problemas e
-`flutter test --reporter failures-only` com 904 testes aprovados.
-Os comandos não foram repetidos nesta revisão documental e não validam
-alterações de código posteriores à execução. Resultados antigos estão no
-histórico, não são bloqueios atuais.
+`flutter test --reporter failures-only` com 845 testes aprovados.
+`dart run tool/test_home_widget_native.dart` aprovou 39 testes Android e 27 iOS.
+`plutil` validou Info.plist e entitlements do Runner. A varredura de imports a
+partir de main e previews não encontrou arquivos Dart desconectados em lib.
+`actionlint .github/workflows/android-release.yml` passou. O helper Git foi
+verificado localmente com credencial fictícia, sem rede. A Action e o build
+assinado não foram executados; `LOCALSTORE_READ_TOKEN` precisa ser cadastrado
+no ambiente `android-release`. Resultados antigos estão no histórico.
 
 ## Limites e pendências
 
 - Não há backup/restauração, migração remota, criptografia auditada ou garantia
   de recuperação.
-- Constantes antigas de autenticação permanecem sem rotas registradas.
-- Android ainda declara microfone e app links antigos; iOS e ferramentas de
-  associação também exigem revisão antes da distribuição.
-- O workflow passa `BASE_URL` legado, sem configurar o armazenamento local.
+- Constantes e associações de autenticação, ferramenta de app links, declarações
+  de microfone e `BASE_URL` do workflow foram removidos. Android não declara rede
+  no manifest principal; debug/profile preservam a configuração de desenvolvimento.
+- O release depende de `LOCALSTORE_READ_TOKEN` com leitura do fork privado;
+  o secret ainda não está cadastrado.
 - O espelhamento de nomes/pastas dos testes tem as exceções e pendências
   registradas acima.
 - Builds atuais, assinatura, comportamento em dispositivo, widget, declarações
   de loja, publicação web e revisão jurídica não foram validados nesta revisão.
 
 Essas pendências não autorizam restaurar fluxos removidos, enfraquecer testes ou
-ampliar uma tarefa documental para mudanças de comportamento.
+ampliar tarefas futuras para mudanças de comportamento sem autorização.

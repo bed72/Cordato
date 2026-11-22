@@ -2,7 +2,6 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/enums/asset_enum.dart';
 import 'package:cordato/features/core/presentation/previews/preview.dart';
-import 'package:cordato/features/core/presentation/animations/loop_animation.dart';
 
 import 'package:cordato/features/core/presentation/widgets/icons/icon_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/images/image_widget.dart';
@@ -53,20 +52,6 @@ Widget previewIconWidgets() => _visualShell(
           backgroundColor: Theme.of(context).colorScheme.primary,
         ),
       ],
-    ),
-  ),
-);
-
-@CordatoPreview(
-  group: 'Core / Animações',
-  name: 'Loop',
-  size: Size(390.0, 220.0),
-)
-Widget previewLoopAnimation() => _visualShell(
-  const SizedBox(
-    height: 28.0,
-    child: LoopAnimation(
-      items: [Text('Planeje em conjunto'), Text('Conquiste em conjunto')],
     ),
   ),
 );

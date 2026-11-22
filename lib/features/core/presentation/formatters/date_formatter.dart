@@ -5,7 +5,6 @@ abstract interface class IDateFormatter {
   String formatLongDate(DateTime date);
   String formatShortDate(DateTime date);
   String relativeGroupHeader(DateTime date);
-  String formatPeriod(DateTime start, DateTime end);
   String formatShortPeriod(DateTime start, DateTime end);
 }
 
@@ -34,17 +33,6 @@ final class DateFormatter({DateTime Function()? now})
     final startLabel = formatShortDate(start);
 
     return startLabel == endLabel ? startLabel : '$startLabel até $endLabel';
-  }
-
-  @override
-  String formatPeriod(DateTime start, DateTime end) {
-    final currentYear = _now().year;
-    final endLabel = _withOptionalYear(end, currentYear);
-    final startLabel = _withOptionalYear(start, currentYear);
-
-    return _civilDay(start) == _civilDay(end)
-        ? startLabel
-        : '$startLabel até $endLabel';
   }
 
   @override

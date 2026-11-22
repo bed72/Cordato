@@ -12,6 +12,6 @@ void main() {
     expect(RouteEnum.expenses.path, '/expenses');
     expect(RouteEnum.settings.path, '/settings');
     expect(RouteEnum.settingsSupport.path, '/settings/support');
-    expect(RouteEnum.authenticatedPaths(), isEmpty);
+    expect(RouteEnum.values, hasLength(11));
   });
 }

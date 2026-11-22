@@ -45,13 +45,19 @@ Pendências documentadas não autorizam mudanças incidentais de comportamento.
 diretamente por construtor, sem client, wrapper CRUD, data source ou service
 locator. Não restaure factory, schemas ou dependência de ToStore.
 
+Localstore vem do fork privado `bed72/localstore`, via Git HTTPS com `ref: main`
+no pubspec e commit resolvido fixado no lockfile, não do pub.dev.
+Atualize a revisão com `flutter pub upgrade localstore` e versione o lockfile.
+Repositories continuam usando o SDK
+diretamente; não crie client de persistência.
 O SDK usa seu diretório padrão e singleton próprios, sem abertura/fechamento
 explícitos. Não há migração dos dados antigos de ToStore, por decisão do usuário.
 O perfil padrão é responsabilidade do UserRepository, sem inicializador separado.
-Na versão 1.4.0, `set` não aguarda a escrita interna: aguardar seu Future não
-comprova persistência em disco nem propaga todas as falhas de filesystem.
-O SDK também pode tratar JSON inválido como documento ausente. Esses limites
-foram aceitos; não introduza fork ou persistência própria para contorná-los.
+O fork aguarda a escrita, propaga erros de filesystem/JSON e substitui arquivos
+por temporário com flush e rename no mesmo filesystem. Não confunda isso com
+durabilidade auditada após queda de energia. Não há cache de payload ou
+coordenação entre processos/isolates nem transação entre documentos.
+Somente ausência real retorna null; JSON inválido não cria perfil padrão.
 Não prometa durabilidade auditada, criptografia, backup ou app funcional com
 base apenas em testes focados.
 
@@ -118,7 +124,8 @@ Grupos usam `ExpenseCategoryMetricsResponse` em `infrastructure/responses/`;
 repository monta o resumo mensal, sem camada `projections/`.
 Sem agrupamento categories é null; mês vazio agrupado tem lista vazia imutável.
 Entidades mensal/de categoria e response usam `total` em centavos, não
-`totalAmount`. O JSON de grupo ainda lê `total_amount`; despesas usam `amount`.
+`totalAmount`. Grupos são construídos em Dart, sem parser JSON de agregados;
+despesas usam `amount`.
 `ExpenseMetricsPagesExtension` está em `expense_metrics_categories_extension.dart`.
 Paginação visual remove categorias não positivas, ordena por total decrescente
 com desempate estável e agrupa até três; a dica só aparece na última página com
@@ -127,8 +134,8 @@ uma categoria quando existem várias páginas.
 Infrastructure valida categorias pelo enum puro de Expense, sem importar sua
 implementação ou criar dependência reversa. Parsing inválido, categorias
 desconhecidas, centavos não positivos, somas inválidas e overflow por categoria
-ou mensal são inesperados. O SDK pode omitir documentos com JSON inválido;
-não prometa auditoria de corrupção.
+ou mensal são inesperados. JSON inválido propaga, sem omitir documentos ou
+publicar um zero fabricado; isso não comprova auditoria de corrupção.
 
 Falhas de filesystem expostas pelo SDK viram MetricsException segura,
 sem mensagens nativas na UI. Erros de programação
@@ -387,9 +394,10 @@ Previews manuais permanecem; preserve testes unitários e arquiteturais.
 | Architecture | Imports, camadas, contextos e contratos; DI/rotas têm testes próprios. |
 
 - Use mocktail, bloc_test e flutter_test. Blocs mockam contrato de repository.
-- Localstore usa SDK real em diretórios temporários isolados, sem UI.
-  Não há `close` do SDK; testes aguardam sinais de escrita antes de limpar arquivos
-  e distinguem o Future público da conclusão real do filesystem.
+- Localstore usa SDK real em diretórios temporários isolados via
+  `getInstance(customPath: ...)`, sem UI ou IOOverrides. Ao terminar, remova
+  arquivos e restaure a configuração do singleton com `getInstance()`.
+  Não há `close`; aguarde operações e cancele subscriptions antes da limpeza.
   Mocks do SDK somente para delegação, falhas e operações pendentes dos
   repositories User/Expense/Metrics, em `test/support/core/mocks/`.
 - Composição global não simula módulos inteiros; pode simular canal nativo,
@@ -442,6 +450,9 @@ Reexecuções mantêm código; novo código exige novo dispatch. Não altere off
 ou recrie workflow sem considerar maior código já usado no Play.
 Secrets pertencem a android-release. Mudanças de workflow exigem actionlint;
 script exige shellcheck, além das verificações Flutter aplicáveis.
+O fork privado requer `LOCALSTORE_READ_TOKEN` com leitura de Contents somente
+em `bed72/localstore`. O workflow usa helper Git com token em variável de ambiente
+somente na instalação de dependências, sem credencial em URL ou arquivo.
 Setup e limites estão em android/README.md. O BASE_URL legado do workflow não
 configura o banco local e não autoriza restaurar integração remota.
 
@@ -451,12 +462,17 @@ Mudanças estruturais atualizam ARCHITECTURE.md; convenções/testes atualizam e
 arquivo; produto/configuração atualizam README.md; release atualiza android/README.md.
 Preserve specs/changes históricas; identifique precedência em openspec/README.md.
 Resultados anteriores ficam em docs/history, sem se tornarem instruções vigentes.
+Componentes usados exclusivamente em previews de recursos removidos, seus fakes e
+testes não devem ser restaurados. Metrics não tem Bloc próprio: Dashboard e Root
+consultam seu repository. ImageWidget recebe somente caminhos de assets locais.
+Erros de formulário locais usam os códigos produzidos pelos repositories, sem
+classificação HTTP ou pointers do backend antigo; preserve os metadados originais.
 
 Antes de concluir confira camadas, contrato puro, Bloc sem SDK, efeitos fora do
 build, ownership único, testes corretos, documentação coerente e ausência de
 comentários novos no código. Não enfraqueça arquitetura para aparentar conformidade.
 
 Welcome não possui arquivos, composição ou constante de rota; não restaure
-referências nos testes. Pendências conhecidas incluem constantes/associações de
-autenticação legadas, permissões nativas remanescentes e BASE_URL no workflow.
-Documentá-las não autoriza removê-las/restaurar fluxos incidentalmente.
+referências nos testes. Rotas/associações de autenticação, permissões de microfone,
+permissão de rede no manifest principal e BASE_URL no workflow foram removidos.
+Preserve o scheme cordato e o App Group usados pelo widget nativo.

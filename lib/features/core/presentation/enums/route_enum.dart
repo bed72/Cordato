@@ -10,14 +10,4 @@ enum RouteEnum(final String path) {
   informationPrivacy('/information/privacy'),
   expenses('/expenses'),
   dashboard('/dashboard'),
-  authenticationSignIn('/authentication/sign-in'),
-  authenticationSignUp('/authentication/sign-up'),
-  authenticationConfirm('/authentication/confirm');
-
-  final bool authenticated = false;
-
-  static Set<String> authenticatedPaths() => values
-      .where((route) => route.authenticated)
-      .map((route) => route.path)
-      .toSet();
 }

@@ -144,6 +144,14 @@ final class _ExpensesScreenState extends State<ExpensesScreen>
               ),
             ),
           )
+        else if (hasFailure && expenses.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Padding(
+              padding: .only(bottom: MediaQuery.paddingOf(context).bottom),
+              child: Center(child: _buildFeedback()),
+            ),
+          )
         else ...[
           SliverToBoxAdapter(child: _buildFeedback()),
           SliverToBoxAdapter(

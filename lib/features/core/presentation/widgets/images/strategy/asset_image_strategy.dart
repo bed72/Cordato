@@ -8,7 +8,6 @@ final class AssetImageStrategy implements ImageStrategy {
   @override
   Widget build({
     required String source,
-    required bool showLoading,
     required BoxFit? fit,
     required Color? color,
     required double? width,

@@ -382,9 +382,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     );
 
     setState(() {
-      dateFailure = fields.date;
       centsFailure = fields.cents;
-      descriptionFailure = fields.description;
     });
 
     if (fields.toast case final message?) {

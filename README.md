@@ -37,8 +37,12 @@ flutter test --reporter failures-only
 flutter run
 ```
 
-O app atual não precisa de servidor, credenciais ou `BASE_URL`.
+O app atual não precisa de servidor, credenciais de runtime ou `BASE_URL`.
 Os testes não montam UI; a execução em dispositivo é uma verificação separada.
+O código do app não exige credenciais de runtime, mas instalar dependências
+requer acesso Git HTTPS ao repositório privado
+[`bed72/localstore`](https://github.com/bed72/localstore). Configure sua
+autenticação Git antes de `flutter pub get`; não coloque tokens no pubspec.
 
 ### Inicialização e persistência
 
@@ -47,14 +51,19 @@ Os testes não montam UI; a execução em dispositivo é uma verificação separ
 `addInstance<Localstore>(Localstore.instance)`. Repositories recebem a mesma
 instância pelo Modular e usam o SDK diretamente, sem client de persistência.
 
-Não há factory, schemas ou abertura/fechamento de banco. Localstore usa arquivos
-JSON no diretório padrão do SDK: Documents em Android/iOS e diretório corrente
-no desktop. Não há migração dos dados anteriores de ToStore.
+Localstore vem do fork privado `bed72/localstore`, com `ref: main` no pubspec
+e commit resolvido fixado no lockfile, não da versão 1.4.0 do pub.dev.
+Para buscar atualizações da main, execute `flutter pub upgrade localstore` e
+versione o lockfile; `pub get --enforce-lockfile` preserva a revisão resolvida.
+Não há factory, schemas ou abertura/fechamento de banco. O SDK usa arquivos
+JSON em Documents no Android/iOS; o fallback de diretório corrente serve a
+testes host, não representa suporte a apps desktop. Não há migração dos dados
+anteriores de ToStore ou mudança do formato JSON ao adotar o fork.
 
-Limitações aceitas da versão 1.4.0: o Future de `set` não aguarda a gravação
-interna; sucesso na UI não comprova persistência em disco. JSON inválido pode
-ser tratado como documento ausente. Não há garantia adicional de atomicidade
-ou recuperação; falhas expostas não disparam reset ou retry.
+O fork aguarda as escritas, propaga erros de filesystem/JSON e substitui
+arquivos com temporário, flush e rename no mesmo filesystem. Não há garantia
+de durabilidade após queda de energia, criptografia, transação entre documentos
+ou coordenação entre processos/isolates. Falhas não disparam reset ou retry.
 
 ### Perfil e despesas
 
@@ -91,7 +100,7 @@ a entrada; edição por ID não é confundida com criação. O resumo mostra som
 o mês atual, independentemente do filtro histórico da Dashboard.
 
 O app solicita atualização ao iniciar e após o Future de mutação de despesas.
-Com Localstore, a leitura pode ocorrer antes de a escrita interna terminar.
+No fork, o Future aguarda a escrita antes de solicitar essa atualização.
 Não há consulta HTTP ou cadastro em background, refresh periódico ou retry
 automático. Falhas preservam o último resumo válido; mês incompatível mostra
 **Abra para atualizar**. A virada do mês depende do agendamento nativo.
@@ -122,8 +131,8 @@ dart run tool/test_home_widget_native.dart
 ```
 
 Use `android` ou `ios` para selecionar uma plataforma. Não execute instâncias
-concorrentes de `dart run`: os build hooks compartilham artefatos. Os testes
-nativos não foram repetidos nesta atualização documental.
+concorrentes de `dart run`: os build hooks compartilham artefatos.
+A limpeza de 22/11/2026 passou nos 39 testes Android e 27 testes iOS.
 
 ## Configurações, informações e apoio
 
@@ -179,7 +188,7 @@ mantendo caminho e nome do arquivo com sufixo `_test.dart`. Mocks e recursos
 compartilhados ficam em `test/support/<feature>/`. Testes arquiteturais,
 ferramentas e políticas nativas têm organização própria.
 
-A conferência de 22/11/2026 encontrou 57 dos 64 arquivos de testes de features
+A conferência após a limpeza de 22/11/2026 encontrou 56 dos 63 arquivos de testes de features
 com espelhamento exato. Há nomes/caminhos legados e suítes separadas por
 responsabilidade; os sete casos estão detalhados em
 [ARCHITECTURE.md](ARCHITECTURE.md#organização-e-espelhamento-dos-testes).
@@ -187,31 +196,36 @@ Isso não é uma medição de cobertura. Esta revisão documental não move test
 
 ## Verificação e pendências
 
-Última execução registrada em 22/11/2026, após Localstore, criação do perfil
-pelo UserRepository e renomeação de Root para `Widget*`:
+Última execução registrada em 22/11/2026, após a limpeza de código morto.
+Localstore permanece no fork privado `bed72/localstore`, commit `ac66df2`:
 
 | Comando | Resultado |
 | --- | --- |
 | `flutter pub get` | Concluído. |
 | `flutter analyze` | Sem problemas. |
-| `flutter test --reporter failures-only` | 904 testes aprovados. |
+| `flutter test --reporter failures-only` | 845 testes aprovados. |
+| `actionlint .github/workflows/android-release.yml` | Sem problemas. |
+| `dart run tool/test_home_widget_native.dart` | 39 testes Android e 27 iOS aprovados. |
+| `plutil -lint ios/Runner/Info.plist ios/Runner/Runner.entitlements` | Sem problemas. |
 
 Esses resultados não comprovam build nativo, navegação real, renderização dos
-widgets ou prontidão para publicação. Os comandos não foram repetidos nesta
-revisão exclusivamente documental; alterações de código posteriores à execução
-registrada não são homologadas por esses números.
+widgets ou prontidão para publicação. O helper Git foi conferido localmente
+com uma credencial fictícia, sem acesso à rede. A Action, o build assinado e
+o acesso remoto do CI ao fork não foram executados; o secret continua pendente.
 
-Pendências observadas no checkout, sem correção de código nesta revisão:
+Estado após a limpeza e pendências externas:
 
 - Welcome foi removida, incluindo composição, arquivos, constante da rota e
   referências nos testes. Seu antigo fluxo por e-mail não está disponível.
-- `RouteEnum` conserva constantes antigas de autenticação; elas não significam
-  rotas disponíveis.
-- O manifest Android mantém `RECORD_AUDIO` e app links antigos de autenticação.
-  A ferramenta `tool/app_links.dart` também conserva associações antigas.
-  Isso não representa funcionalidade de áudio ou autenticação disponível.
-- O workflow Android ainda passa `BASE_URL` legado. Esse parâmetro não configura
-  o Localstore e não indica dependência remota do app local.
+- Constantes/associações de autenticação, ferramenta de app links e declarações
+  de microfone foram removidas. O manifest principal Android também não declara
+  acesso à rede; debug/profile mantêm sua configuração de desenvolvimento.
+- O workflow Android não passa mais `BASE_URL`. O scheme `cordato` e o App Group
+  permanecem para o widget nativo.
+- O release precisa de `LOCALSTORE_READ_TOKEN` no ambiente `android-release`,
+  com leitura de Contents em `bed72/localstore`. O workflow está preparado,
+  mas esse secret ainda não foi cadastrado; o `GITHUB_TOKEN` de Cordato não
+  concede automaticamente acesso ao outro repositório privado.
 - Backup/restauração, builds atuais, homologação em dispositivo, assinatura iOS
   e revisão de distribuição continuam separados da aprovação dos testes.
 - O espelhamento de nomes/pastas dos testes ainda não é integral.

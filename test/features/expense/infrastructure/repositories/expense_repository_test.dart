@@ -93,6 +93,42 @@ void main() {
     });
 
     test(
+      'awaiting create makes the expense immediately available to listing',
+      () async {
+        final created = await repository.create(
+          cents: 123,
+          description: 'Mercado',
+        );
+
+        final page = await repository.get();
+        final stored = jsonDecode(
+          await File('${storage.directory.path}/expenses/${created.id}')
+              .readAsString(),
+        ) as Map<String, dynamic>;
+
+        expect(page.items.single.id, created.id);
+        expect(stored['amount'], 123);
+      },
+    );
+
+    test('invalid expense JSON is not silently omitted from listing', () async {
+      final file = File('${storage.directory.path}/expenses/invalid');
+      await file.parent.create(recursive: true);
+      await file.writeAsString('{invalid-json');
+
+      try {
+        await expectLater(repository.get(), throwsFormatException);
+        await expectLater(
+          repository.getById(id: 'invalid'),
+          throwsFormatException,
+        );
+        verifyNever(client.monthlyRefresh);
+      } finally {
+        await file.delete();
+      }
+    });
+
+    test(
       'updates supplied fields, preserves omitted values and deletes',
       () async {
         await insert(id: 'expense', category: 'food');

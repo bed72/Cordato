@@ -9,6 +9,6 @@ final coreModule = createModule(
   register: (context) => context
     ..addInstance<Localstore>(Localstore.instance)
     ..addLazySingleton<IWidgetClient>(WidgetClient.new)
-    ..addLazySingleton<IMoneyFormatter>(MoneyFormatter.new)
-    ..addLazySingleton<IDateFormatter>(() => DateFormatter()),
+    ..addLazySingleton<IDateFormatter>(DateFormatter.new)
+    ..addLazySingleton<IMoneyFormatter>(MoneyFormatter.new),
 );

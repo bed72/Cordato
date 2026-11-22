@@ -25,7 +25,6 @@
 			<string>com.bed.cordato</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>trocado</string>
 				<string>cordato</string>
 			</array>
 		</dict>
@@ -40,8 +39,6 @@
 	<true/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Permita o microfone para gravar e enviar áudio pela Dashboard.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

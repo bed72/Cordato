@@ -59,7 +59,6 @@ void main() {
       final end = DateTime(2026, 10, 7, 23, 59);
       final start = DateTime.utc(2026, 10, 7, 0, 1);
 
-      expect(formatter.formatPeriod(start, end), '07 de Out');
       expect(formatter.formatShortPeriod(start, end), '07/10/2026');
     });
 
@@ -70,21 +69,6 @@ void main() {
           DateTime(2026, 1, 2),
         ),
         '31/12/2025 até 02/01/2026',
-      );
-    });
-
-    test('includes the year on each endpoint outside this year', () {
-      expect(
-        formatter.formatPeriod(DateTime(2026, 10, 1), DateTime(2026, 10, 7)),
-        '01 de Out até 07 de Out',
-      );
-      expect(
-        formatter.formatPeriod(DateTime(2024, 12, 31), DateTime(2025, 1, 2)),
-        '31 de Dez de 2024 até 02 de Jan de 2025',
-      );
-      expect(
-        formatter.formatPeriod(DateTime(2025, 12, 31), DateTime(2026, 1, 2)),
-        '31 de Dez de 2025 até 02 de Jan',
       );
     });
 

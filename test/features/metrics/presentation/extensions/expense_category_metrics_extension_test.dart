@@ -39,13 +39,16 @@ void main() {
         expect(category.label, entry.value);
         expect(
           category.asset.source,
-          'assets/images/categories/${entry.key == 'other' ? 'others' : entry.key}.webp',
+          'assets/images/categories/${switch (entry.key) {
+            'other' || 'gifts_and_donations' => 'others',
+            _ => entry.key,
+          }}.webp',
         );
         expect(category.asset.alt, switch (entry.key) {
           'financing' => 'Financiamentos',
           'pets' => 'Animais de estimação',
           'personal_care' => 'Cuidados pessoais',
-          'gifts_and_donations' => 'Presentes e doações',
+          'gifts_and_donations' => 'Outros',
           _ => entry.value,
         });
       });

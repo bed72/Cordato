@@ -11,7 +11,7 @@ import 'package:cordato/features/user/presentation/screens/edit/edit_screen.dart
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_bloc.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_event.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.dart';
-import 'package:cordato/features/user/presentation/formatters/user_error_message_formatter.dart';
+import 'package:cordato/features/core/presentation/formatters/error_message_formatter.dart';
 
 mixin EditScreenStateMixin on State<EditScreen> {
   String? nameFailure;
@@ -71,47 +71,14 @@ mixin EditScreenStateMixin on State<EditScreen> {
   void handleUpdate(EditState state) {
     if (!mounted || bloc.isClosed) return;
     if (state case EditFailure(:final errors)) {
-      final fields = errors.errors.where(nameValidation.isFieldError);
-
-      setState(() {
-        nameFailure = fields.isEmpty
-            ? null
-            : fields
-                  .map(
-                    (error) => UserErrorMessageFormatter.format(
-                      error,
-                      fallback: 'Confira o nome informado.',
-                    ),
-                  )
-                  .join('\n');
-      });
-
-      final remaining = errors.errors.where(
-        (error) => !nameValidation.isFieldError(error),
+      context.showToast(
+        variant: .error,
+        title: 'Erro ao atualizar nome',
+        description: ErrorMessageFormatter.formatAll(
+          errors.errors,
+          fallback: 'Não foi possível atualizar o nome. Tente novamente.',
+        ),
       );
-
-      if (remaining.isNotEmpty) {
-        context.showToast(
-          variant: .error,
-          title: 'Erro ao atualizar nome',
-          description: remaining
-              .map(
-                (error) => UserErrorMessageFormatter.format(
-                  error,
-                  fallback:
-                      'Não foi possível atualizar o nome. Tente novamente.',
-                ),
-              )
-              .toSet()
-              .join('\n'),
-        );
-      } else if (errors.errors.isEmpty) {
-        context.showToast(
-          variant: .error,
-          title: 'Erro ao atualizar nome',
-          description: 'Não foi possível atualizar o nome. Tente novamente.',
-        );
-      }
 
       return;
     }

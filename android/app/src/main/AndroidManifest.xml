@@ -1,11 +1,7 @@
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android" >
-
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
     <application
-        android:label="cordato"
+        android:label="@string/label_app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round">
@@ -31,24 +27,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="@string/config_authentication_link_scheme"
-                    android:host="@string/config_authentication_link_host"
-                    android:path="@string/config_authentication_confirm_email_path" />
-            </intent-filter>
-
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="@string/config_authentication_link_scheme"
-                    android:host="@string/config_authentication_link_host"
-                    android:path="@string/config_authentication_reset_password_path" />
             </intent-filter>
 
         </activity>

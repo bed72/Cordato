@@ -50,13 +50,28 @@ jobs:
           cache: true
 
       - name: Instalar dependências
-        run: flutter pub get --enforce-lockfile
+        env:
+          LOCALSTORE_READ_TOKEN: ${{ secrets.LOCALSTORE_READ_TOKEN }}
+          GIT_TERMINAL_PROMPT: '0'
+          GIT_CONFIG_COUNT: '2'
+          GIT_CONFIG_KEY_0: credential.https://github.com/bed72/localstore.git.helper
+          GIT_CONFIG_VALUE_0: >-
+            !f() { if [ "$1" = get ]; then printf 'username=x-access-token\npassword=%s\n' "$LOCALSTORE_READ_TOKEN"; fi; }; f
+          GIT_CONFIG_KEY_1: credential.useHttpPath
+          GIT_CONFIG_VALUE_1: 'true'
+        run: |
+          if [[ -z "$LOCALSTORE_READ_TOKEN" ]]; then
+            printf '::error::Secret obrigatório ausente: LOCALSTORE_READ_TOKEN\n'
+            exit 1
+          fi
+
+          flutter pub get --enforce-lockfile
 
       - name: Analisar código
-        run: flutter analyze
+        run: flutter analyze --no-pub
 
       - name: Executar testes
-        run: flutter test --reporter failures-only
+        run: flutter test --no-pub --reporter failures-only
 
       - name: Preparar chave de upload
         env:
@@ -90,10 +105,9 @@ jobs:
           ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
         run: |
-          flutter build appbundle --release \
+          flutter build appbundle --release --no-pub \
             --build-name="$BUILD_NAME" \
-            --build-number="$BUILD_NUMBER" \
-            --dart-define=BASE_URL=https://pocketbase.cordato.cloud
+            --build-number="$BUILD_NUMBER"
 
       - name: Verificar assinatura do AAB
         run: |

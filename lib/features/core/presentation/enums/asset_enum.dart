@@ -9,10 +9,6 @@ enum AssetEnum({required final String alt, required final String source}) {
     alt: 'Ilustração de erro',
     source: 'assets/images/errors/generic_error.webp',
   ),
-  connectionError(
-    alt: 'Ilustração de erro de conexão',
-    source: 'assets/images/errors/connection_error.webp',
-  ),
   categoryHealth(alt: 'Saúde', source: 'assets/images/categories/health.webp'),
   categoryTaxes(alt: 'Impostos', source: 'assets/images/categories/taxes.webp'),
   categoryTravel(
@@ -70,10 +66,6 @@ enum AssetEnum({required final String alt, required final String source}) {
   categoryPersonalCare(
     alt: 'Cuidados pessoais',
     source: 'assets/images/categories/personal_care.webp',
-  ),
-  categoryGiftsAndDonations(
-    alt: 'Presentes e doações',
-    source: 'assets/images/categories/gifts_and_donations.webp',
   ),
   categoryOthers(alt: 'Outros', source: 'assets/images/categories/others.webp'),
 }

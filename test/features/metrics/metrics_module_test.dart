@@ -4,9 +4,6 @@ import 'package:localstore/localstore.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
 import 'package:cordato/features/metrics/metrics_module.dart';
-import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_bloc.dart';
-import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_event.dart';
-import 'package:cordato/features/metrics/presentation/bloc/expense_metrics_state.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
 import '../../support/core/mocks/widget_client_mock.dart';
@@ -45,28 +42,15 @@ void main() {
     await storage.clear();
   });
 
-  test('resolves the shared local repository and independent Bloc factories without routes', () async {
+  test('resolves the shared local repository without routes', () async {
     final repository = inject<IMetricsRepository>();
     expect(inject<IMetricsRepository>(), same(repository));
 
-    final bloc = inject<ExpenseMetricsBloc>();
-    final other = inject<ExpenseMetricsBloc>();
-    addTearDown(bloc.close);
-    addTearDown(other.close);
-    expect(bloc, isNot(same(other)));
-    expect(other.state, isA<ExpenseMetricsInitial>());
-
-    final ready = bloc.stream.firstWhere(
-      (state) => state is ExpenseMetricsSuccess,
+    final metrics = await repository.getExpenses(
+      startDate: DateTime(2026, 10),
+      endDate: DateTime(2026, 10, 31),
+      groupBy: .category,
     );
-    bloc.add(
-      ExpenseMetricsRequestedEvent(
-        startDate: DateTime(2026, 10),
-        endDate: DateTime(2026, 10, 31),
-        groupBy: .category,
-      ),
-    );
-    final metrics = (await ready).metrics!;
 
     expect(metrics.total, 123);
     expect(metrics.categories!.single.category, 'food');

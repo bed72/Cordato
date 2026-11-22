@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="config_authentication_link_scheme" translatable="false">https</string>
-    <string name="config_authentication_link_host" translatable="false">app.cordato.cloud</string>
-    <string name="config_authentication_confirm_email_path" translatable="false">/authentication/confirm-email</string>
-    <string name="config_authentication_reset_password_path" translatable="false">/authentication/reset-password</string>
-</resources>

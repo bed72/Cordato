@@ -13,7 +13,6 @@ final class MetricsPreviewRepository({
   final ExpenseMetricsEntity? data,
   final ErrorsEntity? failure,
   final bool loading = false,
-  final Duration delay = .zero,
 }) implements IMetricsRepository {
   @override
   Future<ExpenseMetricsEntity> getExpenses({
@@ -22,7 +21,6 @@ final class MetricsPreviewRepository({
     ExpenseMetricsGroupByEnum? groupBy,
   }) async {
     if (loading) return Completer<ExpenseMetricsEntity>().future;
-    if (delay != Duration.zero) await Future<void>.delayed(delay);
     if (failure != null) throw MetricsException(errors: failure!);
     if (data != null) return data!;
 

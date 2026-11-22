@@ -149,10 +149,10 @@ packages:
     dependency: "direct main"
     description:
       name: cupertino_ui
-      sha256: "369e39a1c5c030a6212589c3da1809920b1c2cfade7b02aade7695bfa4b88c3a"
+      sha256: c3eaf7f5bdfee36deb0b14a4cbf7602f1b6b8d8b8576b81f38fc08c25881c94c
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.6"
+    version: "1.1.7"
   diff_match_patch:
     dependency: transitive
     description:
@@ -235,14 +235,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.1.1"
-  flutter_staggered_grid_view:
-    dependency: "direct main"
-    description:
-      name: flutter_staggered_grid_view
-      sha256: "19e7abb550c96fbfeb546b23f3ff356ee7c59a019a651f8f102a4ba9b7349395"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.7.0"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -384,11 +376,12 @@ packages:
   localstore:
     dependency: "direct main"
     description:
-      name: localstore
-      sha256: "9b7b106961aa3086a8aee5b908ab637c00a9f9c133370f08490cd9435c1de693"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.4.0"
+      path: "."
+      ref: main
+      resolved-ref: ac66df2844bfc7d55b15de8ae0fc914c143e9551
+      url: "https://github.com/bed72/localstore.git"
+    source: git
+    version: "1.0.0"
   logging:
     dependency: transitive
     description:
@@ -417,10 +410,10 @@ packages:
     dependency: "direct main"
     description:
       name: material_ui
-      sha256: "474c135fd46b56ff1d35ca982155e8863d28fbc6464d1192acf4ee53a738680e"
+      sha256: a6b19012df437a356cbc01f8ea22a105e07194c47c9a6009da0032a0ce35c4ab
       url: "https://pub.dev"
     source: hosted
-    version: "1.11.0"
+    version: "1.11.1"
   meta:
     dependency: transitive
     description:
@@ -702,18 +695,26 @@ packages:
     dependency: transitive
     description:
       name: syncfusion_flutter_core
-      sha256: f62f7a981072ce5dfbff4d8cf2fc667322a65ba0cfd13bf357270827b7206191
+      sha256: de2496525b2ff5e4493fe1bd0da212e0500f35754a55090adf82cd9b7fa0c90f
       url: "https://pub.dev"
     source: hosted
-    version: "35.1.46"
+    version: "35.2.12"
   syncfusion_flutter_datepicker:
     dependency: "direct main"
     description:
       name: syncfusion_flutter_datepicker
-      sha256: "7ba83d4c9e31fb3b71c7c418050746ff7813de9e7cce02f727ad08acaa125d1b"
+      sha256: "91ba6e36cd75b6a5f2a7c346bc7feac2080106913a81df861f5be06a834a5e86"
       url: "https://pub.dev"
     source: hosted
-    version: "35.1.46"
+    version: "35.2.12"
+  synchronized:
+    dependency: transitive
+    description:
+      name: synchronized
+      sha256: a77637ebe1460f3b48cac89a790d2eb634f0a8593cab0d3f340c6db174ba9b94
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.6.1+1"
   term_glyph:
     dependency: transitive
     description:

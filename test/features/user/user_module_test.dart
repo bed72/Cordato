@@ -102,8 +102,6 @@ void main() {
   });
 
   test('registers only the two local profile destinations', () {
-    expect(RouteEnum.user.authenticated, isFalse);
-    expect(RouteEnum.userEdit.authenticated, isFalse);
     expect(
       boot.routes.routes.map((route) => route.path),
       unorderedEquals([RouteEnum.user.path, RouteEnum.userEdit.path]),

@@ -65,7 +65,6 @@ void main() {
           hasLength(1),
           reason: destination.path,
         );
-        expect(destination.authenticated, isFalse);
       }
     });
 
