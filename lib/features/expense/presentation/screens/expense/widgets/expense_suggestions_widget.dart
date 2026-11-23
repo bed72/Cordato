@@ -1,15 +1,19 @@
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
-import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
+
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
+import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
+
+import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_suggestion_item_widget.dart';
 
 final class const ExpenseSuggestionsWidget({
   super.key,
   required final bool hasManualAmount,
+  required final VoidCallback onDismiss,
   required final IMoneyFormatter moneyFormatter,
-  required final List<ExpenseSuggestionEntity> suggestions,
+  required final ExpenseSuggestionEntity suggestion,
   required final ValueChanged<ExpenseSuggestionEntity> onSelected,
 }) extends StatelessWidget {
   @override
@@ -21,17 +25,18 @@ final class const ExpenseSuggestionsWidget({
           320 * MediaQuery.textScalerOf(context).scale(1),
         ),
       ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        itemCount: suggestions.length,
-        padding: const .symmetric(vertical: 8.0),
-        separatorBuilder: (_, _) => const SizedBox(height: 8.0),
-        itemBuilder: (context, index) => ExpenseSuggestionItemWidget(
-          suggestion: suggestions[index],
-          moneyFormatter: moneyFormatter,
-          hasManualAmount: hasManualAmount,
-          onTap: () => onSelected(suggestions[index]),
-          selected: AutocompleteHighlightedOption.of(context) == index,
+      child: ColoredBox(
+        color: context.colors.surface,
+        child: SingleChildScrollView(
+          padding: const .only(top: 8.0, bottom: 16.0),
+          child: ExpenseSuggestionItemWidget(
+            suggestion: suggestion,
+            moneyFormatter: moneyFormatter,
+            hasManualAmount: hasManualAmount,
+            onTap: () => onSelected(suggestion),
+            onDismiss: onDismiss,
+            selected: AutocompleteHighlightedOption.of(context) == 0,
+          ),
         ),
       ),
     ),

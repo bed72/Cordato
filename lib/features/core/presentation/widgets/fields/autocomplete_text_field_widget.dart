@@ -12,7 +12,13 @@ final class const AutocompleteTextFieldWidget<T extends Object>({
   required final ValueChanged<T> onSelected,
   required final TextEditingController controller,
   required final String Function(T) displayStringForOption,
-  required final AutocompleteOptionsViewBuilder<T> optionsViewBuilder,
+  required final Widget Function(
+    BuildContext context,
+    Iterable<T> options,
+    VoidCallback onDismiss,
+    AutocompleteOnSelected<T> onSelected,
+  )
+  optionsViewBuilder,
   required final FutureOr<Iterable<T>> Function(TextEditingValue)
   optionsBuilder,
   final String? failure,
@@ -43,7 +49,12 @@ final class _AutocompleteTextFieldState<T extends Object>
       optionsViewBuilder: (context, select, options) => optionsAreCurrent
           ? SizedBox(
               width: constraints.maxWidth,
-              child: widget.optionsViewBuilder(context, select, options),
+              child: widget.optionsViewBuilder(
+                context,
+                options,
+                dismissOptions,
+                select,
+              ),
             )
           : const SizedBox.shrink(),
       fieldViewBuilder: (context, controller, focusNode, submit) => Actions(
