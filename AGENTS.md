@@ -14,7 +14,13 @@ removidos pelo usuário. CSV e compartilhamento sem consumidores também foram
 removidos. Não restaure código, dependências, testes ou doubles desses fluxos
 para satisfazer specs históricas ou sanar referências legadas.
 
-O app usa Localstore compartilhado por DI. Não há identidade autenticada, `owner`,
+O destino aprovado da persistência é Drift/SQLite, nesta etapa somente como
+fundação em `lib/features/core/infrastructure/clients/database/`. O `coreModule`
+registra `DatabaseClient` como singleton lazy; os repositories ainda referenciam
+Localstore e não foram migrados. O usuário autorizou
+esta etapa intermediária sem compilação global; não restaure a dependência
+removida nem migre consumidores incidentalmente para deixar a suíte verde.
+Não há identidade autenticada, `owner`,
 sessão, backend, exportação ou backup/restauração pelo aplicativo.
 Budget e Family são planejados. Não crie `identity` para reproduzir o backend
 legado; `chat` está fora do escopo. Kotlin legado é referência de domínio,
@@ -55,13 +61,56 @@ Os textos do site e de Information devem permanecer coerentes com o app local.
   ficam em Markdown; preserve comentários existentes fora do escopo.
 - Não amplie uma tarefa localizada para migrar outras features ou ownerships.
 
-## Bootstrap e Localstore
+## DatabaseClient e transição para Drift
+
+`DatabaseClient` estende o banco gerado pelo Drift; não é wrapper, CRUD genérico,
+data source ou service locator. Não crie `IDatabaseClient`. Tabelas ficam em
+`core/infrastructure/clients/database/tables/`; registros e companions gerados
+ficam restritos à infraestrutura. Domain/application/presentation não importam
+Drift. Repositories futuros recebem a mesma instância por construtor.
+
+Schema inicial versão 1: `profiles` tem `id`, `name`, `seed`; índice único sobre
+constante permite no máximo um perfil. `expenses` possui `profile_id` obrigatório
+com `ON DELETE CASCADE`, ID textual, centavos inteiros positivos, categoria padrão
+`other`, descrição anulável e data civil textual `YYYY-MM-DD` validada pelo SQLite.
+A validação das categorias de domínio continua pertencendo a Expense, não ao core.
+
+A conexão padrão é lazy, em Application Support/cordato.sqlite, com execução em
+isolate pelo NativeDatabase. Foreign keys são habilitadas antes do uso em toda
+abertura, inclusive executors injetados. Testes usam SQLite real em memória ou
+arquivo temporário, aguardam operações e fecham o client antes da limpeza.
+Não há migração de Localstore/ToStore nem leitura/exclusão de seus arquivos.
+Novas versões do schema exigem migrações explícitas e testes; não faça reset
+destrutivo como fallback. Regenere com `dart run build_runner build` e versione
+`database_client.g.dart`. Comentários emitidos pelo gerador não são código manual.
+Regras de nomenclatura manual não se aplicam a `*.g.dart`; não edite arquivos
+gerados para remover nomes emitidos pelo Drift. O teste arquitetural de nomes
+continua verificando todos os arquivos Dart escritos à mão.
+O construtor convencional do client é necessário para compatibilidade com o
+parser atual de drift_dev; não o converta a primary constructor sem validar geração.
+
+Contrato aprovado para a futura integração: antes de operar, existe um perfil
+com ID novo, nome Cordato e seed aleatória. Editar nome/seed preserva ID.
+Apagar os dados remove o perfil e seus dependentes por cascade e cria outro
+perfil padrão com novo ID/seed, na mesma transação. Isso não é autenticação.
+O schema garante no máximo um perfil, não a existência dele: inicialização,
+troca transacional, invalidação de tarefas antigas e limpeza do widget ainda
+não estão implementadas. UI, views, IA e repositories ficam fora desta etapa.
+O registro usa `addLazySingleton<DatabaseClient>(DatabaseClient.new)`; não abre
+storage nem cria perfil ao resolver. O Modular 7 atual não expõe callback de
+descarte no ModularContext: não presuma que dispose do injector aguarde `close`.
+Testes que resolvem o client fecham explicitamente a instância. A coordenação do
+fechamento assíncrono no root permanece pendente, sem ownership pelas screens.
+Não prometa criptografia, apagamento físico irrecuperável ou backup.
+
+### Bootstrap legado, ainda não migrado
 
 `main` monta o app sem inicializar perfil ou storage. `appModule` é estático;
-`coreModule` registra
-`addInstance<Localstore>(Localstore.instance)`. Repositories recebem o SDK
+o antigo registro `addInstance<Localstore>(Localstore.instance)` foi removido
+do `coreModule`. Repositories legados ainda recebem o SDK
 diretamente por construtor, sem client, wrapper CRUD, data source ou service
-locator. Não restaure factory, schemas ou dependência de ToStore.
+locator. Essas regras descrevem somente o legado, não proíbem o schema Drift
+aprovado acima. Não restaure dependência de ToStore.
 
 Localstore vem do fork privado `bed72/localstore`, via Git HTTPS com `ref: main`
 no pubspec e commit resolvido fixado no lockfile, não do pub.dev.
@@ -80,6 +129,10 @@ Não prometa durabilidade auditada, criptografia, backup ou app funcional com
 base apenas em testes focados.
 
 ## Contratos locais das features
+
+As seções abaixo descrevem os consumidores legados ainda presentes. A fundação
+Drift não altera seus contratos nesta etapa. As descrições de User sem ID/avatar
+e Expense sem `profile_id` não se aplicam às novas tabelas.
 
 ### User
 

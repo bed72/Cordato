@@ -1,11 +1,82 @@
 # Arquitetura
 
-Estado canônico da versão local na branch `tostore`, revisado em **22/11/2026**.
+Estado canônico da versão local na branch `tostore`, revisado em **23/11/2026**.
 Convenções obrigatórias: [AGENTS.md](AGENTS.md). Execução e limites do produto:
 [README.md](README.md). Registros anteriores:
 [histórico da transição](docs/history/local-transition.md).
 
 ## Decisão canônica
+
+A persistência escolhida passa a ser Drift/SQLite. A entrega atual é somente a
+fundação em `lib/features/core/infrastructure/clients/database/`, com tabelas e
+testes reais. O `coreModule` registra o client como singleton lazy. Repositories,
+módulos e contratos de features ainda são legados do
+Localstore. Sua dependência foi retirada pelo usuário; esta etapa intermediária
+não compila o app completo e não representa migração funcional concluída.
+Não há migração dos dados anteriores, por decisão explícita.
+
+### Fundação Drift
+
+```text
+core/infrastructure/clients/database/
+  database_client.dart
+  database_client.g.dart
+  tables/
+    profiles_table.dart
+    expenses_table.dart
+```
+
+`DatabaseClient` é o próprio banco tipado Drift, não um wrapper. Não possui
+interface, CRUD genérico ou regras de negócio. O `coreModule` registra
+`addLazySingleton<DatabaseClient>(DatabaseClient.new)`, compartilhando a instância
+por DI sem abrir storage. Na integração futura será recebida por construtor nos repositories.
+Tipos gerados não atravessam contratos de application nem entram em domain/UI.
+O futuro owner da conexão deve aguardar operações e chamar `close`; screens não
+são donas do banco. O ModularContext atual não expõe callback de descarte nos
+registros: a coordenação de fechamento assíncrono pelo root permanece pendente.
+Não se presume que dispose do injector feche o banco. Testes de resolução fecham
+o client explicitamente, sem abrir storage.
+
+A conexão padrão abre sob demanda `cordato.sqlite` em Application Support e
+executa SQLite em isolate separado. Executors podem ser injetados nos testes.
+`PRAGMA foreign_keys = ON` roda em cada abertura. Schema inicial versão 1 cria
+tabelas e índices, sem inicializar perfil, ler Localstore ou apagar arquivos
+legados. Evoluções exigem migrações explícitas e testadas, nunca reset automático.
+
+| Tabela | Contrato |
+| --- | --- |
+| `profiles` | ID textual não vazio, nome e seed obrigatórios; índice único sobre constante garante no máximo um perfil, mesmo com IDs diferentes. |
+| `expenses` | ID textual não vazio, `profile_id` obrigatório referenciando `profiles.id` com `ON DELETE CASCADE`, `amount` inteiro positivo em centavos, categoria não vazia com default `other`, descrição anulável e `occurred_on` civil `YYYY-MM-DD`, entre anos 0001–9999. |
+
+O índice `expenses_profile_date` cobre perfil/data/ID. Categorias permitidas
+continuam sendo regra do domínio de Expense, não um enum duplicado no core.
+Não há default implícito para IDs/data; repositories deverão fornecê-los.
+Datas civis não são timestamps nem sofrem conversão de fuso.
+
+O contrato de produto aprovado é ter um perfil ativo antes de operar, inicialmente
+com ID novo, nome `Cordato` e seed aleatória. Edições preservam o ID. Apagar os
+dados deve remover perfil/dependentes e criar outro perfil padrão, com novos
+ID/seed, na mesma transação. A existência do perfil e essa operação não são
+responsabilidades implementadas pelo schema: ele permite banco vazio.
+Não se introduzem login, `owner`, múltiplos perfis ou identidade autenticada.
+
+O cascade é lógico e transacional dentro do SQLite. Não limpa snapshots do widget
+ou tarefas de IA/edição em andamento, nem comprova apagamento físico irrecuperável.
+Essas coordenações, os repositories, views, UI e IA são etapas futuras, sem
+criptografia ou backup implicitamente prometidos.
+
+Geração: `dart run build_runner build`; versione o arquivo gerado. O client usa
+construtor convencional porque o parser de drift_dev não aceita sua declaração
+equivalente com primary constructor. Testes espelham o client em
+`test/features/core/infrastructure/clients/database/`, usando SQLite real para
+constraints, cascade, rollback e reabertura de arquivo.
+
+### Implementação legada ainda não migrada
+
+O restante deste documento descreve a implementação Localstore ainda presente.
+O antigo registro de Localstore no `coreModule` já foi removido.
+Em conflitos de persistência e schema, a decisão Drift acima tem precedência;
+não trate os contratos legados como migração já implementada.
 
 O aplicativo é exclusivamente local. Authentication, Session, Welcome, PocketBase,
 backend, worker, áudio, IA, Insight, CSV e infraestrutura de compartilhamento

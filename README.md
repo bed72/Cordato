@@ -1,7 +1,57 @@
 # Cordato
 
-Aplicativo Flutter de finanças pessoais, exclusivamente local com Localstore.
-Estado documental revisado em **22/11/2026**.
+Aplicativo Flutter de finanças pessoais, exclusivamente local, em transição
+para Drift/SQLite. Estado documental revisado em **23/11/2026**.
+
+## Transição de persistência
+
+Esta etapa entrega somente a fundação Drift em
+`lib/features/core/infrastructure/clients/database/`, com schema versão 1,
+foreign keys, perfil único e despesas vinculadas com `ON DELETE CASCADE`.
+O `coreModule` registra o client como singleton lazy, sem abertura assíncrona no
+`main`. Não migra os dados do Localstore/ToStore, repositories ou interface.
+Os arquivos de dados legados não são lidos nem apagados por esta fundação.
+
+**O app completo está temporariamente sem compilação:** módulos de features/repositories e
+testes antigos ainda importam Localstore, cuja dependência foi retirada.
+Os contratos e recursos descritos nas próximas seções são da implementação
+legada, não uma integração Drift concluída.
+
+O contrato aprovado é um perfil local com ID, nome e seed. Inicialmente:
+ID novo, nome `Cordato` e seed aleatória. Editar nome/seed preserva o ID.
+No futuro, apagar os dados removerá o perfil e despesas por cascade e criará
+outro perfil padrão com novos ID/seed numa única transação. Essa operação e a
+inicialização ainda não estão implementadas; o banco novo começa vazio.
+
+O client abre SQLite sob demanda em Application Support/cordato.sqlite, em
+isolate separado. Resolver o singleton não abre o arquivo nem cria perfil.
+A coordenação de fechamento assíncrono pelo root permanece pendente; a API atual
+de registro do Modular não expõe callback de descarte. Não há IA, views, criptografia, backup ou garantia de
+apagamento físico adicionados nesta etapa.
+
+```bash
+flutter pub get
+dart run build_runner build
+flutter test test/features/core/infrastructure/clients/database/ --reporter failures-only
+```
+
+Versione `database_client.g.dart` após alterar tabelas. Detalhes e precedência
+dos contratos estão em [ARCHITECTURE.md](ARCHITECTURE.md#fundação-drift).
+
+### Verificação desta etapa
+
+- `flutter pub get` e `dart run build_runner build`: concluídos.
+- `dart analyze lib/features/core/infrastructure/clients/database test/features/core/infrastructure/clients/database test/architecture/descriptive_names_test.dart`: sem problemas.
+- `flutter test test/features/core/infrastructure/clients/database/ --reporter failures-only`: 27 testes passando, com SQLite real em memória e arquivo/isolate.
+- `flutter test test/architecture test/features/core/infrastructure/clients/database/ --reporter failures-only`: 116 passando; uma falha no contrato legado que exige Localstore no lockfile.
+- `flutter test test/features/core/core_module_test.dart --reporter failures-only`: 3 testes passando; singleton resolvido sem abrir storage.
+- `dart analyze lib/features/core/core_module.dart test/features/core/core_module_test.dart`: sem problemas.
+- Após o registro no core, arquitetura + client + módulo: 119 passando, uma falha no contrato legado de Localstore.
+- `flutter analyze`: bloqueado por 97 diagnósticos das referências legadas sem Localstore.
+- `flutter test --reporter failures-only`, antes do registro no core: 770 passando, 10 falhas ligadas à ausência de Localstore e ao contrato legado da dependência.
+
+Essas verificações não comprovam integração dos repositories, inicialização do
+perfil, exclusão pela UI ou homologação em Android/iOS.
 
 ## Licença e publicação do código
 
@@ -77,12 +127,13 @@ flutter run
 
 O app atual não precisa de servidor, credenciais de runtime ou `BASE_URL`.
 Os testes não montam UI; a execução em dispositivo é uma verificação separada.
-O código do app não exige credenciais de runtime, mas instalar dependências
-requer acesso Git HTTPS ao repositório privado
+As dependências da fundação Drift são públicas. O legado usava acesso Git HTTPS
+ao repositório privado
 [`bed72/localstore`](https://github.com/bed72/localstore). Configure sua
-autenticação Git antes de `flutter pub get`; não coloque tokens no pubspec.
+autenticação Git somente se trabalhar com uma revisão legada que ainda o utiliza;
+não coloque tokens no pubspec.
 
-### Inicialização e persistência
+### Inicialização e persistência legadas, ainda não migradas
 
 `main` monta o app sem preparar perfil ou storage. O `appModule` compõe o
 `coreModule`, que registra
