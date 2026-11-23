@@ -25,6 +25,24 @@ estas regras e ARCHITECTURE.md; consulte [openspec/README.md](openspec/README.md
 Não restaure Supabase/RPC, CommandIt, Either, data sources ou ownership antigo.
 Pendências documentadas não autorizam mudanças incidentais de comportamento.
 
+## Site público
+
+`site/` contém o site HTML/CSS estático, independente de Flutter e sem backend.
+Não há framework, JavaScript de runtime ou build para publicar. Siga também
+[`site/AGENTS.md`](site/AGENTS.md) e [`site/ARQUITECTURE.md`](site/ARQUITECTURE.md)
+ao alterá-lo. As regras de camadas, widgets e proibição de testes de UI deste
+arquivo se referem ao app Flutter; HTML e E2E/acessibilidade do site
+seguem os contratos próprios, sem introduzir testes visuais em `test/`.
+
+Dependências npm são somente ferramentas opcionais de teste; lockfile, assets e
+artefatos ficam dentro de `site/`. Publique apenas `site/public/`, sem build.
+Não misture pubspec, DI ou targets nativos com o site. Preserve os arquivos
+importados do site; código novo continua sem comentários explicativos.
+Os workflows `site-test.yml` e `site-pages.yml` ficam em `.github/workflows/`;
+mudanças neles exigem actionlint. Não altere o release Android incidentalmente.
+Não publique, mude DNS ou visibilidade do repositório sem autorização explícita.
+Os textos do site e de Information devem permanecer coerentes com o app local.
+
 ## Antes de alterar
 
 - Leia a feature afetada, os componentes compartilhados usados e seus testes.

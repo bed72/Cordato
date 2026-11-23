@@ -3,6 +3,20 @@
 Aplicativo Flutter de finanças pessoais, exclusivamente local com Localstore.
 Estado documental revisado em **22/11/2026**.
 
+## Licença e publicação do código
+
+Este projeto é distribuído sob a [licença MIT](LICENSE), com copyright de
+**Gabriel Ramos**. Dependências, fontes, ícones e outros materiais de terceiros
+mantêm suas próprias licenças; a MIT não as substitui. Os avisos do site estão em
+[`site/public/third-party-notices.txt`](site/public/third-party-notices.txt) e a
+fonte Inter em [`site/public/fonts/OFL.txt`](site/public/fonts/OFL.txt).
+Pacotes como Syncfusion continuam sujeitos às condições de seus fornecedores.
+
+Antes de tornar o repositório público, consulte a
+[revisão de credenciais de 23/11/2026](docs/security/publication-review-2026-11-23.md).
+Excluir uma chave do código atual ou adicioná-la ao `.gitignore` não a remove do
+histórico. A revisão não altera visibilidade nem autoriza reescrita do Git.
+
 ## Estado atual
 
 - Perfil local único: nome e seed de avatar, sem conta, ID ou e-mail.
@@ -23,6 +37,28 @@ Family são planejados, não funcionalidades disponíveis.
 app.** Dados podem ser perdidos ao desinstalar ou trocar de dispositivo. Cópias
 do sistema dependem do dispositivo; arquivos exportados anteriormente não são
 backups restauráveis. Não há garantia adicional de criptografia ou recuperação.
+
+## Site público
+
+O site do Cordato fica em [`site/`](site/README.md), no mesmo repositório do app.
+Contém apresentação, Política de Privacidade, Termos e Ajuda, sem login, exclusão
+de conta ou backend. É HTML/CSS estático, sem framework, JavaScript ou build para
+publicar; não é Flutter Web e não participa da compilação Android/iOS.
+
+```bash
+node site/tools/serve.mjs
+```
+
+Os documentos web refletem a versão local e distinguem os registros técnicos
+da hospedagem dos dados armazenados pelo aplicativo. O site não lê o banco local.
+Alterações em app e site podem ser revisadas no mesmo PR.
+
+A CI do site usa `.github/workflows/site-test.yml`. A publicação estática usa
+`.github/workflows/site-pages.yml`, manual e somente na `main`, sem alterar o
+release Android. O upload usa diretamente `site/public/`, sem instalar npm.
+GitHub Pages, domínio e DNS exigem configuração externa; a cópia do site não
+publica nem muda a visibilidade do repositório. Consulte
+[`site/deploy/README.md`](site/deploy/README.md).
 
 ## Desenvolvimento
 

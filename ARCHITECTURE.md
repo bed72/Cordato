@@ -23,6 +23,27 @@ O módulo injeta a implementação; o Bloc conhece somente contratos e exceçõe
 de aplicação. Contratos usam `Future<T>`, sem Either, commands ou envelopes do
 SDK. Não há camada de data sources, wrapper genérico de CRUD ou store global.
 
+## Site público no mesmo repositório
+
+`site/` contém o site HTML/CSS independente do aplicativo Flutter, com home,
+privacidade, termos e suporte. Não é Flutter Web, backend ou consumidor do
+Localstore. Os documentos descrevem o app local, sem restaurar autenticação,
+exclusão de conta, áudio, IA ou acesso remoto aos registros.
+
+Assets e testes pertencem a `site/`; ferramentas Node são opcionais e não entram
+no pubspec, em `lib/`, em `test/` ou nos targets nativos. As convenções estáticas e
+testes de UI/acessibilidade do site estão em [`site/AGENTS.md`](site/AGENTS.md) e
+[`site/ARQUITECTURE.md`](site/ARQUITECTURE.md), sem alterar a política de testes
+sem UI do Flutter.
+
+Os workflows ficam na raiz: `site-test.yml` verifica mudanças do site e
+`site-pages.yml` publica manualmente `site/public/`, sem instalar npm ou executar
+build. Páginas, FAQ e navegação funcionam sem JavaScript.
+Ambos são independentes de `android-release.yml`, de Flutter e dos secrets
+de release/Localstore. A hospedagem não exige VPS e não lê dados do app.
+DNS, visibilidade e publicação remota não são consequências automáticas desta
+organização. Rotas, artefato e limites estão em [`site/README.md`](site/README.md).
+
 ## Produto e contextos
 
 | Feature | Responsabilidade atual |
