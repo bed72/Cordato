@@ -79,6 +79,11 @@ IDs no app nem reinicie sqlite_sequence. Despesas têm centavos inteiros positiv
 `other`, descrição anulável e data civil textual `YYYY-MM-DD` validada pelo SQLite,
 com default SQL date('now', 'localtime') quando omitida.
 A semântica das categorias continua pertencendo ao CategoryEnum de Expense.
+`CategoryEnum.fromValue` faz parsing estrito por texto, sem normalizar ou usar
+fallback para other; consumidores de Expense e Metrics usam esse parser.
+`encodeDatabaseDate`, em `database_date_codec.dart` junto ao client, valida anos
+1–9999 e serializa datas civis como YYYY-MM-DD, sem converter fuso. Expense e
+Metrics usam a função; Metrics valida os limites antes de acessar banco/widget.
 O core reforça integridade com CHECK SQL contendo os mesmos valores textuais,
 sem importar Expense ou duplicar o enum. O teste arquitetural
 `test/architecture/expense_category_schema_test.dart` compara as listas e testa
@@ -96,6 +101,13 @@ que usam sugestões devem receber `setup: DatabaseClient.configureConnection`
 antes de interceptors; SQL não registra funções Dart. O core não importa DAOs
 das features. Essa função não altera schema nem exige migração.
 Não há migração de Localstore/ToStore nem leitura/exclusão de seus arquivos.
+`runDatabaseOperation`, em `database_operation.dart` junto ao client, centraliza
+as falhas operacionais SQLite/filesystem e desembrulha DriftRemoteException.
+Repositories fornecem a factory da exceção de aplicação; o core não importa
+exceções das features. Preserve causa/stack inesperadas, sem retry ou reset.
+A função não recebe banco nem inicia transações. Mantenha validações prévias e
+publicação nativa fora do callback; consultas, mapeamento e transações existentes
+permanecem sob responsabilidade dos repositories.
 Sem usuários, o schema não publicado foi consolidado na versão 1 por decisão
 do usuário, com autoincrement, default de data local e CHECK de categorias.
 Não há migrações de versões SQLite experimentais anteriores nem seus testes/fixtures.
@@ -222,7 +234,7 @@ campos fornecidos em uma instrução, preservando perfil/demais campos inclusive
 sob concorrência. Create/update mantêm transação para reverter se o mapeamento
 do retorno falhar e publicar somente após commit. DELETE é uma instrução atômica
 sem leitura ou transação explícita adicional.
-`_hasUpdates` verifica presença por null, não por valor verdadeiro/texto não vazio.
+A verificação de campos fornecidos usa null, não valor verdadeiro/texto não vazio.
 Sem campos apenas leem, sem refresh; descrição vazia e categoria other são updates.
 Mutações solicitam refresh nativo somente
 após commit, fora do tratamento de falhas de storage e sem alterar formato nativo.

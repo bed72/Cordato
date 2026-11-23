@@ -613,6 +613,36 @@ void main() {
     });
 
     group('Failures and pending operations', () {
+      for (final operation in ['create', 'update', 'delete']) {
+        test(
+          '$operation preserves committed storage when native refresh fails',
+          () async {
+            final id = await insert();
+            const failure = FileSystemException('native refresh');
+            when(client.monthlyRefresh).thenThrow(failure);
+
+            final mutation = switch (operation) {
+              'create' => repository.create(cents: 200, description: 'New'),
+              'update' => repository.update(id: id, cents: 200),
+              _ => repository.delete(id: id),
+            };
+
+            await expectLater(mutation, throwsA(same(failure)));
+
+            final records = await (database.select(
+              database.expensesTable,
+            )..orderBy([(row) => OrderingTerm.asc(row.id)])).get();
+            final amounts = switch (operation) {
+              'create' => [100, 200],
+              'update' => [200],
+              _ => <int>[],
+            };
+            expect(records.map((record) => record.amount), amounts);
+            verify(client.monthlyRefresh).called(1);
+          },
+        );
+      }
+
       test(
         'delete awaits atomic SQL completion without an explicit transaction',
         () async {

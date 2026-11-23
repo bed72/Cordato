@@ -22,6 +22,8 @@ na versão 1 por decisão do usuário.
 core/infrastructure/clients/database/
   database_client.dart
   database_client.g.dart
+  database_date_codec.dart
+  database_operation.dart
   tables/
     profiles_table.dart
     expenses_table.dart
@@ -33,6 +35,13 @@ interface, CRUD genérico ou regras de negócio. O `coreModule` registra
 por DI sem abrir storage. UserRepository e ExpenseRepository recebem o client
 por construtor; MetricsDao recebe a mesma instância.
 Tipos gerados não atravessam contratos de application nem entram em domain/UI.
+`runDatabaseOperation`, em `database_operation.dart`, centraliza a tradução de
+falhas operacionais SQLite/filesystem e o desembrulho de DriftRemoteException.
+Cada repository fornece a factory da sua exceção de aplicação; o core não
+depende das exceções das features. Erros inesperados preservam causa e stack.
+A função não recebe conexão, não inicia transações e não implementa CRUD,
+retry ou reset. Consultas e mapeamento ficam no callback; validações prévias e
+publicação nativa permanecem fora dele. As transações pertencem aos repositories.
 O futuro owner da conexão deve aguardar operações e chamar `close`; screens não
 são donas do banco. O ModularContext atual não expõe callback de descarte nos
 registros: a coordenação de fechamento assíncrono pelo root permanece pendente.
@@ -65,6 +74,12 @@ reutilização de IDs de registros confirmados e depois excluídos no mesmo banc
 inclusive após cascade; não reinicie sqlite_sequence. Datas omitidas usam o dia
 local do SQLite; datas explícitas não usam o default.
 Datas civis não são timestamps nem sofrem conversão de fuso.
+`encodeDatabaseDate`, em `database_date_codec.dart`, valida anos 1–9999 e
+serializa os componentes civis como `YYYY-MM-DD`, sem converter fuso ou usar
+formatação de apresentação. Expense e Metrics compartilham essa função; Metrics
+codifica os limites mensais antes de acessar banco/widget.
+`CategoryEnum.fromValue` centraliza o parsing estrito de categorias por texto
+em Expense e Metrics, sem normalização ou fallback para `other`.
 
 Sem usuários, a definição atual foi consolidada na versão 1, incluindo IDs
 inteiros autoincrementais, default de data local e CHECK de categorias.

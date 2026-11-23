@@ -1,21 +1,20 @@
 import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
-import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
-import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 
-final class const ExpenseSuggestionResponse({
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
+import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
+
+final class const SuggestionResponse({
   required final int id,
   required final String description,
   required final CategoryEnum category,
   final int? amount,
 }) {
-  factory ExpenseSuggestionResponse.fromRecord(ExpensesTableData record) {
-    return ExpenseSuggestionResponse(
+  factory SuggestionResponse.fromRecord(ExpensesTableData record) {
+    return SuggestionResponse(
       id: record.id,
       amount: record.amount,
       description: record.description!,
-      category: CategoryEnum.values.firstWhere(
-        (category) => category.value == record.category,
-      ),
+      category: CategoryEnum.fromValue(record.category),
     );
   }
 

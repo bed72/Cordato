@@ -62,7 +62,7 @@ dos contratos estão em [ARCHITECTURE.md](ARCHITECTURE.md#fundação-drift).
   correspondências e só então deduplica. Matching literal usa cordato_lower,
   preservando Unicode e parâmetros vinculados.
 - Data omitida usa default local do SQLite; data explícita preserva o dia civil.
-- `_hasUpdates` distingue campo omitido de descrição vazia ou categoria other.
+- A atualização distingue campo omitido de descrição vazia ou categoria other.
 - MetricsDao filtra perfil/mês e agrega centavos por categoria em uma única
   consulta SQL parametrizada. Total e percentuais derivam dos mesmos grupos.
 

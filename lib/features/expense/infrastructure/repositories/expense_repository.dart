@@ -1,21 +1,19 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/isolate.dart';
-import 'package:sqlite3/sqlite3.dart';
 
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/database/database_date_codec.dart';
+import 'package:cordato/features/core/infrastructure/clients/database/database_operation.dart';
 
-import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/enums/category_enum.dart';
+import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 
-import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
 import 'package:cordato/features/expense/infrastructure/daos/suggestions_dao.dart';
-import 'package:cordato/features/expense/infrastructure/responses/expense_suggestion_response.dart';
+import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
+import 'package:cordato/features/expense/infrastructure/responses/suggestion_response.dart';
 
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
@@ -29,68 +27,59 @@ final class ExpenseRepository({
   Future<List<ExpenseSuggestionEntity>> suggestions({
     required String query,
   }) async {
-    try {
-      final records = await _dao.get(query: query);
+    return runDatabaseOperation(
+      operation: () async {
+        final records = await _dao.get(query: query);
 
-      return List<ExpenseSuggestionEntity>.unmodifiable(
-        records.map(
-          (record) => ExpenseSuggestionResponse.fromRecord(record).toEntity(),
-        ),
-      );
-    } on FileSystemException {
-      throw ExpenseException(errors: .unknown());
-    } on SqliteException catch (error, stackTrace) {
-      _failure(error, stackTrace);
-    } on DriftRemoteException catch (error, stackTrace) {
-      _failure(error.remoteCause, error.remoteStackTrace ?? stackTrace);
-    }
+        return List<ExpenseSuggestionEntity>.unmodifiable(
+          records.map(
+            (record) => SuggestionResponse.fromRecord(record).toEntity(),
+          ),
+        );
+      },
+      onFailure: () => ExpenseException(errors: .unknown()),
+    );
   }
 
   @override
   Future<ExpenseEntity> getById({required int id}) async {
-    try {
-      final record = await (_databaseClient.select(
-        _databaseClient.expensesTable,
-      )..where((row) => row.id.equals(id))).getSingleOrNull();
-      if (record == null) {
-        throw ExpenseException(
-          errors: const ErrorsEntity(
-            errors: [ErrorEntity(code: 'expense_not_found')],
-          ),
-        );
-      }
+    return runDatabaseOperation(
+      operation: () async {
+        final record = await (_databaseClient.select(
+          _databaseClient.expensesTable,
+        )..where((row) => row.id.equals(id))).getSingleOrNull();
+        if (record == null) {
+          throw ExpenseException(
+            errors: const ErrorsEntity(
+              errors: [ErrorEntity(code: 'expense_not_found')],
+            ),
+          );
+        }
 
-      return ExpenseResponse.fromRecord(record).toEntity();
-    } on FileSystemException {
-      throw ExpenseException(errors: .unknown());
-    } on SqliteException catch (error, stackTrace) {
-      _failure(error, stackTrace);
-    } on DriftRemoteException catch (error, stackTrace) {
-      _failure(error.remoteCause, error.remoteStackTrace ?? stackTrace);
-    }
+        return ExpenseResponse.fromRecord(record).toEntity();
+      },
+      onFailure: () => ExpenseException(errors: .unknown()),
+    );
   }
 
   @override
   Future<void> delete({required int id}) async {
-    try {
-      final deleted = await (_databaseClient.delete(
-        _databaseClient.expensesTable,
-      )..where((row) => row.id.equals(id))).go();
+    await runDatabaseOperation(
+      operation: () async {
+        final deleted = await (_databaseClient.delete(
+          _databaseClient.expensesTable,
+        )..where((row) => row.id.equals(id))).go();
 
-      if (deleted == 0) {
-        throw ExpenseException(
-          errors: const ErrorsEntity(
-            errors: [ErrorEntity(code: 'expense_not_found')],
-          ),
-        );
-      }
-    } on FileSystemException {
-      throw ExpenseException(errors: .unknown());
-    } on SqliteException catch (error, stackTrace) {
-      _failure(error, stackTrace);
-    } on DriftRemoteException catch (error, stackTrace) {
-      _failure(error.remoteCause, error.remoteStackTrace ?? stackTrace);
-    }
+        if (deleted == 0) {
+          throw ExpenseException(
+            errors: const ErrorsEntity(
+              errors: [ErrorEntity(code: 'expense_not_found')],
+            ),
+          );
+        }
+      },
+      onFailure: () => ExpenseException(errors: .unknown()),
+    );
 
     _widgetClient.monthlyRefresh();
   }
@@ -105,54 +94,52 @@ final class ExpenseRepository({
     String? category,
   }) async {
     if (page < 1) throw ArgumentError.value(page, 'page');
-
-    if (category != null) {
-      CategoryEnum.values.firstWhere((item) => item.value == category);
-    }
+    if (category != null) CategoryEnum.fromValue(category);
 
     final ordering = _ordering(sort);
     final size = pageSize > 0 ? pageSize : 30;
-    final last = to == null ? null : _date(to);
-    final first = from == null ? null : _date(from);
+    final last = to == null
+        ? null
+        : encodeDatabaseDate(to, parameter: 'occurredOn');
+    final first = from == null
+        ? null
+        : encodeDatabaseDate(from, parameter: 'occurredOn');
 
-    try {
-      final data = _databaseClient.select(_databaseClient.expensesTable);
-      data.where(
-        (row) => row.profileId.equalsExp(
-          subqueryExpression<int>(
-            _databaseClient.selectOnly(_databaseClient.profilesTable)
-              ..addColumns([_databaseClient.profilesTable.id]),
+    return runDatabaseOperation(
+      operation: () async {
+        final data = _databaseClient.select(_databaseClient.expensesTable);
+        data.where(
+          (row) => row.profileId.equalsExp(
+            subqueryExpression<int>(
+              _databaseClient.selectOnly(_databaseClient.profilesTable)
+                ..addColumns([_databaseClient.profilesTable.id]),
+            ),
           ),
-        ),
-      );
-      if (category != null) {
-        data.where((row) => row.category.equals(category));
-      }
-      if (first != null) {
-        data.where((row) => row.occurredOn.isBiggerOrEqualValue(first));
-      }
-      if (last != null) {
-        data.where((row) => row.occurredOn.isSmallerOrEqualValue(last));
-      }
+        );
+        if (category != null) {
+          data.where((row) => row.category.equals(category));
+        }
+        if (first != null) {
+          data.where((row) => row.occurredOn.isBiggerOrEqualValue(first));
+        }
+        if (last != null) {
+          data.where((row) => row.occurredOn.isSmallerOrEqualValue(last));
+        }
 
-      data.limit(size + 1, offset: (page - 1) * size);
-      data.orderBy([for (final term in ordering) (_) => term]);
-      final records = await data.get();
+        data.limit(size + 1, offset: (page - 1) * size);
+        data.orderBy([for (final term in ordering) (_) => term]);
+        final records = await data.get();
 
-      return ExpensePageEntity(
-        nextPage: records.length > size ? page + 1 : null,
-        items: records
-            .take(size)
-            .map((record) => ExpenseResponse.fromRecord(record).toEntity())
-            .toList(),
-      );
-    } on FileSystemException {
-      throw ExpenseException(errors: .unknown());
-    } on SqliteException catch (error, stackTrace) {
-      _failure(error, stackTrace);
-    } on DriftRemoteException catch (error, stackTrace) {
-      _failure(error.remoteCause, error.remoteStackTrace ?? stackTrace);
-    }
+        return ExpensePageEntity(
+          nextPage: records.length > size ? page + 1 : null,
+          items: records
+              .take(size)
+              .map((record) => ExpenseResponse.fromRecord(record).toEntity())
+              .toList(),
+        );
+      },
+      onFailure: () => ExpenseException(errors: .unknown()),
+    );
   }
 
   @override
@@ -165,19 +152,19 @@ final class ExpenseRepository({
   }) async {
     if (cents != null) _amount(cents);
 
-    if (!_hasUpdates(
-      cents: cents,
-      description: description,
-      occurredOn: occurredOn,
-      category: category,
-    )) {
+    if (cents == null &&
+        description == null &&
+        occurredOn == null &&
+        category == null) {
       return getById(id: id);
     }
-    final date = occurredOn == null ? null : _date(occurredOn);
 
-    late final ExpenseEntity updated;
-    try {
-      updated = await _databaseClient.transaction(() async {
+    final date = occurredOn == null
+        ? null
+        : encodeDatabaseDate(occurredOn, parameter: 'occurredOn');
+
+    final updated = await runDatabaseOperation(
+      operation: () => _databaseClient.transaction(() async {
         final records =
             await (_databaseClient.update(
               _databaseClient.expensesTable,
@@ -201,15 +188,11 @@ final class ExpenseRepository({
             ),
           );
         }
+
         return ExpenseResponse.fromRecord(records.single).toEntity();
-      });
-    } on FileSystemException {
-      throw ExpenseException(errors: .unknown());
-    } on SqliteException catch (error, stackTrace) {
-      _failure(error, stackTrace);
-    } on DriftRemoteException catch (error, stackTrace) {
-      _failure(error.remoteCause, error.remoteStackTrace ?? stackTrace);
-    }
+      }),
+      onFailure: () => ExpenseException(errors: .unknown()),
+    );
 
     _widgetClient.monthlyRefresh();
     return updated;
@@ -223,7 +206,9 @@ final class ExpenseRepository({
     DateTime? occurredOn,
   }) async {
     _amount(cents);
-    final date = occurredOn == null ? null : _date(occurredOn);
+    final date = occurredOn == null
+        ? null
+        : encodeDatabaseDate(occurredOn, parameter: 'occurredOn');
     final statement = date == null
         ? '''
 INSERT INTO expenses (profile_id, amount, category, description)
@@ -236,9 +221,8 @@ SELECT id, ?, ?, ?, ? FROM profiles
 RETURNING *
 ''';
 
-    late final ExpenseEntity created;
-    try {
-      created = await _databaseClient.transaction(() async {
+    final created = await runDatabaseOperation(
+      operation: () => _databaseClient.transaction(() async {
         final records = await _databaseClient.customWriteReturning(
           statement,
           variables: [
@@ -260,29 +244,13 @@ RETURNING *
 
         final record = _databaseClient.expensesTable.map(records.single.data);
         return ExpenseResponse.fromRecord(record).toEntity();
-      });
-    } on FileSystemException {
-      throw ExpenseException(errors: .unknown());
-    } on SqliteException catch (error, stackTrace) {
-      _failure(error, stackTrace);
-    } on DriftRemoteException catch (error, stackTrace) {
-      _failure(error.remoteCause, error.remoteStackTrace ?? stackTrace);
-    }
+      }),
+      onFailure: () => ExpenseException(errors: .unknown()),
+    );
 
     _widgetClient.monthlyRefresh();
     return created;
   }
-
-  bool _hasUpdates({
-    int? cents,
-    String? description,
-    DateTime? occurredOn,
-    CategoryEnum? category,
-  }) =>
-      cents != null ||
-      description != null ||
-      occurredOn != null ||
-      category != null;
 
   void _amount(int cents) {
     if (cents <= 0) {
@@ -292,17 +260,6 @@ RETURNING *
         ),
       );
     }
-  }
-
-  String _date(DateTime date) {
-    if (date.year < 1 || date.year > 9999) {
-      throw ArgumentError.value(date, 'occurredOn');
-    }
-    return DateTime.utc(
-      date.year,
-      date.month,
-      date.day,
-    ).toIso8601String().split('T').first;
   }
 
   List<OrderingTerm> _ordering(String? sort) {
@@ -331,25 +288,5 @@ RETURNING *
     if (!includesId) ordering.add(.asc(table.id));
 
     return ordering;
-  }
-
-  Never _failure(Object error, StackTrace stackTrace) {
-    if (error is FileSystemException) {
-      throw ExpenseException(errors: .unknown());
-    }
-
-    if (error is SqliteException &&
-        const {
-          SqlError.SQLITE_BUSY,
-          SqlError.SQLITE_FULL,
-          SqlError.SQLITE_IOERR,
-          SqlError.SQLITE_LOCKED,
-          SqlError.SQLITE_READONLY,
-          SqlError.SQLITE_CANTOPEN,
-        }.contains(error.resultCode)) {
-      throw ExpenseException(errors: .unknown());
-    }
-
-    Error.throwWithStackTrace(error, stackTrace);
   }
 }

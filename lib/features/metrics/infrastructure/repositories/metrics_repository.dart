@@ -1,10 +1,7 @@
-import 'dart:io';
-
-import 'package:drift/isolate.dart';
-import 'package:sqlite3/sqlite3.dart';
-
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/database/database_date_codec.dart';
+import 'package:cordato/features/core/infrastructure/clients/database/database_operation.dart';
 
 import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 
@@ -43,42 +40,36 @@ final class MetricsRepository({
 
     final now = DateTime.now();
     final start = startDate ?? now;
-    if (start.year < 1 || start.year > 9999) {
-      throw ArgumentError.value(start, 'startDate');
-    }
-
     final first = DateTime(start.year, start.month);
+    final from = encodeDatabaseDate(first, parameter: 'startDate');
+    final to = encodeDatabaseDate(
+      DateTime(first.year, first.month + 1, 0),
+      parameter: 'endDate',
+    );
     final isCurrentMonth = first.year == now.year && first.month == now.month;
     final revision = isCurrentMonth ? _client.monthlyRead() : null;
 
-    late final ExpenseMetricsEntity metrics;
-    try {
-      final records = await _dao.get(
-        from: _date(first),
-        to: _date(DateTime(first.year, first.month + 1, 0)),
-      );
+    final metrics = await runDatabaseOperation(
+      operation: () async {
+        final records = await _dao.get(from: from, to: to);
 
-      for (final record in records) {
-        CategoryEnum.values.firstWhere((item) => item.value == record.category);
-        if (record.minimumAmount <= 0 || record.total <= 0) {
-          throw const FormatException('Invalid expense amount');
+        for (final record in records) {
+          CategoryEnum.fromValue(record.category);
+          if (record.minimumAmount <= 0 || record.total <= 0) {
+            throw const FormatException('Invalid expense amount');
+          }
         }
-      }
 
-      metrics = _monthlyMetrics(
-        month: first,
-        groupBy: groupBy,
-        categories: records
-            .map(ExpenseCategoryMetricsResponse.fromRecord)
-            .toList(),
-      );
-    } on FileSystemException {
-      throw MetricsException(errors: .unknown());
-    } on SqliteException catch (error, stackTrace) {
-      _failure(error, stackTrace);
-    } on DriftRemoteException catch (error, stackTrace) {
-      _failure(error.remoteCause, error.remoteStackTrace ?? stackTrace);
-    }
+        return _monthlyMetrics(
+          month: first,
+          groupBy: groupBy,
+          categories: records
+              .map(ExpenseCategoryMetricsResponse.fromRecord)
+              .toList(),
+        );
+      },
+      onFailure: () => MetricsException(errors: .unknown()),
+    );
 
     if (revision != null) {
       await _client.publishMonthly(
@@ -89,27 +80,6 @@ final class MetricsRepository({
     }
 
     return metrics;
-  }
-
-  String _date(DateTime date) =>
-      '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-
-  Never _failure(Object error, StackTrace stackTrace) {
-    if (error is FileSystemException) {
-      throw MetricsException(errors: .unknown());
-    }
-    if (error is SqliteException &&
-        const {
-          SqlError.SQLITE_BUSY,
-          SqlError.SQLITE_FULL,
-          SqlError.SQLITE_IOERR,
-          SqlError.SQLITE_LOCKED,
-          SqlError.SQLITE_READONLY,
-          SqlError.SQLITE_CANTOPEN,
-        }.contains(error.resultCode)) {
-      throw MetricsException(errors: .unknown());
-    }
-    Error.throwWithStackTrace(error, stackTrace);
   }
 
   ExpenseMetricsEntity _monthlyMetrics({

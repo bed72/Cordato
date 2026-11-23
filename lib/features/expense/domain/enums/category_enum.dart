@@ -16,5 +16,8 @@ enum CategoryEnum(final String value) {
   personalCare('personal_care'),
   subscriptions('subscriptions'),
   giftsAndDonations('gifts_and_donations'),
-  other('other'),
+  other('other');
+
+  static CategoryEnum fromValue(String value) =>
+      values.firstWhere((category) => category.value == value);
 }

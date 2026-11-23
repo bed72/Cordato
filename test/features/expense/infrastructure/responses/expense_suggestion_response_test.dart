@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
 import 'package:cordato/features/expense/domain/enums/category_enum.dart';
-import 'package:cordato/features/expense/infrastructure/responses/expense_suggestion_response.dart';
+import 'package:cordato/features/expense/infrastructure/responses/suggestion_response.dart';
 
 void main() {
   ExpensesTableData record({
@@ -19,7 +19,7 @@ void main() {
   );
 
   test('maps integer ID and exact amount without changing description', () {
-    final suggestion = ExpenseSuggestionResponse.fromRecord(
+    final suggestion = SuggestionResponse.fromRecord(
       record(description: '  Aluguel  '),
     ).toEntity();
 
@@ -31,7 +31,7 @@ void main() {
   for (final category in CategoryEnum.values) {
     test('preserves ${category.value} in suggestion entity', () {
       expect(
-        ExpenseSuggestionResponse.fromRecord(record(category: category.value))
+        SuggestionResponse.fromRecord(record(category: category.value))
             .toEntity()
             .category,
         category,
@@ -42,9 +42,7 @@ void main() {
   for (final amount in [0, -100]) {
     test('rejects nonpositive cents $amount', () {
       expect(
-        () =>
-            ExpenseSuggestionResponse.fromRecord(record(amount: amount))
-                .toEntity(),
+        () => SuggestionResponse.fromRecord(record(amount: amount)).toEntity(),
         throwsArgumentError,
       );
     });
@@ -53,7 +51,7 @@ void main() {
   for (final category in ['', 'unknown']) {
     test('does not replace invalid category "$category"', () {
       expect(
-        () => ExpenseSuggestionResponse.fromRecord(record(category: category)),
+        () => SuggestionResponse.fromRecord(record(category: category)),
         throwsStateError,
       );
     });
@@ -61,7 +59,7 @@ void main() {
 
   test('null descriptions must be excluded before suggestion mapping', () {
     expect(
-      () => ExpenseSuggestionResponse.fromRecord(record(description: null)),
+      () => SuggestionResponse.fromRecord(record(description: null)),
       throwsA(isA<TypeError>()),
     );
   });
