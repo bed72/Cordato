@@ -6,7 +6,7 @@ import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_category_metrics_entity.dart';
 
-import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
+import 'package:cordato/features/metrics/domain/enums/metrics_group_by_enum.dart';
 import 'package:cordato/features/metrics/application/repositories/interface_metrics_repository.dart';
 
 final class MetricsPreviewRepository({
@@ -18,7 +18,7 @@ final class MetricsPreviewRepository({
   Future<ExpenseMetricsEntity> getExpenses({
     DateTime? endDate,
     DateTime? startDate,
-    ExpenseMetricsGroupByEnum? groupBy,
+    MetricsGroupByEnum? groupBy,
   }) async {
     if (loading) return Completer<ExpenseMetricsEntity>().future;
     if (failure != null) throw MetricsException(errors: failure!);

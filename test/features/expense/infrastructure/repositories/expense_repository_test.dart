@@ -516,6 +516,9 @@ void main() {
       test(
         'unknown stored category propagates instead of producing a default',
         () async {
+          await database.customStatement(
+            'PRAGMA ignore_check_constraints = ON',
+          );
           final id = await insert(category: 'unknown');
 
           await expectLater(repository.get(), throwsStateError);
@@ -599,6 +602,7 @@ void main() {
       });
 
       test('unknown category in a matching suggestion propagates', () async {
+        await database.customStatement('PRAGMA ignore_check_constraints = ON');
         await insert(description: 'Mercado', category: 'unknown');
 
         await expectLater(

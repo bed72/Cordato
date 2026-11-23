@@ -19,7 +19,14 @@ class ExpensesTable extends Table {
   )();
   TextColumn get category => text()
       .withDefault(const Constant('other'))
-      .check(category.length.isBiggerThanValue(0))();
+      .check(
+        const CustomExpression<bool>(
+          "category IN ('food', 'pets', 'taxes', 'health', 'travel', "
+          "'housing', 'leisure', 'shopping', 'services', 'transport', "
+          "'education', 'financing', 'insurance', 'investments', "
+          "'personal_care', 'subscriptions', 'gifts_and_donations', 'other')",
+        ),
+      )();
   TextColumn get occurredOn => text()
       .withDefault(const CustomExpression<String>("date('now', 'localtime')"))
       .check(

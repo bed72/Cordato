@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:localstore/localstore.dart';
+import 'package:drift/native.dart';
 
 import 'package:cordato/app_module.dart';
+import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart';
@@ -21,22 +22,21 @@ import 'package:cordato/features/root/presentation/bloc/widget_launch_bloc.dart'
 import 'package:cordato/features/root/presentation/bloc/widget_sync_bloc.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
-import 'support/core/storage/localstore_test_storage.dart';
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Local route catalog and dependency resolution', () {
-    final storage = LocalstoreTestStorage();
+    late DatabaseClient database;
     late ModularBootstrap boot;
 
-    setUpAll(storage.open);
-    tearDownAll(storage.close);
-
     setUp(() async {
-      await storage.initialize();
-      addTearDown(storage.clear);
       boot = bootstrapModule(appModule);
+      final registered = boot.injector.get<DatabaseClient>();
+      expect(boot.injector.get<DatabaseClient>(), same(registered));
+      await registered.close();
+      database = DatabaseClient(executor: NativeDatabase.memory());
+      addTearDown(database.close);
+      boot.injector.replaceInstance<DatabaseClient>(database);
       addTearDown(boot.injector.dispose);
     });
 
@@ -68,21 +68,15 @@ void main() {
       }
     });
 
-    test('shares the ready database before visiting any feature', () {
-      expect(boot.injector.get<Localstore>(), same(storage.database));
-      expect(boot.injector.get<Localstore>(), same(storage.database));
+    test('shares the lazy database before visiting any feature', () {
+      expect(boot.injector.get<DatabaseClient>(), same(database));
+      expect(boot.injector.get<DatabaseClient>(), same(database));
     });
 
     test('root registration does not take ownership of the database', () async {
       boot.injector.dispose();
 
-      expect(
-        (await storage.database
-            .collection('user')
-            .doc('profile')
-            .get())!['name'],
-        'Cordato',
-      );
+      expect(await database.select(database.profilesTable).get(), isEmpty);
     });
 
     test('Metrics reads Expense writes and Root refreshes through the local composition', () async {
@@ -99,12 +93,11 @@ void main() {
       final metrics = boot.injector.get<IMetricsRepository>();
       final synchronization = boot.injector.get<IWidgetSyncRepository>();
       expect(boot.injector.get<IMetricsRepository>(), same(metrics));
-      await storage.expense(
-        () => expenses.create(
-          cents: 123,
-          description: 'Mercado',
-          category: .food,
-        ),
+      await boot.injector.get<IUserRepository>().get();
+      await expenses.create(
+        cents: 123,
+        description: 'Mercado',
+        category: .food,
       );
 
       final monthly = await metrics.getExpenses(groupBy: .category);
@@ -128,12 +121,11 @@ void main() {
     });
 
     test('Dashboard loads locally persisted metrics without visiting Expense or User', () async {
-      await storage.expense(
-        () => boot.injector.get<IExpenseRepository>().create(
-          cents: 321,
-          description: 'Mercado',
-          category: .food,
-        ),
+      await boot.injector.get<IUserRepository>().get();
+      await boot.injector.get<IExpenseRepository>().create(
+        cents: 321,
+        description: 'Mercado',
+        category: .food,
       );
       final route = boot.routes.routes.singleWhere(
         (route) => route.path == RouteEnum.dashboard.path,
@@ -234,8 +226,9 @@ void main() {
         final expenses = boot.injector.get<IExpenseRepository>();
 
         expect((await user.get()).name, 'Cordato');
-        final created = await storage.expense(
-          () => expenses.create(cents: 100, description: 'Mercado'),
+        final created = await expenses.create(
+          cents: 100,
+          description: 'Mercado',
         );
         expect((await expenses.getById(id: created.id)).description, 'Mercado');
         expect(boot.injector.get<IUserRepository>(), same(user));

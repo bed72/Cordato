@@ -16,35 +16,11 @@ final class DatabaseClient extends _$DatabaseClient {
   DatabaseClient({QueryExecutor? executor}) : super(executor ?? _connection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
-    onUpgrade: (migrator, from, to) async {
-      if (from != 1 || to != 2) {
-        throw StateError('Unsupported database schema migration: $from -> $to');
-      }
-
-      await transaction(() async {
-        final saved = await customSelect(
-          "SELECT seq FROM sqlite_sequence WHERE name = 'expenses'",
-        ).getSingleOrNull();
-        final sequence = saved?.read<int>('seq') ?? 0;
-
-        await migrator.alterTable(TableMigration(expensesTable));
-        await customStatement(
-          "UPDATE sqlite_sequence SET seq = max(seq, ?) WHERE name = 'expenses'",
-          [sequence],
-        );
-        await customStatement(
-          "INSERT INTO sqlite_sequence (name, seq) "
-          "SELECT 'expenses', ? WHERE NOT EXISTS "
-          "(SELECT 1 FROM sqlite_sequence WHERE name = 'expenses')",
-          [sequence],
-        );
-      });
-    },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
@@ -52,9 +28,9 @@ final class DatabaseClient extends _$DatabaseClient {
 
   static void configureConnection(Database database) {
     database.createFunction(
+      deterministic: true,
       functionName: 'cordato_lower',
       argumentCount: const AllowedArgumentCount(1),
-      deterministic: true,
       function: (arguments) => (arguments.single as String?)?.toLowerCase(),
     );
   }

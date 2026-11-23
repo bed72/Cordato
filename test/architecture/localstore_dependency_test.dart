@@ -3,20 +3,38 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('Localstore follows main with a resolved commit in the lockfile', () {
+  test('SQLite replaces the legacy Localstore dependency', () {
     final manifest = File('pubspec.yaml').readAsStringSync();
     final lockfile = File('pubspec.lock').readAsStringSync();
-    final dependency = RegExp(
-      r'localstore:\s+git:\s+url: https://github\.com/bed72/localstore\.git\s+ref: main\b',
-    ).firstMatch(manifest);
-
-    expect(dependency, isNotNull);
+    expect(
+      manifest,
+      isNot(matches(RegExp(r'^\s+localstore:', multiLine: true))),
+    );
     expect(
       lockfile,
-      contains('url: "https://github.com/bed72/localstore.git"'),
+      isNot(matches(RegExp(r'^\s+localstore:', multiLine: true))),
     );
-    expect(lockfile, matches(r'resolved-ref: [0-9a-f]{40}'));
-    expect(lockfile, contains('ref: main'));
+    expect(manifest, contains('drift:'));
+    for (final directory in ['lib', 'test']) {
+      for (final file
+          in Directory(directory)
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((file) => file.path.endsWith('.dart'))) {
+        expect(
+          file.readAsStringSync(),
+          isNot(
+            matches(
+              RegExp(
+                r'''^\s*(import|export)\s+['"]package:localstore/''',
+                multiLine: true,
+              ),
+            ),
+          ),
+          reason: file.path,
+        );
+      }
+    }
   });
 
   test(

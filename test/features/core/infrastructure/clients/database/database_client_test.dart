@@ -104,7 +104,7 @@ void main() {
         },
       );
 
-      test('cria versão 2 vazia com foreign keys habilitadas', () async {
+      test('cria versão 1 vazia com foreign keys habilitadas', () async {
         final profiles = await database.select(database.profilesTable).get();
         final expenses = await database.select(database.expensesTable).get();
         final foreignKeys = await database
@@ -117,7 +117,7 @@ void main() {
         expect(profiles, isEmpty);
         expect(expenses, isEmpty);
         expect(foreignKeys.read<int>('foreign_keys'), 1);
-        expect(version.read<int>('user_version'), 2);
+        expect(version.read<int>('user_version'), 1);
       });
 
       test('permite somente um perfil mesmo com IDs diferentes', () async {
@@ -337,6 +337,53 @@ void main() {
           throwsA(isA<SqliteException>()),
         );
       });
+
+      for (final category in [
+        'unknown',
+        'FOOD',
+        ' food',
+        'food ',
+        'personalCare',
+        "food') OR 1=1 --",
+      ]) {
+        test(
+          'rejeita categoria inválida em insert e update: $category',
+          () async {
+            await insertProfile();
+            await insertExpense();
+
+            await expectLater(
+              database.customStatement(
+                'INSERT INTO expenses (profile_id, amount, category) VALUES (1, 100, ?)',
+                [category],
+              ),
+              throwsA(isA<SqliteException>()),
+            );
+            await expectLater(
+              database.customStatement('UPDATE expenses SET category = ?', [
+                category,
+              ]),
+              throwsA(isA<SqliteException>()),
+            );
+
+            final expense = await database
+                .select(database.expensesTable)
+                .getSingle();
+            expect(expense.category, 'other');
+          },
+        );
+      }
+
+      test('rejeita categoria nula por SQL direto', () async {
+        await insertProfile();
+
+        await expectLater(
+          database.customStatement(
+            'INSERT INTO expenses (profile_id, amount, category) VALUES (1, 100, NULL)',
+          ),
+          throwsA(isA<SqliteException>()),
+        );
+      });
     });
 
     group('Cascade e transações', () {
@@ -410,99 +457,128 @@ void main() {
   });
 
   group('Persistência em arquivo', () {
-    test('reabre versão 2 preservando dados, índice único e cascade', () async {
-      final directory = await Directory.systemTemp.createTemp('cordato-drift-');
-      addTearDown(() => directory.delete(recursive: true));
-      final file = File('${directory.path}/cordato.sqlite');
-      final initial = DatabaseClient(
-        executor: NativeDatabase.createInBackground(
-          file,
-          setup: DatabaseClient.configureConnection,
-        ),
-      );
-
-      try {
-        final profileId = await initial
-            .into(initial.profilesTable)
-            .insert(
-              ProfilesTableCompanion.insert(
-                name: 'Cordato',
-                seed: 'saved-seed',
-              ),
-            );
-        await initial
-            .into(initial.expensesTable)
-            .insert(
-              ExpensesTableCompanion.insert(
-                profileId: profileId,
-                amount: 123,
-                occurredOn: const Value('2026-11-23'),
-              ),
-            );
-      } finally {
-        await initial.close();
-      }
-
-      final reopened = DatabaseClient(
-        executor: NativeDatabase.createInBackground(
-          file,
-          setup: DatabaseClient.configureConnection,
-        ),
-      );
-
-      try {
-        final profile = await reopened
-            .select(reopened.profilesTable)
-            .getSingle();
-        final expense = await reopened
-            .select(reopened.expensesTable)
-            .getSingle();
-        expect(profile.seed, 'saved-seed');
-        final folded = await reopened
-            .customSelect("SELECT cordato_lower('CAFÉ') AS value")
-            .getSingle();
-        expect(folded.read<String>('value'), 'café');
-        expect(expense.amount, 123);
-        expect(expense.profileId, profile.id);
-
-        await expectLater(
-          reopened
-              .into(reopened.profilesTable)
-              .insert(
-                ProfilesTableCompanion.insert(name: 'Cordato', seed: 'seed'),
-              ),
-          throwsA(
-            isA<DriftRemoteException>().having(
-              (error) => error.remoteCause,
-              'remoteCause',
-              isA<SqliteException>(),
-            ),
+    test(
+      'reabre versão 1 preservando dados, CHECK, índice único e cascade',
+      () async {
+        final directory = await Directory.systemTemp.createTemp(
+          'cordato-drift-',
+        );
+        addTearDown(() => directory.delete(recursive: true));
+        final file = File('${directory.path}/cordato.sqlite');
+        final initial = DatabaseClient(
+          executor: NativeDatabase.createInBackground(
+            file,
+            setup: DatabaseClient.configureConnection,
           ),
         );
 
-        await reopened.delete(reopened.profilesTable).go();
-        expect(await reopened.select(reopened.expensesTable).get(), isEmpty);
+        try {
+          final profileId = await initial
+              .into(initial.profilesTable)
+              .insert(
+                ProfilesTableCompanion.insert(
+                  name: 'Cordato',
+                  seed: 'saved-seed',
+                ),
+              );
+          await initial
+              .into(initial.expensesTable)
+              .insert(
+                ExpensesTableCompanion.insert(
+                  profileId: profileId,
+                  amount: 123,
+                  occurredOn: const Value('2026-11-23'),
+                ),
+              );
+        } finally {
+          await initial.close();
+        }
 
-        final newProfileId = await reopened
-            .into(reopened.profilesTable)
-            .insert(
-              ProfilesTableCompanion.insert(name: 'Cordato', seed: 'new-seed'),
-            );
-        final newExpenseId = await reopened
-            .into(reopened.expensesTable)
-            .insert(
-              ExpensesTableCompanion.insert(
-                profileId: newProfileId,
-                amount: 100,
-                occurredOn: const Value('2026-11-23'),
+        final reopened = DatabaseClient(
+          executor: NativeDatabase.createInBackground(
+            file,
+            setup: DatabaseClient.configureConnection,
+          ),
+        );
+
+        try {
+          final profile = await reopened
+              .select(reopened.profilesTable)
+              .getSingle();
+          final expense = await reopened
+              .select(reopened.expensesTable)
+              .getSingle();
+          expect(profile.seed, 'saved-seed');
+          final folded = await reopened
+              .customSelect("SELECT cordato_lower('CAFÉ') AS value")
+              .getSingle();
+          expect(folded.read<String>('value'), 'café');
+          expect(expense.amount, 123);
+          expect(expense.profileId, profile.id);
+          final version = await reopened
+              .customSelect('PRAGMA user_version')
+              .getSingle();
+          expect(version.read<int>('user_version'), 1);
+          await expectLater(
+            reopened.customStatement(
+              "UPDATE expenses SET category = 'unknown'",
+            ),
+            throwsA(
+              isA<DriftRemoteException>().having(
+                (error) => error.remoteCause,
+                'remoteCause',
+                isA<SqliteException>(),
               ),
-            );
+            ),
+          );
+          expect(
+            (await reopened.select(reopened.expensesTable).getSingle())
+                .category,
+            'other',
+          );
 
-        expect(newProfileId, greaterThan(profile.id));
-        expect(newExpenseId, greaterThan(expense.id));
-      } finally {
-        await reopened.close();
-      }
-    });
+          await expectLater(
+            reopened
+                .into(reopened.profilesTable)
+                .insert(
+                  ProfilesTableCompanion.insert(name: 'Cordato', seed: 'seed'),
+                ),
+            throwsA(
+              isA<DriftRemoteException>().having(
+                (error) => error.remoteCause,
+                'remoteCause',
+                isA<SqliteException>(),
+              ),
+            ),
+          );
+
+          await reopened.delete(reopened.profilesTable).go();
+          expect(await reopened.select(reopened.expensesTable).get(), isEmpty);
+
+          final newProfileId = await reopened
+              .into(reopened.profilesTable)
+              .insert(
+                ProfilesTableCompanion.insert(
+                  name: 'Cordato',
+                  seed: 'new-seed',
+                ),
+              );
+          final newExpenseId = await reopened
+              .into(reopened.expensesTable)
+              .insert(
+                ExpensesTableCompanion.insert(
+                  profileId: newProfileId,
+                  amount: 100,
+                  occurredOn: const Value('2026-11-23'),
+                ),
+              );
+
+          expect(newProfileId, greaterThan(profile.id));
+          expect(newExpenseId, greaterThan(expense.id));
+        } finally {
+          await reopened.close();
+        }
+      },
+    );
   });
 }

@@ -6,28 +6,28 @@ para Drift/SQLite. Estado documental revisado em **23/11/2026**.
 ## Transição de persistência
 
 Esta etapa entrega a fundação Drift em
-`lib/features/core/infrastructure/clients/database/`, com schema versão 2,
+`lib/features/core/infrastructure/clients/database/`, com schema versão 1,
 foreign keys, perfil único e despesas vinculadas com `ON DELETE CASCADE`.
 O `coreModule` registra o client como singleton lazy, sem abertura assíncrona no
-`main`. UserRepository e ExpenseRepository já usam Drift. User usa `id`, `name`
+`main`. UserRepository, ExpenseRepository e MetricsDao já usam Drift. User usa `id`, `name`
 e `seed`; despesas usam IDs inteiros em contratos/UI e vínculo interno com perfil.
-Não migra dados de Localstore/ToStore nem Metrics.
+Não migra dados de Localstore/ToStore.
 Os arquivos de dados legados não são lidos nem apagados por esta fundação.
 
 Nas duas tabelas, o ID é inteiro `AUTOINCREMENT`, gerado pelo SQLite;
 `expenses.profile_id` também é inteiro. IDs confirmados não são reutilizados após
 exclusões no mesmo banco. A seed continua aleatória.
-O schema 1 ainda não publicado foi ajustado sem migração, pois não há usuários.
-Arquivos SQLite experimentais com a definição anterior de IDs textuais precisam
-ser recriados manualmente; não há reset automático.
-Já bancos v1 com IDs inteiros migram para v2 em transação, preservando despesas,
-datas, relações, índices e sequências. A versão 2 acrescenta o default de data
-civil local `date('now', 'localtime')`; datas explícitas continuam prevalecendo.
+Sem usuários, o schema não publicado foi consolidado na versão 1, sem migrações
+de versões SQLite experimentais anteriores. Inclui default de data civil local
+`date('now', 'localtime')` e CHECK de categorias alinhado ao CategoryEnum por
+teste arquitetural. Datas explícitas continuam prevalecendo.
+Arquivos experimentais incompatíveis, inclusive versões 2/3 ou versões 1 com
+outras definições, precisam ser recriados manualmente. O app não apaga arquivos,
+não faz downgrade nem reset automático.
 
-**O app completo está temporariamente sem compilação:** módulos de features/repositories e
-testes antigos ainda importam Localstore, cuja dependência foi retirada.
-O contrato de Metrics nas próximas seções ainda descreve o legado.
-A migração do aplicativo completo não está concluída.
+Metrics e a composição global agora consultam o mesmo SQLite de User/Expense.
+O app e o suporte de testes não importam mais Localstore. Metrics não exige
+View ou tabela própria.
 
 O contrato aprovado é um perfil local com ID, nome e seed. Inicialmente:
 ID novo, nome `Cordato` e seed aleatória. Editar nome/seed preserva o ID.
@@ -54,6 +54,7 @@ dos contratos estão em [ARCHITECTURE.md](ARCHITECTURE.md#fundação-drift).
 ### Resumo das decisões implementadas
 
 - Banco único lazy, com execução SQL em isolate e foreign keys habilitadas.
+- Categorias fixas definidas pelo enum de Expense e protegidas por CHECK no SQLite.
 - IDs int gerados pelo banco; seed de avatar aleatória, independente do ID.
 - Criação/edição de Expense usam RETURNING sem SELECT preparatório; delete usa
   linhas afetadas. Refresh do widget ocorre após confirmação da mutação.
@@ -62,6 +63,8 @@ dos contratos estão em [ARCHITECTURE.md](ARCHITECTURE.md#fundação-drift).
   preservando Unicode e parâmetros vinculados.
 - Data omitida usa default local do SQLite; data explícita preserva o dia civil.
 - `_hasUpdates` distingue campo omitido de descrição vazia ou categoria other.
+- MetricsDao filtra perfil/mês e agrega centavos por categoria em uma única
+  consulta SQL parametrizada. Total e percentuais derivam dos mesmos grupos.
 
 Contratos detalhados ficam na [arquitetura](ARCHITECTURE.md#persistência).
 Resultados atuais estão em [Verificação e pendências](#verificação-e-pendências);
@@ -89,7 +92,7 @@ histórico. A revisão não altera visibilidade nem autoriza reescrita do Git.
 - Despesas manuais: criação, edição, exclusão, filtros, paginação e sugestões
   baseadas no histórico local.
 - Resumo mensal e distribuição por categoria com dinheiro em centavos inteiros
-  de BRL; implementação legada de Metrics ainda não integrada às despesas SQLite.
+  de BRL, derivados das despesas SQLite.
 - Entrada na Dashboard, sem autenticação.
 - Widget Android/iOS com resumo do mês e atalho para Nova despesa.
 - Configurações com Perfil local, Informações e Apoio voluntário via Pix.
@@ -155,12 +158,12 @@ Não coloque tokens no pubspec.
 `main` monta o app sem preparar perfil ou storage. O `appModule` compõe o
 `coreModule`, que registra `DatabaseClient` como singleton lazy. UserRepository
 recebe essa instância pelo construtor e inicializa o perfil sob demanda.
-Metrics ainda espera Localstore e não está integrado ao banco novo.
+MetricsDao recebe o mesmo banco compartilhado, sem inicializar perfil.
 
 O client usa `Application Support/cordato.sqlite`. As consultas de sugestões
 dependem da função Unicode registrada no setup; executors nativos injetados usam
 `setup: DatabaseClient.configureConnection`. O client não importa DAOs das features.
-Não reinstale Localstore nem crie outro banco para sanar o legado.
+Não há leitura ou exclusão de arquivos Localstore legados.
 
 ### Perfil e despesas
 
@@ -195,9 +198,10 @@ Updates transacionais gravam somente campos fornecidos e preservam os demais.
 O widget recebe pedido de refresh somente após commit. IDs ausentes e falhas
 operacionais têm mensagens locais; erros SQL/corrupção não geram defaults.
 
-Metrics ainda lê a coleção Localstore antiga e agrega em Dart; não lê a tabela
-SQLite usada por Expense. Seu contrato mensal permanece somente leitura,
-sem coleção própria ou cache. As entidades usam `total` em centavos.
+Metrics agrega a tabela SQLite usada por Expense em uma consulta no MetricsDao,
+com filtro por perfil/mês e SUM/GROUP BY por categoria.
+Seu contrato mensal permanece somente leitura, sem tabela própria, View ou cache.
+As entidades usam `total` em centavos; percentuais são calculados no repository.
 Sem filtros usa o mês civil atual; filtros explícitos exigem um mês completo.
 Um mês vazio retorna zero apenas após leitura bem-sucedida. Falhas não viram
 zero nem disparam retry automático.
@@ -214,7 +218,7 @@ o mês atual, independentemente do filtro histórico da Dashboard.
 
 O fluxo solicita atualização ao iniciar e após confirmação das mutações SQLite.
 Create/update aguardam commit; delete aguarda a instrução atômica. Publicar um
-novo resumo ainda depende da migração de Metrics e da composição global.
+novo resumo consulta Metrics sobre as despesas SQLite, preservando revisões nativas.
 Não há consulta HTTP ou cadastro em background, refresh periódico ou retry
 automático. Falhas preservam o último resumo válido; mês incompatível mostra
 **Abra para atualizar**. A virada do mês depende do agendamento nativo.
@@ -270,7 +274,7 @@ verificações externas; textos e testes não comprovam conformidade ou aprovaç
 Screen/Widget → Bloc → contrato em application
                             ↑
                  repository em infrastructure → DatabaseClient (User/Expense)
-                                             → Localstore legado (Metrics)
+                                             → MetricsDao → DatabaseClient
                                              → client nativo do core
 ```
 
@@ -304,45 +308,41 @@ mantendo caminho e nome do arquivo com sufixo `_test.dart`. Mocks e recursos
 compartilhados ficam em `test/support/<feature>/`. Testes arquiteturais,
 ferramentas e políticas nativas têm organização própria.
 
-Na conferência documental de 23/11/2026, 57 dos 66 arquivos de testes de features
-têm espelhamento exato. Há nomes/caminhos legados e suítes separadas por
-responsabilidade; os nove casos estão detalhados em
+Há nomes/caminhos legados e suítes separadas por responsabilidade, detalhados em
 [ARCHITECTURE.md](ARCHITECTURE.md#organização-e-espelhamento-dos-testes).
-Isso não é uma medição de cobertura. Esta revisão documental não move testes.
+Isso não é uma medição de cobertura.
 
 ## Verificação e pendências
 
-Última execução registrada em 23/11/2026, antes desta consolidação documental.
-Os comandos não foram reexecutados para uma mudança exclusivamente em Markdown.
+Verificação da consolidação do schema v1 em 23/11/2026:
 
 | Comando | Resultado |
 | --- | --- |
 | `flutter pub get` | Concluído. |
-| `dart run build_runner build` | Concluído; arquivo gerado atualizado. |
-| Análise focada de core/database, Expense e testes afetados | Sem problemas. |
-| `flutter test test/features/core/infrastructure/clients/database test/features/expense --reporter failures-only` | 343 passando. |
-| Teste de localtime com `TZ=UTC` e `TZ=America/Sao_Paulo` | Um teste passando por execução, no host. |
-| `flutter analyze` | Bloqueado: 32 diagnósticos legados de Metrics/composição/suporte. |
-| `flutter test --reporter failures-only` | 869 passando e quatro falhas legadas. |
+| `dart run build_runner build` | Concluído; geração Drift validada. |
+| `flutter analyze` | Sem problemas. |
+| `flutter test --reporter failures-only` | 947 passando. |
 
-As falhas globais são Metrics (módulo/repository), composição em
-`test/app_module_test.dart` e o teste que exige Localstore no lockfile.
-Dados e sequências, rollback de migração, Unicode, parâmetros literais,
+Testes verificam criação do schema 1, alinhamento CHECK/enum, bloqueio de
+categorias inválidas, sequências, foreign keys e reabertura/isolate.
+Testes/fixtures exclusivos das migrações experimentais foram removidos.
+Metrics tem testes reais de agregação, limites civis, overflow, falhas,
+revisões/publicação nativa, reabertura e execução em isolate. A composição
+verifica Expense → Metrics → Root e Dashboard sem montar UI.
+Dados e sequências, rollback de transações, Unicode, parâmetros literais,
 contagem de instruções e notificação após commit têm testes focados reais.
 Isso não comprova build nativo, UI, durabilidade auditada ou prontidão de release.
 
 ### Pendências, sem autorização implícita para implementação
 
-1. Migrar Metrics para consultar o mesmo SQLite e ajustar composição/testes
-   globais, removendo as expectativas legadas de Localstore.
-2. Coordenar inicialização do perfil antes de criação por atalho/formulário;
+1. Coordenar inicialização do perfil antes de criação por atalho/formulário;
    hoje Expense não cria perfil e retorna `profile_not_found` quando ausente.
-3. Definir fechamento assíncrono do banco pelo root.
-4. Implementar a operação de apagar dados/recriar perfil, coordenação de
+2. Definir fechamento assíncrono do banco pelo root.
+3. Implementar a operação de apagar dados/recriar perfil, coordenação de
    operações pendentes e limpeza do widget. Cascade preparado não entrega a UI.
-5. Revisar o passo legado de `LOCALSTORE_READ_TOKEN` no workflow Android;
+4. Revisar o passo legado de `LOCALSTORE_READ_TOKEN` no workflow Android;
    a dependência atual não o exige, mas o YAML ainda o exige.
-6. Tratar separadamente views, IA offline, backup/restauração, builds atuais,
+5. Tratar separadamente views, IA offline, backup/restauração, builds atuais,
    assinatura iOS, testes de dispositivo e revisão de distribuição.
 
 Scheme `cordato`, App Group e contratos nativos permanecem. Histórico de

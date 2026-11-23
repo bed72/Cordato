@@ -3,31 +3,42 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:drift/native.dart';
+import 'package:sqlite3/sqlite3.dart';
 
+import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
+import 'package:cordato/features/metrics/infrastructure/daos/metrics_dao.dart';
 import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
 import 'package:cordato/features/expense/infrastructure/daos/suggestions_dao.dart';
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
-import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
+import 'package:cordato/features/metrics/domain/enums/metrics_group_by_enum.dart';
 import 'package:cordato/features/metrics/infrastructure/repositories/metrics_repository.dart';
 
-import '../../../../support/core/mocks/collection_ref_mock.dart';
 import '../../../../support/core/mocks/widget_client_mock.dart';
-import '../../../../support/core/mocks/localstore_mock.dart';
-import '../../../../support/core/storage/localstore_test_storage.dart';
+import '../../../../support/metrics/fakes/metrics_query_interceptor.dart';
+import '../../../../support/metrics/fakes/metrics_remote_exception.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final storage = LocalstoreTestStorage();
+  late DatabaseClient database;
+  late MetricsQueryInterceptor interceptor;
+  late int profileId;
   late WidgetClientMock client;
   late MetricsRepository repository;
 
-  setUpAll(() async {
+  setUpAll(() {
     registerFallbackValue(DateTime(2026));
-    await storage.open();
   });
-  tearDownAll(storage.close);
-  setUp(() {
+  setUp(() async {
+    interceptor = MetricsQueryInterceptor();
+    database = DatabaseClient(
+      executor: NativeDatabase.memory().interceptWith(interceptor),
+    );
+    profileId = await database
+        .into(database.profilesTable)
+        .insert(ProfilesTableCompanion.insert(name: 'Cordato', seed: 'seed'));
     client = WidgetClientMock();
     when(client.monthlyRead).thenReturn(1);
     when(
@@ -37,25 +48,31 @@ void main() {
         cents: any(named: 'cents'),
       ),
     ).thenAnswer((_) async {});
-    repository = MetricsRepository(database: storage.database, client: client);
+    repository = MetricsRepository(
+      dao: MetricsDao(client: database),
+      client: client,
+    );
   });
-  tearDown(storage.clear);
+  tearDown(() => database.close());
 
   Future<void> insert({
     required int cents,
     String category = 'other',
     String date = '2026-10-15',
-  }) => storage.expense(() async {
-    final document = storage.database.collection('expenses').doc();
-    await document.set({
-      'id': document.id,
-      'amount': cents,
-      'category': category,
-      'occurred_on': '${date}T00:00:00.000Z',
-    });
-  });
+  }) async {
+    await database
+        .into(database.expensesTable)
+        .insert(
+          ExpensesTableCompanion.insert(
+            profileId: profileId,
+            amount: cents,
+            category: Value(category),
+            occurredOn: Value(date),
+          ),
+        );
+  }
 
-  Future<ExpenseMetricsEntity> load({ExpenseMetricsGroupByEnum? groupBy}) =>
+  Future<ExpenseMetricsEntity> load({MetricsGroupByEnum? groupBy}) =>
       repository.getExpenses(
         startDate: DateTime(2026, 10),
         endDate: DateTime(2026, 10, 31),
@@ -72,24 +89,7 @@ void main() {
     );
   }
 
-  group('Real Localstore monthly aggregation', () {
-    test(
-      'invalid JSON fails instead of publishing a fabricated zero',
-      () async {
-        final file = File('${storage.directory.path}/expenses/invalid');
-        await file.parent.create(recursive: true);
-        await file.writeAsString('{invalid-json');
-
-        try {
-          await expectLater(repository.getExpenses(), throwsFormatException);
-
-          verifyNoPublication();
-        } finally {
-          await file.delete();
-        }
-      },
-    );
-
+  group('Real SQLite monthly aggregation', () {
     test(
       'derives exact integer total and unrounded ordered percentages',
       () async {
@@ -201,38 +201,30 @@ void main() {
       'reflects CRUD, category changes and month moves without cached totals',
       () async {
         final expenses = ExpenseRepository(
-          databaseClient: storage.database,
+          databaseClient: database,
           widgetClient: client,
-          dao: SuggestionsDao(client: storage.database),
+          dao: SuggestionsDao(client: database),
         );
-        final created = await storage.expense(
-          () => expenses.create(
-            cents: 100,
-            description: 'Mercado',
-            occurredOn: DateTime(2026, 10, 10),
-            category: .food,
-          ),
+        final created = await expenses.create(
+          cents: 100,
+          description: 'Mercado',
+          occurredOn: DateTime(2026, 10, 10),
+          category: .food,
         );
         expect((await load()).total, 100);
-        await storage.expense(
-          () => expenses.update(id: created.id, cents: 200, category: .housing),
-        );
+        await expenses.update(id: created.id, cents: 200, category: .housing);
         final changed = await load(groupBy: .category);
         expect(changed.total, 200);
         expect(changed.categories!.single.category, 'housing');
 
-        await storage.expense(
-          () => expenses.update(
-            id: created.id,
-            occurredOn: DateTime(2026, 9, 30),
-          ),
+        await expenses.update(
+          id: created.id,
+          occurredOn: DateTime(2026, 9, 30),
         );
         expect((await load()).total, 0);
-        await storage.expense(
-          () => expenses.update(
-            id: created.id,
-            occurredOn: DateTime(2026, 10, 31),
-          ),
+        await expenses.update(
+          id: created.id,
+          occurredOn: DateTime(2026, 10, 31),
         );
         expect((await load()).total, 200);
         await expenses.delete(id: created.id);
@@ -241,6 +233,7 @@ void main() {
     );
 
     test('rejects unknown categories rather than substituting other', () async {
+      await database.customStatement('PRAGMA ignore_check_constraints = ON');
       await insert(cents: 1, category: 'unknown');
 
       await expectLater(load(), throwsStateError);
@@ -249,6 +242,7 @@ void main() {
 
     for (final cents in [0, -1]) {
       test('rejects invalid stored cents: $cents', () async {
+        await database.customStatement('PRAGMA ignore_check_constraints = ON');
         await insert(cents: cents);
 
         await expectLater(load(), throwsFormatException);
@@ -259,8 +253,35 @@ void main() {
       await insert(cents: 9223372036854775807);
       await insert(cents: 1);
 
-      await expectLater(load(), throwsFormatException);
+      await expectLater(load(), throwsA(isA<SqliteException>()));
     });
+
+    test(
+      'rejects nonpositive cents even when their group sum is positive',
+      () async {
+        await database.customStatement('PRAGMA ignore_check_constraints = ON');
+        await insert(cents: -1);
+        await insert(cents: 10);
+
+        await expectLater(load(), throwsFormatException);
+      },
+    );
+
+    for (final year in [1, 9999]) {
+      test('supports the civil schema boundary in year $year', () async {
+        await insert(
+          cents: 1,
+          date: '${year.toString().padLeft(4, '0')}-12-31',
+        );
+
+        final metrics = await repository.getExpenses(
+          startDate: DateTime(year, 12),
+          endDate: DateTime(year, 12, 31),
+        );
+
+        expect(metrics.total, 1);
+      });
+    }
 
     test('rejects monthly overflow across categories', () async {
       await insert(cents: 9223372036854775807, category: 'food');
@@ -271,6 +292,20 @@ void main() {
   });
 
   group('Monthly period validation', () {
+    for (final year in [0, 10000]) {
+      test('rejects year $year before reading storage', () async {
+        await expectLater(
+          repository.getExpenses(
+            startDate: DateTime(year, 1),
+            endDate: DateTime(year, 1, 31),
+          ),
+          throwsArgumentError,
+        );
+
+        expect(interceptor.selects, isEmpty);
+        verifyZeroInteractions(client);
+      });
+    }
     for (final period in [
       (name: 'start only', start: DateTime(2026, 10), end: null),
       (name: 'end only', start: null, end: DateTime(2026, 10, 31)),
@@ -292,11 +327,8 @@ void main() {
       (name: 'reversed', start: DateTime(2026, 10), end: DateTime(2026, 9, 30)),
     ]) {
       test('rejects ${period.name} before storage or widget access', () async {
-        final unused = LocalstoreMock();
-        final local = MetricsRepository(database: unused, client: client);
-
         await expectLater(
-          local.getExpenses(startDate: period.start, endDate: period.end),
+          repository.getExpenses(startDate: period.start, endDate: period.end),
           throwsA(
             isA<MetricsException>().having(
               (exception) => exception.errors.errors.single.parameter,
@@ -305,13 +337,99 @@ void main() {
             ),
           ),
         );
-        verifyZeroInteractions(unused);
+        expect(interceptor.selects, isEmpty);
         verifyZeroInteractions(client);
       });
     }
   });
 
   group('Native publication and SDK failures', () {
+    for (final code in [
+      SqlError.SQLITE_BUSY,
+      SqlError.SQLITE_LOCKED,
+      SqlError.SQLITE_READONLY,
+      SqlError.SQLITE_IOERR,
+      SqlError.SQLITE_FULL,
+      SqlError.SQLITE_CANTOPEN,
+    ]) {
+      for (final remote in [false, true]) {
+        test('maps SQLite $code with remote=$remote without retry', () async {
+          final failure = SqliteException(
+            extendedResultCode: code,
+            message: 'private database details',
+          );
+          interceptor.beforeRead = () async {
+            if (remote) {
+              throw MetricsRemoteException(failure, StackTrace.current);
+            }
+            throw failure;
+          };
+
+          await expectLater(
+            repository.getExpenses(),
+            throwsA(isA<MetricsException>()),
+          );
+
+          expect(interceptor.selects, hasLength(1));
+          verifyNoPublication();
+        });
+      }
+    }
+
+    for (final code in [
+      SqlError.SQLITE_ERROR,
+      SqlError.SQLITE_CONSTRAINT,
+      SqlError.SQLITE_CORRUPT,
+      SqlError.SQLITE_TOOBIG,
+    ]) {
+      test('propagates unexpected SQLite $code', () async {
+        final failure = SqliteException(
+          extendedResultCode: code,
+          message: 'unexpected',
+        );
+        interceptor.beforeRead = () async => throw failure;
+
+        await expectLater(repository.getExpenses(), throwsA(same(failure)));
+
+        verifyNoPublication();
+      });
+    }
+
+    test(
+      'unwraps remote unexpected failures preserving cause and stack',
+      () async {
+        final failure = StateError('unexpected');
+        final stack = StackTrace.current;
+        interceptor.beforeRead = () async =>
+            throw MetricsRemoteException(failure, stack);
+
+        try {
+          await repository.getExpenses();
+          fail('Expected storage failure');
+        } catch (error, stackTrace) {
+          expect(error, same(failure));
+          expect(stackTrace, same(stack));
+        }
+        verifyNoPublication();
+      },
+    );
+
+    test(
+      'widget publication failure is not translated to storage failure',
+      () async {
+        const failure = FileSystemException('native publication');
+        when(
+          () => client.publishMonthly(
+            revision: any(named: 'revision'),
+            month: any(named: 'month'),
+            cents: any(named: 'cents'),
+          ),
+        ).thenThrow(failure);
+
+        await expectLater(repository.getExpenses(), throwsA(same(failure)));
+      },
+    );
+
     test('defaults to current month and publishes its total', () async {
       final now = DateTime.now();
       await insert(
@@ -361,18 +479,19 @@ void main() {
     );
 
     test('captures revision before pending storage read', () async {
-      final database = LocalstoreMock();
-      final collection = CollectionRefMock();
-      final reading = Completer<Map<String, dynamic>?>();
-      when(() => database.collection('expenses')).thenReturn(collection);
-      when(() => collection.get()).thenAnswer((_) => reading.future);
-      final local = MetricsRepository(database: database, client: client);
+      final started = Completer<void>();
+      final reading = Completer<void>();
+      interceptor.beforeRead = () {
+        started.complete();
+        return reading.future;
+      };
       when(client.monthlyRead).thenReturn(7);
 
-      final pending = local.getExpenses();
+      final pending = repository.getExpenses();
+      await started.future;
       verifyNoPublication();
       when(client.monthlyRead).thenReturn(8);
-      reading.complete(null);
+      reading.complete();
       expect((await pending).total, 0);
       verify(
         () => client.publishMonthly(
@@ -398,15 +517,12 @@ void main() {
     test(
       'maps exposed filesystem failure without retry or fabricated zero',
       () async {
-        final database = LocalstoreMock();
-        final collection = CollectionRefMock();
-        when(() => database.collection('expenses')).thenReturn(collection);
-        when(() => collection.get())
-            .thenThrow(const FileSystemException('private path'));
-        final local = MetricsRepository(database: database, client: client);
+        interceptor.beforeRead = () async {
+          throw const FileSystemException('private path');
+        };
 
         await expectLater(
-          local.getExpenses(),
+          repository.getExpenses(),
           throwsA(
             isA<MetricsException>().having(
               (exception) => exception.errors.errors.single.title,
@@ -415,7 +531,7 @@ void main() {
             ),
           ),
         );
-        verify(() => collection.get()).called(1);
+        expect(interceptor.selects, hasLength(1));
         verifyNoPublication();
       },
     );
@@ -425,13 +541,9 @@ void main() {
       const FormatException('invalid'),
     ]) {
       test('propagates ${failure.runtimeType} without publishing', () async {
-        final database = LocalstoreMock();
-        final collection = CollectionRefMock();
-        when(() => database.collection('expenses')).thenReturn(collection);
-        when(() => collection.get()).thenThrow(failure);
-        final local = MetricsRepository(database: database, client: client);
+        interceptor.beforeRead = () async => throw failure;
 
-        await expectLater(local.getExpenses(), throwsA(same(failure)));
+        await expectLater(repository.getExpenses(), throwsA(same(failure)));
         verifyNoPublication();
       });
     }

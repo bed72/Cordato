@@ -284,6 +284,17 @@ class $ExpensesTableTable extends ExpensesTable
       'REFERENCES profiles (id) ON DELETE CASCADE',
     ),
   );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _amountMeta = const VerificationMeta('amount');
   @override
   late final GeneratedColumn<int> amount = GeneratedColumn<int>(
@@ -303,21 +314,15 @@ class $ExpensesTableTable extends ExpensesTable
     'category',
     aliasedName,
     false,
-    check: () => ComparableExpr(category.length).isBiggerThanValue(0),
+    check: () => const CustomExpression<bool>(
+      "category IN ('food', 'pets', 'taxes', 'health', 'travel', "
+      "'housing', 'leisure', 'shopping', 'services', 'transport', "
+      "'education', 'financing', 'insurance', 'investments', "
+      "'personal_care', 'subscriptions', 'gifts_and_donations', 'other')",
+    ),
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant('other'),
-  );
-  static const VerificationMeta _descriptionMeta = const VerificationMeta(
-    'description',
-  );
-  @override
-  late final GeneratedColumn<String> description = GeneratedColumn<String>(
-    'description',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
   );
   static const VerificationMeta _occurredOnMeta = const VerificationMeta(
     'occurredOn',
@@ -341,9 +346,9 @@ class $ExpensesTableTable extends ExpensesTable
   List<GeneratedColumn> get $columns => [
     id,
     profileId,
+    description,
     amount,
     category,
-    description,
     occurredOn,
   ];
   @override
@@ -369,6 +374,15 @@ class $ExpensesTableTable extends ExpensesTable
     } else if (isInserting) {
       context.missing(_profileIdMeta);
     }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
     if (data.containsKey('amount')) {
       context.handle(
         _amountMeta,
@@ -381,15 +395,6 @@ class $ExpensesTableTable extends ExpensesTable
       context.handle(
         _categoryMeta,
         category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
-      );
-    }
-    if (data.containsKey('description')) {
-      context.handle(
-        _descriptionMeta,
-        description.isAcceptableOrUnknown(
-          data['description']!,
-          _descriptionMeta,
-        ),
       );
     }
     if (data.containsKey('occurred_on')) {
@@ -415,6 +420,10 @@ class $ExpensesTableTable extends ExpensesTable
         DriftSqlType.int,
         data['${effectivePrefix}profile_id'],
       )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
       amount: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}amount'],
@@ -423,10 +432,6 @@ class $ExpensesTableTable extends ExpensesTable
         DriftSqlType.string,
         data['${effectivePrefix}category'],
       )!,
-      description: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}description'],
-      ),
       occurredOn: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}occurred_on'],
@@ -444,16 +449,16 @@ class ExpensesTableData extends DataClass
     implements Insertable<ExpensesTableData> {
   final int id;
   final int profileId;
+  final String? description;
   final int amount;
   final String category;
-  final String? description;
   final String occurredOn;
   const ExpensesTableData({
     required this.id,
     required this.profileId,
+    this.description,
     required this.amount,
     required this.category,
-    this.description,
     required this.occurredOn,
   });
   @override
@@ -461,11 +466,11 @@ class ExpensesTableData extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['profile_id'] = Variable<int>(profileId);
-    map['amount'] = Variable<int>(amount);
-    map['category'] = Variable<String>(category);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
+    map['amount'] = Variable<int>(amount);
+    map['category'] = Variable<String>(category);
     map['occurred_on'] = Variable<String>(occurredOn);
     return map;
   }
@@ -474,11 +479,11 @@ class ExpensesTableData extends DataClass
     return ExpensesTableCompanion(
       id: Value(id),
       profileId: Value(profileId),
-      amount: Value(amount),
-      category: Value(category),
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      amount: Value(amount),
+      category: Value(category),
       occurredOn: Value(occurredOn),
     );
   }
@@ -491,9 +496,9 @@ class ExpensesTableData extends DataClass
     return ExpensesTableData(
       id: serializer.fromJson<int>(json['id']),
       profileId: serializer.fromJson<int>(json['profileId']),
+      description: serializer.fromJson<String?>(json['description']),
       amount: serializer.fromJson<int>(json['amount']),
       category: serializer.fromJson<String>(json['category']),
-      description: serializer.fromJson<String?>(json['description']),
       occurredOn: serializer.fromJson<String>(json['occurredOn']),
     );
   }
@@ -503,9 +508,9 @@ class ExpensesTableData extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'profileId': serializer.toJson<int>(profileId),
+      'description': serializer.toJson<String?>(description),
       'amount': serializer.toJson<int>(amount),
       'category': serializer.toJson<String>(category),
-      'description': serializer.toJson<String?>(description),
       'occurredOn': serializer.toJson<String>(occurredOn),
     };
   }
@@ -513,27 +518,27 @@ class ExpensesTableData extends DataClass
   ExpensesTableData copyWith({
     int? id,
     int? profileId,
+    Value<String?> description = const Value.absent(),
     int? amount,
     String? category,
-    Value<String?> description = const Value.absent(),
     String? occurredOn,
   }) => ExpensesTableData(
     id: id ?? this.id,
     profileId: profileId ?? this.profileId,
+    description: description.present ? description.value : this.description,
     amount: amount ?? this.amount,
     category: category ?? this.category,
-    description: description.present ? description.value : this.description,
     occurredOn: occurredOn ?? this.occurredOn,
   );
   ExpensesTableData copyWithCompanion(ExpensesTableCompanion data) {
     return ExpensesTableData(
       id: data.id.present ? data.id.value : this.id,
       profileId: data.profileId.present ? data.profileId.value : this.profileId,
-      amount: data.amount.present ? data.amount.value : this.amount,
-      category: data.category.present ? data.category.value : this.category,
       description: data.description.present
           ? data.description.value
           : this.description,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      category: data.category.present ? data.category.value : this.category,
       occurredOn: data.occurredOn.present
           ? data.occurredOn.value
           : this.occurredOn,
@@ -545,9 +550,9 @@ class ExpensesTableData extends DataClass
     return (StringBuffer('ExpensesTableData(')
           ..write('id: $id, ')
           ..write('profileId: $profileId, ')
+          ..write('description: $description, ')
           ..write('amount: $amount, ')
           ..write('category: $category, ')
-          ..write('description: $description, ')
           ..write('occurredOn: $occurredOn')
           ..write(')'))
         .toString();
@@ -555,57 +560,57 @@ class ExpensesTableData extends DataClass
 
   @override
   int get hashCode =>
-      Object.hash(id, profileId, amount, category, description, occurredOn);
+      Object.hash(id, profileId, description, amount, category, occurredOn);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ExpensesTableData &&
           other.id == this.id &&
           other.profileId == this.profileId &&
+          other.description == this.description &&
           other.amount == this.amount &&
           other.category == this.category &&
-          other.description == this.description &&
           other.occurredOn == this.occurredOn);
 }
 
 class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
   final Value<int> id;
   final Value<int> profileId;
+  final Value<String?> description;
   final Value<int> amount;
   final Value<String> category;
-  final Value<String?> description;
   final Value<String> occurredOn;
   const ExpensesTableCompanion({
     this.id = const Value.absent(),
     this.profileId = const Value.absent(),
+    this.description = const Value.absent(),
     this.amount = const Value.absent(),
     this.category = const Value.absent(),
-    this.description = const Value.absent(),
     this.occurredOn = const Value.absent(),
   });
   ExpensesTableCompanion.insert({
     this.id = const Value.absent(),
     required int profileId,
+    this.description = const Value.absent(),
     required int amount,
     this.category = const Value.absent(),
-    this.description = const Value.absent(),
     this.occurredOn = const Value.absent(),
   }) : profileId = Value(profileId),
        amount = Value(amount);
   static Insertable<ExpensesTableData> custom({
     Expression<int>? id,
     Expression<int>? profileId,
+    Expression<String>? description,
     Expression<int>? amount,
     Expression<String>? category,
-    Expression<String>? description,
     Expression<String>? occurredOn,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (profileId != null) 'profile_id': profileId,
+      if (description != null) 'description': description,
       if (amount != null) 'amount': amount,
       if (category != null) 'category': category,
-      if (description != null) 'description': description,
       if (occurredOn != null) 'occurred_on': occurredOn,
     });
   }
@@ -613,17 +618,17 @@ class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
   ExpensesTableCompanion copyWith({
     Value<int>? id,
     Value<int>? profileId,
+    Value<String?>? description,
     Value<int>? amount,
     Value<String>? category,
-    Value<String?>? description,
     Value<String>? occurredOn,
   }) {
     return ExpensesTableCompanion(
       id: id ?? this.id,
       profileId: profileId ?? this.profileId,
+      description: description ?? this.description,
       amount: amount ?? this.amount,
       category: category ?? this.category,
-      description: description ?? this.description,
       occurredOn: occurredOn ?? this.occurredOn,
     );
   }
@@ -637,14 +642,14 @@ class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
     if (profileId.present) {
       map['profile_id'] = Variable<int>(profileId.value);
     }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
     if (amount.present) {
       map['amount'] = Variable<int>(amount.value);
     }
     if (category.present) {
       map['category'] = Variable<String>(category.value);
-    }
-    if (description.present) {
-      map['description'] = Variable<String>(description.value);
     }
     if (occurredOn.present) {
       map['occurred_on'] = Variable<String>(occurredOn.value);
@@ -657,9 +662,9 @@ class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
     return (StringBuffer('ExpensesTableCompanion(')
           ..write('id: $id, ')
           ..write('profileId: $profileId, ')
+          ..write('description: $description, ')
           ..write('amount: $amount, ')
           ..write('category: $category, ')
-          ..write('description: $description, ')
           ..write('occurredOn: $occurredOn')
           ..write(')'))
         .toString();
@@ -966,18 +971,18 @@ typedef $$ExpensesTableTableCreateCompanionBuilder =
     ExpensesTableCompanion Function({
       Value<int> id,
       required int profileId,
+      Value<String?> description,
       required int amount,
       Value<String> category,
-      Value<String?> description,
       Value<String> occurredOn,
     });
 typedef $$ExpensesTableTableUpdateCompanionBuilder =
     ExpensesTableCompanion Function({
       Value<int> id,
       Value<int> profileId,
+      Value<String?> description,
       Value<int> amount,
       Value<String> category,
-      Value<String?> description,
       Value<String> occurredOn,
     });
 
@@ -1026,6 +1031,11 @@ class $$ExpensesTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get amount => $composableBuilder(
     column: $table.amount,
     builder: (column) => ColumnFilters(column),
@@ -1033,11 +1043,6 @@ class $$ExpensesTableTableFilterComposer
 
   ColumnFilters<String> get category => $composableBuilder(
     column: $table.category,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get description => $composableBuilder(
-    column: $table.description,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1084,6 +1089,11 @@ class $$ExpensesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get amount => $composableBuilder(
     column: $table.amount,
     builder: (column) => ColumnOrderings(column),
@@ -1091,11 +1101,6 @@ class $$ExpensesTableTableOrderingComposer
 
   ColumnOrderings<String> get category => $composableBuilder(
     column: $table.category,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get description => $composableBuilder(
-    column: $table.description,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1140,16 +1145,16 @@ class $$ExpensesTableTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
 
   GeneratedColumn<String> get category =>
       $composableBuilder(column: $table.category, builder: (column) => column);
-
-  GeneratedColumn<String> get description => $composableBuilder(
-    column: $table.description,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<String> get occurredOn => $composableBuilder(
     column: $table.occurredOn,
@@ -1212,32 +1217,32 @@ class $$ExpensesTableTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> profileId = const Value.absent(),
+                Value<String?> description = const Value.absent(),
                 Value<int> amount = const Value.absent(),
                 Value<String> category = const Value.absent(),
-                Value<String?> description = const Value.absent(),
                 Value<String> occurredOn = const Value.absent(),
               }) => ExpensesTableCompanion(
                 id: id,
                 profileId: profileId,
+                description: description,
                 amount: amount,
                 category: category,
-                description: description,
                 occurredOn: occurredOn,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required int profileId,
+                Value<String?> description = const Value.absent(),
                 required int amount,
                 Value<String> category = const Value.absent(),
-                Value<String?> description = const Value.absent(),
                 Value<String> occurredOn = const Value.absent(),
               }) => ExpensesTableCompanion.insert(
                 id: id,
                 profileId: profileId,
+                description: description,
                 amount: amount,
                 category: category,
-                description: description,
                 occurredOn: occurredOn,
               ),
           withReferenceMapper: (p0) => p0

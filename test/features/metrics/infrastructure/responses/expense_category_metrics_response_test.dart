@@ -4,6 +4,16 @@ import 'package:cordato/features/metrics/infrastructure/responses/expense_catego
 
 void main() {
   group('Local aggregate conversion', () {
+    test('maps a typed SQL aggregate preserving its category and cents', () {
+      final response = ExpenseCategoryMetricsResponse.fromRecord((
+        category: 'food',
+        total: 7,
+        minimumAmount: 2,
+      ));
+
+      expect(response.category, 'food');
+      expect(response.total, 7);
+    });
     test('preserves integer cents and derives an unrounded percentage', () {
       const response = ExpenseCategoryMetricsResponse(
         category: 'food',

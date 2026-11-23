@@ -8,13 +8,13 @@ Convenções obrigatórias: [AGENTS.md](AGENTS.md). Execução e limites do prod
 ## Decisão canônica
 
 A persistência escolhida passa a ser Drift/SQLite. A entrega atual inclui a
-fundação em `lib/features/core/infrastructure/clients/database/` e User/Expense migrados,
-com testes reais. O `coreModule` registra o client como singleton lazy.
-Metrics, composição global e suporte ainda são legados do Localstore. Sua dependência
-foi retirada pelo usuário; esta etapa intermediária
-não compila o app completo e não representa migração funcional concluída.
-Não há importação de dados de Localstore/ToStore. A migração SQLite v1→v2,
-descrita abaixo, preserva os dados do schema inteiro anterior.
+fundação em `lib/features/core/infrastructure/clients/database/` e User/Expense/Metrics
+migrados, com testes reais e composição global sobre o mesmo banco.
+O `coreModule` registra o client como singleton lazy. Não há dependência de Localstore
+no app ou suporte de testes.
+Não há importação de dados de Localstore/ToStore ou migração de bancos SQLite
+experimentais anteriores. Sem usuários, o schema não publicado foi consolidado
+na versão 1 por decisão do usuário.
 
 ### Fundação Drift
 
@@ -31,7 +31,7 @@ core/infrastructure/clients/database/
 interface, CRUD genérico ou regras de negócio. O `coreModule` registra
 `addLazySingleton<DatabaseClient>(DatabaseClient.new)`, compartilhando a instância
 por DI sem abrir storage. UserRepository e ExpenseRepository recebem o client
-por construtor; Metrics será migrado em etapa futura.
+por construtor; MetricsDao recebe a mesma instância.
 Tipos gerados não atravessam contratos de application nem entram em domain/UI.
 O futuro owner da conexão deve aguardar operações e chamar `close`; screens não
 são donas do banco. O ModularContext atual não expõe callback de descarte nos
@@ -41,7 +41,7 @@ o client explicitamente, sem abrir storage.
 
 A conexão padrão abre sob demanda `cordato.sqlite` em Application Support e
 executa SQLite em isolate separado. Executors podem ser injetados nos testes.
-`PRAGMA foreign_keys = ON` roda em cada abertura. Schema atual versão 2 cria
+`PRAGMA foreign_keys = ON` roda em cada abertura. Schema atual versão 1 cria
 tabelas e índices, sem inicializar perfil, ler Localstore ou apagar arquivos
 legados. Evoluções exigem migrações explícitas e testadas, nunca reset automático.
 O setup `DatabaseClient.configureConnection` registra cordato_lower, função
@@ -53,29 +53,28 @@ import reverso de DAO de feature pelo core.
 | Tabela | Contrato |
 | --- | --- |
 | `profiles` | ID inteiro `PRIMARY KEY AUTOINCREMENT` gerado pelo banco, nome e seed obrigatórios; índice único sobre constante garante no máximo um perfil, mesmo com IDs diferentes. |
-| `expenses` | ID inteiro `PRIMARY KEY AUTOINCREMENT` gerado pelo banco, `profile_id` inteiro obrigatório referenciando `profiles.id` com `ON DELETE CASCADE`, `amount` inteiro positivo em centavos, categoria não vazia com default `other`, descrição anulável e `occurred_on` civil `YYYY-MM-DD`, entre anos 0001–9999, default SQL `date('now', 'localtime')`. |
+| `expenses` | ID inteiro `PRIMARY KEY AUTOINCREMENT` gerado pelo banco, `profile_id` inteiro obrigatório referenciando `profiles.id` com `ON DELETE CASCADE`, `amount` inteiro positivo em centavos, categoria restrita por CHECK às opções de Expense com default `other`, descrição anulável e `occurred_on` civil `YYYY-MM-DD`, entre anos 0001–9999, default SQL `date('now', 'localtime')`. |
 
 O índice `expenses_profile_date` cobre perfil/data/ID. Categorias permitidas
-continuam sendo regra do domínio de Expense, não um enum duplicado no core.
+continuam sendo regra do domínio de Expense. O CHECK SQL da coluna category
+reforça a integridade com os mesmos textos, sem import de Expense ou outro enum
+no core. O teste arquitetural compara os valores do CHECK real ao CategoryEnum
+e insere todas as opções. Novas categorias exigem enum, CHECK e migração alinhados.
 IDs são atribuídos pelo SQLite, sem geração na aplicação. AUTOINCREMENT impede
 reutilização de IDs de registros confirmados e depois excluídos no mesmo banco,
 inclusive após cascade; não reinicie sqlite_sequence. Datas omitidas usam o dia
 local do SQLite; datas explícitas não usam o default.
 Datas civis não são timestamps nem sofrem conversão de fuso.
 
-Na etapa inicial, sem usuários e com schema 1 ainda não publicado, a definição
-foi ajustada para IDs inteiros sem migração dos arquivos SQLite experimentais
-com IDs textuais. Estes precisam ser recriados manualmente; nenhuma limpeza ou
-recriação automática de banco foi introduzida. A regra de migrações explícitas
-continua valendo para evoluções publicadas.
-
-A versão 2 adiciona o default de data e migra bancos da versão 1 com IDs inteiros.
-TableMigration reconstrói expenses numa transação, preservando registros, datas,
-índice e foreign key. A sequência autoincremental anterior é restaurada sem
-reduzi-la, inclusive numa tabela vazia com IDs já excluídos. A sequência de
-profiles não muda. Falhas revertem toda a migração e não avançam user_version.
-Testes usam um fixture SQL v1 independente, sem recriar o schema antigo a partir
-das definições atuais.
+Sem usuários, a definição atual foi consolidada na versão 1, incluindo IDs
+inteiros autoincrementais, default de data local e CHECK de categorias.
+MigrationStrategy mantém somente criação e habilitação de foreign keys, sem
+onUpgrade, reconstrução de tabelas ou manipulação de sqlite_sequence.
+Testes/fixtures exclusivos das migrações experimentais foram removidos.
+Arquivos experimentais incompatíveis, inclusive versões 2/3 ou versões 1 com
+outras definições, precisam ser recriados manualmente. O app não os apaga,
+não faz downgrade nem reset automático. Evoluções publicadas continuam exigindo
+migrações explícitas e testadas.
 
 O contrato de produto aprovado é ter um perfil ativo antes de operar, inicialmente
 com ID novo, nome `Cordato` e seed aleatória. Edições preservam o ID. Apagar os
@@ -86,7 +85,7 @@ Não se introduzem login, `owner`, múltiplos perfis ou identidade autenticada.
 
 O cascade é lógico e transacional dentro do SQLite. Não limpa snapshots do widget
 ou tarefas de IA/edição em andamento, nem comprova apagamento físico irrecuperável.
-Essas coordenações, o repository Metrics, views, exclusão na UI e IA são etapas futuras, sem
+Essas coordenações, views, exclusão na UI e IA são etapas futuras, sem
 criptografia ou backup implicitamente prometidos.
 
 Geração: `dart run build_runner build`; versione o arquivo gerado. Preserve o
@@ -97,10 +96,9 @@ constraints, cascade, rollback e reabertura de arquivo.
 
 ### Estado da integração
 
-User/Expense usam Drift. Metrics e a composição global ainda referenciam
-Localstore, sem dependência resolvida nem registro na DI. As seções de Metrics
-descrevem esse código legado, não leitura funcional das despesas SQLite.
-Não restaure o SDK para sanar a etapa intermediária.
+User/Expense/Metrics usam Drift. Metrics agrega as despesas SQLite por categoria
+em uma consulta parametrizada no MetricsDao, sem View ou alteração do schema.
+Composição global e suporte de testes não dependem mais de Localstore.
 
 O aplicativo é exclusivamente local. Authentication, Session, Welcome, PocketBase,
 backend, worker, áudio, IA, Insight, CSV e infraestrutura de compartilhamento
@@ -111,7 +109,7 @@ Não há identidade autenticada, `owner` nas despesas ou autorização remota.
 Screen/Widget → Bloc → contrato de repository em application
                             ↑
                  repository em infrastructure → DatabaseClient (User/Expense)
-                                             → Localstore legado (Metrics, bloqueado)
+                                             → MetricsDao → DatabaseClient
                                             → contrato de client nativo do core
 ```
 
@@ -147,7 +145,7 @@ organização. Rotas, artefato e limites estão em [`site/README.md`](site/READM
 | `core` | Capacidades compartilhadas, componentes visuais, formatadores e clients nativos. |
 | `user` | Leitura e atualização do perfil SQLite: ID inteiro, nome e seed do avatar. |
 | `expense` | Despesas individuais: CRUD, consultas, paginação e sugestões. |
-| `metrics` | Projeção mensal legada em Localstore; migração para as despesas SQLite pendente. |
+| `metrics` | Projeção mensal somente leitura das despesas SQLite, agregadas por categoria. |
 | `dashboard` | Apresentação e composição dos contratos consultados. |
 | `root` | Composição visual, entrada e coordenação dos widgets do sistema. |
 | `settings` | Navegação para perfil, informações e apoio. |
@@ -169,7 +167,7 @@ main
       ├─ coreModule → DatabaseClient lazy + formatadores + IWidgetClient
       ├─ userModule → UserRepository → DatabaseClient
       ├─ expenseModule → ExpenseRepository + SuggestionsDao → DatabaseClient
-      └─ metricsModule → MetricsRepository → Localstore legado não registrado
+      └─ metricsModule → MetricsRepository → MetricsDao → DatabaseClient
 ```
 
 `appModule` e `coreModule` não recebem banco por parâmetro. O core registra
@@ -182,16 +180,17 @@ primeira consulta. A criação de Expense depende desse perfil já existir, mas
 não inicializa User nem depende de seu repository. Operações recebem o banco
 por construtor; não há wrapper CRUD, data source ou service locator.
 
-Tabelas/migração, setup, geração e fechamento estão na fundação acima. As
+Tabelas, setup, geração e fechamento estão na fundação acima. As
 dependências resolvidas atuais estão no pubspec/lockfile, sem o fork privado.
-O Localstore anterior e seus limites pertencem ao histórico; Metrics ainda
-o referencia e bloqueia a integração global, não justifica reinstalá-lo.
+O Localstore anterior e seus limites pertencem ao histórico, sem importação
+ou exclusão de seus arquivos.
 
 ### Escopos Modular
 
 A composição usa a API funcional `createModule` do Modular 7. `coreModule`
 registra DatabaseClient lazy, formatadores e `IWidgetClient`. O módulo Expense
 registra SuggestionsDao lazy sobre esse banco, sem criar outra conexão.
+Metrics registra MetricsDao lazy sobre a mesma instância.
 `IWidgetClient` e `WidgetClient` ficam juntos em
 `core/infrastructure/clients/widget_client.dart`; os contratos de repository de
 Root continuam em `root/application/repositories/`. `IDateFormatter` e
@@ -240,7 +239,7 @@ ou domínio artificiais.
 - **Domain:** tipos e invariantes puros, sem Flutter, Bloc, SDK ou application.
 - **Application:** contratos e exceções esperadas, sem implementação, UI ou SDK.
 - **Infrastructure:** User/Expense usam DatabaseClient, registros tipados e DAO
-  específico; Metrics ainda usa o Localstore legado. Tipos de SDK não atravessam
+  específico; Metrics usa MetricsDao sobre o mesmo banco. Tipos de SDK não atravessam
   os contratos de application. Não crie DAO para cada operação CRUD sem necessidade.
 - **Presentation:** Bloc, formulário, renderização, feedback e navegação.
 - **Módulos:** composição, podendo importar implementações concretas.
@@ -381,14 +380,18 @@ mês civil atual; intervalo incompleto, parcial, invertido ou de vários meses
 gera MetricsException antes da leitura. Horário e indicação UTC da entrada não
 alteram seus componentes civis.
 
-Uma leitura da coleção fornece as despesas, filtradas pelo mês civil e somadas
-por categoria em Dart.
+MetricsDao estende DatabaseAccessor e executa uma única consulta parametrizada,
+filtrando perfil por subconsulta e os dois limites civis inclusivos do mês.
+O limite final inclusivo também suporta dezembro de 9999, sem data sentinela.
+SUM(amount), MIN(amount), GROUP BY category e ORDER BY category retornam registros
+tipados de infraestrutura num snapshot consistente, sem transação explícita.
+O índice expenses_profile_date atende ao filtro. Não há View, tabela nova ou
+alteração de schema. Anos fora de 1–9999 geram ArgumentError antes da leitura.
 Total e distribuição vêm dos mesmos grupos. Centavos permanecem inteiros;
 percentuais são calculados em Metrics sem arredondamento antecipado.
 `ExpenseMetricsEntity`, `ExpenseCategoryMetricsEntity` e
 `ExpenseCategoryMetricsResponse` usam o campo `total`, não `totalAmount`.
-Os grupos são construídos em Dart, sem parser JSON de agregados; os documentos
-de despesas continuam usando `amount`.
+Os grupos são construídos pelo SQL, sem parser JSON; despesas usam `amount`.
 
 `ExpenseCategoryMetricsResponse`, em `infrastructure/responses/`, converte os
 grupos; o repository monta o resumo, sem camada `projections/`. Categorias têm
@@ -396,12 +399,16 @@ ordem textual determinística. O ID `monthly-yyyy-MM` é estável. Sem agrupamen
 `categories` é null; mês vazio agrupado tem lista vazia imutável.
 
 Categorias desconhecidas, parsing inválido, centavos não positivos e overflow
-por categoria ou mensal são inesperados. JSON inválido propaga pelo SDK, sem
-omitir documentos nem publicar um zero fabricado.
-Falhas expostas não são convertidas em zero ou retry automático.
+por categoria ou mensal são inesperados. Overflow de SUM propaga como erro SQLite;
+overflow mensal é detectado em Dart. MIN(amount) impede que uma soma positiva
+oculte valores não positivos caso constraints tenham sido burladas.
+Falhas operacionais SQLite/filesystem seguem a classificação segura de User/Expense,
+inclusive causas remotas do Drift; demais falhas preservam causa/stack.
+Não há zero fabricado, reset ou retry automático.
 
 Somente a consulta do mês atual captura revisão antes da leitura e aguarda a
 publicação nativa, inclusive para zero válido. Consultas históricas não publicam.
+Publicação ocorre fora do tratamento de falhas de storage.
 
 Na apresentação, `cardPages` remove categorias não positivas, ordena por
 `total` decrescente com desempate estável e monta páginas de até três categorias.
@@ -541,27 +548,23 @@ Não há testes de UI, goldens, integração visual ou flows Maestro. Cobertura 
 unitária de domínio, contratos, repositories, Blocs, validação, formatação,
 arquitetura, DI/rotas e políticas nativas.
 
-User/Expense usam SQLite real em memória e arquivos temporários, inclusive
+User/Expense/Metrics usam SQLite real em memória e arquivos temporários, inclusive
 executors em isolate. Interceptors específicos em suporte das features permitem
 falhas e Futures pendentes sem simular o banco ou os repositories concretos.
 Clients são fechados antes da limpeza; testes verificam persistência, transações,
 rollback, concorrência e refresh após commit. Isso não comprova durabilidade
 auditada após falha de energia.
 
-O suporte legado de Metrics usa Localstore real em diretórios temporários isolados por
-`getInstance(customPath: ...)`, sem trocar o diretório do processo nem simular
-path_provider. A configuração do singleton é restaurada ao terminar.
-Mocks do SDK
-são restritos a delegação, falhas e operações pendentes do repository
-Metrics, em `test/support/core/mocks/`. Blocs mockam contratos.
+MetricsQueryInterceptor em `test/support/metrics/fakes/` controla falhas e leituras
+pendentes, registrando SQL/parâmetros sem simular o DAO ou repository.
+Blocs mockam contratos.
 Composição global não mocka módulos inteiros e pode simular o canal nativo sem UI.
 
 Testes aguardam operações e cancelam observações antes de limpar arquivos.
-As regressões de JSON inválido restantes pertencem ao legado de Metrics, não ao
-mapeamento tipado de User/Expense. Localstore não possui close; Drift possui.
+Registros de infraestrutura são tipados, sem parsing JSON legado.
 
-`test/app_module_test.dart` ainda referencia Localstore para composição, ownership,
-catálogo local e consumidores reais; depende da migração de Metrics para executar.
+`test/app_module_test.dart` verifica composição real, ownership, catálogo local,
+Expense → Metrics → Root e Dashboard com SQLite em memória, sem montar UI.
 `test/features/core/core_module_test.dart` verifica formatadores, client
 nativo e registro lazy do DatabaseClient, sem abrir banco.
 
@@ -585,13 +588,10 @@ e `test/app_module_test.dart` cobre composição global; não precisam de um
 arquivo correspondente em `lib/features/`. Políticas nativas seguem as pastas
 JUnit/XCTest documentadas em AGENTS.md.
 
-Conferência documental em 23/11/2026: 66 arquivos `*_test.dart` em
-`test/features/`, dos quais 57 têm correspondência exata após remover `_test`.
-Os nove restantes são:
+Desalinhamentos de nomes/pastas e suítes separadas por responsabilidade:
 
 | Teste (relativo a `test/features/`) | Implementação/alinhamento |
 | --- | --- |
-| `core/infrastructure/clients/database/database_client_migration_test.dart` | Suíte de migração de `database_client.dart`, separada por responsabilidade; não representa outro client. |
 | `dashboard/presentation/screens/dashboard/bloc/dashboard_bloc_test.dart` | `lib/features/dashboard/presentation/screens/bloc/dashboard_bloc.dart`; a pasta extra `dashboard/` não existe na produção. |
 | `dashboard/presentation/screens/dashboard/bloc/dashboard_state_test.dart` | `lib/features/dashboard/presentation/screens/bloc/dashboard_state.dart`; mesmo desvio de pasta. |
 | `core/presentation/enums/app_route_test.dart` | Testa `route_enum.dart`; nome legado. |
@@ -599,6 +599,7 @@ Os nove restantes são:
 | `expense/domain/enums/expense_category_enum_test.dart` | Nome legado; a implementação atual é `domain/enums/category_enum.dart`, com CategoryEnum. |
 | `expense/presentation/screens/expenses/bloc/expenses_reregistration_test.dart` | Suíte de recadastro do `ExpensesBloc`, separada por responsabilidade. |
 | `metrics/presentation/extensions/expense_metrics_pages_extension_test.dart` | Testa `ExpenseMetricsPagesExtension`, declarada em `expense_metrics_categories_extension.dart`. |
+| `metrics/infrastructure/repositories/metrics_repository_persistence_test.dart` | Suíte de persistência de `metrics_repository.dart`, separada por responsabilidade. |
 | `user/user_local_module_test.dart` | Suíte de persistência pela composição de `user_module.dart`, separada por responsabilidade. |
 
 O DAO atual é `suggestions_dao.dart`, espelhado por `suggestions_dao_test.dart`.
@@ -620,12 +621,14 @@ Testes nativos: `dart run tool/test_home_widget_native.dart`, opcionalmente
 `android` ou `ios`, sem instâncias concorrentes de `dart run`.
 Não substituem build nativo ou inspeção manual.
 
-Última execução registrada em 23/11/2026, antes da consolidação documental:
-dependências/geração concluídas, análise focada limpa, 343 testes focados
-(Expense e client/migração) passando. A análise global registra 32 diagnósticos
-legados; a suíte global tem 869 passando e quatro falhas de Metrics/composição/
-contrato Localstore. Localtime passou no host com TZ UTC e America/Sao_Paulo,
-sem homologar Android/iOS. Registros detalhados ficam no
+Verificação da consolidação do schema v1 em 23/11/2026:
+`flutter pub get` e `dart run build_runner build` concluídos,
+`flutter analyze` sem problemas e `flutter test --reporter failures-only` com
+947 testes passando. Geração Drift validada para o schema 1. A suíte cobre
+criação/reabertura, CHECK/enum, foreign keys e sequências, além de DAO, repository, isolate,
+falhas/revisões e composição real Expense → Metrics → Root/Dashboard.
+Não houve build ou homologação Android/iOS nesta entrega.
+Registros anteriores de geração, migração e localtime ficam no
 [histórico Drift](docs/history/drift-transition.md); resultados nativos antigos,
 no [histórico local anterior](docs/history/local-transition.md).
 
@@ -633,8 +636,6 @@ no [histórico local anterior](docs/history/local-transition.md).
 
 - Não há backup/restauração, migração remota, criptografia auditada ou garantia
   de recuperação.
-- Metrics e composição global ainda precisam migrar para SQLite; o app completo
-  continua sem compilação. Não há autorização para restaurar o SDK removido.
 - O perfil é criado sob demanda por User, não pelo client/Expense. Inicialização
   antes de criação por atalho e fechamento assíncrono pelo root estão pendentes.
 - Exclusão/recriação de perfil, invalidação de operações e limpeza do snapshot
