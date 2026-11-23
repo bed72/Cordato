@@ -10,9 +10,9 @@ class ExpensesTable extends Table {
   @override
   String get tableName => 'expenses';
 
-  TextColumn get id => text().check(id.length.isBiggerThanValue(0))();
-  TextColumn get profileId =>
-      text().references(ProfilesTable, #id, onDelete: .cascade)();
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get profileId =>
+      integer().references(ProfilesTable, #id, onDelete: .cascade)();
   IntColumn get amount => integer().customConstraint(
     "NOT NULL CHECK (typeof(amount) = 'integer' AND amount > 0)",
   )();
@@ -26,7 +26,4 @@ class ExpensesTable extends Table {
     "AND date(occurred_on, '+0 days') IS NOT NULL "
     "AND date(occurred_on, '+0 days') = occurred_on)",
   )();
-
-  @override
-  Set<Column<Object>> get primaryKey => {id};
 }

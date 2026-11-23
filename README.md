@@ -5,23 +5,32 @@ para Drift/SQLite. Estado documental revisado em **23/11/2026**.
 
 ## Transição de persistência
 
-Esta etapa entrega somente a fundação Drift em
+Esta etapa entrega a fundação Drift em
 `lib/features/core/infrastructure/clients/database/`, com schema versão 1,
 foreign keys, perfil único e despesas vinculadas com `ON DELETE CASCADE`.
 O `coreModule` registra o client como singleton lazy, sem abertura assíncrona no
-`main`. Não migra os dados do Localstore/ToStore, repositories ou interface.
+`main`. UserRepository já usa Drift; entidade, contratos, UI e previews usam
+`id`, `name` e `seed`. Não migra dados de Localstore/ToStore ou Expense/Metrics.
 Os arquivos de dados legados não são lidos nem apagados por esta fundação.
+
+Nas duas tabelas, o ID é inteiro `AUTOINCREMENT`, gerado pelo SQLite;
+`expenses.profile_id` também é inteiro. IDs confirmados não são reutilizados após
+exclusões no mesmo banco. A seed continua aleatória.
+O schema 1 ainda não publicado foi ajustado sem migração, pois não há usuários.
+Arquivos SQLite experimentais com a definição anterior de IDs textuais precisam
+ser recriados manualmente; não há reset automático.
 
 **O app completo está temporariamente sem compilação:** módulos de features/repositories e
 testes antigos ainda importam Localstore, cuja dependência foi retirada.
-Os contratos e recursos descritos nas próximas seções são da implementação
-legada, não uma integração Drift concluída.
+Os contratos de Expense/Metrics nas próximas seções ainda descrevem o legado.
+A migração do aplicativo completo não está concluída.
 
 O contrato aprovado é um perfil local com ID, nome e seed. Inicialmente:
 ID novo, nome `Cordato` e seed aleatória. Editar nome/seed preserva o ID.
 No futuro, apagar os dados removerá o perfil e despesas por cascade e criará
-outro perfil padrão com novos ID/seed numa única transação. Essa operação e a
-inicialização ainda não estão implementadas; o banco novo começa vazio.
+outro perfil padrão com novos ID/seed numa única transação. A exclusão ainda não
+está implementada. O banco começa vazio e UserRepository cria o perfil na primeira
+consulta, sem inicialização no main ou no client.
 
 O client abre SQLite sob demanda em Application Support/cordato.sqlite, em
 isolate separado. Resolver o singleton não abre o arquivo nem cria perfil.
@@ -38,7 +47,24 @@ flutter test test/features/core/infrastructure/clients/database/ --reporter fail
 Versione `database_client.g.dart` após alterar tabelas. Detalhes e precedência
 dos contratos estão em [ARCHITECTURE.md](ARCHITECTURE.md#fundação-drift).
 
-### Verificação desta etapa
+### Verificação da migração de User
+
+- `flutter pub get`: concluído.
+- Análise focada de User, Dashboard, seus testes afetados e limites arquiteturais: sem problemas.
+- `flutter test test/features/user test/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc_test.dart --reporter failures-only`: 141 testes passando.
+- Após IDs autoincrementais, client + módulo core + User + Dashboard:
+  173 testes passando; análise focada limpa. `dart run build_runner build` concluído.
+  Testes confirmam geração pelo banco e não reutilização após exclusão/cascade e
+  reabertura do arquivo nas duas tabelas.
+- SQLite real cobre criação concorrente, updates transacionais, campos omitidos,
+  rollback, operações pendentes, persistência em arquivo e falhas via isolate.
+- `flutter analyze`: 51 diagnósticos legados ligados ao Localstore ausente.
+- `flutter test --reporter failures-only`: 804 passando, seis falhas em
+  Expense/Metrics, composição global e contrato legado da dependência Localstore.
+
+Não há homologação em dispositivo nem implementação da exclusão nesta entrega.
+
+### Verificação anterior da fundação Drift
 
 - `flutter pub get` e `dart run build_runner build`: concluídos.
 - `dart analyze lib/features/core/infrastructure/clients/database test/features/core/infrastructure/clients/database test/architecture/descriptive_names_test.dart`: sem problemas.
@@ -50,8 +76,9 @@ dos contratos estão em [ARCHITECTURE.md](ARCHITECTURE.md#fundação-drift).
 - `flutter analyze`: bloqueado por 97 diagnósticos das referências legadas sem Localstore.
 - `flutter test --reporter failures-only`, antes do registro no core: 770 passando, 10 falhas ligadas à ausência de Localstore e ao contrato legado da dependência.
 
-Essas verificações não comprovam integração dos repositories, inicialização do
-perfil, exclusão pela UI ou homologação em Android/iOS.
+As verificações da fundação, isoladamente, não comprovavam integração dos
+repositories ou inicialização do perfil. A etapa User acima acrescenta essa
+integração somente para o perfil, sem exclusão pela UI ou homologação Android/iOS.
 
 ## Licença e publicação do código
 
@@ -69,7 +96,8 @@ histórico. A revisão não altera visibilidade nem autoriza reescrita do Git.
 
 ## Estado atual
 
-- Perfil local único: nome e seed de avatar, sem conta, ID ou e-mail.
+- Perfil local único em SQLite: ID interno estável, nome e seed de avatar,
+  sem conta autenticada ou e-mail.
 - Despesas manuais: criação, edição, exclusão, filtros, paginação e sugestões
   baseadas no histórico local.
 - Resumo mensal e distribuição por categoria calculados a partir das despesas
@@ -133,18 +161,17 @@ ao repositório privado
 autenticação Git somente se trabalhar com uma revisão legada que ainda o utiliza;
 não coloque tokens no pubspec.
 
-### Inicialização e persistência legadas, ainda não migradas
+### Inicialização e persistência
 
 `main` monta o app sem preparar perfil ou storage. O `appModule` compõe o
-`coreModule`, que registra
-`addInstance<Localstore>(Localstore.instance)`. Repositories recebem a mesma
-instância pelo Modular e usam o SDK diretamente, sem client de persistência.
+`coreModule`, que registra `DatabaseClient` como singleton lazy. UserRepository
+recebe essa instância pelo construtor e inicializa o perfil sob demanda.
+Expense/Metrics ainda esperam Localstore e não estão integrados ao banco novo.
 
-Localstore vem do fork privado `bed72/localstore`, com `ref: main` no pubspec
+No legado, Localstore vinha do fork privado `bed72/localstore`, com `ref: main`
 e commit resolvido fixado no lockfile, não da versão 1.4.0 do pub.dev.
-Para buscar atualizações da main, execute `flutter pub upgrade localstore` e
-versione o lockfile; `pub get --enforce-lockfile` preserva a revisão resolvida.
-Não há factory, schemas ou abertura/fechamento de banco. O SDK usa arquivos
+A dependência e seu registro já foram retirados; não os restaure nesta transição.
+O SDK legado usa arquivos
 JSON em Documents no Android/iOS; o fallback de diretório corrente serve a
 testes host, não representa suporte a apps desktop. Não há migração dos dados
 anteriores de ToStore ou mudança do formato JSON ao adotar o fork.
@@ -156,11 +183,16 @@ ou coordenação entre processos/isolates. Falhas não disparam reset ou retry.
 
 ### Perfil e despesas
 
-O UserRepository cria o perfil na primeira leitura, se ainda não existir:
-coleção `user`, documento `profile` com campos `name` e `avatar`, nome inicial
-`Cordato` e seed aleatória persistida. Atualizações preservam campos omitidos
-e gravam o documento completo, sem merge atômico entre updates concorrentes.
-Não há inicializador externo nem exclusão de conta.
+O UserRepository já usa a tabela `profiles` em SQLite. A primeira leitura cria,
+em transação, ID inteiro atribuído pelo SQLite, nome Cordato e seed aleatória.
+Somente a seed usa Random.secure (16 bytes em hexadecimal). Leituras seguintes
+preservam o perfil. Updates transacionais alteram somente nome/seed fornecidos,
+preservando ID e campos omitidos. Não há normalização, cache adicional,
+inicializador externo nem exclusão de conta.
+
+Falhas operacionais de storage geram mensagem segura; erros de SQL, constraints,
+corrupção ou programação não viram defaults e não disparam retry/reset automático.
+UserResponse converte registros tipados sem expor Drift no domínio ou apresentação.
 
 Despesas usam coleção `expenses`, com ID gerado pelo SDK, valor inteiro positivo,
 categoria padrão `other`, descrição opcional e data civil obrigatória.

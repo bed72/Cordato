@@ -7,11 +7,11 @@ Convenções obrigatórias: [AGENTS.md](AGENTS.md). Execução e limites do prod
 
 ## Decisão canônica
 
-A persistência escolhida passa a ser Drift/SQLite. A entrega atual é somente a
-fundação em `lib/features/core/infrastructure/clients/database/`, com tabelas e
-testes reais. O `coreModule` registra o client como singleton lazy. Repositories,
-módulos e contratos de features ainda são legados do
-Localstore. Sua dependência foi retirada pelo usuário; esta etapa intermediária
+A persistência escolhida passa a ser Drift/SQLite. A entrega atual inclui a
+fundação em `lib/features/core/infrastructure/clients/database/` e User migrado,
+com testes reais. O `coreModule` registra o client como singleton lazy.
+Expense/Metrics e seus testes ainda são legados do Localstore. Sua dependência
+foi retirada pelo usuário; esta etapa intermediária
 não compila o app completo e não representa migração funcional concluída.
 Não há migração dos dados anteriores, por decisão explícita.
 
@@ -29,7 +29,8 @@ core/infrastructure/clients/database/
 `DatabaseClient` é o próprio banco tipado Drift, não um wrapper. Não possui
 interface, CRUD genérico ou regras de negócio. O `coreModule` registra
 `addLazySingleton<DatabaseClient>(DatabaseClient.new)`, compartilhando a instância
-por DI sem abrir storage. Na integração futura será recebida por construtor nos repositories.
+por DI sem abrir storage. UserRepository recebe o client por construtor;
+Expense/Metrics serão migrados em etapas futuras.
 Tipos gerados não atravessam contratos de application nem entram em domain/UI.
 O futuro owner da conexão deve aguardar operações e chamar `close`; screens não
 são donas do banco. O ModularContext atual não expõe callback de descarte nos
@@ -45,13 +46,21 @@ legados. Evoluções exigem migrações explícitas e testadas, nunca reset auto
 
 | Tabela | Contrato |
 | --- | --- |
-| `profiles` | ID textual não vazio, nome e seed obrigatórios; índice único sobre constante garante no máximo um perfil, mesmo com IDs diferentes. |
-| `expenses` | ID textual não vazio, `profile_id` obrigatório referenciando `profiles.id` com `ON DELETE CASCADE`, `amount` inteiro positivo em centavos, categoria não vazia com default `other`, descrição anulável e `occurred_on` civil `YYYY-MM-DD`, entre anos 0001–9999. |
+| `profiles` | ID inteiro `PRIMARY KEY AUTOINCREMENT` gerado pelo banco, nome e seed obrigatórios; índice único sobre constante garante no máximo um perfil, mesmo com IDs diferentes. |
+| `expenses` | ID inteiro `PRIMARY KEY AUTOINCREMENT` gerado pelo banco, `profile_id` inteiro obrigatório referenciando `profiles.id` com `ON DELETE CASCADE`, `amount` inteiro positivo em centavos, categoria não vazia com default `other`, descrição anulável e `occurred_on` civil `YYYY-MM-DD`, entre anos 0001–9999. |
 
 O índice `expenses_profile_date` cobre perfil/data/ID. Categorias permitidas
 continuam sendo regra do domínio de Expense, não um enum duplicado no core.
-Não há default implícito para IDs/data; repositories deverão fornecê-los.
+IDs são atribuídos pelo SQLite, sem geração na aplicação. AUTOINCREMENT impede
+reutilização de IDs de registros confirmados e depois excluídos no mesmo banco,
+inclusive após cascade; não reinicie sqlite_sequence. Datas devem ser fornecidas.
 Datas civis não são timestamps nem sofrem conversão de fuso.
+
+Como não há usuários e o schema 1 ainda não foi publicado, a definição inicial
+foi ajustada para IDs inteiros sem migração dos arquivos SQLite experimentais
+com IDs textuais. Estes precisam ser recriados manualmente; nenhuma limpeza ou
+recriação automática de banco foi introduzida. A regra de migrações explícitas
+continua valendo para evoluções publicadas.
 
 O contrato de produto aprovado é ter um perfil ativo antes de operar, inicialmente
 com ID novo, nome `Cordato` e seed aleatória. Edições preservam o ID. Apagar os
@@ -62,7 +71,7 @@ Não se introduzem login, `owner`, múltiplos perfis ou identidade autenticada.
 
 O cascade é lógico e transacional dentro do SQLite. Não limpa snapshots do widget
 ou tarefas de IA/edição em andamento, nem comprova apagamento físico irrecuperável.
-Essas coordenações, os repositories, views, UI e IA são etapas futuras, sem
+Essas coordenações, os repositories Expense/Metrics, views, exclusão na UI e IA são etapas futuras, sem
 criptografia ou backup implicitamente prometidos.
 
 Geração: `dart run build_runner build`; versione o arquivo gerado. O client usa
@@ -73,7 +82,8 @@ constraints, cascade, rollback e reabertura de arquivo.
 
 ### Implementação legada ainda não migrada
 
-O restante deste documento descreve a implementação Localstore ainda presente.
+As seções de Expense/Metrics e bootstrap legado descrevem Localstore ainda presente.
+User já usa Drift, conforme seu contrato de persistência abaixo.
 O antigo registro de Localstore no `coreModule` já foi removido.
 Em conflitos de persistência e schema, a decisão Drift acima tem precedência;
 não trate os contratos legados como migração já implementada.
@@ -234,32 +244,40 @@ Root compõe Metrics e o client nativo através de seus próprios repositories.
 
 ### Perfil User local
 
-UserRepository usa um único documento `profile` na coleção `user`:
+UserRepository recebe DatabaseClient e usa a tabela `profiles`:
 
 | Campo | Valor inicial |
 | --- | --- |
+| `id` | Inteiro autoincremental gerado pelo SQLite; chave interna estável. |
 | `name` | `Cordato` |
-| `avatar` | Seed aleatória de 16 bytes em hexadecimal, persistida. |
+| `seed` | 16 bytes aleatórios de Random.secure em hexadecimal, independentes do ID. |
 
-`get` cria e salva o perfil padrão quando o documento não existe.
-Documentos existentes são convertidos sem substituição por defaults;
-payloads malformados propagam como falhas de parsing.
-Não há ID, e-mail, tabela de usuários, sessão ou migração de dados antigos.
+`get` consulta e cria o perfil somente quando ausente, dentro de transação.
+O índice único e as transações do banco compartilhado evitam perfis duplicados
+em leituras concorrentes. UserResponse.fromRecord converte ProfilesTableData em
+UserEntity puro com `id`, `name` e `seed` obrigatórios; não há JSON legado.
+ID usa int na entidade/response e é obtido por insertReturning, sem ser fornecido
+no insert. Seed permanece String aleatória; o app não gera tokens para IDs.
+Não há e-mail, autenticação, múltiplos perfis ou migração de dados antigos.
 
-`IUserRepository` expõe `get` e `update`, sem exclusão de conta.
-O repository lê o perfil a cada chamada. Updates preservam campos omitidos e gravam
-o documento completo, aguardando o Future público e retornando o perfil atualizado.
-Nome e avatar não são derivados um do outro.
+`IUserRepository` expõe `get` e `update({name, seed})`, sem exclusão de conta.
+Cada update lê/inicializa o perfil, grava somente campos fornecidos por ID e lê
+o perfil final na mesma transação. O ID nunca muda na edição. Updates concorrentes
+no mesmo banco compartilhado preservam mudanças em campos distintos. Sem campos,
+update apenas consulta, criando defaults somente se ausente.
 
-Não há cache, fila de Futures, estado pendente ou transação no repository.
-Atualizações concorrentes do documento não têm garantia de merge atômico.
-O SDK lê dados persistidos sem cache de payload; o repository não cria cache
-adicional. Uma leitura inválida não é substituída pelo perfil padrão.
+Não há cache adicional, fila de Futures ou estado pendente. O Future aguarda
+escritas e commit; falha reverte inclusive um perfil recém-criado durante update.
+Seed não é anulável; texto vazio e espaços são preservados. O conceito visual
+continua sendo avatar, mas os dados e contratos usam `seed`.
 
-Falhas esperadas expostas pelo SDK geram UserException. Parsing e erros de
-programação propagam como inesperados. A apresentação valida nome com 2–32 code
-points Unicode após trim; Bloc e repository não normalizam entradas.
-Avatar pode ser nulo; texto vazio é preservado, sem fallback por identidade.
+Falhas SQLite operacionais BUSY, LOCKED, READONLY, IOERR (incluindo códigos
+estendidos), FULL e CANTOPEN e falhas de filesystem geram UserException segura.
+Erros SQL, constraints, corrupção, parsing e programação propagam sem defaults,
+reset ou retry. DriftRemoteException é desembrulhada preservando causa e stack.
+A dependência direta sqlite3 fornece os códigos, sem constantes numéricas locais.
+A apresentação valida nome com 2–32 code points Unicode após trim; Bloc e
+repository não normalizam entradas. User/Edit preservam ownership e factories.
 
 ### Despesas locais
 

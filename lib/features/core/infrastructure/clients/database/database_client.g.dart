@@ -11,13 +11,16 @@ class $ProfilesTableTable extends ProfilesTable
   $ProfilesTableTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
     'id',
     aliasedName,
     false,
-    check: () => ComparableExpr(id.length).isBiggerThanValue(0),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -53,8 +56,6 @@ class $ProfilesTableTable extends ProfilesTable
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -82,7 +83,7 @@ class $ProfilesTableTable extends ProfilesTable
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ProfilesTableData(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
       name: attachedDatabase.typeMapping.read(
@@ -104,7 +105,7 @@ class $ProfilesTableTable extends ProfilesTable
 
 class ProfilesTableData extends DataClass
     implements Insertable<ProfilesTableData> {
-  final String id;
+  final int id;
   final String name;
   final String seed;
   const ProfilesTableData({
@@ -115,7 +116,7 @@ class ProfilesTableData extends DataClass
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
+    map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     map['seed'] = Variable<String>(seed);
     return map;
@@ -135,7 +136,7 @@ class ProfilesTableData extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ProfilesTableData(
-      id: serializer.fromJson<String>(json['id']),
+      id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       seed: serializer.fromJson<String>(json['seed']),
     );
@@ -144,13 +145,13 @@ class ProfilesTableData extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
+      'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'seed': serializer.toJson<String>(seed),
     };
   }
 
-  ProfilesTableData copyWith({String? id, String? name, String? seed}) =>
+  ProfilesTableData copyWith({int? id, String? name, String? seed}) =>
       ProfilesTableData(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -186,49 +187,41 @@ class ProfilesTableData extends DataClass
 }
 
 class ProfilesTableCompanion extends UpdateCompanion<ProfilesTableData> {
-  final Value<String> id;
+  final Value<int> id;
   final Value<String> name;
   final Value<String> seed;
-  final Value<int> rowid;
   const ProfilesTableCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.seed = const Value.absent(),
-    this.rowid = const Value.absent(),
   });
   ProfilesTableCompanion.insert({
-    required String id,
+    this.id = const Value.absent(),
     required String name,
     required String seed,
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name),
+  }) : name = Value(name),
        seed = Value(seed);
   static Insertable<ProfilesTableData> custom({
-    Expression<String>? id,
+    Expression<int>? id,
     Expression<String>? name,
     Expression<String>? seed,
-    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (seed != null) 'seed': seed,
-      if (rowid != null) 'rowid': rowid,
     });
   }
 
   ProfilesTableCompanion copyWith({
-    Value<String>? id,
+    Value<int>? id,
     Value<String>? name,
     Value<String>? seed,
-    Value<int>? rowid,
   }) {
     return ProfilesTableCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       seed: seed ?? this.seed,
-      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -236,16 +229,13 @@ class ProfilesTableCompanion extends UpdateCompanion<ProfilesTableData> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<String>(id.value);
+      map['id'] = Variable<int>(id.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
     if (seed.present) {
       map['seed'] = Variable<String>(seed.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -255,8 +245,7 @@ class ProfilesTableCompanion extends UpdateCompanion<ProfilesTableData> {
     return (StringBuffer('ProfilesTableCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('seed: $seed, ')
-          ..write('rowid: $rowid')
+          ..write('seed: $seed')
           ..write(')'))
         .toString();
   }
@@ -270,23 +259,26 @@ class $ExpensesTableTable extends ExpensesTable
   $ExpensesTableTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
     'id',
     aliasedName,
     false,
-    check: () => ComparableExpr(id.length).isBiggerThanValue(0),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
   );
   static const VerificationMeta _profileIdMeta = const VerificationMeta(
     'profileId',
   );
   @override
-  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+  late final GeneratedColumn<int> profileId = GeneratedColumn<int>(
     'profile_id',
     aliasedName,
     false,
-    type: DriftSqlType.string,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES profiles (id) ON DELETE CASCADE',
@@ -362,8 +354,6 @@ class $ExpensesTableTable extends ExpensesTable
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
     if (data.containsKey('profile_id')) {
       context.handle(
@@ -414,11 +404,11 @@ class $ExpensesTableTable extends ExpensesTable
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ExpensesTableData(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
       profileId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}profile_id'],
       )!,
       amount: attachedDatabase.typeMapping.read(
@@ -448,8 +438,8 @@ class $ExpensesTableTable extends ExpensesTable
 
 class ExpensesTableData extends DataClass
     implements Insertable<ExpensesTableData> {
-  final String id;
-  final String profileId;
+  final int id;
+  final int profileId;
   final int amount;
   final String category;
   final String? description;
@@ -465,8 +455,8 @@ class ExpensesTableData extends DataClass
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['profile_id'] = Variable<String>(profileId);
+    map['id'] = Variable<int>(id);
+    map['profile_id'] = Variable<int>(profileId);
     map['amount'] = Variable<int>(amount);
     map['category'] = Variable<String>(category);
     if (!nullToAbsent || description != null) {
@@ -495,8 +485,8 @@ class ExpensesTableData extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ExpensesTableData(
-      id: serializer.fromJson<String>(json['id']),
-      profileId: serializer.fromJson<String>(json['profileId']),
+      id: serializer.fromJson<int>(json['id']),
+      profileId: serializer.fromJson<int>(json['profileId']),
       amount: serializer.fromJson<int>(json['amount']),
       category: serializer.fromJson<String>(json['category']),
       description: serializer.fromJson<String?>(json['description']),
@@ -507,8 +497,8 @@ class ExpensesTableData extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'profileId': serializer.toJson<String>(profileId),
+      'id': serializer.toJson<int>(id),
+      'profileId': serializer.toJson<int>(profileId),
       'amount': serializer.toJson<int>(amount),
       'category': serializer.toJson<String>(category),
       'description': serializer.toJson<String?>(description),
@@ -517,8 +507,8 @@ class ExpensesTableData extends DataClass
   }
 
   ExpensesTableData copyWith({
-    String? id,
-    String? profileId,
+    int? id,
+    int? profileId,
     int? amount,
     String? category,
     Value<String?> description = const Value.absent(),
@@ -575,13 +565,12 @@ class ExpensesTableData extends DataClass
 }
 
 class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
-  final Value<String> id;
-  final Value<String> profileId;
+  final Value<int> id;
+  final Value<int> profileId;
   final Value<int> amount;
   final Value<String> category;
   final Value<String?> description;
   final Value<String> occurredOn;
-  final Value<int> rowid;
   const ExpensesTableCompanion({
     this.id = const Value.absent(),
     this.profileId = const Value.absent(),
@@ -589,28 +578,24 @@ class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
     this.category = const Value.absent(),
     this.description = const Value.absent(),
     this.occurredOn = const Value.absent(),
-    this.rowid = const Value.absent(),
   });
   ExpensesTableCompanion.insert({
-    required String id,
-    required String profileId,
+    this.id = const Value.absent(),
+    required int profileId,
     required int amount,
     this.category = const Value.absent(),
     this.description = const Value.absent(),
     required String occurredOn,
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       profileId = Value(profileId),
+  }) : profileId = Value(profileId),
        amount = Value(amount),
        occurredOn = Value(occurredOn);
   static Insertable<ExpensesTableData> custom({
-    Expression<String>? id,
-    Expression<String>? profileId,
+    Expression<int>? id,
+    Expression<int>? profileId,
     Expression<int>? amount,
     Expression<String>? category,
     Expression<String>? description,
     Expression<String>? occurredOn,
-    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -619,18 +604,16 @@ class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
       if (category != null) 'category': category,
       if (description != null) 'description': description,
       if (occurredOn != null) 'occurred_on': occurredOn,
-      if (rowid != null) 'rowid': rowid,
     });
   }
 
   ExpensesTableCompanion copyWith({
-    Value<String>? id,
-    Value<String>? profileId,
+    Value<int>? id,
+    Value<int>? profileId,
     Value<int>? amount,
     Value<String>? category,
     Value<String?>? description,
     Value<String>? occurredOn,
-    Value<int>? rowid,
   }) {
     return ExpensesTableCompanion(
       id: id ?? this.id,
@@ -639,7 +622,6 @@ class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
       category: category ?? this.category,
       description: description ?? this.description,
       occurredOn: occurredOn ?? this.occurredOn,
-      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -647,10 +629,10 @@ class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<String>(id.value);
+      map['id'] = Variable<int>(id.value);
     }
     if (profileId.present) {
-      map['profile_id'] = Variable<String>(profileId.value);
+      map['profile_id'] = Variable<int>(profileId.value);
     }
     if (amount.present) {
       map['amount'] = Variable<int>(amount.value);
@@ -664,9 +646,6 @@ class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
     if (occurredOn.present) {
       map['occurred_on'] = Variable<String>(occurredOn.value);
     }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
     return map;
   }
 
@@ -678,8 +657,7 @@ class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
           ..write('amount: $amount, ')
           ..write('category: $category, ')
           ..write('description: $description, ')
-          ..write('occurredOn: $occurredOn, ')
-          ..write('rowid: $rowid')
+          ..write('occurredOn: $occurredOn')
           ..write(')'))
         .toString();
   }
@@ -722,17 +700,15 @@ abstract class _$DatabaseClient extends GeneratedDatabase {
 
 typedef $$ProfilesTableTableCreateCompanionBuilder =
     ProfilesTableCompanion Function({
-      required String id,
+      Value<int> id,
       required String name,
       required String seed,
-      Value<int> rowid,
     });
 typedef $$ProfilesTableTableUpdateCompanionBuilder =
     ProfilesTableCompanion Function({
-      Value<String> id,
+      Value<int> id,
       Value<String> name,
       Value<String> seed,
-      Value<int> rowid,
     });
 
 final class $$ProfilesTableTableReferences
@@ -758,7 +734,7 @@ final class $$ProfilesTableTableReferences
     final manager = $$ExpensesTableTableTableManager(
       $_db,
       $_db.expensesTable,
-    ).filter((f) => f.profileId.id.sqlEquals($_itemColumn<String>('id')!));
+    ).filter((f) => f.profileId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_expensesTableRefsTable($_db));
     return ProcessedTableManager(
@@ -776,7 +752,7 @@ class $$ProfilesTableTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
+  ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -826,7 +802,7 @@ class $$ProfilesTableTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
+  ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -851,7 +827,7 @@ class $$ProfilesTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
+  GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
@@ -914,30 +890,16 @@ class $$ProfilesTableTableTableManager
               $$ProfilesTableTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$ProfilesTableTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> id = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<String> seed = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => ProfilesTableCompanion(
-                id: id,
-                name: name,
-                seed: seed,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String id,
-                required String name,
-                required String seed,
-                Value<int> rowid = const Value.absent(),
-              }) => ProfilesTableCompanion.insert(
-                id: id,
-                name: name,
-                seed: seed,
-                rowid: rowid,
-              ),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> seed = const Value.absent(),
+          }) => ProfilesTableCompanion(id: id, name: name, seed: seed),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String name,
+            required String seed,
+          }) => ProfilesTableCompanion.insert(id: id, name: name, seed: seed),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
@@ -999,23 +961,21 @@ typedef $$ProfilesTableTableProcessedTableManager =
     >;
 typedef $$ExpensesTableTableCreateCompanionBuilder =
     ExpensesTableCompanion Function({
-      required String id,
-      required String profileId,
+      Value<int> id,
+      required int profileId,
       required int amount,
       Value<String> category,
       Value<String?> description,
       required String occurredOn,
-      Value<int> rowid,
     });
 typedef $$ExpensesTableTableUpdateCompanionBuilder =
     ExpensesTableCompanion Function({
-      Value<String> id,
-      Value<String> profileId,
+      Value<int> id,
+      Value<int> profileId,
       Value<int> amount,
       Value<String> category,
       Value<String?> description,
       Value<String> occurredOn,
-      Value<int> rowid,
     });
 
 final class $$ExpensesTableTableReferences
@@ -1035,7 +995,7 @@ final class $$ExpensesTableTableReferences
       db.profilesTable.createAlias('expenses__profile_id__profiles__id');
 
   $$ProfilesTableTableProcessedTableManager get profileId {
-    final $_column = $_itemColumn<String>('profile_id')!;
+    final $_column = $_itemColumn<int>('profile_id')!;
 
     final manager = $$ProfilesTableTableTableManager(
       $_db,
@@ -1058,7 +1018,7 @@ class $$ExpensesTableTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
+  ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -1116,7 +1076,7 @@ class $$ExpensesTableTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
+  ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -1174,7 +1134,7 @@ class $$ExpensesTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
+  GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<int> get amount =>
@@ -1247,13 +1207,12 @@ class $$ExpensesTableTableTableManager
               $$ExpensesTableTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<String> id = const Value.absent(),
-                Value<String> profileId = const Value.absent(),
+                Value<int> id = const Value.absent(),
+                Value<int> profileId = const Value.absent(),
                 Value<int> amount = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<String> occurredOn = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
               }) => ExpensesTableCompanion(
                 id: id,
                 profileId: profileId,
@@ -1261,17 +1220,15 @@ class $$ExpensesTableTableTableManager
                 category: category,
                 description: description,
                 occurredOn: occurredOn,
-                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String id,
-                required String profileId,
+                Value<int> id = const Value.absent(),
+                required int profileId,
                 required int amount,
                 Value<String> category = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 required String occurredOn,
-                Value<int> rowid = const Value.absent(),
               }) => ExpensesTableCompanion.insert(
                 id: id,
                 profileId: profileId,
@@ -1279,7 +1236,6 @@ class $$ExpensesTableTableTableManager
                 category: category,
                 description: description,
                 occurredOn: occurredOn,
-                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(

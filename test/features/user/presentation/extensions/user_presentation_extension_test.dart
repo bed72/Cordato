@@ -6,7 +6,7 @@ import 'package:cordato/features/user/presentation/extensions/user_presentation_
 void main() {
   for (final name in ['', '   ', '\t\n']) {
     test('displays Cordato for an empty name: ${name.codeUnits}', () {
-      final user = UserEntity(name: name);
+      final user = UserEntity(id: 1, name: name, seed: 'seed');
 
       expect(user.displayName, 'Cordato');
       expect(user.name, name);
@@ -14,7 +14,7 @@ void main() {
   }
 
   test('preserves a supplied name without normalization', () {
-    const user = UserEntity(name: '  Gabriel  ');
+    const user = UserEntity(id: 1, name: '  Gabriel  ', seed: 'seed');
 
     expect(user.displayName, '  Gabriel  ');
   });

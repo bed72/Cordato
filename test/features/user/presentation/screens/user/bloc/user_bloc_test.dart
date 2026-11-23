@@ -14,8 +14,8 @@ import 'package:cordato/features/user/presentation/screens/user/bloc/user_state.
 import '../../../../../../support/user/mocks/user_repository_mock.dart';
 
 void main() {
-  const user = UserEntity(name: 'Pessoa', avatar: 'initial-seed');
-  const saved = UserEntity(name: 'Perfil local', avatar: '  seed  ');
+  const user = UserEntity(id: 1, name: 'Pessoa', seed: 'initial-seed');
+  const saved = UserEntity(id: 1, name: 'Perfil local', seed: '  seed  ');
   const errors = ErrorsEntity(
     errors: [
       ErrorEntity(code: 'storage_failure'),
@@ -29,7 +29,7 @@ void main() {
   setUp(() {
     repository = UserRepositoryMock();
     when(() => repository.get()).thenAnswer((_) async => user);
-    when(() => repository.update(avatar: avatar.seed))
+    when(() => repository.update(seed: avatar.seed))
         .thenAnswer((_) async => saved);
   });
 
@@ -78,13 +78,13 @@ void main() {
         ),
       ],
       verify: (_) =>
-          verify(() => repository.update(avatar: avatar.seed)).called(1),
+          verify(() => repository.update(seed: avatar.seed)).called(1),
     );
 
     blocTest<UserBloc, UserState>(
       'does not confirm an avatar the repository did not save',
       build: () {
-        when(() => repository.update(avatar: avatar.seed))
+        when(() => repository.update(seed: avatar.seed))
             .thenAnswer((_) async => user);
         return UserBloc(repository: repository);
       },
@@ -106,14 +106,14 @@ void main() {
     for (final event in [load, avatar]) {
       Future<UserEntity> request() => switch (event) {
         UserRequestedEvent() => repository.get(),
-        UserAvatarSubmittedEvent() => repository.update(avatar: avatar.seed),
+        UserAvatarSubmittedEvent() => repository.update(seed: avatar.seed),
       };
       void stub(Future<UserEntity> Function() answer) {
         switch (event) {
           case UserRequestedEvent():
             when(() => repository.get()).thenAnswer((_) => answer());
           case UserAvatarSubmittedEvent():
-            when(() => repository.update(avatar: avatar.seed))
+            when(() => repository.update(seed: avatar.seed))
                 .thenAnswer((_) => answer());
         }
       }

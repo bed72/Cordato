@@ -11,10 +11,10 @@ final class DashboardUserPreviewRepository({final ErrorsEntity? failure})
     if (failure != null) {
       throw UserException(errors: failure!);
     }
-    return const UserEntity(name: 'Gabriel', avatar: 'preview-avatar');
+    return const UserEntity(id: 1, name: 'Gabriel', seed: 'preview-avatar');
   }
 
   @override
-  Future<UserEntity> update({String? name, String? avatar}) async =>
+  Future<UserEntity> update({String? name, String? seed}) async =>
       throw UserException(errors: .unknown());
 }

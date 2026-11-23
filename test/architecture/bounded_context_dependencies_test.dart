@@ -8,6 +8,8 @@ final _importPattern = RegExp(
 
 const _financialContexts = {'expense', 'budget', 'family'};
 const _forbiddenDomainImports = {
+  'package:drift/',
+  'package:sqlite3/',
   'package:tostore/',
   'package:localstore/',
   'package:record/',
@@ -27,6 +29,8 @@ const _forbiddenDomainImports = {
   'package:flutter_secure_storage/',
 };
 const _forbiddenPresentationImports = {
+  'package:drift/',
+  'package:sqlite3/',
   'package:tostore/',
   'package:localstore/',
   'package:record/',

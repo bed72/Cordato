@@ -21,9 +21,7 @@ final class const UserNameWidget({
     return _buildContent(
       context,
       user?.displayName ?? 'Cordato',
-      seed: user == null
-          ? 'cordato-placeholder'
-          : user?.avatar ?? 'cordato-user',
+      seed: user?.seed ?? 'cordato-placeholder',
     );
   }
 

@@ -32,7 +32,7 @@ void main() {
   late MetricsRepositoryMock metricsRepository;
   late List<StreamSubscription<DashboardState>> subscriptions;
   final today = DateTime(2026, 10, 19, 16, 30);
-  const profile = UserEntity(name: 'Gabriel', avatar: 'profile-seed');
+  const profile = UserEntity(id: 1, name: 'Gabriel', seed: 'profile-seed');
 
   ExpensePageEntity page(List<DateTime> dates, {int? nextPage}) =>
       ExpensePageEntity(
@@ -646,7 +646,7 @@ void main() {
 
   group('Profile refresh and lifecycle', () {
     test('a confirmed profile with an empty name remains valid', () async {
-      const unnamed = UserEntity(name: '');
+      const unnamed = UserEntity(id: 1, name: '', seed: 'profile-seed');
       when(() => users.get()).thenAnswer((_) async => unnamed);
 
       await send(DashboardOpened());
@@ -666,8 +666,9 @@ void main() {
         clearInteractions(metricsRepository);
         final states = recordStates();
         const updatedProfile = UserEntity(
+          id: 1,
           name: 'Gabriel atualizado',
-          avatar: 'updated-avatar',
+          seed: 'updated-avatar',
         );
         when(() => users.get()).thenAnswer((_) async => updatedProfile);
         await send(DashboardUserRequested());

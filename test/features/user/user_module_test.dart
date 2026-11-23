@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:localstore/localstore.dart';
+import 'package:drift/native.dart';
 
+import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
 import 'package:cordato/features/user/user_module.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
@@ -12,22 +13,16 @@ import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_bloc.d
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_event.dart';
 import 'package:cordato/features/user/presentation/screens/edit/bloc/edit_state.dart';
 
-import '../../support/core/storage/localstore_test_storage.dart';
-
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-  final storage = LocalstoreTestStorage();
+  late DatabaseClient database;
   late ModularBootstrap boot;
 
-  setUpAll(storage.open);
-  tearDownAll(storage.close);
-
-  setUp(() async {
-    await storage.initialize();
+  setUp(() {
+    database = DatabaseClient(executor: NativeDatabase.memory());
     boot = bootstrapModule(
       createModule(
         register: (context) => context
-          ..addInstance<Localstore>(storage.database)
+          ..addInstance<DatabaseClient>(database)
           ..module(userModule),
       ),
     );
@@ -35,7 +30,7 @@ void main() {
 
   tearDown(() async {
     boot.injector.dispose();
-    await storage.clear();
+    await database.close();
   });
 
   test(
@@ -47,7 +42,8 @@ void main() {
 
       expect(boot.injector.get<IUserRepository>(), same(repository));
       expect(profile.name, 'Cordato');
-      expect(profile.avatar, isNotEmpty);
+      expect(profile.id, greaterThan(0));
+      expect(profile.seed, isNotEmpty);
     },
   );
 
@@ -89,16 +85,15 @@ void main() {
     final original = await repository.get();
     final finished = first.stream.firstWhere((state) => state is EditSuccess);
 
-    await storage.writing({'Gabriel'}, () async {
-      first.add(const EditSubmittedEvent(name: 'Gabriel'));
-      await finished;
-    });
+    first.add(const EditSubmittedEvent(name: 'Gabriel'));
+    await finished;
     final saved = await repository.get();
 
     expect(first, isNot(same(second)));
     expect(second.state, isA<EditInitial>());
     expect(saved.name, 'Gabriel');
-    expect(saved.avatar, original.avatar);
+    expect(saved.id, original.id);
+    expect(saved.seed, original.seed);
   });
 
   test('registers only the two local profile destinations', () {
@@ -117,9 +112,7 @@ void main() {
       );
 
       boot.manager.enter('profile', route.ownerTags);
-      await storage.writing({
-        'Gabriel',
-      }, () => repository.update(name: 'Gabriel'));
+      await repository.update(name: 'Gabriel');
       boot.manager.leave('profile', route.ownerTags);
       final sharedRepository = boot.injector.get<IUserRepository>();
       final profile = await sharedRepository.get();

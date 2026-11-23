@@ -7,17 +7,18 @@ import 'package:cordato/features/user/application/repositories/interface_user_re
 final class UserPreviewRepository({final bool rejectAvatar = false})
     implements IUserRepository {
   UserEntity _user = const UserEntity(
+    id: 1,
     name: 'Gabriel Ramos',
-    avatar: 'preview-avatar',
+    seed: 'preview-avatar',
   );
 
   @override
   Future<UserEntity> get() async => _user;
 
   @override
-  Future<UserEntity> update({String? name, String? avatar}) async {
+  Future<UserEntity> update({String? name, String? seed}) async {
     await Future<void>.delayed(const Duration(milliseconds: 800));
-    if (rejectAvatar && avatar != null) {
+    if (rejectAvatar && seed != null) {
       throw UserException(
         errors: const ErrorsEntity(
           errors: [
@@ -27,8 +28,9 @@ final class UserPreviewRepository({final bool rejectAvatar = false})
       );
     }
     _user = UserEntity(
+      id: _user.id,
       name: name ?? _user.name,
-      avatar: avatar ?? _user.avatar,
+      seed: seed ?? _user.seed,
     );
     return _user;
   }

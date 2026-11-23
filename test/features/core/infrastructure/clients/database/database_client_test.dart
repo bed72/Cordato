@@ -19,29 +19,25 @@ void main() {
       await database.close();
     });
 
-    Future<void> insertProfile({String id = 'profile-1'}) async {
-      await database
+    Future<int> insertProfile() async {
+      return database
           .into(database.profilesTable)
           .insert(
-            ProfilesTableCompanion.insert(
-              id: id,
-              name: 'Cordato',
-              seed: 'seed-1',
-            ),
+            ProfilesTableCompanion.insert(name: 'Cordato', seed: 'seed-1'),
           );
     }
 
-    Future<void> insertExpense({
-      String id = 'expense-1',
-      String profileId = 'profile-1',
+    Future<int> insertExpense({
+      int? id,
+      int profileId = 1,
       int amount = 1250,
       String occurredOn = '2026-11-23',
     }) async {
-      await database
+      return database
           .into(database.expensesTable)
           .insert(
             ExpensesTableCompanion.insert(
-              id: id,
+              id: id == null ? const Value.absent() : Value(id),
               profileId: profileId,
               amount: amount,
               occurredOn: occurredOn,
@@ -69,14 +65,58 @@ void main() {
       test('permite somente um perfil mesmo com IDs diferentes', () async {
         await insertProfile();
 
-        await expectLater(
-          insertProfile(id: 'profile-2'),
-          throwsA(isA<SqliteException>()),
-        );
+        await expectLater(insertProfile(), throwsA(isA<SqliteException>()));
 
         final profiles = await database.select(database.profilesTable).get();
-        expect(profiles.single.id, 'profile-1');
+        expect(profiles.single.id, 1);
       });
+
+      test(
+        'gera IDs inteiros nas duas tabelas sem fornecer IDs no insert',
+        () async {
+          final profileId = await insertProfile();
+          final firstExpenseId = await insertExpense(profileId: profileId);
+          final secondExpenseId = await insertExpense(profileId: profileId);
+
+          final profile = await database
+              .select(database.profilesTable)
+              .getSingle();
+          final expenses = await database.select(database.expensesTable).get();
+
+          expect(profileId, greaterThan(0));
+          expect(profile.id, profileId);
+          expect(secondExpenseId, greaterThan(firstExpenseId));
+          expect(
+            expenses.map((expense) => expense.id),
+            unorderedEquals([firstExpenseId, secondExpenseId]),
+          );
+          expect(expenses.map((expense) => expense.profileId).toSet(), {
+            profileId,
+          });
+        },
+      );
+
+      test(
+        'não reutiliza IDs após exclusão de despesas e cascade do perfil',
+        () async {
+          final originalProfileId = await insertProfile();
+          final originalExpenseId = await insertExpense(
+            profileId: originalProfileId,
+          );
+          await database.delete(database.expensesTable).go();
+          final nextExpenseId = await insertExpense(
+            profileId: originalProfileId,
+          );
+
+          await database.delete(database.profilesTable).go();
+          final nextProfileId = await insertProfile();
+          final newestExpenseId = await insertExpense(profileId: nextProfileId);
+
+          expect(nextExpenseId, greaterThan(originalExpenseId));
+          expect(nextProfileId, greaterThan(originalProfileId));
+          expect(newestExpenseId, greaterThan(nextExpenseId));
+        },
+      );
 
       test('preserva ID e despesas ao editar nome e seed', () async {
         await insertProfile();
@@ -97,7 +137,7 @@ void main() {
         final expense = await database
             .select(database.expensesTable)
             .getSingle();
-        expect(profile.id, 'profile-1');
+        expect(profile.id, 1);
         expect(profile.name, 'Gabriel');
         expect(profile.seed, 'seed-2');
         expect(expense.profileId, profile.id);
@@ -142,8 +182,8 @@ void main() {
 
         await expectLater(
           database.customStatement(
-            "INSERT INTO expenses (id, profile_id, amount, occurred_on) "
-            "VALUES ('expense-1', 'profile-1', 1.5, '2026-11-23')",
+            "INSERT INTO expenses (profile_id, amount, occurred_on) "
+            "VALUES (1, 1.5, '2026-11-23')",
           ),
           throwsA(isA<SqliteException>()),
         );
@@ -178,7 +218,7 @@ void main() {
         expect(expense.occurredOn, '2024-02-29');
       });
 
-      test('rejeita ID vazio do perfil por SQL direto', () async {
+      test('rejeita ID textual do perfil por SQL direto', () async {
         await expectLater(
           database.customStatement(
             "INSERT INTO profiles (id, name, seed) VALUES ('', 'Cordato', 'seed')",
@@ -191,7 +231,10 @@ void main() {
         await insertProfile();
         await insertExpense();
 
-        await expectLater(insertExpense(), throwsA(isA<SqliteException>()));
+        await expectLater(
+          insertExpense(id: 1),
+          throwsA(isA<SqliteException>()),
+        );
       });
 
       for (final field in ['profile_id', 'amount', 'occurred_on']) {
@@ -200,11 +243,10 @@ void main() {
 
           await expectLater(
             database.customStatement(
-              'INSERT INTO expenses (id, profile_id, amount, occurred_on) '
-              'VALUES (?, ?, ?, ?)',
+              'INSERT INTO expenses (profile_id, amount, occurred_on) '
+              'VALUES (?, ?, ?)',
               [
-                'expense-1',
-                field == 'profile_id' ? null : 'profile-1',
+                field == 'profile_id' ? null : 1,
                 field == 'amount' ? null : 100,
                 field == 'occurred_on' ? null : '2026-11-23',
               ],
@@ -214,13 +256,13 @@ void main() {
         });
       }
 
-      test('rejeita ID vazio da despesa por SQL direto', () async {
+      test('rejeita ID textual da despesa por SQL direto', () async {
         await insertProfile();
 
         await expectLater(
           database.customStatement(
             "INSERT INTO expenses (id, profile_id, amount, occurred_on) "
-            "VALUES ('', 'profile-1', 100, '2026-11-23')",
+            "VALUES ('invalid-id', 1, 100, '2026-11-23')",
           ),
           throwsA(isA<SqliteException>()),
         );
@@ -231,8 +273,8 @@ void main() {
 
         await expectLater(
           database.customStatement(
-            "INSERT INTO expenses (id, profile_id, amount, category, occurred_on) "
-            "VALUES ('expense-1', 'profile-1', 100, '', '2026-11-23')",
+            "INSERT INTO expenses (profile_id, amount, category, occurred_on) "
+            "VALUES (1, 100, '', '2026-11-23')",
           ),
           throwsA(isA<SqliteException>()),
         );
@@ -249,13 +291,13 @@ void main() {
         final profile = await database
             .select(database.profilesTable)
             .getSingle();
-        expect(profile.id, 'profile-1');
+        expect(profile.id, 1);
         expect(await database.select(database.expensesTable).get(), isEmpty);
       });
       test('apaga todas as despesas quando remove o perfil', () async {
         await insertProfile();
         await insertExpense();
-        await insertExpense(id: 'expense-2');
+        await insertExpense();
 
         await database.delete(database.profilesTable).go();
 
@@ -271,7 +313,7 @@ void main() {
 
           await database.transaction(() async {
             await database.delete(database.profilesTable).go();
-            await insertProfile(id: 'profile-2');
+            await insertProfile();
           });
 
           await expectLater(insertExpense(), throwsA(isA<SqliteException>()));
@@ -279,7 +321,7 @@ void main() {
           final profile = await database
               .select(database.profilesTable)
               .getSingle();
-          expect(profile.id, 'profile-2');
+          expect(profile.id, 2);
           expect(await database.select(database.expensesTable).get(), isEmpty);
         },
       );
@@ -291,8 +333,8 @@ void main() {
         await expectLater(
           database.transaction(() async {
             await database.delete(database.profilesTable).go();
-            await insertProfile(id: 'profile-2');
-            await insertProfile(id: 'profile-3');
+            await insertProfile();
+            await insertProfile();
           }),
           throwsA(isA<SqliteException>()),
         );
@@ -303,7 +345,7 @@ void main() {
         final expense = await database
             .select(database.expensesTable)
             .getSingle();
-        expect(profile.id, 'profile-1');
+        expect(profile.id, 1);
         expect(expense.profileId, profile.id);
       });
     });
@@ -319,11 +361,10 @@ void main() {
       );
 
       try {
-        await initial
+        final profileId = await initial
             .into(initial.profilesTable)
             .insert(
               ProfilesTableCompanion.insert(
-                id: 'persistent',
                 name: 'Cordato',
                 seed: 'saved-seed',
               ),
@@ -332,8 +373,7 @@ void main() {
             .into(initial.expensesTable)
             .insert(
               ExpensesTableCompanion.insert(
-                id: 'saved-expense',
-                profileId: 'persistent',
+                profileId: profileId,
                 amount: 123,
                 occurredOn: '2026-11-23',
               ),
@@ -355,16 +395,13 @@ void main() {
             .getSingle();
         expect(profile.seed, 'saved-seed');
         expect(expense.amount, 123);
+        expect(expense.profileId, profile.id);
 
         await expectLater(
           reopened
               .into(reopened.profilesTable)
               .insert(
-                ProfilesTableCompanion.insert(
-                  id: 'second',
-                  name: 'Cordato',
-                  seed: 'seed',
-                ),
+                ProfilesTableCompanion.insert(name: 'Cordato', seed: 'seed'),
               ),
           throwsA(
             isA<DriftRemoteException>().having(
@@ -377,6 +414,24 @@ void main() {
 
         await reopened.delete(reopened.profilesTable).go();
         expect(await reopened.select(reopened.expensesTable).get(), isEmpty);
+
+        final newProfileId = await reopened
+            .into(reopened.profilesTable)
+            .insert(
+              ProfilesTableCompanion.insert(name: 'Cordato', seed: 'new-seed'),
+            );
+        final newExpenseId = await reopened
+            .into(reopened.expensesTable)
+            .insert(
+              ExpensesTableCompanion.insert(
+                profileId: newProfileId,
+                amount: 100,
+                occurredOn: '2026-11-23',
+              ),
+            );
+
+        expect(newProfileId, greaterThan(profile.id));
+        expect(newExpenseId, greaterThan(expense.id));
       } finally {
         await reopened.close();
       }

@@ -66,7 +66,11 @@ final class _UserScreenState extends State<UserScreen>
                             child: IgnorePointer(
                               child: UserSkeletonWidget(
                                 child: _buildUser(
-                                  const UserEntity(name: 'Nome do usuário'),
+                                  const UserEntity(
+                                    id: 0,
+                                    name: 'Nome do usuário',
+                                    seed: 'Cordato',
+                                  ),
                                   state,
                                 ),
                               ),

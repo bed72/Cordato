@@ -44,8 +44,7 @@ mixin UserScreenStateMixin on State<UserScreen> {
     super.dispose();
   }
 
-  String avatarSeed(UserEntity user) =>
-      _pendingAvatarSeed ?? user.avatar ?? 'Cordato';
+  String avatarSeed(UserEntity user) => _pendingAvatarSeed ?? user.seed;
 
   void generateAvatar(UserEntity user) {
     if (!bloc.state.canEdit) return;

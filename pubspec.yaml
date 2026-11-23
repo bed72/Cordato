@@ -39,6 +39,7 @@ dependencies:
   intl: ^0.20.3
   path: ^1.9.1
   drift: ^2.35.4
+  sqlite3: ^3.9.2
   path_provider: ^2.1.6
   flutter_modular: ^7.1.1
 

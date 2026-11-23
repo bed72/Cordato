@@ -16,7 +16,7 @@ import '../../../../../../support/user/mocks/user_repository_mock.dart';
 
 void main() {
   const event = EditSubmittedEvent(name: '  Nome original  ');
-  const user = UserEntity(name: 'Perfil local', avatar: 'seed');
+  const user = UserEntity(id: 1, name: 'Perfil local', seed: 'seed');
   const errors = ErrorsEntity(
     errors: [
       ErrorEntity(

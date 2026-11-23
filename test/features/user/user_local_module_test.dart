@@ -1,65 +1,51 @@
-import 'dart:convert';
-import 'dart:io';
-
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:localstore/localstore.dart';
 
+import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
 import 'package:cordato/features/user/user_module.dart';
 import 'package:cordato/features/user/application/repositories/interface_user_repository.dart';
 
-import '../../support/core/storage/localstore_test_storage.dart';
-
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  test('preserves the same profile across module compositions', () async {
+    final database = DatabaseClient(executor: NativeDatabase.memory());
+    addTearDown(database.close);
 
-  test(
-    'loads existing JSON and preserves changes across module compositions',
-    () async {
-      final storage = LocalstoreTestStorage();
-      await storage.open();
-      addTearDown(storage.close);
-      final directory = Directory('${storage.directory.path}/user');
-      await directory.create();
-      await File('${directory.path}/profile').writeAsString(
-        jsonEncode({'name': 'Existing name', 'avatar': 'existing-seed'}),
-      );
+    final first = bootstrapModule(
+      createModule(
+        register: (context) => context
+          ..addInstance<DatabaseClient>(database)
+          ..module(userModule),
+      ),
+    );
 
-      final first = bootstrapModule(
-        createModule(
-          register: (context) => context
-            ..addInstance<Localstore>(storage.database)
-            ..module(userModule),
-        ),
-      );
+    try {
       final repository = first.injector.get<IUserRepository>();
       final original = await repository.get();
 
-      expect(original.name, 'Existing name');
-      expect(original.avatar, 'existing-seed');
-      expect(first.injector.get<Localstore>(), same(storage.database));
+      await repository.update(name: 'Gabriel', seed: 'chosen-seed');
 
-      await storage.writing({
-        'Gabriel',
-        'chosen-seed',
-      }, () => repository.update(name: 'Gabriel', avatar: 'chosen-seed'));
-      first.injector.dispose();
+      expect(first.injector.get<DatabaseClient>(), same(database));
+
       final second = bootstrapModule(
         createModule(
           register: (context) => context
-            ..addInstance<Localstore>(storage.database)
+            ..addInstance<DatabaseClient>(database)
             ..module(userModule),
         ),
       );
-      addTearDown(second.injector.dispose);
-      final reopened = await second.injector.get<IUserRepository>().get();
 
-      expect(reopened.name, 'Gabriel');
-      expect(reopened.avatar, 'chosen-seed');
-      expect(
-        jsonDecode(await File('${directory.path}/profile').readAsString()),
-        {'name': 'Gabriel', 'avatar': 'chosen-seed'},
-      );
-    },
-  );
+      try {
+        final reloaded = await second.injector.get<IUserRepository>().get();
+
+        expect(reloaded.id, original.id);
+        expect(reloaded.name, 'Gabriel');
+        expect(reloaded.seed, 'chosen-seed');
+      } finally {
+        second.injector.dispose();
+      }
+    } finally {
+      first.injector.dispose();
+    }
+  });
 }

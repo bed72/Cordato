@@ -5,10 +5,7 @@ class ProfilesTable extends Table {
   @override
   String get tableName => 'profiles';
 
-  TextColumn get id => text().check(id.length.isBiggerThanValue(0))();
+  IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
   TextColumn get seed => text()();
-
-  @override
-  Set<Column<Object>> get primaryKey => {id};
 }

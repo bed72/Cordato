@@ -33,10 +33,10 @@ final class UserBloc({required final IUserRepository repository})
         case UserAvatarSubmittedEvent(:final seed):
           emit(UserAvatarSaving(data: user!));
 
-          final data = await repository.update(avatar: seed);
+          final data = await repository.update(seed: seed);
           if (isClosed || emit.isDone) return;
 
-          if (data.avatar != seed) {
+          if (data.seed != seed) {
             emit(UserAvatarFailure(data: user, errors: .unknown()));
             return;
           }
