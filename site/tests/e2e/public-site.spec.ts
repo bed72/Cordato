@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { createStaticServer } from '../../tools/serve.mjs';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/*', (route) =>
@@ -183,4 +184,52 @@ test('icon motion follows keyboard focus and respects reduced motion', async ({ 
   await expect(path).toHaveCSS('animation-name', 'chevron-left');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(path).toHaveCSS('animation-name', 'none');
+});
+
+test('project URL loads styles, fonts, images and navigation inside /Cordato/', async ({
+  browser,
+}) => {
+  const server = createStaticServer(undefined, '/Cordato/');
+  await new Promise<void>((ready) => server.listen(0, '127.0.0.1', ready));
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Expected a local TCP server.');
+  }
+  const origin = `http://127.0.0.1:${address.port}`;
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  const outsideRequests: string[] = [];
+  page.on('request', (request) => {
+    if (!new URL(request.url()).pathname.startsWith('/Cordato/')) {
+      outsideRequests.push(request.url());
+    }
+  });
+
+  try {
+    for (const path of ['', 'privacy/', 'terms/', 'support/']) {
+      const response = await page.goto(origin + '/Cordato/' + path);
+      expect(response?.status()).toBe(200);
+      expect(
+        await page.evaluate(async () => {
+          await document.fonts.ready;
+          return document.fonts.check('16px Inter');
+        }),
+      ).toBe(true);
+      await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(15, 21, 17)');
+      expect(
+        await page
+          .locator('header.site-header img')
+          .evaluate((image: HTMLImageElement) => image.naturalWidth),
+      ).toBeGreaterThan(0);
+    }
+    await page.getByRole('link', { name: 'Como cuidamos dos seus dados' }).click();
+    await expect(page).toHaveURL(origin + '/Cordato/privacy/');
+    await page.getByRole('link', { name: 'Voltar ao início' }).click();
+    await expect(page).toHaveURL(origin + '/Cordato/');
+    expect(outsideRequests).toEqual([]);
+  } finally {
+    await context.close();
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(done));
+  }
 });

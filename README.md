@@ -59,6 +59,8 @@ release Android. O upload usa diretamente `site/public/`, sem instalar npm.
 GitHub Pages, domínio e DNS exigem configuração externa; a cópia do site não
 publica nem muda a visibilidade do repositório. Consulte
 [`site/deploy/README.md`](site/deploy/README.md).
+O destino escolhido para o site é o endereço gratuito
+`https://bed72.github.io/Cordato/`, sem domínio personalizado ou alteração de DNS.
 
 ## Desenvolvimento
 

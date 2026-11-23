@@ -30,7 +30,7 @@ Os testes de UI do site não mudam a política sem UI do aplicativo.
 - Mantenha as páginas alinhadas ao conteúdo de Information no app.
 - Cabeçalho e rodapé são repetidos nos quatro HTMLs para dispensar templates e
   geração. Ao alterá-los, atualize os quatro e verifique a consistência.
-- A publicação atual pressupõe domínio na raiz, não `/Cordato/`.
+- Links e assets devem ser relativos, funcionando tanto na raiz quanto em `/Cordato/`.
 - Não mude DNS, visibilidade ou faça deploy sem autorização explícita.
 
 ## Acessibilidade e fidelidade

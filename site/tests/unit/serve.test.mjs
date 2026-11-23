@@ -6,8 +6,8 @@ import { test } from 'node:test';
 
 import { createStaticServer } from '../../tools/serve.mjs';
 
-async function withServer(run, directory) {
-  const server = createStaticServer(directory);
+async function withServer(run, directory, mountPath) {
+  const server = createStaticServer(directory, mountPath);
   await new Promise((ready) => server.listen(0, '127.0.0.1', ready));
   const origin = `http://127.0.0.1:${server.address().port}`;
 
@@ -18,6 +18,33 @@ async function withServer(run, directory) {
     await new Promise((done) => server.close(done));
   }
 }
+
+test('serves the project subdirectory without depending on the host root', async () => {
+  await withServer(
+    async (origin) => {
+      for (const path of [
+        '',
+        'privacy/',
+        'terms/',
+        'support/',
+        'styles.css',
+        'fonts/Inter-Variable.ttf',
+        'images/logo.webp',
+      ]) {
+        const response = await fetch(origin + '/Cordato/' + path);
+        assert.equal(response.status, 200, path);
+        await response.arrayBuffer();
+      }
+      const outside = await fetch(origin + '/styles.css');
+      const redirect = await fetch(origin + '/Cordato', { redirect: 'manual' });
+      assert.equal(outside.status, 404);
+      assert.equal(redirect.status, 308);
+      assert.equal(redirect.headers.get('location'), '/Cordato/');
+    },
+    undefined,
+    '/Cordato/',
+  );
+});
 
 for (const path of ['/', '/privacy/', '/terms/', '/support/']) {
   test(`serves ${path} as a full HTML document`, async () => {

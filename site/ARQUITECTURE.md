@@ -91,6 +91,10 @@ verificação. `site-pages.yml` faz upload direto de `site/public`, manualmente
 na `main`, sem Node/npm ou build do projeto. Publicação não modifica Flutter,
 Android, Localstore ou seus secrets.
 
-O site usa assets absolutos, adequado à raiz de `app.cordato.cloud`.
-Não publicar sob `/Cordato/` sem adaptar os caminhos. DNS, domínio, visibilidade
-do repositório e execução de deploy exigem autorização separada.
+Links, imagens e CSS usam caminhos relativos; a fonte é relativa ao próprio CSS.
+O mesmo artefato funciona na raiz e em `https://bed72.github.io/Cordato/`, endereço
+gratuito escolhido para publicação. Um teste de navegador verifica páginas,
+fonte, imagens e navegação sob esse prefixo. O preview também pode montar esse
+prefixo por `createStaticServer(undefined, '/Cordato/')`.
+Domínio personalizado e DNS não são necessários. Qualquer mudança de DNS,
+domínio, visibilidade ou publicação ainda exige autorização.

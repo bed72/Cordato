@@ -15,7 +15,7 @@ node site/tools/serve.mjs
 
 Abra **http://127.0.0.1:4200**. Não precisa de `npm install` ou `npm ci` para o preview.
 Qualquer outro servidor estático que sirva `site/public/` também funciona.
-Não abra os HTMLs por `file://`, pois os assets usam caminhos a partir da raiz.
+Prefira o preview HTTP para conferir URLs, diretórios e navegação como na hospedagem.
 
 | Página       | Endereço    |
 | ------------ | ----------- |
@@ -33,14 +33,15 @@ O workflow manual
 [`site-pages.yml`](../.github/workflows/site-pages.yml)
 faz esse upload na `main`, sem instalar dependências npm e sem executar Flutter.
 
-O domínio pretendido é `app.cordato.cloud`.
-Assets absolutos pressupõem domínio na raiz: `bed72.github.io/Cordato/` não funciona
-sem adaptar os caminhos. Configuração e transição em
+O endereço gratuito escolhido é **https://bed72.github.io/Cordato/**.
+Os caminhos relativos mantêm imagens, fonte, CSS e navegação dentro de `/Cordato/`
+e também permitem testar na raiz local. Não é necessário domínio próprio ou DNS.
+Configuração e transição em
 [`deploy/README.md`](deploy/README.md).
 
 No GitHub Free, Pages exige repositório público. Publicar o repositório também
-expõe o app e seu histórico; não altere a visibilidade sem autorização e revisão
-de dados sensíveis. Nenhum deploy ou mudança de DNS foi feito por esta conversão.
+expõe o app e seu histórico; mudanças de visibilidade exigem autorização e revisão
+de dados sensíveis.
 
 ## Manutenção
 

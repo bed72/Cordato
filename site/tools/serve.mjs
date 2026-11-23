@@ -14,8 +14,11 @@ const contentTypes = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
-export function createStaticServer(directory = publicDirectory) {
+export function createStaticServer(directory = publicDirectory, mountPath = '/') {
   const root = realpathSync(directory);
+  if (!/^\/(?:[A-Za-z0-9_-]+\/)*$/.test(mountPath)) {
+    throw new TypeError('Use a mount path with leading and trailing slashes.');
+  }
 
   return createServer(async (request, response) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -34,7 +37,16 @@ export function createStaticServer(directory = publicDirectory) {
       return;
     }
 
-    const candidate = resolve(root, '.' + pathname);
+    if (mountPath !== '/' && pathname === mountPath.slice(0, -1)) {
+      response.writeHead(308, { Location: mountPath }).end();
+      return;
+    }
+    if (!pathname.startsWith(mountPath)) {
+      response.writeHead(404).end();
+      return;
+    }
+
+    const candidate = resolve(root, './' + pathname.slice(mountPath.length));
     if (candidate !== root && !candidate.startsWith(root + sep)) {
       response.writeHead(403).end();
       return;

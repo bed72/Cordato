@@ -9,14 +9,12 @@ instalação npm ou servidor de aplicação. Não publique o restante do reposit
    repositório privado exige plano compatível. Não altere a visibilidade sem
    autorização e revisão de arquivos e histórico para dados sensíveis.
 2. Em **Settings → Pages**, escolha **GitHub Actions** como fonte.
-3. Configure e verifique o domínio personalizado `app.cordato.cloud`.
-4. No DNS, configure `app` como CNAME para `bed72.github.io`, confirmando que essa
-   é a conta publicadora. Preserve os valores anteriores para reversão e revise
-   conflitos antes de mudar. Não altere domínio raiz ou outros subdomínios.
-5. Depois dos commits na `main` e verificações do site aprovadas, execute
+3. Deixe **Custom domain** vazio para usar o endereço gratuito
+   **https://bed72.github.io/Cordato/**. Não é necessário alterar DNS.
+4. Depois dos commits na `main` e verificações do site aprovadas, execute
    **Actions → Publish site to GitHub Pages → Run workflow**.
-6. Aguarde DNS/certificado e habilite **Enforce HTTPS**.
-7. Valide as quatro páginas, acesso direto, refresh, teclado e mobile antes de
+5. Aguarde a conclusão e confira o endereço HTTPS exibido no ambiente `github-pages`.
+6. Valide as quatro páginas, acesso direto, refresh, teclado e mobile antes de
    desativar a hospedagem anterior.
 
 Workflow:
@@ -25,10 +23,9 @@ Workflow:
 `site/public` e não executa Node, npm ou compilação do projeto.
 Adicioná-lo ao código não publica ou configura domínio/DNS.
 
-O endereço de projeto `bed72.github.io/Cordato/` não é suportado pelos caminhos
-absolutos atuais. Use o domínio próprio para servir na raiz. Para dispensar
-também a renovação do domínio, um site de usuário em `bed72.github.io` permitiria
-a raiz gratuita, mas criar/substituir esse repositório exige decisão separada.
+O endereço de projeto `bed72.github.io/Cordato/` é suportado por caminhos relativos
+em todas as páginas e no CSS. Não há cobrança por renovação de domínio nesse
+endereço. Um domínio personalizado continua sendo uma decisão separada.
 
 ## Arquivos publicados
 
@@ -46,8 +43,9 @@ third-party-notices.txt
 ```
 
 Os HTMLs já contêm todo o conteúdo, mesmo sem JavaScript. Diretórios permitem
-URLs limpas e refresh sem fallback SPA. `/privacy` pode redirecionar para
-`/privacy/`; confira o endereço HTTPS final informado à Google Play.
+URLs limpas e refresh sem fallback SPA. `/Cordato/privacy` pode redirecionar para
+`/Cordato/privacy/`; o link de privacidade para a Google Play passa a ser
+**https://bed72.github.io/Cordato/privacy/**.
 URLs desconhecidas recebem 404, sem páginas de autenticação ou exclusão.
 
 Preview opcional na raiz do repositório:

@@ -14,32 +14,36 @@ for (const path of pages) {
     assert.equal([...html.matchAll(/<h1\b/g)].length, 1);
     assert.match(html, /<main id="main-content" tabindex="-1">/);
     assert.match(html, /Pular para o conteúdo/);
-    assert.match(html, /href="\/styles\.css"/);
+    assert.match(html, /href="(?:\.\.\/)?styles\.css"/);
+    assert.doesNotMatch(html, /(?:href|src)="\//);
     assert.doesNotMatch(html, /<script\b|<base\b|_ng|ng-version|<app-|routerlink|delete-account/i);
     assert.match(html, /developer\.bed@gmail\.com|Fale com a gente/);
   });
 
   test(`${path} has valid local page, fragment, stylesheet, image and font links`, async () => {
     const html = await readFile(new URL(path, root), 'utf8');
-    const base = new URL(path, 'https://app.cordato.cloud/');
     const links = [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map((match) => match[1]);
 
-    for (const href of links) {
-      const url = new URL(href, base);
-      if (url.origin !== base.origin) {
-        assert.equal(url.protocol, 'mailto:');
-        continue;
-      }
+    for (const mount of ['/', '/Cordato/']) {
+      const base = new URL(path, 'https://bed72.github.io' + mount);
+      for (const href of links) {
+        const url = new URL(href, base);
+        if (url.origin !== base.origin) {
+          assert.equal(url.protocol, 'mailto:');
+          continue;
+        }
 
-      let target = new URL('.' + url.pathname, root);
-      if ((await stat(target)).isDirectory()) {
-        target = new URL('index.html', target.href.endsWith('/') ? target : target.href + '/');
-      }
-      assert.equal((await stat(target)).isFile(), true, href);
+        assert.ok(url.pathname.startsWith(mount), href);
+        let target = new URL(url.pathname.slice(mount.length) || '.', root);
+        if ((await stat(target)).isDirectory()) {
+          target = new URL('index.html', target.href.endsWith('/') ? target : target.href + '/');
+        }
+        assert.equal((await stat(target)).isFile(), true, href);
 
-      if (url.hash) {
-        const document = await readFile(target, 'utf8');
-        assert.ok(document.includes(`id="${decodeURIComponent(url.hash.slice(1))}"`), href);
+        if (url.hash) {
+          const document = await readFile(target, 'utf8');
+          assert.ok(document.includes(`id="${decodeURIComponent(url.hash.slice(1))}"`), href);
+        }
       }
     }
   });
@@ -97,12 +101,19 @@ test('all documents share the same header and footer without runtime templates',
   const documents = await Promise.all(pages.map((path) => readFile(new URL(path, root), 'utf8')));
   const header = /<header class="site-header">[\s\S]*?<\/header>/;
   const footer = /<footer class="site-footer">[\s\S]*?<\/footer>/;
-  const referenceHeader = documents[0].match(header)?.[0];
-  const referenceFooter = documents[0].match(footer)?.[0];
+  const normalized = documents.map((document) =>
+    document
+      .replaceAll('="../', '="')
+      .replaceAll('="./', '="')
+      .replace(/\s+/g, ' ')
+      .replace(/>\s+</g, '><'),
+  );
+  const referenceHeader = normalized[0].match(header)?.[0];
+  const referenceFooter = normalized[0].match(footer)?.[0];
 
   assert.ok(referenceHeader);
   assert.ok(referenceFooter);
-  for (const document of documents) {
+  for (const document of normalized) {
     assert.equal(document.match(header)?.[0], referenceHeader);
     assert.equal(document.match(footer)?.[0], referenceFooter);
   }
