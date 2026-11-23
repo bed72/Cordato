@@ -40,7 +40,7 @@ void main() {
         items: [
           for (final date in dates)
             ExpenseEntity(
-              id: date.toIso8601String(),
+              id: date.microsecondsSinceEpoch,
               category: .food,
               occurredOn: date,
               description: 'Despesa',

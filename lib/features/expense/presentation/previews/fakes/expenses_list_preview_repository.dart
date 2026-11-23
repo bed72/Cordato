@@ -4,7 +4,7 @@ import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
@@ -64,21 +64,21 @@ final class ExpensesListPreviewRepository({
   }
 
   @override
-  Future<ExpenseEntity> getById({required String id}) async {
+  Future<ExpenseEntity> getById({required int id}) async {
     final expense = items.where((expense) => expense.id == id).firstOrNull;
     if (expense == null) throw ExpenseException(errors: .unknown());
     return expense;
   }
 
   @override
-  Future<void> delete({required String id}) async =>
+  Future<void> delete({required int id}) async =>
       throw ExpenseException(errors: .unknown());
 
   @override
   Future<ExpenseEntity> create({
     required int cents,
     required String description,
-    ExpenseCategoryEnum category = .other,
+    CategoryEnum category = .other,
     DateTime? occurredOn,
   }) async {
     if (creationDelay != Duration.zero) {
@@ -90,7 +90,12 @@ final class ExpensesListPreviewRepository({
     }
 
     final createdExpense = ExpenseEntity(
-      id: 'copy-${items.length}',
+      id:
+          items.fold<int>(
+            0,
+            (highest, item) => item.id > highest ? item.id : highest,
+          ) +
+          1,
       description: description,
       cents: .create(cents: cents),
       category: category,
@@ -103,8 +108,8 @@ final class ExpensesListPreviewRepository({
 
   @override
   Future<ExpenseEntity> update({
-    required String id,
-    ExpenseCategoryEnum? category,
+    required int id,
+    CategoryEnum? category,
     int? cents,
     String? description,
     DateTime? occurredOn,

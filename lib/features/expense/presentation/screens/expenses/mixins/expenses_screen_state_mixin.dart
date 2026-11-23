@@ -8,7 +8,7 @@ import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/confirmation_bottom_sheet_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/bloc/expenses_bloc.dart';
@@ -20,8 +20,8 @@ import 'package:cordato/features/expense/presentation/screens/expenses/widgets/e
 
 mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   late ExpensesBloc bloc;
-  String? pendingDeleteId;
-  String? pendingReregistrationId;
+  int? pendingDeleteId;
+  int? pendingReregistrationId;
   bool isEditingExpense = false;
   final scrollController = ScrollController();
 
@@ -38,7 +38,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
   bool get isLoading => bloc.state.isLoading;
   bool get hasFailure => bloc.state is ExpensesFailure;
   bool get hasLoaded => bloc.state.data.hasLoaded;
-  String? get deletingExpenseId => switch (bloc.state) {
+  int? get deletingExpenseId => switch (bloc.state) {
     ExpensesDeleting(:final id) => id,
     _ => null,
   };
@@ -49,7 +49,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
       pendingReregistrationId == null;
   String? get categoryLabel => activeCategory == null
       ? null
-      : ExpenseCategoryEnum.values
+      : CategoryEnum.values
                 .where((value) => value.value == activeCategory)
                 .firstOrNull
                 ?.label ??
@@ -233,7 +233,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     refreshExpenses();
   }
 
-  Future<void> editExpense(String id) async {
+  Future<void> editExpense(int id) async {
     if (!canRemoveFilters) {
       return;
     }
@@ -262,7 +262,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
 
   void goBack() => context.pop();
 
-  Future<void> confirmDeleteExpense(String id) async {
+  Future<void> confirmDeleteExpense(int id) async {
     if (!canRemoveFilters) {
       return;
     }
@@ -290,7 +290,7 @@ mixin ExpensesScreenStateMixin on State<ExpensesScreen> {
     }
   }
 
-  Future<void> deleteExpenseAccessibly(String id) async =>
+  Future<void> deleteExpenseAccessibly(int id) async =>
       confirmDeleteExpense(id);
 
   Future<void> confirmReregisterExpense(ExpenseEntity expense) async {

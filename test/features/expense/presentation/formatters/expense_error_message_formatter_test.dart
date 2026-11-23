@@ -8,6 +8,8 @@ void main() {
     const messages = {
       'invalid_amount': 'Informe um valor maior que zero.',
       'expense_not_found': 'Não foi possível encontrar a despesa.',
+      'profile_not_found':
+          'Não foi possível carregar seu perfil. Tente novamente.',
     };
 
     for (final entry in messages.entries) {

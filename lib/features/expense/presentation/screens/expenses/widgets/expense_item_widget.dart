@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
 
 final class const ExpenseItemWidget({
@@ -10,7 +10,7 @@ final class const ExpenseItemWidget({
   required final String description,
   required final String formattedDate,
   required final String formattedValue,
-  required final ExpenseCategoryEnum category,
+  required final CategoryEnum category,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

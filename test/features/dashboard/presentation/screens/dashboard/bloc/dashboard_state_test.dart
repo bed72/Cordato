@@ -14,7 +14,7 @@ void main() {
   final populatedPage = ExpensePageEntity(
     items: [
       ExpenseEntity(
-        id: 'expense',
+        id: 1,
         description: 'Mercado',
         category: .food,
         occurredOn: month,

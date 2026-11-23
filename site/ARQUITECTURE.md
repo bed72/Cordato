@@ -8,7 +8,8 @@ um framework para HTML/CSS estáticos, preservando a aparência e os assets.
 O projeto web original foi mantido.
 
 O site apresenta o aplicativo, Política de Privacidade, Termos e Ajuda. Não é
-Flutter Web, backend ou consumidor do Localstore. Não há conta, login, exclusão
+Flutter Web, backend ou consumidor do banco do app (Drift/SQLite ou legado).
+Não há conta, login, exclusão
 remota, áudio ou IA. Solicitações sobre dados de versões antigas continuam
 orientadas pelo suporte, sem afirmar que esses dados foram apagados.
 
@@ -89,7 +90,7 @@ movimento reduzido e operação com JavaScript desabilitado.
 `../.github/workflows/site-test.yml` instala apenas essas ferramentas de
 verificação. `site-pages.yml` faz upload direto de `site/public`, manualmente
 na `main`, sem Node/npm ou build do projeto. Publicação não modifica Flutter,
-Android, Localstore ou seus secrets.
+Android, banco local do app ou seus secrets.
 
 Links, imagens e CSS usam caminhos relativos; a fonte é relativa ao próprio CSS.
 O mesmo artefato funciona na raiz e em `https://bed72.github.io/Cordato/`, endereço

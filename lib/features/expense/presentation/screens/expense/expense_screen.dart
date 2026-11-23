@@ -22,7 +22,7 @@ import 'package:cordato/features/expense/presentation/screens/expense/validators
 
 final class const ExpenseScreen({
   super.key,
-  final String? id,
+  final int? id,
   final bool returnToPrevious = false,
   required final IDateFormatter dateFormatter,
   required final IMoneyFormatter moneyFormatter,

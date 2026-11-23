@@ -7,6 +7,7 @@ import 'package:cordato/features/core/presentation/formatters/date_formatter.dar
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 
 import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
+import 'package:cordato/features/expense/infrastructure/daos/suggestions_dao.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/expense_screen.dart';
@@ -22,6 +23,7 @@ import 'package:cordato/features/expense/presentation/screens/expense/validators
 final expenseModule = createModule(
   register: (context) {
     context
+      ..addLazySingleton<SuggestionsDao>(SuggestionsDao.new)
       ..addLazySingleton<IExpenseRepository>(ExpenseRepository.new)
       ..add(ExpenseBloc.new)
       ..add(ExpensesBloc.new)
@@ -71,7 +73,7 @@ final expenseModule = createModule(
             scope.addBloc<ExpenseSuggestionsBloc>(ExpenseSuggestionsBloc.new),
         child: (context, state) {
           final id = switch (state.arguments) {
-            String id => id,
+            int id => id,
             _ => null,
           };
 

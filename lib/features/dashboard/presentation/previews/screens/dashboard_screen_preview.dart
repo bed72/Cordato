@@ -126,7 +126,7 @@ Widget _screenPreview({
                   ExpenseEntity(
                     category: .food,
                     cents: .create(cents: 1500),
-                    id: 'previous-month-expense',
+                    id: 1,
                     description: 'Gasto do mês anterior',
                     occurredOn: DateTime(month.year, month.month - 1, 15),
                   ),
@@ -134,7 +134,7 @@ Widget _screenPreview({
             : [
                 for (int index = 0; index < 6; index++)
                   ExpenseEntity(
-                    id: 'monthly-$index',
+                    id: index + 2,
                     category: .food,
                     description: 'Gasto do mês ${index + 1}',
                     cents: .create(cents: 1500 + index * 100),

@@ -8,7 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_bloc.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_event.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_suggestions_state.dart';
@@ -19,7 +19,7 @@ void main() {
   late ExpenseRepositoryMock repository;
   late ExpenseSuggestionsBloc bloc;
   final rent = ExpenseSuggestionEntity(
-    id: 'rent',
+    id: 1,
     description: 'Aluguel',
     cents: 160000,
     category: .housing,
@@ -53,7 +53,7 @@ void main() {
         expect((bloc.state as ExpenseSuggestionsSuccess).suggestions, [rent]);
         expect(
           (bloc.state as ExpenseSuggestionsSuccess).suggestions.single.category,
-          ExpenseCategoryEnum.housing,
+          CategoryEnum.housing,
         );
         expect(
           () => (bloc.state as ExpenseSuggestionsSuccess).suggestions.clear(),

@@ -20,14 +20,14 @@ import '../../../../../../support/expense/mocks/expense_repository_mock.dart';
 void main() {
   late ExpenseRepositoryMock repository;
   final first = ExpenseEntity(
-    id: '1',
+    id: 1,
     description: 'First',
     cents: .create(cents: 100),
     occurredOn: DateTime(2026, 9, 3),
     category: .food,
   );
   final second = ExpenseEntity(
-    id: '2',
+    id: 2,
     description: 'Second',
     cents: .create(cents: 200),
     occurredOn: DateTime(2026, 9, 2),
@@ -41,7 +41,7 @@ void main() {
         .thenAnswer((_) async => page([first], nextPage: 2));
     when(() => repository.get(pageSize: 20, page: 2))
         .thenAnswer((_) async => page([first, second]));
-    when(() => repository.delete(id: '1')).thenAnswer((_) async {});
+    when(() => repository.delete(id: 1)).thenAnswer((_) async {});
   });
   Future<void> load(ExpensesBloc bloc) async {
     final ready = bloc.stream.firstWhere((s) => s is ExpensesReady);
@@ -86,7 +86,7 @@ void main() {
       build: () => ExpensesBloc(repository: repository),
       act: (bloc) async {
         await load(bloc);
-        bloc.add(const ExpensesDeleteRequestedEvent(id: '1'));
+        bloc.add(const ExpensesDeleteRequestedEvent(id: 1));
       },
       expect: () => [
         isA<ExpensesLoading>(),
@@ -110,7 +110,7 @@ void main() {
     blocTest<ExpensesBloc, ExpensesState>(
       'deleting the last matching expense confirms empty only after persistence',
       build: () {
-        when(() => repository.delete(id: '1')).thenAnswer((_) {
+        when(() => repository.delete(id: 1)).thenAnswer((_) {
           entered.complete();
           return pending.future;
         });
@@ -126,7 +126,7 @@ void main() {
         ),
       ),
       act: (bloc) async {
-        bloc.add(const ExpensesDeleteRequestedEvent(id: '1'));
+        bloc.add(const ExpensesDeleteRequestedEvent(id: 1));
         await entered.future;
         expect(bloc.state.isEmpty, isFalse);
         expect(bloc.state.data.items, [first]);
@@ -171,13 +171,13 @@ void main() {
       blocTest<ExpensesBloc, ExpensesState>(
         'preserves delete error and item ${errors.errors.length}',
         build: () {
-          when(() => repository.delete(id: '1'))
+          when(() => repository.delete(id: 1))
               .thenThrow(ExpenseException(errors: errors));
           return ExpensesBloc(repository: repository);
         },
         act: (bloc) async {
           await load(bloc);
-          bloc.add(const ExpensesDeleteRequestedEvent(id: '1'));
+          bloc.add(const ExpensesDeleteRequestedEvent(id: 1));
         },
         expect: () => [
           isA<ExpensesLoading>(),
@@ -399,15 +399,15 @@ void main() {
       () async {
         final pending = Completer<void>();
         final entered = Completer<void>();
-        when(() => repository.delete(id: '1')).thenAnswer((_) {
+        when(() => repository.delete(id: 1)).thenAnswer((_) {
           entered.complete();
           return pending.future;
         });
         final bloc = ExpensesBloc(repository: repository);
         await load(bloc);
-        bloc.add(const ExpensesDeleteRequestedEvent(id: '1'));
+        bloc.add(const ExpensesDeleteRequestedEvent(id: 1));
         await entered.future;
-        bloc.add(const ExpensesDeleteRequestedEvent(id: '2'));
+        bloc.add(const ExpensesDeleteRequestedEvent(id: 2));
         bloc.add(const ExpensesRequestedEvent());
         bloc.add(const ExpensesNextPageRequestedEvent());
         await Future<void>(() {});
@@ -415,8 +415,8 @@ void main() {
         pending.complete();
         await done;
         await bloc.close();
-        verify(() => repository.delete(id: '1')).called(1);
-        verifyNever(() => repository.delete(id: '2'));
+        verify(() => repository.delete(id: 1)).called(1);
+        verifyNever(() => repository.delete(id: 2));
         verify(() => repository.get(pageSize: 20)).called(1);
         verifyNever(() => repository.get(pageSize: 20, page: 2));
       },
@@ -427,7 +427,7 @@ void main() {
       () async {
         final pending = Completer<void>();
         final entered = Completer<void>();
-        when(() => repository.delete(id: '1')).thenAnswer((_) {
+        when(() => repository.delete(id: 1)).thenAnswer((_) {
           entered.complete();
           return pending.future;
         });
@@ -435,7 +435,7 @@ void main() {
             .thenAnswer((_) async => page([second]));
         final bloc = ExpensesBloc(repository: repository);
         await load(bloc);
-        bloc.add(const ExpensesDeleteRequestedEvent(id: '1'));
+        bloc.add(const ExpensesDeleteRequestedEvent(id: 1));
         await entered.future;
         bloc.add(const ExpensesRequestedEvent(category: 'food'));
         bloc.add(const ExpensesRequestedEvent(category: 'transport'));
@@ -487,7 +487,7 @@ void main() {
         'unexpected ${deleting ? 'delete' : 'load'} uses addError and fallback',
         build: () {
           if (deleting) {
-            when(() => repository.delete(id: '1')).thenThrow(unexpected);
+            when(() => repository.delete(id: 1)).thenThrow(unexpected);
           } else {
             when(() => repository.get(pageSize: 20)).thenThrow(unexpected);
           }
@@ -495,7 +495,7 @@ void main() {
         },
         act: (bloc) => bloc.add(
           deleting
-              ? const ExpensesDeleteRequestedEvent(id: '1')
+              ? const ExpensesDeleteRequestedEvent(id: 1)
               : const ExpensesRequestedEvent(),
         ),
         expect: () => deleting
@@ -519,13 +519,13 @@ void main() {
               entered.complete();
               return pending.future;
             });
-            when(() => repository.delete(id: '1')).thenAnswer((_) {
+            when(() => repository.delete(id: 1)).thenAnswer((_) {
               entered.complete();
               return deletion.future;
             });
             bloc.add(
               deleting
-                  ? const ExpensesDeleteRequestedEvent(id: '1')
+                  ? const ExpensesDeleteRequestedEvent(id: 1)
                   : const ExpensesRequestedEvent(),
             );
             await entered.future;

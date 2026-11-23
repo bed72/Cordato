@@ -1,116 +1,81 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_response.dart';
 
 void main() {
-  group('ExpenseResponse', () {
-    test('maps a local record into a validated civil-date domain entity', () {
-      final response = ExpenseResponse.fromJson({
-        'id': '9',
-        'amount': 300,
-        'category': 'other',
-        'description': 'Game',
-        'occurred_on': '2026-10-05 00:00:00.000Z',
-      });
+  ExpensesTableData record({
+    String category = 'other',
+    int amount = 300,
+    String? description = 'Game',
+    String date = '2026-10-05',
+  }) => ExpensesTableData(
+    id: 9,
+    profileId: 1,
+    amount: amount,
+    category: category,
+    description: description,
+    occurredOn: date,
+  );
 
-      expect(response.amount, 300);
-      final entity = response.toEntity();
+  test('maps typed record to integer ID, exact cents and civil date', () {
+    final entity = ExpenseResponse.fromRecord(record()).toEntity();
 
-      expect(entity.id, '9');
-      expect(entity.cents.cents, 300);
-      expect(entity.description, 'Game');
-      expect(entity.occurredOn, DateTime(2026, 10, 5));
-      expect(entity.category, ExpenseCategoryEnum.other);
-    });
-
-    for (final category in ExpenseCategoryEnum.values) {
-      test('recognizes the stored category ${category.value}', () {
-        final response = ExpenseResponse.fromJson({
-          'id': '9',
-          'amount': 300,
-          'description': 'Game',
-          'occurred_on': '2026-10-05 00:00:00.000Z',
-          'category': category.value,
-        });
-
-        expect(response.category, category);
-        expect(response.toEntity().category, category);
-      });
-    }
-
-    test('rejects categories outside the local contract', () {
-      expect(
-        () => ExpenseResponse.fromJson({
-          'id': '9',
-          'amount': 300,
-          'description': 'Game',
-          'category': 'unknown',
-          'occurred_on': '2026-10-05 00:00:00.000Z',
-        }),
-        throwsStateError,
-      );
-    });
-
-    test('projects a nullable stored description as empty text', () {
-      final response = ExpenseResponse.fromJson({
-        'id': '9',
-        'amount': 300,
-        'category': 'other',
-        'description': null,
-        'occurred_on': '2026-10-05T00:00:00.000Z',
-      });
-
-      expect(response.toEntity().description, '');
-    });
-
-    for (final invalid in <String, Object?>{
-      'id': 9,
-      'amount': '300',
-      'description': 5,
-      'occurred_on': 0,
-      'category': null,
-    }.entries) {
-      test('rejects invalid ${invalid.key} type', () {
-        expect(
-          () => ExpenseResponse.fromJson({
-            'id': '9',
-            'amount': 300,
-            'description': 'Café',
-            'category': 'other',
-            'occurred_on': '2026-10-05T00:00:00.000Z',
-            invalid.key: invalid.value,
-          }),
-          throwsA(isA<TypeError>()),
-        );
-      });
-    }
-
-    test('does not hide a malformed stored date', () {
-      expect(
-        () => ExpenseResponse.fromJson({
-          'id': '9',
-          'amount': 300,
-          'description': 'Café',
-          'category': 'other',
-          'occurred_on': 'not-a-date',
-        }),
-        throwsFormatException,
-      );
-    });
-
-    for (final amount in [0, -300]) {
-      test('rejects $amount cents during conversion', () {
-        final response = ExpenseResponse(
-          id: '9',
-          amount: amount,
-          category: .other,
-          description: 'Game',
-          occurredOn: DateTime(2026, 10, 5),
-        );
-
-        expect(response.toEntity, throwsArgumentError);
-      });
-    }
+    expect(entity.id, 9);
+    expect(entity.cents.cents, 300);
+    expect(entity.description, 'Game');
+    expect(entity.occurredOn, DateTime(2026, 10, 5));
+    expect(entity.category, CategoryEnum.other);
   });
+
+  for (final category in CategoryEnum.values) {
+    test('recognizes stored category ${category.value}', () {
+      final entity = ExpenseResponse.fromRecord(
+        record(category: category.value),
+      ).toEntity();
+      expect(entity.category, category);
+    });
+  }
+
+  test('does not fabricate a default for an unknown category', () {
+    expect(
+      () => ExpenseResponse.fromRecord(record(category: 'unknown')),
+      throwsStateError,
+    );
+  });
+
+  test('projects nullable description as empty text', () {
+    expect(
+      ExpenseResponse.fromRecord(record(description: null))
+          .toEntity()
+          .description,
+      '',
+    );
+  });
+
+  test('preserves description without normalizing in mapping', () {
+    expect(
+      ExpenseResponse.fromRecord(record(description: '  Café  '))
+          .toEntity()
+          .description,
+      '  Café  ',
+    );
+  });
+
+  test('does not hide a malformed date', () {
+    expect(
+      () => ExpenseResponse.fromRecord(record(date: 'invalid')),
+      throwsFormatException,
+    );
+  });
+
+  for (final amount in [0, -300]) {
+    test('rejects $amount cents during conversion', () {
+      expect(
+        () => ExpenseResponse.fromRecord(record(amount: amount)).toEntity(),
+        throwsArgumentError,
+      );
+    });
+  }
 }

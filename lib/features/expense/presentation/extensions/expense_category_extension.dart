@@ -1,10 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 
-extension ExpenseCategoryExtension on ExpenseCategoryEnum {
-  static const orderedValues = <ExpenseCategoryEnum>[
+extension ExpenseCategoryExtension on CategoryEnum {
+  static const orderedValues = <CategoryEnum>[
     .food,
     .pets,
     .subscriptions,

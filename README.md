@@ -6,11 +6,12 @@ para Drift/SQLite. Estado documental revisado em **23/11/2026**.
 ## Transição de persistência
 
 Esta etapa entrega a fundação Drift em
-`lib/features/core/infrastructure/clients/database/`, com schema versão 1,
+`lib/features/core/infrastructure/clients/database/`, com schema versão 2,
 foreign keys, perfil único e despesas vinculadas com `ON DELETE CASCADE`.
 O `coreModule` registra o client como singleton lazy, sem abertura assíncrona no
-`main`. UserRepository já usa Drift; entidade, contratos, UI e previews usam
-`id`, `name` e `seed`. Não migra dados de Localstore/ToStore ou Expense/Metrics.
+`main`. UserRepository e ExpenseRepository já usam Drift. User usa `id`, `name`
+e `seed`; despesas usam IDs inteiros em contratos/UI e vínculo interno com perfil.
+Não migra dados de Localstore/ToStore nem Metrics.
 Os arquivos de dados legados não são lidos nem apagados por esta fundação.
 
 Nas duas tabelas, o ID é inteiro `AUTOINCREMENT`, gerado pelo SQLite;
@@ -19,10 +20,13 @@ exclusões no mesmo banco. A seed continua aleatória.
 O schema 1 ainda não publicado foi ajustado sem migração, pois não há usuários.
 Arquivos SQLite experimentais com a definição anterior de IDs textuais precisam
 ser recriados manualmente; não há reset automático.
+Já bancos v1 com IDs inteiros migram para v2 em transação, preservando despesas,
+datas, relações, índices e sequências. A versão 2 acrescenta o default de data
+civil local `date('now', 'localtime')`; datas explícitas continuam prevalecendo.
 
 **O app completo está temporariamente sem compilação:** módulos de features/repositories e
 testes antigos ainda importam Localstore, cuja dependência foi retirada.
-Os contratos de Expense/Metrics nas próximas seções ainda descrevem o legado.
+O contrato de Metrics nas próximas seções ainda descreve o legado.
 A migração do aplicativo completo não está concluída.
 
 O contrato aprovado é um perfil local com ID, nome e seed. Inicialmente:
@@ -47,38 +51,22 @@ flutter test test/features/core/infrastructure/clients/database/ --reporter fail
 Versione `database_client.g.dart` após alterar tabelas. Detalhes e precedência
 dos contratos estão em [ARCHITECTURE.md](ARCHITECTURE.md#fundação-drift).
 
-### Verificação da migração de User
+### Resumo das decisões implementadas
 
-- `flutter pub get`: concluído.
-- Análise focada de User, Dashboard, seus testes afetados e limites arquiteturais: sem problemas.
-- `flutter test test/features/user test/features/dashboard/presentation/screens/dashboard/bloc/dashboard_bloc_test.dart --reporter failures-only`: 141 testes passando.
-- Após IDs autoincrementais, client + módulo core + User + Dashboard:
-  173 testes passando; análise focada limpa. `dart run build_runner build` concluído.
-  Testes confirmam geração pelo banco e não reutilização após exclusão/cascade e
-  reabertura do arquivo nas duas tabelas.
-- SQLite real cobre criação concorrente, updates transacionais, campos omitidos,
-  rollback, operações pendentes, persistência em arquivo e falhas via isolate.
-- `flutter analyze`: 51 diagnósticos legados ligados ao Localstore ausente.
-- `flutter test --reporter failures-only`: 804 passando, seis falhas em
-  Expense/Metrics, composição global e contrato legado da dependência Localstore.
+- Banco único lazy, com execução SQL em isolate e foreign keys habilitadas.
+- IDs int gerados pelo banco; seed de avatar aleatória, independente do ID.
+- Criação/edição de Expense usam RETURNING sem SELECT preparatório; delete usa
+  linhas afetadas. Refresh do widget ocorre após confirmação da mutação.
+- SuggestionsDao executa uma consulta SQL: filtra, ordena, limita às 30
+  correspondências e só então deduplica. Matching literal usa cordato_lower,
+  preservando Unicode e parâmetros vinculados.
+- Data omitida usa default local do SQLite; data explícita preserva o dia civil.
+- `_hasUpdates` distingue campo omitido de descrição vazia ou categoria other.
 
-Não há homologação em dispositivo nem implementação da exclusão nesta entrega.
-
-### Verificação anterior da fundação Drift
-
-- `flutter pub get` e `dart run build_runner build`: concluídos.
-- `dart analyze lib/features/core/infrastructure/clients/database test/features/core/infrastructure/clients/database test/architecture/descriptive_names_test.dart`: sem problemas.
-- `flutter test test/features/core/infrastructure/clients/database/ --reporter failures-only`: 27 testes passando, com SQLite real em memória e arquivo/isolate.
-- `flutter test test/architecture test/features/core/infrastructure/clients/database/ --reporter failures-only`: 116 passando; uma falha no contrato legado que exige Localstore no lockfile.
-- `flutter test test/features/core/core_module_test.dart --reporter failures-only`: 3 testes passando; singleton resolvido sem abrir storage.
-- `dart analyze lib/features/core/core_module.dart test/features/core/core_module_test.dart`: sem problemas.
-- Após o registro no core, arquitetura + client + módulo: 119 passando, uma falha no contrato legado de Localstore.
-- `flutter analyze`: bloqueado por 97 diagnósticos das referências legadas sem Localstore.
-- `flutter test --reporter failures-only`, antes do registro no core: 770 passando, 10 falhas ligadas à ausência de Localstore e ao contrato legado da dependência.
-
-As verificações da fundação, isoladamente, não comprovavam integração dos
-repositories ou inicialização do perfil. A etapa User acima acrescenta essa
-integração somente para o perfil, sem exclusão pela UI ou homologação Android/iOS.
+Contratos detalhados ficam na [arquitetura](ARCHITECTURE.md#persistência).
+Resultados atuais estão em [Verificação e pendências](#verificação-e-pendências);
+as etapas anteriores foram consolidadas no
+[histórico Drift](docs/history/drift-transition.md).
 
 ## Licença e publicação do código
 
@@ -100,8 +88,8 @@ histórico. A revisão não altera visibilidade nem autoriza reescrita do Git.
   sem conta autenticada ou e-mail.
 - Despesas manuais: criação, edição, exclusão, filtros, paginação e sugestões
   baseadas no histórico local.
-- Resumo mensal e distribuição por categoria calculados a partir das despesas
-  locais, com dinheiro em centavos inteiros de BRL.
+- Resumo mensal e distribuição por categoria com dinheiro em centavos inteiros
+  de BRL; implementação legada de Metrics ainda não integrada às despesas SQLite.
 - Entrada na Dashboard, sem autenticação.
 - Widget Android/iOS com resumo do mês e atalho para Nova despesa.
 - Configurações com Perfil local, Informações e Apoio voluntário via Pix.
@@ -157,29 +145,22 @@ O app atual não precisa de servidor, credenciais de runtime ou `BASE_URL`.
 Os testes não montam UI; a execução em dispositivo é uma verificação separada.
 As dependências da fundação Drift são públicas. O legado usava acesso Git HTTPS
 ao repositório privado
-[`bed72/localstore`](https://github.com/bed72/localstore). Configure sua
-autenticação Git somente se trabalhar com uma revisão legada que ainda o utiliza;
-não coloque tokens no pubspec.
+[`bed72/localstore`](https://github.com/bed72/localstore). O checkout atual não
+exige esse acesso para instalar dependências. O workflow Android ainda contém
+uma exigência legada de secret; consulte o [guia Android](android/README.md).
+Não coloque tokens no pubspec.
 
 ### Inicialização e persistência
 
 `main` monta o app sem preparar perfil ou storage. O `appModule` compõe o
 `coreModule`, que registra `DatabaseClient` como singleton lazy. UserRepository
 recebe essa instância pelo construtor e inicializa o perfil sob demanda.
-Expense/Metrics ainda esperam Localstore e não estão integrados ao banco novo.
+Metrics ainda espera Localstore e não está integrado ao banco novo.
 
-No legado, Localstore vinha do fork privado `bed72/localstore`, com `ref: main`
-e commit resolvido fixado no lockfile, não da versão 1.4.0 do pub.dev.
-A dependência e seu registro já foram retirados; não os restaure nesta transição.
-O SDK legado usa arquivos
-JSON em Documents no Android/iOS; o fallback de diretório corrente serve a
-testes host, não representa suporte a apps desktop. Não há migração dos dados
-anteriores de ToStore ou mudança do formato JSON ao adotar o fork.
-
-O fork aguarda as escritas, propaga erros de filesystem/JSON e substitui
-arquivos com temporário, flush e rename no mesmo filesystem. Não há garantia
-de durabilidade após queda de energia, criptografia, transação entre documentos
-ou coordenação entre processos/isolates. Falhas não disparam reset ou retry.
+O client usa `Application Support/cordato.sqlite`. As consultas de sugestões
+dependem da função Unicode registrada no setup; executors nativos injetados usam
+`setup: DatabaseClient.configureConnection`. O client não importa DAOs das features.
+Não reinstale Localstore nem crie outro banco para sanar o legado.
 
 ### Perfil e despesas
 
@@ -194,20 +175,29 @@ Falhas operacionais de storage geram mensagem segura; erros de SQL, constraints,
 corrupção ou programação não viram defaults e não disparam retry/reset automático.
 UserResponse converte registros tipados sem expor Drift no domínio ou apresentação.
 
-Despesas usam coleção `expenses`, com ID gerado pelo SDK, valor inteiro positivo,
+Despesas usam tabela `expenses`, com ID inteiro gerado pelo SQLite, valor inteiro positivo,
 categoria padrão `other`, descrição opcional e data civil obrigatória.
-O repository define hoje quando
-a data de criação não é fornecida. Datas preservam os componentes do calendário,
+O SQLite define hoje no fuso local quando
+a data de criação é omitida. Datas explícitas preservam os componentes do calendário,
 sem deslocamento de fuso. O repository aplica trim à descrição, preservando
 o comportamento anterior. Filtros, ordenação, paginação e sugestões são
-processados em Dart sobre a coleção completa, sem IA.
+processados em SQL, sem IA. Sugestões usam uma única consulta
+por um DAO, com busca literal Unicode no SQL, limite de 30 correspondências e
+deduplicação posterior por janela. Não há loop de paginação em Dart.
+Criação vincula o perfil por INSERT SELECT RETURNING; update usa UPDATE RETURNING
+e delete verifica linhas afetadas, cada um sem SELECT preparatório. Se User ainda não o
+inicializou, retorna falha segura de perfil ausente, sem criar outro perfil;
+o usuário pode tentar novamente manualmente. Não foi adicionado bootstrap no
+atalho ou formulário.
 O formulário mostra uma sugestão por vez; o X fecha a sugestão sem aplicar
 seus dados. Selecioná-la continua preservando a data do formulário.
-Updates gravam o documento completo; não há merge atômico entre updates
-concorrentes.
+Updates transacionais gravam somente campos fornecidos e preservam os demais.
+O widget recebe pedido de refresh somente após commit. IDs ausentes e falhas
+operacionais têm mensagens locais; erros SQL/corrupção não geram defaults.
 
-Metrics lê a mesma coleção e agrega por mês/categoria em Dart, sem coleção
-própria ou cache. As entidades mensal e de categoria usam `total` em centavos.
+Metrics ainda lê a coleção Localstore antiga e agrega em Dart; não lê a tabela
+SQLite usada por Expense. Seu contrato mensal permanece somente leitura,
+sem coleção própria ou cache. As entidades usam `total` em centavos.
 Sem filtros usa o mês civil atual; filtros explícitos exigem um mês completo.
 Um mês vazio retorna zero apenas após leitura bem-sucedida. Falhas não viram
 zero nem disparam retry automático.
@@ -222,8 +212,9 @@ O toque abre Dashboard → Nova despesa, sem login. Uma criação já aberta man
 a entrada; edição por ID não é confundida com criação. O resumo mostra somente
 o mês atual, independentemente do filtro histórico da Dashboard.
 
-O app solicita atualização ao iniciar e após o Future de mutação de despesas.
-No fork, o Future aguarda a escrita antes de solicitar essa atualização.
+O fluxo solicita atualização ao iniciar e após confirmação das mutações SQLite.
+Create/update aguardam commit; delete aguarda a instrução atômica. Publicar um
+novo resumo ainda depende da migração de Metrics e da composição global.
 Não há consulta HTTP ou cadastro em background, refresh periódico ou retry
 automático. Falhas preservam o último resumo válido; mês incompatível mostra
 **Abra para atualizar**. A virada do mês depende do agendamento nativo.
@@ -278,7 +269,9 @@ verificações externas; textos e testes não comprovam conformidade ou aprovaç
 ```text
 Screen/Widget → Bloc → contrato em application
                             ↑
-                 repository em infrastructure → Localstore / client nativo do core
+                 repository em infrastructure → DatabaseClient (User/Expense)
+                                             → Localstore legado (Metrics)
+                                             → client nativo do core
 ```
 
 Domain e contratos são puros. Repositories retornam `Future<T>` e falhas
@@ -311,44 +304,47 @@ mantendo caminho e nome do arquivo com sufixo `_test.dart`. Mocks e recursos
 compartilhados ficam em `test/support/<feature>/`. Testes arquiteturais,
 ferramentas e políticas nativas têm organização própria.
 
-A conferência após a limpeza de 22/11/2026 encontrou 56 dos 63 arquivos de testes de features
-com espelhamento exato. Há nomes/caminhos legados e suítes separadas por
-responsabilidade; os sete casos estão detalhados em
+Na conferência documental de 23/11/2026, 57 dos 66 arquivos de testes de features
+têm espelhamento exato. Há nomes/caminhos legados e suítes separadas por
+responsabilidade; os nove casos estão detalhados em
 [ARCHITECTURE.md](ARCHITECTURE.md#organização-e-espelhamento-dos-testes).
 Isso não é uma medição de cobertura. Esta revisão documental não move testes.
 
 ## Verificação e pendências
 
-Última execução registrada em 22/11/2026, após a limpeza de código morto.
-Localstore permanece no fork privado `bed72/localstore`, commit `ac66df2`:
+Última execução registrada em 23/11/2026, antes desta consolidação documental.
+Os comandos não foram reexecutados para uma mudança exclusivamente em Markdown.
 
 | Comando | Resultado |
 | --- | --- |
 | `flutter pub get` | Concluído. |
-| `flutter analyze` | Sem problemas. |
-| `flutter test --reporter failures-only` | 845 testes aprovados. |
-| `actionlint .github/workflows/android-release.yml` | Sem problemas. |
-| `dart run tool/test_home_widget_native.dart` | 39 testes Android e 27 iOS aprovados. |
-| `plutil -lint ios/Runner/Info.plist ios/Runner/Runner.entitlements` | Sem problemas. |
+| `dart run build_runner build` | Concluído; arquivo gerado atualizado. |
+| Análise focada de core/database, Expense e testes afetados | Sem problemas. |
+| `flutter test test/features/core/infrastructure/clients/database test/features/expense --reporter failures-only` | 343 passando. |
+| Teste de localtime com `TZ=UTC` e `TZ=America/Sao_Paulo` | Um teste passando por execução, no host. |
+| `flutter analyze` | Bloqueado: 32 diagnósticos legados de Metrics/composição/suporte. |
+| `flutter test --reporter failures-only` | 869 passando e quatro falhas legadas. |
 
-Esses resultados não comprovam build nativo, navegação real, renderização dos
-widgets ou prontidão para publicação. O helper Git foi conferido localmente
-com uma credencial fictícia, sem acesso à rede. A Action, o build assinado e
-o acesso remoto do CI ao fork não foram executados; o secret continua pendente.
+As falhas globais são Metrics (módulo/repository), composição em
+`test/app_module_test.dart` e o teste que exige Localstore no lockfile.
+Dados e sequências, rollback de migração, Unicode, parâmetros literais,
+contagem de instruções e notificação após commit têm testes focados reais.
+Isso não comprova build nativo, UI, durabilidade auditada ou prontidão de release.
 
-Estado após a limpeza e pendências externas:
+### Pendências, sem autorização implícita para implementação
 
-- Welcome foi removida, incluindo composição, arquivos, constante da rota e
-  referências nos testes. Seu antigo fluxo por e-mail não está disponível.
-- Constantes/associações de autenticação, ferramenta de app links e declarações
-  de microfone foram removidas. O manifest principal Android também não declara
-  acesso à rede; debug/profile mantêm sua configuração de desenvolvimento.
-- O workflow Android não passa mais `BASE_URL`. O scheme `cordato` e o App Group
-  permanecem para o widget nativo.
-- O release precisa de `LOCALSTORE_READ_TOKEN` no ambiente `android-release`,
-  com leitura de Contents em `bed72/localstore`. O workflow está preparado,
-  mas esse secret ainda não foi cadastrado; o `GITHUB_TOKEN` de Cordato não
-  concede automaticamente acesso ao outro repositório privado.
-- Backup/restauração, builds atuais, homologação em dispositivo, assinatura iOS
-  e revisão de distribuição continuam separados da aprovação dos testes.
-- O espelhamento de nomes/pastas dos testes ainda não é integral.
+1. Migrar Metrics para consultar o mesmo SQLite e ajustar composição/testes
+   globais, removendo as expectativas legadas de Localstore.
+2. Coordenar inicialização do perfil antes de criação por atalho/formulário;
+   hoje Expense não cria perfil e retorna `profile_not_found` quando ausente.
+3. Definir fechamento assíncrono do banco pelo root.
+4. Implementar a operação de apagar dados/recriar perfil, coordenação de
+   operações pendentes e limpeza do widget. Cascade preparado não entrega a UI.
+5. Revisar o passo legado de `LOCALSTORE_READ_TOKEN` no workflow Android;
+   a dependência atual não o exige, mas o YAML ainda o exige.
+6. Tratar separadamente views, IA offline, backup/restauração, builds atuais,
+   assinatura iOS, testes de dispositivo e revisão de distribuição.
+
+Scheme `cordato`, App Group e contratos nativos permanecem. Histórico de
+comandos e decisões: [Drift](docs/history/drift-transition.md) e
+[transição local anterior](docs/history/local-transition.md).

@@ -1,4 +1,4 @@
-enum ExpenseCategoryEnum(final String value) {
+enum CategoryEnum(final String value) {
   food('food'),
   pets('pets'),
   taxes('taxes'),

@@ -12,7 +12,11 @@ void main() {
     late DatabaseClient database;
 
     setUp(() {
-      database = DatabaseClient(executor: NativeDatabase.memory());
+      database = DatabaseClient(
+        executor: NativeDatabase.memory(
+          setup: DatabaseClient.configureConnection,
+        ),
+      );
     });
 
     tearDown(() async {
@@ -40,13 +44,67 @@ void main() {
               id: id == null ? const Value.absent() : Value(id),
               profileId: profileId,
               amount: amount,
-              occurredOn: occurredOn,
+              occurredOn: Value(occurredOn),
             ),
           );
     }
 
     group('Schema inicial', () {
-      test('cria versão 1 vazia com foreign keys habilitadas', () async {
+      test('default SQL preenche data civil local ao omitir a coluna', () async {
+        await insertProfile();
+        final before = DateTime.now();
+
+        final inserted = await database
+            .into(database.expensesTable)
+            .insertReturning(
+              ExpensesTableCompanion.insert(profileId: 1, amount: 100),
+            );
+        final after = DateTime.now();
+
+        String civilDate(DateTime date) =>
+            '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        expect(inserted.occurredOn, anyOf(civilDate(before), civilDate(after)));
+        final columns = await database
+            .customSelect('PRAGMA table_info(expenses)')
+            .get();
+        expect(
+          columns
+              .singleWhere(
+                (column) => column.read<String>('name') == 'occurred_on',
+              )
+              .read<String>('dflt_value'),
+          "date('now', 'localtime')",
+        );
+      });
+
+      test('localtime respeita componentes locais junto à virada do dia UTC', () async {
+        final sample = DateTime.utc(2026, 11, 23, 1, 30).toLocal();
+        final row = await database
+            .customSelect(
+              "SELECT date('2026-11-23 01:30:00', 'localtime') AS civil",
+            )
+            .getSingle();
+        final expected =
+            '${sample.year.toString().padLeft(4, '0')}-${sample.month.toString().padLeft(2, '0')}-${sample.day.toString().padLeft(2, '0')}';
+
+        expect(row.read<String>('civil'), expected);
+      });
+
+      test(
+        'registra lowercase Unicode sem remover acentos ou normalizar texto',
+        () async {
+          final row = await database
+              .customSelect(
+                "SELECT cordato_lower('CAFÉ AÇÃO Σ') AS folded, cordato_lower(NULL) AS missing",
+              )
+              .getSingle();
+
+          expect(row.read<String>('folded'), 'CAFÉ AÇÃO Σ'.toLowerCase());
+          expect(row.data['missing'], isNull);
+        },
+      );
+
+      test('cria versão 2 vazia com foreign keys habilitadas', () async {
         final profiles = await database.select(database.profilesTable).get();
         final expenses = await database.select(database.expensesTable).get();
         final foreignKeys = await database
@@ -59,7 +117,7 @@ void main() {
         expect(profiles, isEmpty);
         expect(expenses, isEmpty);
         expect(foreignKeys.read<int>('foreign_keys'), 1);
-        expect(version.read<int>('user_version'), 1);
+        expect(version.read<int>('user_version'), 2);
       });
 
       test('permite somente um perfil mesmo com IDs diferentes', () async {
@@ -352,12 +410,15 @@ void main() {
   });
 
   group('Persistência em arquivo', () {
-    test('reabre versão 1 preservando dados, índice único e cascade', () async {
+    test('reabre versão 2 preservando dados, índice único e cascade', () async {
       final directory = await Directory.systemTemp.createTemp('cordato-drift-');
       addTearDown(() => directory.delete(recursive: true));
       final file = File('${directory.path}/cordato.sqlite');
       final initial = DatabaseClient(
-        executor: NativeDatabase.createInBackground(file),
+        executor: NativeDatabase.createInBackground(
+          file,
+          setup: DatabaseClient.configureConnection,
+        ),
       );
 
       try {
@@ -375,7 +436,7 @@ void main() {
               ExpensesTableCompanion.insert(
                 profileId: profileId,
                 amount: 123,
-                occurredOn: '2026-11-23',
+                occurredOn: const Value('2026-11-23'),
               ),
             );
       } finally {
@@ -383,7 +444,10 @@ void main() {
       }
 
       final reopened = DatabaseClient(
-        executor: NativeDatabase.createInBackground(file),
+        executor: NativeDatabase.createInBackground(
+          file,
+          setup: DatabaseClient.configureConnection,
+        ),
       );
 
       try {
@@ -394,6 +458,10 @@ void main() {
             .select(reopened.expensesTable)
             .getSingle();
         expect(profile.seed, 'saved-seed');
+        final folded = await reopened
+            .customSelect("SELECT cordato_lower('CAFÉ') AS value")
+            .getSingle();
+        expect(folded.read<String>('value'), 'café');
         expect(expense.amount, 123);
         expect(expense.profileId, profile.id);
 
@@ -426,7 +494,7 @@ void main() {
               ExpensesTableCompanion.insert(
                 profileId: newProfileId,
                 amount: 100,
-                occurredOn: '2026-11-23',
+                occurredOn: const Value('2026-11-23'),
               ),
             );
 

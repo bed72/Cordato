@@ -12,7 +12,7 @@ final class const ExpensesRequestedEvent({
 
 final class const ExpensesNextPageRequestedEvent() extends ExpensesEvent {}
 
-final class const ExpensesDeleteRequestedEvent({required final String id})
+final class const ExpensesDeleteRequestedEvent({required final int id})
     extends ExpensesEvent {}
 
 final class const ExpensesUpdatedEvent({required final ExpenseEntity expense})

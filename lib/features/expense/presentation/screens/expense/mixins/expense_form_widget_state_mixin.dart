@@ -7,7 +7,7 @@ import 'package:cordato/features/core/presentation/validators/validation.dart';
 import 'package:cordato/features/core/presentation/extensions/context_extension.dart';
 import 'package:cordato/features/core/presentation/widgets/bottom_sheets/bottom_sheet_widget.dart';
 
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/bloc/expense_event.dart';
@@ -22,7 +22,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
   final descriptionController = TextEditingController();
 
   int cents = 0;
-  ExpenseCategoryEnum category = .other;
+  CategoryEnum category = .other;
   bool hasManualAmount = false;
   ExpenseSuggestionEntity? _selectedSuggestion;
 
@@ -189,7 +189,7 @@ mixin ExpenseFormWidgetStateMixin on State<ExpenseFormWidget> {
     FocusManager.instance.primaryFocus?.unfocus();
 
     try {
-      final selectedCategory = await showBottomSheetWidget<ExpenseCategoryEnum>(
+      final selectedCategory = await showBottomSheetWidget<CategoryEnum>(
         context: context,
         title: 'Categoria do gasto',
         subtitle: 'Escolha onde esse gasto se encaixa.',

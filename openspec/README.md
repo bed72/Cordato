@@ -1,6 +1,6 @@
 # OpenSpec: estado vigente e histórico
 
-Revisado em **22/11/2026** para a versão local com Localstore.
+Revisado em **23/11/2026** para a transição local para Drift/SQLite.
 
 ## Precedência
 
@@ -20,26 +20,40 @@ Não há servidor necessário para executar o Flutter, identidade autenticada,
 ```text
 Screen/Widget → Bloc → contrato em application
                             ↑
-                 repository em infrastructure → Localstore / client nativo do core
+                 repository em infrastructure → DatabaseClient (User/Expense)
+                                             → Localstore legado (Metrics, bloqueado)
+                                             → client nativo do core
 ```
 
 Contratos usam Future e exceções de aplicação, sem Either, CommandIt ou data
 sources intermediários. Domain é puro; dinheiro usa centavos inteiros.
-Metrics é projeção mensal somente leitura das despesas locais.
+Metrics é projeção mensal somente leitura, ainda no código legado Localstore e
+não integrada à tabela SQLite de Expense.
 Seus totais mensal e por categoria usam `total` inteiro em centavos; os grupos
 são construídos em Dart, sem parser JSON de agregados ou Bloc próprio de Metrics.
 
 UserRepository cria o perfil padrão na primeira leitura, se ausente, sem
-inicializador no bootstrap. Usa um documento com nome e avatar. `coreModule` registra
-`Localstore.instance`; repositories recebem o SDK diretamente por construtor,
-sem client de persistência, schemas ou factory. O SDK vem do fork privado
-`bed72/localstore`, via Git com `ref: main` e commit resolvido no lockfile;
-não da versão do pub.dev. Atualizações usam `flutter pub upgrade localstore`.
-Dados antigos de ToStore não são migrados. Filtros, paginação, sugestões e
-métricas são calculados em Dart. O fork aguarda escritas e propaga erros de JSON;
-as limitações antigas de 1.4.0 não descrevem mais a implementação vigente.
-Limitações do SDK e confirmação de escrita estão em
-[ARCHITECTURE.md](../ARCHITECTURE.md#bootstrap-e-composição).
+inicializador no bootstrap. Usa `profiles` com ID int gerado pelo SQLite, nome e
+seed aleatória. `coreModule` registra DatabaseClient como singleton lazy, sem
+abrir arquivo ao resolver DI. O client é o banco tipado Drift, não wrapper CRUD.
+Contratos, entidades e apresentação não recebem tipos do SDK.
+
+Expense usa IDs int, profile_id interno com cascade, CRUD SQL/RETURNING e
+SuggestionsDao em infrastructure. Sugestões filtram correspondências literais
+Unicode, limitam às 30 mais recentes e deduplicam depois por janela. CategoryEnum
+fica em `expense/domain/enums/category_enum.dart`.
+
+Schema atual 2: default civil local `date('now', 'localtime')` ao omitir a data.
+Migração SQLite 1→2 preserva dados e sequências. Não há migração de
+Localstore/ToStore nem restauração do fork privado, retirado das dependências.
+O client registra cordato_lower; executors nativos injetados usam o mesmo setup.
+Detalhes estão na [fundação Drift](../ARCHITECTURE.md#fundação-drift).
+
+Metrics, composição e testes legados ainda impedem análise/compilação globais.
+A migração interrompida foi autorizada; não reintroduza dependências, ownership
+remoto ou wrappers para satisfazer documentos anteriores.
+Apagar perfil/recriar padrão, limpar widget, views e IA continuam pendentes;
+FK/cascade preparados não tornam essas funcionalidades disponíveis.
 
 ExpenseSuggestionsBloc pertence ao provide da rota. Os demais ownerships
 existentes são preservados: screens com factories estáveis e Root com os Blocs
@@ -51,7 +65,7 @@ Root usa `WidgetLaunchBloc`, `WidgetSyncBloc`, `IWidgetLaunchRepository` e
 O plugin `home_widget` e a URI nativa com `homeWidget=true` permanecem.
 
 Testes devem espelhar nomes/pastas da implementação. A conferência atual,
-incluindo as sete exceções de correspondência exata, está em
+incluindo desvios legados e suítes separadas por responsabilidade, está em
 [ARCHITECTURE.md](../ARCHITECTURE.md#organização-e-espelhamento-dos-testes).
 Esta atualização não move testes, sincroniza specs nem altera checklists.
 
@@ -64,7 +78,7 @@ torna seu mecanismo atual. Esta revisão não sincroniza deltas nem arquiva chan
 | Documento | Uso atual |
 | --- | --- |
 | `specs/dashboard-monthly-navigation/` | Regras mensais e retorno da listagem; implementação por Bloc e contratos locais. |
-| `specs/expense-category-metrics-cards/` | Cards e navegação por categoria/período; dados vêm do Localstore. |
+| `specs/expense-category-metrics-cards/` | Cards e navegação por categoria/período; Metrics legado ainda usa Localstore e não está integrado às despesas SQLite. |
 | `specs/expenses-period-query/`, `specs/expenses-removable-filters/` | Comportamento de datas/filtros; transporte HTTP e owner remoto não se aplicam. |
 | `specs/expense-reregistration/` | Referência do comportamento de novo cadastro; subordinada à implementação local atual. |
 | `specs/shared-error-screen/`, `specs/dart-primary-constructor-conventions/` | Requisitos visuais/linguagem sujeitos às convenções atuais. |
@@ -73,13 +87,16 @@ torna seu mecanismo atual. Esta revisão não sincroniza deltas nem arquiva chan
 | `specs/expense-csv-export/` | Histórico de funcionalidade removida; CSV não é backup restaurável. |
 | `specs/insights-monthly-query/` | Histórico de Insight removido; não confundir com Metrics atual. |
 | `specs/presentation-command-*`, `specs/expense-reactive-command-consumption/`, `specs/dashboard-reactive-command-coordination/` | Intenções de UX/concorrência compatíveis podem orientar; commands/Either não são arquitetura aprovada. |
-| `changes/migrate-expense-to-tostore/` | Registro histórico da migração de Expense, incluindo CSV removido depois. ToStore foi substituído por Localstore; a change não descreve a persistência vigente. |
+| `changes/migrate-expense-to-tostore/` | Registro histórico, incluindo CSV removido depois. ToStore foi substituído por Localstore e Expense depois passou a Drift; a change não descreve a persistência vigente. |
 | `changes/archive/` | Histórico temporal de decisões/resultados, não guia vigente nem comprovação de execução atual. |
 
 Ao implementar requisito antigo, adapte o mecanismo às decisões canônicas e
 registre conflitos. Não marque tarefas ou verificações pendentes como concluídas
 por atualizar documentação; não enfraqueça testes ou declare E2E aprovado.
 Históricos detalhados permanecem intactos.
+Decisões/resultados da transição Drift estão em
+[docs/history/drift-transition.md](../docs/history/drift-transition.md), sem
+sincronizar deltas, editar specs históricas ou marcar tarefas como concluídas.
 
 ## Registro do arquivamento de 09/11/2026
 

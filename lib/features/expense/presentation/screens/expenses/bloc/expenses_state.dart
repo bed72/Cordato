@@ -40,25 +40,21 @@ final class const ExpensesFailure({
   required final bool refresh,
 }) extends ExpensesState {}
 
-final class const ExpensesDeleting({
-  required super.data,
-  required final String id,
-}) extends ExpensesState {}
+final class const ExpensesDeleting({required super.data, required final int id})
+    extends ExpensesState {}
 
-final class const ExpensesDeleted({
-  required super.data,
-  required final String id,
-}) extends ExpensesState {}
+final class const ExpensesDeleted({required super.data, required final int id})
+    extends ExpensesState {}
 
 final class const ExpensesDeleteFailure({
   required super.data,
-  required final String id,
+  required final int id,
   required final ErrorsEntity errors,
 }) extends ExpensesState {}
 
 final class const ExpensesReregistering({
   required super.data,
-  required final String id,
+  required final int id,
 }) extends ExpensesState {}
 
 final class const ExpensesReregistered({

@@ -1,113 +1,68 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+
+import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/infrastructure/responses/expense_suggestion_response.dart';
 
 void main() {
-  test('maps amount to integer cents', () {
-    expect(
-      ExpenseSuggestionResponse.fromJson({
-        'id': 'rent',
-        'description': 'Aluguel',
-        'amount': 160000,
-        'category': 'housing',
-      }).toEntity().cents,
-      160000,
-    );
+  ExpensesTableData record({
+    String category = 'housing',
+    int amount = 160000,
+    String? description = 'Aluguel',
+  }) => ExpensesTableData(
+    id: 9,
+    profileId: 1,
+    amount: amount,
+    description: description,
+    category: category,
+    occurredOn: '2026-11-23',
+  );
+
+  test('maps integer ID and exact amount without changing description', () {
+    final suggestion = ExpenseSuggestionResponse.fromRecord(
+      record(description: '  Aluguel  '),
+    ).toEntity();
+
+    expect(suggestion.id, 9);
+    expect(suggestion.cents, 160000);
+    expect(suggestion.description, '  Aluguel  ');
   });
 
-  for (final amount in ['160000', 1600.0, true, null]) {
-    test('rejects invalid amount type $amount', () {
+  for (final category in CategoryEnum.values) {
+    test('preserves ${category.value} in suggestion entity', () {
       expect(
-        () => ExpenseSuggestionResponse.fromJson({
-          'id': 'rent',
-          'description': 'Aluguel',
-          'amount': amount,
-          'category': 'housing',
-        }),
-        throwsA(isA<TypeError>()),
+        ExpenseSuggestionResponse.fromRecord(record(category: category.value))
+            .toEntity()
+            .category,
+        category,
       );
     });
   }
 
-  test('does not hide malformed required fields', () {
-    expect(
-      () => ExpenseSuggestionResponse.fromJson({'id': 'rent', 'amount': 100}),
-      throwsA(isA<TypeError>()),
-    );
-    expect(
-      () => ExpenseSuggestionResponse.fromJson({}),
-      throwsA(isA<TypeError>()),
-    );
-  });
-
   for (final amount in [0, -100]) {
     test('rejects nonpositive cents $amount', () {
       expect(
-        () => ExpenseSuggestionResponse.fromJson({
-          'id': 'rent',
-          'description': 'Aluguel',
-          'amount': amount,
-          'category': 'housing',
-        }).toEntity(),
+        () =>
+            ExpenseSuggestionResponse.fromRecord(record(amount: amount))
+                .toEntity(),
         throwsArgumentError,
       );
     });
   }
 
-  group('Historical category', () {
-    for (final category in ExpenseCategoryEnum.values) {
-      test('preserves ${category.value} in the suggestion entity', () {
-        final suggestion = ExpenseSuggestionResponse.fromJson({
-          'id': 'history-record',
-          'description': 'Gasto anterior',
-          'amount': 100,
-          'category': category.value,
-        }).toEntity();
-
-        expect(suggestion.category, category);
-        expect(suggestion.id, 'history-record');
-        expect(suggestion.description, 'Gasto anterior');
-        expect(suggestion.cents, 100);
-      });
-    }
-
-    for (final category in ['', 'unknown']) {
-      test('does not replace invalid category "$category" with Others', () {
-        expect(
-          () => ExpenseSuggestionResponse.fromJson({
-            'id': 'history-record',
-            'description': 'Gasto anterior',
-            'amount': 100,
-            'category': category,
-          }),
-          throwsStateError,
-        );
-      });
-    }
-
-    for (final category in [null, 10, true]) {
-      test('rejects invalid category type $category', () {
-        expect(
-          () => ExpenseSuggestionResponse.fromJson({
-            'id': 'history-record',
-            'description': 'Gasto anterior',
-            'amount': 100,
-            'category': category,
-          }),
-          throwsA(isA<TypeError>()),
-        );
-      });
-    }
-
-    test('rejects a missing category', () {
+  for (final category in ['', 'unknown']) {
+    test('does not replace invalid category "$category"', () {
       expect(
-        () => ExpenseSuggestionResponse.fromJson({
-          'id': 'history-record',
-          'description': 'Gasto anterior',
-          'amount': 100,
-        }),
-        throwsA(isA<TypeError>()),
+        () => ExpenseSuggestionResponse.fromRecord(record(category: category)),
+        throwsStateError,
       );
     });
+  }
+
+  test('null descriptions must be excluded before suggestion mapping', () {
+    expect(
+      () => ExpenseSuggestionResponse.fromRecord(record(description: null)),
+      throwsA(isA<TypeError>()),
+    );
   });
 }

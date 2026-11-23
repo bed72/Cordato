@@ -39,6 +39,10 @@ O estado vigente está no [README](../../README.md) e na
     produtor local, dependência de grid sem uso e configurações de autenticação,
     microfone e backend. A categoria de presentes permanece, com imagem de Outros.
     Main e previews não deixaram arquivos Dart desconectados em lib.
+12. Em 23/11/2026, iniciou-se a transição para Drift/SQLite. User e Expense foram
+    migrados, com IDs inteiros, DAO SQL de sugestões e schema 2 com default de
+    data local. Metrics/composição permaneceram bloqueados pelo legado.
+    Decisões e resultados dessa etapa estão em [drift-transition.md](drift-transition.md).
 
 Não há migração de dados PocketBase ou de sessões anteriores. Não há backup
 restaurável pelo app, mesmo que um CSV tenha sido exportado em versões anteriores.
@@ -64,7 +68,9 @@ restaurável pelo app, mesmo que um CSV tenha sido exportado em versões anterio
 | Limpeza de código morto | `flutter pub get` concluído; análise limpa; 845 testes Flutter, 39 Android e 27 iOS aprovados; actionlint e plutil aprovados. Sem build completo do app ou homologação visual. |
 
 Os números são retratos de etapas diferentes, não contagens cumulativas.
-Os bloqueios de compilação/análise acima não apareceram na última verificação.
+Os bloqueios das etapas anteriores não apareceram na verificação de 22/11/2026
+registrada na tabela. A transição posterior para Drift voltou a introduzir
+bloqueios intermediários, descritos no registro separado de 23/11/2026.
 Nenhum resultado comprova build nativo atual, UI, backup ou prontidão de release.
 As execuções acima precedem a revisão documental e não homologam edições
 posteriores de código no checkout. A revisão de nomes/pastas contou 64 arquivos

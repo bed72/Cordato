@@ -76,7 +76,7 @@ Widget previewLargeTextCreationExpenseForm() => Builder(
 
 Widget _formPreview({bool editing = false, bool loading = false}) {
   final expense = ExpenseEntity(
-    id: 'preview-expense',
+    id: 1,
     cents: .create(cents: 1500),
     description: 'Ônibus e metrô',
     occurredOn: DateTime(2026, 10, 5),

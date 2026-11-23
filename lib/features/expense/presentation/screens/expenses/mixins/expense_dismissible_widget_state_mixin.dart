@@ -109,7 +109,7 @@ mixin ExpenseDismissibleWidgetStateMixin
     swipeController.value = 0.0;
   }
 
-  Future<void> _editAndRestore(String id) async {
+  Future<void> _editAndRestore(int id) async {
     try {
       await widget.onEdit?.call();
     } finally {

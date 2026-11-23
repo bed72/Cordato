@@ -8,7 +8,7 @@ void main() {
     'retains the next page number and copies items into an immutable snapshot',
     () {
       final expense = ExpenseEntity(
-        id: '15',
+        id: 15,
         description: 'Lanche',
         category: .other,
         cents: .create(cents: 10000),

@@ -327,9 +327,15 @@ class $ExpensesTableTable extends ExpensesTable
     'occurred_on',
     aliasedName,
     false,
+    check: () => const CustomExpression<bool>(
+      "length(occurred_on) = 10 "
+      "AND occurred_on >= '0001-01-01' AND occurred_on <= '9999-12-31' "
+      "AND date(occurred_on, '+0 days') IS NOT NULL "
+      "AND date(occurred_on, '+0 days') = occurred_on",
+    ),
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL CHECK (length(occurred_on) = 10 AND occurred_on >= \'0001-01-01\' AND occurred_on <= \'9999-12-31\' AND date(occurred_on, \'+0 days\') IS NOT NULL AND date(occurred_on, \'+0 days\') = occurred_on)',
+    requiredDuringInsert: false,
+    defaultValue: const CustomExpression<String>("date('now', 'localtime')"),
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -391,8 +397,6 @@ class $ExpensesTableTable extends ExpensesTable
         _occurredOnMeta,
         occurredOn.isAcceptableOrUnknown(data['occurred_on']!, _occurredOnMeta),
       );
-    } else if (isInserting) {
-      context.missing(_occurredOnMeta);
     }
     return context;
   }
@@ -585,10 +589,9 @@ class ExpensesTableCompanion extends UpdateCompanion<ExpensesTableData> {
     required int amount,
     this.category = const Value.absent(),
     this.description = const Value.absent(),
-    required String occurredOn,
+    this.occurredOn = const Value.absent(),
   }) : profileId = Value(profileId),
-       amount = Value(amount),
-       occurredOn = Value(occurredOn);
+       amount = Value(amount);
   static Insertable<ExpensesTableData> custom({
     Expression<int>? id,
     Expression<int>? profileId,
@@ -966,7 +969,7 @@ typedef $$ExpensesTableTableCreateCompanionBuilder =
       required int amount,
       Value<String> category,
       Value<String?> description,
-      required String occurredOn,
+      Value<String> occurredOn,
     });
 typedef $$ExpensesTableTableUpdateCompanionBuilder =
     ExpensesTableCompanion Function({
@@ -1228,7 +1231,7 @@ class $$ExpensesTableTableTableManager
                 required int amount,
                 Value<String> category = const Value.absent(),
                 Value<String?> description = const Value.absent(),
-                required String occurredOn,
+                Value<String> occurredOn = const Value.absent(),
               }) => ExpensesTableCompanion.insert(
                 id: id,
                 profileId: profileId,

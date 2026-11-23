@@ -2,13 +2,13 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:cordato/features/core/presentation/widgets/buttons/elevated_button_widget.dart';
 
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
 import 'package:cordato/features/expense/presentation/screens/expense/widgets/expense_category_item_widget.dart';
 
 final class const ExpenseCategoryPickerWidget({
   super.key,
-  required final ExpenseCategoryEnum value,
+  required final CategoryEnum value,
 }) extends StatefulWidget {
   @override
   State<ExpenseCategoryPickerWidget> createState() =>
@@ -17,7 +17,7 @@ final class const ExpenseCategoryPickerWidget({
 
 final class _ExpenseCategoryPickerWidgetState
     extends State<ExpenseCategoryPickerWidget> {
-  late ExpenseCategoryEnum _selected;
+  late CategoryEnum _selected;
 
   @override
   void initState() {
@@ -54,7 +54,7 @@ final class _ExpenseCategoryPickerWidgetState
           width: .infinity,
           child: ElevatedButtonWidget(
             label: 'Confirmar',
-            onTap: () => Navigator.pop<ExpenseCategoryEnum>(context, _selected),
+            onTap: () => Navigator.pop<CategoryEnum>(context, _selected),
           ),
         ),
       ],

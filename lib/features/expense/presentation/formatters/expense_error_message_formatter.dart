@@ -48,6 +48,8 @@ abstract final class ExpenseErrorMessageFormatter {
       switch (error.code) {
         'invalid_amount' => 'Informe um valor maior que zero.',
         'expense_not_found' => 'Não foi possível encontrar a despesa.',
+        'profile_not_found' =>
+          'Não foi possível carregar seu perfil. Tente novamente.',
         _ => fallback,
       };
 }

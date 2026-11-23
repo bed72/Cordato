@@ -245,7 +245,7 @@ Widget _screenPreview({
               : [
                   for (int index = 0; index < 30; index++)
                     ExpenseEntity(
-                      id: 'september-$index',
+                      id: index + 1,
                       category: .food,
                       occurredOn: DateTime(2026, 9, 30 - index),
                       description: 'Gasto de setembro ${index + 1}',
@@ -253,21 +253,21 @@ Widget _screenPreview({
                     ),
                   for (int index = 0; index < 7; index++)
                     ExpenseEntity(
-                      id: 'october-$index',
+                      id: index + 101,
                       category: .transport,
                       cents: .create(cents: 2500),
                       occurredOn: DateTime(2026, 10, 7 - index),
                       description: 'Gasto de outubro ${index + 1}',
                     ),
                   ExpenseEntity(
-                    id: 'september-donation',
+                    id: 201,
                     category: .giftsAndDonations,
                     cents: .create(cents: 5000),
                     occurredOn: DateTime(2026, 9, 15),
                     description: 'Doação de setembro',
                   ),
                   ExpenseEntity(
-                    id: 'august-food',
+                    id: 202,
                     category: .food,
                     cents: .create(cents: 3000),
                     occurredOn: DateTime(2026, 8, 31),

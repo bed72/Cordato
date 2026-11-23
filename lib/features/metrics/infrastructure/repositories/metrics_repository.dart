@@ -5,7 +5,7 @@ import 'package:localstore/localstore.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
 
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
@@ -54,7 +54,7 @@ final class MetricsRepository({
         if (date.year != first.year || date.month != first.month) continue;
 
         final category = record['category'] as String;
-        ExpenseCategoryEnum.values.firstWhere((item) => item.value == category);
+        CategoryEnum.values.firstWhere((item) => item.value == category);
         final amount = record['amount'] as int;
         if (amount <= 0) throw const FormatException('Invalid expense amount');
 

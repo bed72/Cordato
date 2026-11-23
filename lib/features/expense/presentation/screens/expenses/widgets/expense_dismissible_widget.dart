@@ -7,7 +7,7 @@ import 'package:cordato/features/expense/presentation/screens/expenses/mixins/ex
 
 final class const ExpenseDismissibleWidget({
   super.key,
-  required final String id,
+  required final int id,
   required final Widget child,
   required final Future<void> Function() onConfirmDelete,
   final Future<void> Function()? onEdit,

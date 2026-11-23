@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 
 void main() {
   test('expense categories match the API contract', () {
-    expect(ExpenseCategoryEnum.values.map((category) => category.value), [
+    expect(CategoryEnum.values.map((category) => category.value), [
       'food',
       'pets',
       'taxes',

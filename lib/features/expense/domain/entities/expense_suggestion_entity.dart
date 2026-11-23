@@ -1,9 +1,9 @@
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 
 final class ExpenseSuggestionEntity({
-  required final String id,
+  required final int id,
   required final String description,
-  required final ExpenseCategoryEnum category,
+  required final CategoryEnum category,
   final int? cents,
 }) {
   this {

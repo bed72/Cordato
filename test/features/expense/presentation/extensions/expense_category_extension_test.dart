@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
 
 void main() {
   group('ExpenseCategoryExtension', () {
-    final labels = <ExpenseCategoryEnum, String>{
+    final labels = <CategoryEnum, String>{
       .health: 'Saúde',
       .leisure: 'Lazer',
       .taxes: 'Impostos',
@@ -27,7 +27,7 @@ void main() {
       .other: 'Outros',
     };
 
-    for (final category in ExpenseCategoryEnum.values) {
+    for (final category in CategoryEnum.values) {
       test('displays ${category.name} in Brazilian Portuguese', () {
         expect(category.label, labels[category]);
       });
@@ -36,28 +36,28 @@ void main() {
 
   group('Expense category Material icons', () {
     const icons = {
-      ExpenseCategoryEnum.pets: Icons.pets_outlined,
-      ExpenseCategoryEnum.housing: Icons.home_outlined,
-      ExpenseCategoryEnum.leisure: Icons.play_circle_outline,
-      ExpenseCategoryEnum.travel: Icons.flight_outlined,
-      ExpenseCategoryEnum.health: Icons.favorite_border,
-      ExpenseCategoryEnum.food: Icons.restaurant_outlined,
-      ExpenseCategoryEnum.insurance: Icons.verified_user_outlined,
-      ExpenseCategoryEnum.education: Icons.menu_book_outlined,
-      ExpenseCategoryEnum.personalCare: Icons.auto_awesome_outlined,
-      ExpenseCategoryEnum.services: Icons.build_outlined,
-      ExpenseCategoryEnum.financing: Icons.payments_outlined,
-      ExpenseCategoryEnum.taxes: Icons.task_outlined,
-      ExpenseCategoryEnum.shopping: Icons.shopping_cart_outlined,
-      ExpenseCategoryEnum.subscriptions: Icons.refresh,
-      ExpenseCategoryEnum.investments: Icons.trending_up,
-      ExpenseCategoryEnum.transport: Icons.local_shipping_outlined,
-      ExpenseCategoryEnum.giftsAndDonations: Icons.volunteer_activism_outlined,
-      ExpenseCategoryEnum.other: Icons.receipt_long_outlined,
+      CategoryEnum.pets: Icons.pets_outlined,
+      CategoryEnum.housing: Icons.home_outlined,
+      CategoryEnum.leisure: Icons.play_circle_outline,
+      CategoryEnum.travel: Icons.flight_outlined,
+      CategoryEnum.health: Icons.favorite_border,
+      CategoryEnum.food: Icons.restaurant_outlined,
+      CategoryEnum.insurance: Icons.verified_user_outlined,
+      CategoryEnum.education: Icons.menu_book_outlined,
+      CategoryEnum.personalCare: Icons.auto_awesome_outlined,
+      CategoryEnum.services: Icons.build_outlined,
+      CategoryEnum.financing: Icons.payments_outlined,
+      CategoryEnum.taxes: Icons.task_outlined,
+      CategoryEnum.shopping: Icons.shopping_cart_outlined,
+      CategoryEnum.subscriptions: Icons.refresh,
+      CategoryEnum.investments: Icons.trending_up,
+      CategoryEnum.transport: Icons.local_shipping_outlined,
+      CategoryEnum.giftsAndDonations: Icons.volunteer_activism_outlined,
+      CategoryEnum.other: Icons.receipt_long_outlined,
     };
 
     test('covers every expense category', () {
-      expect(icons.keys, unorderedEquals(ExpenseCategoryEnum.values));
+      expect(icons.keys, unorderedEquals(CategoryEnum.values));
     });
 
     for (final entry in icons.entries) {
@@ -74,9 +74,9 @@ void main() {
     test('includes each domain category exactly once with Others last', () {
       final categories = ExpenseCategoryExtension.orderedValues;
 
-      expect(categories, hasLength(ExpenseCategoryEnum.values.length));
-      expect(categories.toSet(), ExpenseCategoryEnum.values.toSet());
-      expect(categories.last, ExpenseCategoryEnum.other);
+      expect(categories, hasLength(CategoryEnum.values.length));
+      expect(categories.toSet(), CategoryEnum.values.toSet());
+      expect(categories.last, CategoryEnum.other);
       expect(() => categories.add(.food), throwsUnsupportedError);
     });
 
@@ -108,7 +108,7 @@ void main() {
       );
     });
 
-    for (final category in ExpenseCategoryEnum.values) {
+    for (final category in CategoryEnum.values) {
       test('${category.value} has a description of five or six words', () {
         final description = category.description;
 

@@ -39,8 +39,8 @@ final class UserRepository({required final DatabaseClient _database})
           _database.profilesTable,
         )..where((profile) => profile.id.equals(current.id))).write(
           ProfilesTableCompanion(
-            name: name == null ? const Value.absent() : Value(name),
-            seed: seed == null ? const Value.absent() : Value(seed),
+            name: name == null ? const .absent() : Value(name),
+            seed: seed == null ? const .absent() : Value(seed),
           ),
         );
 
@@ -92,10 +92,10 @@ final class UserRepository({required final DatabaseClient _database})
     if (error is SqliteException &&
         const {
           SqlError.SQLITE_BUSY,
+          SqlError.SQLITE_FULL,
+          SqlError.SQLITE_IOERR,
           SqlError.SQLITE_LOCKED,
           SqlError.SQLITE_READONLY,
-          SqlError.SQLITE_IOERR,
-          SqlError.SQLITE_FULL,
           SqlError.SQLITE_CANTOPEN,
         }.contains(error.resultCode)) {
       throw UserException(errors: .unknown());

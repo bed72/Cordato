@@ -2,8 +2,9 @@
 
 ## Estado atual: versão local
 
-Revisado em 22/11/2026. O aplicativo usa Localstore local, sem backend, login,
-sessão ou áudio. Consulte o [README](../README.md) e a
+Revisado em 23/11/2026. User/Expense usam Drift/SQLite, schema 2, sem backend,
+login, sessão ou áudio. Metrics/composição ainda referenciam Localstore removido
+e bloqueiam a compilação global. Consulte o [README](../README.md) e a
 [arquitetura](../ARCHITECTURE.md) para o estado canônico.
 Os comandos e o workflow não exigem nem passam `BASE_URL`.
 O manifest principal não declara `INTERNET`, `RECORD_AUDIO` ou app links de
@@ -12,16 +13,19 @@ A ferramenta de associações e seus testes exclusivos foram removidos.
 O widget continua usando `home_widget`, sem autenticação ou HTTP.
 Builds assinados e comportamento distribuído ainda exigem homologação própria.
 
-Última execução após a limpeza de código morto, mantendo o fork privado
-`bed72/localstore` no commit `ac66df2`: análise limpa e 845 testes aprovados.
-As políticas nativas passaram em 39 testes Android e 27 iOS; Info.plist e
-entitlements do Runner passaram no plutil. Permanecem os avisos conhecidos de
-`android.newDsl=false` e da detecção de KGP em `home_widget`, sem suprimir validações.
-O workflow passou no actionlint; o helper Git foi validado localmente com
-credencial fictícia, sem rede. `LOCALSTORE_READ_TOKEN` ainda precisa ser
-cadastrado. Builds completos do app, Action e acesso remoto do CI ao fork não foram
-executados nesta etapa.
-Resultados de builds citados em seções históricas abaixo não homologam a versão local.
+Na última execução registrada da transição Drift: análise focada limpa,
+343 testes focados aprovados, 32 diagnósticos globais e suíte global com 869
+aprovados/quatro falhas legadas. Não houve novo build Android/iOS nem execução
+remota de release. O teste de localtime com fusos distintos rodou no host,
+não homologa datas/defaults no aparelho.
+
+Os 39 testes Android/27 iOS e actionlint/plutil aprovados em 22/11/2026 são
+[históricos](../docs/history/local-transition.md), anteriores a Drift. Permanecem
+os avisos conhecidos de `android.newDsl=false` e da detecção de KGP em home_widget.
+O workflow ainda exige LOCALSTORE_READ_TOKEN por um passo legado, embora o
+pubspec atual não use o fork. Essa exigência e a integração de Metrics precisam
+de revisão separada antes de retomar release; esta atualização só documenta,
+não altera YAML, secrets, assinatura, código de versão ou publicação.
 
 Android release builds require a dedicated signing key. Never use the Android
 debug key or commit signing material, passwords, aliases, or `key.properties`.
@@ -130,11 +134,11 @@ Also verify current-month totals while Dashboard uses a historical filter, a
 successful empty month, storage/publication failures retaining the last valid
 summary, and month rollover showing **Abra para atualizar** until a new sync.
 Totals come from local Metrics, without login, logout or background HTTP.
-The private `bed72/localstore` fork follows `main` in pubspec; the lockfile pins
-the resolved commit. Update it explicitly with `flutter pub upgrade localstore`.
-Its `set` awaits the internal write, and invalid JSON propagates instead of
-being silently omitted. Native policy tests do not validate Dart persistence,
-power-failure durability or recovery.
+User/Expense now share the Drift DatabaseClient. Expense refresh requests follow
+successful writes/commit, but Metrics still uses its removed Localstore dependency
+and cannot produce a new integrated summary yet. The native snapshot format,
+App Group and URI contract have not changed. Native policy tests do not validate
+Dart persistence, migrations, local-time defaults, power-failure durability or recovery.
 `AddExpenseWidgetProvider` separates lifecycle, JSON parsing, BRL formatting,
 RemoteViews composition and alarm management; formatting keeps cents as integers
 and uses BigDecimal rather than floating-point money.
@@ -290,11 +294,12 @@ tem somente `contents: read`; o checkout não persiste suas credenciais Git.
 | `ANDROID_RELEASE_KEY_ALIAS` | Alias da chave de upload. |
 | `ANDROID_RELEASE_KEY_PASSWORD` | Senha da chave. |
 
-3. Cadastrar também **`LOCALSTORE_READ_TOKEN`**, um fine-grained PAT com
-   acesso somente a `bed72/localstore` e permissão **Contents: Read-only**.
-   O `GITHUB_TOKEN` do repositório Cordato não concede acesso automático ao fork
-   privado. O workflow falha antes de resolver dependências se esse secret
-   estiver ausente. Ele ainda precisa ser cadastrado no environment.
+3. **Passo legado ainda no YAML:** `LOCALSTORE_READ_TOKEN` foi preparado como PAT
+   de leitura somente de Contents em `bed72/localstore`. O workflow ainda falha
+   antes de resolver dependências se o secret estiver ausente. Drift não precisa
+   desse token; revisar a remoção do passo é tarefa de código separada. Esta
+   documentação não solicita cadastrar credencial obsoleta nem confirma secrets
+   remotos. Em revisões históricas, GITHUB_TOKEN não concedia acesso ao fork privado.
 
 O token de leitura é recebido somente no passo de dependências e fornecido ao
 Git por helper em variável de ambiente, limitado à URL do fork. Não é gravado
@@ -315,11 +320,13 @@ Não é necessário cadastrar conta de serviço Google, JSON ou credenciais do P
 
 #### Execução e download
 
-Depois que o workflow estiver na `main`, abrir Actions → **Android release** →
+Somente após resolver os bloqueios de Metrics e revisar o passo legado, abrir
+Actions → **Android release** →
 **Run workflow**, selecionar `main` e executar. Outras branches são ignoradas.
 O job usa Ubuntu 24.04, Java 21, Android SDK 37 (pacote
 `platforms;android-37.0`), Build Tools 37.0.0 e Flutter **3.50.0 stable**.
-Instala dependências com o lockfile obrigatório e o secret de leitura do fork,
+O YAML atual instala dependências com o lockfile obrigatório e ainda exige o
+secret legado de leitura do fork,
 executa `flutter analyze --no-pub` e a suíte Flutter unitária completa com
 `--no-pub` antes de acessar os secrets de assinatura.
 

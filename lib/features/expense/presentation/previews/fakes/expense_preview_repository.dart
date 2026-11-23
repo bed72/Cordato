@@ -3,7 +3,7 @@ import 'package:cordato/features/expense/domain/value_objects/amount_value_objec
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/entities/expense_suggestion_entity.dart';
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
@@ -16,12 +16,12 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
   }) async =>
       [
             ExpenseSuggestionEntity(
-              id: 'market',
+              id: 1,
               description: 'Mercado',
               category: .food,
             ),
             ExpenseSuggestionEntity(
-              id: 'rent',
+              id: 2,
               cents: 160000,
               description: 'Aluguel',
               category: .housing,
@@ -34,7 +34,7 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
           .toList();
 
   @override
-  Future<ExpenseEntity> getById({required String id}) async => expense;
+  Future<ExpenseEntity> getById({required int id}) async => expense;
 
   @override
   Future<ExpensePageEntity> get({
@@ -47,14 +47,14 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
   }) async => ExpensePageEntity(items: [expense], nextPage: null);
 
   @override
-  Future<void> delete({required String id}) async =>
+  Future<void> delete({required int id}) async =>
       throw ExpenseException(errors: .unknown());
 
   @override
   Future<ExpenseEntity> create({
     required int cents,
     required String description,
-    ExpenseCategoryEnum category = .other,
+    CategoryEnum category = .other,
     DateTime? occurredOn,
   }) async => ExpenseEntity(
     id: expense.id,
@@ -66,8 +66,8 @@ final class ExpensePreviewRepository({required final ExpenseEntity expense})
 
   @override
   Future<ExpenseEntity> update({
-    required String id,
-    ExpenseCategoryEnum? category,
+    required int id,
+    CategoryEnum? category,
     int? cents,
     String? description,
     DateTime? occurredOn,

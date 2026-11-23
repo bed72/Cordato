@@ -7,7 +7,7 @@ import 'package:cordato/features/core/presentation/formatters/money_formatter.da
 import 'package:cordato/features/dashboard/presentation/widgets/expenses/expenses_section_widget.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 import 'package:cordato/features/expense/domain/value_objects/amount_value_object.dart';
 
@@ -46,26 +46,25 @@ Widget _sectionPreview({ExpensePageEntity? data}) => Scaffold(
 );
 
 ExpensePageEntity _expensesPage() {
-  final fixtures =
-      <({String description, int cents, ExpenseCategoryEnum category})>[
-        (description: 'Aluguel', cents: 180000, category: .housing),
-        (description: 'Combustível', cents: 15000, category: .transport),
-        (description: 'Consulta médica', cents: 28000, category: .health),
-        (description: 'Mercado da semana', cents: 24590, category: .food),
-        (description: 'Cinema com a família', cents: 9600, category: .leisure),
-        (
-          description: 'Assinatura de música',
-          cents: 2190,
-          category: .subscriptions,
-        ),
-      ];
+  final fixtures = <({String description, int cents, CategoryEnum category})>[
+    (description: 'Aluguel', cents: 180000, category: .housing),
+    (description: 'Combustível', cents: 15000, category: .transport),
+    (description: 'Consulta médica', cents: 28000, category: .health),
+    (description: 'Mercado da semana', cents: 24590, category: .food),
+    (description: 'Cinema com a família', cents: 9600, category: .leisure),
+    (
+      description: 'Assinatura de música',
+      cents: 2190,
+      category: .subscriptions,
+    ),
+  ];
 
   return ExpensePageEntity(
     nextPage: null,
     items: [
       for (final (index, fixture) in fixtures.indexed)
         ExpenseEntity(
-          id: 'preview-expense-$index',
+          id: index + 1,
           category: fixture.category,
           description: fixture.description,
           occurredOn: DateTime(2026, 10, 7 - index),

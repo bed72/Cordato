@@ -27,7 +27,7 @@ import 'package:cordato/features/expense/presentation/screens/expense/widgets/fi
 
 final class const ExpenseFormWidget({
   super.key,
-  final String? id,
+  final int? id,
   final bool enabled = true,
   final bool returnToPrevious = false,
   final ExpenseEntity? initialExpense,

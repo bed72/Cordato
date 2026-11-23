@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
+import 'package:cordato/features/expense/infrastructure/daos/suggestions_dao.dart';
 import 'package:cordato/features/metrics/application/exceptions/metrics_exception.dart';
 import 'package:cordato/features/metrics/domain/entities/expense_metrics_entity.dart';
 import 'package:cordato/features/metrics/domain/enums/expense_metrics_group_by_enum.dart';
@@ -200,8 +201,9 @@ void main() {
       'reflects CRUD, category changes and month moves without cached totals',
       () async {
         final expenses = ExpenseRepository(
-          database: storage.database,
-          client: client,
+          databaseClient: storage.database,
+          widgetClient: client,
+          dao: SuggestionsDao(client: storage.database),
         );
         final created = await storage.expense(
           () => expenses.create(

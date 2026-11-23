@@ -4,14 +4,14 @@ import 'package:cordato/features/core/presentation/extensions/context_extension.
 import 'package:cordato/features/core/presentation/widgets/menu/menu_item_widget.dart';
 import 'package:cordato/features/core/presentation/widgets/icons/background_icon_widget.dart';
 
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
 
 final class const ExpenseCategoryItemWidget({
   super.key,
   required final bool selected,
   required final VoidCallback onPressed,
-  required final ExpenseCategoryEnum category,
+  required final CategoryEnum category,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

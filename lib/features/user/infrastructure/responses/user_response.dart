@@ -1,5 +1,6 @@
-import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
 import 'package:cordato/features/user/domain/entities/user_entity.dart';
+
+import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
 
 final class const UserResponse({
   required final int id,

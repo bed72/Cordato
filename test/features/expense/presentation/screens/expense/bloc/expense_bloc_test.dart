@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
 
@@ -20,7 +20,7 @@ import '../../../../../../support/expense/mocks/expense_repository_mock.dart';
 void main() {
   late ExpenseRepositoryMock repository;
   final expense = ExpenseEntity(
-    id: '1',
+    id: 1,
     description: ' Original ',
     cents: .create(cents: 1234),
     occurredOn: DateTime(2026, 9, 3),
@@ -34,8 +34,8 @@ void main() {
     repository = ExpenseRepositoryMock();
     when(() => repository.create(cents: 1234, description: ' Original '))
         .thenAnswer((_) async => expense);
-    when(() => repository.getById(id: '1')).thenAnswer((_) async => expense);
-    when(() => repository.update(id: '1', cents: 2000))
+    when(() => repository.getById(id: 1)).thenAnswer((_) async => expense);
+    when(() => repository.update(id: 1, cents: 2000))
         .thenAnswer((_) async => expense);
   });
 
@@ -47,7 +47,7 @@ void main() {
         category: .transport,
       );
 
-      expect(event.category, same(ExpenseCategoryEnum.transport));
+      expect(event.category, same(CategoryEnum.transport));
       expect(event.description, ' Original ');
       expect(submitted.category, isNull);
     });
@@ -91,13 +91,13 @@ void main() {
     blocTest<ExpenseBloc, ExpenseState>(
       'delegates a category-only edit and keeps the confirmed API result',
       build: () {
-        when(() => repository.update(id: '1', category: .transport))
+        when(() => repository.update(id: 1, category: .transport))
             .thenAnswer((_) async => expense);
         return ExpenseBloc(repository: repository);
       },
       seed: () => ExpenseReady(expense: expense),
       act: (bloc) =>
-          bloc.add(const ExpenseSubmittedEvent(id: '1', category: .transport)),
+          bloc.add(const ExpenseSubmittedEvent(id: 1, category: .transport)),
       expect: () => [
         isA<ExpenseSubmitting>(),
         isA<ExpenseSuccess>()
@@ -105,7 +105,7 @@ void main() {
             .having((state) => state.expense, 'API entity', same(expense)),
       ],
       verify: (_) =>
-          verify(() => repository.update(id: '1', category: .transport))
+          verify(() => repository.update(id: 1, category: .transport))
               .called(1),
     );
 
@@ -144,16 +144,16 @@ void main() {
     blocTest<ExpenseBloc, ExpenseState>(
       'delegates an explicit edit back to other',
       build: () {
-        when(() => repository.update(id: '1', category: .other))
+        when(() => repository.update(id: 1, category: .other))
             .thenAnswer((_) async => expense);
         return ExpenseBloc(repository: repository);
       },
       seed: () => ExpenseReady(expense: expense),
       act: (bloc) =>
-          bloc.add(const ExpenseSubmittedEvent(id: '1', category: .other)),
+          bloc.add(const ExpenseSubmittedEvent(id: 1, category: .other)),
       expect: () => [isA<ExpenseSubmitting>(), isA<ExpenseSuccess>()],
       verify: (_) =>
-          verify(() => repository.update(id: '1', category: .other)).called(1),
+          verify(() => repository.update(id: 1, category: .other)).called(1),
     );
 
     blocTest<ExpenseBloc, ExpenseState>(
@@ -161,9 +161,9 @@ void main() {
       build: () => ExpenseBloc(repository: repository),
       act: (bloc) async {
         final ready = bloc.stream.firstWhere((s) => s is ExpenseReady);
-        bloc.add(const ExpenseRequestedEvent(id: '1'));
+        bloc.add(const ExpenseRequestedEvent(id: 1));
         await ready;
-        bloc.add(const ExpenseSubmittedEvent(id: '1', cents: 2000));
+        bloc.add(const ExpenseSubmittedEvent(id: 1, cents: 2000));
       },
       expect: () => [
         isA<ExpenseLoading>(),
@@ -176,7 +176,7 @@ void main() {
         isA<ExpenseSuccess>().having((s) => s.isEditing, 'edit', true),
       ],
       verify: (_) =>
-          verify(() => repository.update(id: '1', cents: 2000)).called(1),
+          verify(() => repository.update(id: 1, cents: 2000)).called(1),
     );
 
     blocTest<ExpenseBloc, ExpenseState>(
@@ -277,11 +277,11 @@ void main() {
       blocTest<ExpenseBloc, ExpenseState>(
         'preserves load errors ${errors.errors.length}',
         build: () {
-          when(() => repository.getById(id: '1'))
+          when(() => repository.getById(id: 1))
               .thenThrow(ExpenseException(errors: errors));
           return ExpenseBloc(repository: repository);
         },
-        act: (bloc) => bloc.add(const ExpenseRequestedEvent(id: '1')),
+        act: (bloc) => bloc.add(const ExpenseRequestedEvent(id: 1)),
         expect: () => [
           isA<ExpenseLoading>(),
           isA<ExpenseLoadFailure>().having(
@@ -372,15 +372,15 @@ void main() {
     test('latest ID wins without publishing obsolete load errors', () async {
       final pending = Completer<ExpenseEntity>();
       final entered = Completer<void>();
-      when(() => repository.getById(id: 'old')).thenAnswer((_) {
+      when(() => repository.getById(id: 2)).thenAnswer((_) {
         entered.complete();
         return pending.future;
       });
       final bloc = ExpenseBloc(repository: repository);
-      bloc.add(const ExpenseRequestedEvent(id: 'old'));
+      bloc.add(const ExpenseRequestedEvent(id: 2));
       await entered.future;
       final done = bloc.stream.firstWhere((s) => s is ExpenseReady);
-      bloc.add(const ExpenseRequestedEvent(id: '1'));
+      bloc.add(const ExpenseRequestedEvent(id: 1));
       await done;
       pending.completeError(StateError('obsolete'));
       await bloc.close();
@@ -401,16 +401,16 @@ void main() {
         bloc.add(submitted);
         await entered.future;
         final ready = bloc.stream.firstWhere((state) => state is ExpenseReady);
-        bloc.add(const ExpenseRequestedEvent(id: '1'));
+        bloc.add(const ExpenseRequestedEvent(id: 1));
         await ready;
         final done = bloc.stream.firstWhere((state) => state is ExpenseSuccess);
-        bloc.add(const ExpenseSubmittedEvent(id: '1', cents: 2000));
+        bloc.add(const ExpenseSubmittedEvent(id: 1, cents: 2000));
         await done;
         expect((bloc.state as ExpenseSuccess).isEditing, isTrue);
         old.completeError(StateError('obsolete mutation'));
         await bloc.close();
         expect(bloc.state, isA<ExpenseSuccess>());
-        verify(() => repository.update(id: '1', cents: 2000)).called(1);
+        verify(() => repository.update(id: 1, cents: 2000)).called(1);
       },
     );
   });

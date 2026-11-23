@@ -82,7 +82,7 @@ final class ExpensesBloc({required final IExpenseRepository repository})
         page: refresh ? 1 : data.nextPage!,
       );
       if (isClosed || emit.isDone || revision != _revision) return;
-      final items = <String, ExpenseEntity>{
+      final items = <int, ExpenseEntity>{
         for (final item in refresh ? <ExpenseEntity>[] : data.items)
           item.id: item,
         for (final item in page.items) item.id: item,

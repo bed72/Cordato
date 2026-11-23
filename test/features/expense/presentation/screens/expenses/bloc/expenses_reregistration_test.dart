@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cordato/features/core/domain/entities/errors_entity.dart';
 
 import 'package:cordato/features/expense/domain/entities/expense_entity.dart';
-import 'package:cordato/features/expense/domain/enums/expense_category_enum.dart';
+import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/domain/entities/expense_page_entity.dart';
 
 import 'package:cordato/features/expense/application/exceptions/expense_exception.dart';
@@ -23,10 +23,10 @@ void main() {
   final today = DateTime.utc(2026, 11, 8);
 
   ExpenseEntity sourceExpense({
-    ExpenseCategoryEnum category = .other,
+    CategoryEnum category = .other,
     DateTime? occurredOn,
   }) => ExpenseEntity(
-    id: 'original',
+    id: 1,
     category: category,
     description: '  Mercado  ',
     cents: .create(cents: 12345),
@@ -34,14 +34,14 @@ void main() {
   );
 
   ExpenseEntity createdExpense() => ExpenseEntity(
-    id: 'new-record',
+    id: 2,
     category: .other,
     occurredOn: today,
     description: '  Mercado  ',
     cents: .create(cents: 12345),
   );
 
-  Future<ExpenseEntity> createCall({ExpenseCategoryEnum category = .other}) =>
+  Future<ExpenseEntity> createCall({CategoryEnum category = .other}) =>
       repository.create(
         cents: 12345,
         description: '  Mercado  ',
@@ -105,10 +105,7 @@ void main() {
   });
 
   group('Creation and reload', () {
-    for (final category in [
-      ExpenseCategoryEnum.food,
-      ExpenseCategoryEnum.other,
-    ]) {
+    for (final category in [CategoryEnum.food, CategoryEnum.other]) {
       blocTest<ExpensesBloc, ExpensesState>(
         'copies exact values including category ${category.value}',
         build: () {
@@ -126,13 +123,13 @@ void main() {
         expect: () => [
           isA<ExpensesReregistering>()
               .having((state) => state.isBusy, 'busy', true)
-              .having((state) => state.id, 'source ID', 'original'),
+              .having((state) => state.id, 'source ID', 1),
           isA<ExpensesReregistered>()
-              .having((state) => state.expense.id, 'new ID', 'new-record')
+              .having((state) => state.expense.id, 'new ID', 2)
               .having(
                 (state) => state.data.items.single.id,
                 'original intact',
-                'original',
+                1,
               ),
           isA<ExpensesLoading>().having(
             (state) => state.refresh,
@@ -303,11 +300,7 @@ void main() {
                 same(scenario.errors),
               )
               .having((state) => state.isBusy, 'retry enabled', false)
-              .having(
-                (state) => state.data.items.single.id,
-                'original',
-                'original',
-              )
+              .having((state) => state.data.items.single.id, 'original', 1)
               .having(
                 (state) => state.data.nextPage,
                 'continuation preserved',
@@ -380,7 +373,7 @@ void main() {
         bloc.add(request());
         await entered.future;
         bloc.add(request());
-        bloc.add(const ExpensesDeleteRequestedEvent(id: 'original'));
+        bloc.add(const ExpensesDeleteRequestedEvent(id: 1));
         bloc.add(ExpensesUpdatedEvent(expense: createdExpense()));
         bloc.add(const ExpensesNextPageRequestedEvent());
         await Future<void>(() {});
@@ -445,7 +438,7 @@ void main() {
 
     for (final busy in [
       ExpensesLoading(data: ExpensesData(), refresh: true),
-      ExpensesDeleting(data: ExpensesData(), id: 'original'),
+      ExpensesDeleting(data: ExpensesData(), id: 1),
     ]) {
       blocTest<ExpensesBloc, ExpensesState>(
         'rejects creation during ${busy.runtimeType}',
@@ -527,7 +520,7 @@ void main() {
         );
         await bloc.close();
 
-        expect(bloc.state.data.items.single.id, 'new-record');
+        expect(bloc.state.data.items.single.id, 2);
         expect(bloc.state.data.category, 'other');
         verify(() => createCall()).called(1);
       },
