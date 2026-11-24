@@ -24,7 +24,9 @@ Os testes de UI do site não mudam a política sem UI do aplicativo.
 ## Conteúdo e limites
 
 - O app usa perfil e despesas locais, sem cadastro, backend, áudio ou IA.
-- Não prometa sincronização, exportação, backup próprio ou recuperação remota.
+- Exportação CSV local é acessada em Configurações → Exportar despesas, com
+  compartilhamento nativo escolhido pelo usuário. Não é criptografada nem um
+  backup restaurável; não prometa sincronização, importação ou recuperação remota.
 - Distinga dados locais, cópias do sistema, mensagens de suporte e logs do host.
 - Preserve contato para dados de versões antigas; não afirme que foram apagados.
 - Mantenha as páginas alinhadas ao conteúdo de Information no app.

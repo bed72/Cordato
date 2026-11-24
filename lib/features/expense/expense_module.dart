@@ -2,13 +2,16 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'package:cordato/features/core/presentation/enums/route_enum.dart';
-import 'package:cordato/features/core/presentation/extensions/bloc_scoped_extension.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
+import 'package:cordato/features/core/presentation/extensions/bloc_scoped_extension.dart';
 
-import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
 import 'package:cordato/features/expense/infrastructure/daos/suggestions_dao.dart';
+import 'package:cordato/features/expense/infrastructure/repositories/expense_repository.dart';
+import 'package:cordato/features/expense/infrastructure/repositories/expense_export_repository.dart';
+
 import 'package:cordato/features/expense/application/repositories/interface_expense_repository.dart';
+import 'package:cordato/features/expense/application/repositories/interface_expense_export_repository.dart';
 
 import 'package:cordato/features/expense/presentation/screens/expense/expense_screen.dart';
 import 'package:cordato/features/expense/presentation/screens/expenses/expenses_screen.dart';
@@ -25,6 +28,7 @@ final expenseModule = createModule(
     context
       ..addLazySingleton<SuggestionsDao>(SuggestionsDao.new)
       ..addLazySingleton<IExpenseRepository>(ExpenseRepository.new)
+      ..addLazySingleton<IExpenseExportRepository>(ExpenseExportRepository.new)
       ..add(ExpenseBloc.new)
       ..add(ExpensesBloc.new)
       ..add(ExpenseFormValidator.new)

@@ -1,7 +1,7 @@
 # Cordato
 
 Aplicativo Flutter de finanças pessoais, exclusivamente local, em transição
-para Drift/SQLite. Estado documental revisado em **23/11/2026**.
+para Drift/SQLite. Estado documental revisado em **24/11/2026**.
 
 ## Transição de persistência
 
@@ -95,17 +95,39 @@ histórico. A revisão não altera visibilidade nem autoriza reescrita do Git.
   de BRL, derivados das despesas SQLite.
 - Entrada na Dashboard, sem autenticação.
 - Widget Android/iOS com resumo do mês e atalho para Nova despesa.
-- Configurações com Perfil local, Informações e Apoio voluntário via Pix.
+- Configurações com Perfil local, Dados, Informações e Apoio voluntário via Pix.
+- Exportação CSV de todo o histórico local, com compartilhamento nativo.
 - Termos, Privacidade e Ajuda com conteúdo local.
 
 Authentication, Session, Welcome, PocketBase, backend, worker, gravação de áudio e IA foram
-removidos. Exportação CSV e compartilhamento também foram removidos. Budget e
+removidos. CSV e compartilhamento foram reimplementados sobre Drift. Budget e
 Family são planejados, não funcionalidades disponíveis.
 
-**Não há sincronização, importação remota, exportação ou backup/restauração pelo
+**Não há sincronização, importação ou backup/restauração pelo
 app.** Dados podem ser perdidos ao desinstalar ou trocar de dispositivo. Cópias
 do sistema dependem do dispositivo; arquivos exportados anteriormente não são
 backups restauráveis. Não há garantia adicional de criptografia ou recuperação.
+
+### Exportar despesas
+
+Abra **Configurações → Exportar despesas**. O app prepara todo o histórico em
+um CSV local e abre o compartilhamento do sistema para escolher onde salvar ou
+enviar. Não há filtros nem necessidade de internet para gerar o arquivo;
+o destino escolhido pode exigir conexão. Histórico vazio mostra um aviso.
+
+O arquivo `cordato-despesas-AAAA-MM-DD.csv` usa UTF-8 com BOM, `;`, datas
+`dd/MM/yyyy` e valores em reais com duas casas e vírgula decimal. As colunas são
+Identificador, Data, Descrição, Categoria e Valor. Categorias usam os valores
+estáveis do enum. Textos com risco de fórmula de planilha recebem apóstrofo,
+sem alterar a despesa armazenada.
+
+CSV contém dados financeiros sem criptografia e não pode ser importado ou
+restaurado no Cordato. Abrir ou concluir o compartilhamento não comprova
+salvamento. Arquivos abandonados são descartados; os oferecidos para compartilhar
+são mantidos no cache, elegíveis à limpeza na próxima preparação após 24 horas,
+sem apagar arquivos enquanto o compartilhamento estiver ativo ou cópias externas.
+O sistema também pode limpar temporários. Verificação em dispositivo Android/iOS,
+incluindo compartilhamento no iPad, continua necessária.
 
 ## Site público
 
@@ -313,6 +335,25 @@ Há nomes/caminhos legados e suítes separadas por responsabilidade, detalhados 
 Isso não é uma medição de cobertura.
 
 ## Verificação e pendências
+
+Verificação da exportação CSV local em 24/11/2026:
+
+| Comando | Resultado |
+| --- | --- |
+| `flutter pub get` | Concluído. |
+| `flutter analyze` | Sem problemas. |
+| `flutter test --reporter failures-only` | 1129 passando no checkout atual. |
+| `npm test` em `site/` | 26 passando. |
+| `npm run format:check` em `site/` | Sem problemas. |
+| `npm run test:e2e` em `site/` | 52 passando em Chromium. |
+| `git diff --check` | Sem problemas. |
+
+Exportação tem cobertura de formato CSV, proteção contra fórmulas, histórico
+completo com SQLite real, falhas de storage/compartilhamento, temporários,
+concorrência, fechamento pendente e composição/ownership sem UI.
+O SDK de compartilhamento é exercitado com canal nativo simulado.
+Não houve build nativo ou teste de compartilhamento em dispositivo nesta entrega;
+CSV não é backup restaurável nem garantia de salvamento pelo destino.
 
 Verificação da consolidação do schema v1 em 23/11/2026:
 

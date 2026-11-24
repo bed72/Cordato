@@ -1,6 +1,6 @@
 abstract final class InformationContent {
-  static const version = '2.1';
-  static const updatedAt = '21/11/2026';
+  static const version = '2.2';
+  static const updatedAt = '24/11/2026';
   static const responsible = 'Gabriel Ramos';
   static const email = 'developer.bed@gmail.com';
 
@@ -62,8 +62,10 @@ abstract final class InformationContent {
         'Limpar os dados do aplicativo, desinstalá-lo, perder ou trocar '
             'o dispositivo pode apagar seus registros locais. Não mantenha '
             'no Cordato a única cópia de informações que precise preservar.',
-        'Esta versão não oferece exportação de despesas, criação de backup '
-            'ou restauração de arquivos pelo aplicativo.',
+        'Em Configurações → Exportar despesas, você pode gerar um CSV com todo '
+            'o histórico local e escolher um destino no compartilhamento do sistema. '
+            'O CSV não é criptografado nem um backup restaurável. O aplicativo '
+            'não oferece importação, criação de backup ou restauração de arquivos.',
         'Recursos de backup e transferência do sistema operacional dependem '
             'das configurações e dos serviços escolhidos por você. '
             'Não garantimos que incluam os registros ou permitam recuperá-los.',
@@ -155,10 +157,16 @@ abstract final class InformationContent {
     (
       title: 'Compartilhamento por sua iniciativa',
       paragraphs: [
-        'Esta versão não oferece exportação ou compartilhamento de arquivos '
-            'de despesas pelo aplicativo. Cópias enviadas anteriormente a '
-            'outros aplicativos ou destinos continuam sob as condições '
-            'dos respectivos destinatários.',
+        'Em Configurações → Exportar despesas, o aplicativo gera localmente um CSV '
+            'com identificadores, datas, descrições, categorias e valores. '
+            'O arquivo não é criptografado. Você escolhe o destino no compartilhamento '
+            'do sistema; os aplicativos e serviços escolhidos seguem suas próprias '
+            'condições. Abrir o compartilhamento não confirma que o arquivo foi salvo.',
+        'Arquivos abandonados são descartados. Arquivos preparados para compartilhar '
+            'ficam temporariamente no cache; a próxima preparação remove os que '
+            'têm mais de 24 horas, exceto durante um compartilhamento em andamento. '
+            'O sistema também pode limpar o cache. Cópias enviadas a outros destinos '
+            'não são removidas pelo Cordato.',
         'Se você escrever ao suporte, o endereço de e-mail, o conteúdo e os '
             'anexos enviados serão tratados para responder ao pedido. O envio '
             'envolve os provedores de e-mail e pode incluir processamento '
@@ -297,8 +305,11 @@ abstract final class InformationContent {
         (
           question: 'Posso exportar despesas ou criar um backup?',
           answer:
-              'Esta versão não oferece exportação de despesas, criação de '
-              'backup ou restauração de arquivos pelo aplicativo. Recursos '
+              'Abra Configurações → Exportar despesas para gerar um CSV de todo '
+              'o histórico local, sem precisar de internet para criar o arquivo. '
+              'Escolha onde salvar ou enviar pelo compartilhamento do sistema. '
+              'O CSV não é criptografado e não pode ser restaurado no app. '
+              'Não há importação ou backup próprio. Recursos '
               'de cópia do sistema operacional dependem das suas configurações '
               'e não são um backup próprio do Cordato.',
         ),

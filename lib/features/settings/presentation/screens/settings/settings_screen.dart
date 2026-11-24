@@ -8,6 +8,7 @@ import 'package:cordato/features/core/presentation/widgets/menu/menu_item_widget
 import 'package:cordato/features/core/presentation/widgets/menu/menu_section_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_app_bar_widget.dart';
 import 'package:cordato/features/settings/presentation/screens/settings/widgets/settings_support_badge_widget.dart';
+import 'package:cordato/features/settings/presentation/screens/settings/widgets/export_expenses_widget.dart';
 
 final class const SettingsScreen({super.key}) extends StatelessWidget {
   @override
@@ -42,6 +43,13 @@ final class const SettingsScreen({super.key}) extends StatelessWidget {
                                   context.pushNamed(RouteEnum.user.path),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(height: 24.0),
+                      const MenuSectionWidget(
+                        label: 'Dados',
+                        child: MenuCardWidget(
+                          children: [ExportExpensesWidget()],
                         ),
                       ),
                       const SizedBox(height: 24.0),

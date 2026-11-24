@@ -21,8 +21,8 @@ void main() {
     });
 
     test('versions the local documents with an explicit update date', () {
-      expect(InformationContent.version, '2.1');
-      expect(InformationContent.updatedAt, '21/11/2026');
+      expect(InformationContent.version, '2.2');
+      expect(InformationContent.updatedAt, '24/11/2026');
     });
 
     for (final document in [
@@ -82,20 +82,21 @@ void main() {
       expect(help, contains('podem ser perdidos'));
     });
 
-    test('does not advertise removed CSV or a future backup feature', () {
-      expect(terms, contains('não oferece exportação de despesas'));
-      expect(privacy, contains('não oferece exportação ou compartilhamento'));
+    test('explains local CSV without promising restorable backups', () {
+      expect(terms, contains('não é criptografado nem um backup restaurável'));
+      expect(privacy, contains('24 horas'));
+      expect(privacy, contains('não confirma que o arquivo foi salvo'));
       final answer = questions
           .singleWhere(
             (item) =>
                 item.question == 'Posso exportar despesas ou criar um backup?',
           )
           .answer;
-      expect(answer, contains('não oferece exportação de despesas'));
+      expect(answer, contains('não pode ser restaurado no app'));
       expect(answer, contains('não são um backup próprio'));
       for (final text in [terms, privacy, help]) {
-        expect(text, isNot(contains('Configurações → Exportar despesas')));
-        expect(text, isNot(contains('CSV')));
+        expect(text, contains('Configurações → Exportar despesas'));
+        expect(text, contains('CSV'));
       }
     });
 

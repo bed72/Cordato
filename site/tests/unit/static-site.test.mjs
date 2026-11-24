@@ -61,8 +61,8 @@ test('privacy distinguishes local records, hosting, support and older versions',
     'backups do sistema',
     'versões antigas com cadastro',
     'LGPD',
-    '2026-11-23',
-    'Versão 2.1',
+    '2026-11-24',
+    'Versão 2.2',
   ]) {
     assert.ok(html.includes(text), text);
   }
@@ -75,7 +75,10 @@ test('terms and support do not promise remote recovery or app backups', async ()
 
   assert.ok(terms.includes('Não há cadastro, login ou senha'));
   assert.ok(terms.includes('não processa nem confirma pagamentos'));
-  assert.ok(terms.includes('não oferece exportação'));
+  assert.ok(terms.includes('Configurações → Exportar despesas'));
+  assert.ok(terms.includes('backup restaurável'));
+  assert.ok(support.includes('não pode'));
+  assert.ok(support.includes('ser restaurado no app'));
   assert.ok(support.includes('não pode apagar o banco local remotamente'));
   assert.ok(support.includes('podem ser perdidos'));
   assert.equal([...support.matchAll(/<details\b/g)].length, 10);

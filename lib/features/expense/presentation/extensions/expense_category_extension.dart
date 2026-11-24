@@ -67,29 +67,32 @@ extension ExpenseCategoryExtension on CategoryEnum {
     .other => Icons.receipt_long_outlined,
   };
 
-  Color color(BuildContext context) => switch (this) {
-    .health => context.colors.error,
-    .pets => context.colors.tertiary,
-    .taxes => context.colors.secondary,
-    .travel => context.colors.primary,
-    .transport => context.colors.primary,
-    .insurance => context.colors.primary,
-    .financing => context.colors.secondary,
-    .investments => context.colors.tertiary,
-    .personalCare => context.colors.secondary,
-    .giftsAndDonations => context.colors.tertiary,
-    .housing => context.isDark ? Colors.blue.shade300 : Colors.blue.shade700,
-    .shopping => context.isDark ? Colors.pink.shade300 : Colors.pink.shade700,
-    .food => context.isDark ? Colors.orange.shade300 : Colors.orange.shade800,
-    .services => context.isDark ? Colors.teal.shade300 : Colors.teal.shade700,
-    .subscriptions =>
-      context.isDark ? Colors.cyan.shade300 : Colors.cyan.shade800,
-    .education =>
-      context.isDark ? Colors.indigo.shade300 : Colors.indigo.shade700,
-    .leisure =>
-      context.isDark ? Colors.purple.shade300 : Colors.purple.shade700,
-    .other => context.colors.outline,
-  };
+  Color color(BuildContext context) => colorForScheme(context.colors);
+
+  Color colorForScheme(ColorScheme colors) {
+    final isDark = colors.brightness == Brightness.dark;
+
+    return switch (this) {
+      .health => colors.error,
+      .pets => colors.onTertiaryContainer,
+      .taxes => colors.secondary,
+      .travel => colors.primary,
+      .transport => colors.primary,
+      .insurance => colors.primary,
+      .financing => colors.secondary,
+      .investments => colors.onTertiaryContainer,
+      .personalCare => colors.secondary,
+      .giftsAndDonations => colors.onTertiaryContainer,
+      .housing => isDark ? Colors.blue.shade300 : Colors.blue.shade700,
+      .shopping => isDark ? Colors.pink.shade300 : Colors.pink.shade700,
+      .food => isDark ? Colors.orange.shade300 : Colors.orange.shade800,
+      .services => isDark ? Colors.teal.shade300 : Colors.teal.shade700,
+      .subscriptions => isDark ? Colors.cyan.shade300 : Colors.cyan.shade800,
+      .education => isDark ? Colors.indigo.shade300 : Colors.indigo.shade700,
+      .leisure => isDark ? Colors.purple.shade300 : Colors.purple.shade700,
+      .other => colors.outline,
+    };
+  }
 
   String get label => switch (this) {
     .health => 'Saúde',

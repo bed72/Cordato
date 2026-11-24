@@ -16,7 +16,7 @@ void main() {
           source,
           isNot(
             matches(
-              r'PocketBase|ClientException|MissingAuthenticatedUserException|validateOwner|ownerId|features/(authentication|session)/',
+              r'PocketBase|\bClientException\b|MissingAuthenticatedUserException|validateOwner|ownerId|features/(authentication|session)/',
             ),
           ),
           reason: file.path,

@@ -69,6 +69,9 @@ renderização ou de cada quadro das animações em outros navegadores.
 - Imagens e fontes são locais, sem CDN.
 - A hospedagem recebe dados técnicos de conexão e pode manter logs.
 - Contatar o suporte ou usar o banco para Pix envolve serviços externos.
+- O app exporta CSV local por compartilhamento nativo, sem criptografia ou
+  restauração. Os destinos escolhidos pelo usuário têm políticas próprias;
+  o site não gera arquivos nem acessa despesas.
 - Não prometer criptografia adicional, sincronização, backup próprio ou recuperação.
 - Não publicar associações legadas de autenticação ou restaurar formulários.
 - A política e os termos devem permanecer coerentes com Information no Flutter,

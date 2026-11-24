@@ -147,7 +147,12 @@ void main() {
                   'application/repositories/interface_widget_launch_repository.dart',
                 }.contains(targetPath);
             final isApplicationContract =
-                isFeatureRepositoryContract || isRootWidgetContract;
+                isFeatureRepositoryContract ||
+                isRootWidgetContract ||
+                (file.path.startsWith('lib/features/settings/') &&
+                    targetContext == 'settings' &&
+                    targetPath ==
+                        'application/repositories/interface_export_repository.dart');
             final isOuterAdapter =
                 targetPath.startsWith('application/clients/') ||
                 targetPath.startsWith('application/repositories/') ||

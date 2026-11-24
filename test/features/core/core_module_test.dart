@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:cordato/features/core/core_module.dart';
 import 'package:cordato/features/core/infrastructure/clients/database/database_client.dart';
 import 'package:cordato/features/core/infrastructure/clients/widget_client.dart';
+import 'package:cordato/features/core/infrastructure/clients/share/share_client.dart';
 import 'package:cordato/features/core/presentation/formatters/date_formatter.dart';
 import 'package:cordato/features/core/presentation/formatters/money_formatter.dart';
 
@@ -36,6 +37,16 @@ void main() {
     expect(client, isA<WidgetClient>());
     expect(boot.injector.get<IWidgetClient>(), same(client));
   });
+
+  test(
+    'sharing resolves lazily as a shared capability without platform calls',
+    () {
+      final client = boot.injector.get<IShareClient>();
+
+      expect(client, isA<ShareClient>());
+      expect(boot.injector.get<IShareClient>(), same(client));
+    },
+  );
 
   test(
     'database resolves as a shared lazy client without opening storage',

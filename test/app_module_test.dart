@@ -180,25 +180,21 @@ void main() {
       expect(first, isNot(same(second)));
     });
 
-    test(
-      'Information and Settings remain public without a page-owned Bloc',
-      () {
-        for (final destination in [
-          RouteEnum.informationTerms,
-          RouteEnum.informationPrivacy,
-          RouteEnum.informationHelp,
-          RouteEnum.settings,
-          RouteEnum.settingsSupport,
-        ]) {
-          final matches = boot.routes.match(Uri.parse(destination.path));
+    test('Information and Support remain public without a page-owned Bloc', () {
+      for (final destination in [
+        RouteEnum.informationTerms,
+        RouteEnum.informationPrivacy,
+        RouteEnum.informationHelp,
+        RouteEnum.settingsSupport,
+      ]) {
+        final matches = boot.routes.match(Uri.parse(destination.path));
 
-          expect(matches, hasLength(1));
-          expect(matches!.single.route.guards, isEmpty);
-          expect(matches.single.route.provide, isNull);
-          expect(matches.single.route.ownerTags, isEmpty);
-        }
-      },
-    );
+        expect(matches, hasLength(1));
+        expect(matches!.single.route.guards, isEmpty);
+        expect(matches.single.route.provide, isNull);
+        expect(matches.single.route.ownerTags, isEmpty);
+      }
+    });
 
     test(
       'Dashboard resolves independent Bloc factories without sibling routes',

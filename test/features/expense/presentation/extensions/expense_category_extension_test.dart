@@ -1,10 +1,42 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:cordato/features/core/presentation/themes/color_theme.dart';
 import 'package:cordato/features/expense/domain/enums/category_enum.dart';
 import 'package:cordato/features/expense/presentation/extensions/expense_category_extension.dart';
 
 void main() {
+  group('Category icon contrast', () {
+    final schemes = [lightColorScheme, darkColorScheme];
+    const categories = [
+      CategoryEnum.pets,
+      CategoryEnum.investments,
+      CategoryEnum.giftsAndDonations,
+    ];
+
+    for (final scheme in schemes) {
+      for (final category in categories) {
+        test('${category.name} is visible in ${scheme.brightness.name}', () {
+          final foreground = category.colorForScheme(scheme);
+          final background = Color.alphaBlend(
+            foreground.withValues(alpha: 0.12),
+            scheme.surface,
+          );
+          final foregroundLuminance = foreground.computeLuminance();
+          final backgroundLuminance = background.computeLuminance();
+          final lighter = foregroundLuminance > backgroundLuminance
+              ? foregroundLuminance
+              : backgroundLuminance;
+          final darker = foregroundLuminance < backgroundLuminance
+              ? foregroundLuminance
+              : backgroundLuminance;
+
+          expect((lighter + 0.05) / (darker + 0.05), greaterThanOrEqualTo(3));
+        });
+      }
+    }
+  });
+
   group('ExpenseCategoryExtension', () {
     final labels = <CategoryEnum, String>{
       .health: 'Saúde',

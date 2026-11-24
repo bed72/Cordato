@@ -1,6 +1,6 @@
 # Arquitetura
 
-Estado canônico da versão local em transição para Drift, revisado em **23/11/2026**.
+Estado canônico da versão local em transição para Drift, revisado em **24/11/2026**.
 Convenções obrigatórias: [AGENTS.md](AGENTS.md). Execução e limites do produto:
 [README.md](README.md). Registros anteriores:
 [histórico da transição](docs/history/local-transition.md).
@@ -116,8 +116,9 @@ em uma consulta parametrizada no MetricsDao, sem View ou alteração do schema.
 Composição global e suporte de testes não dependem mais de Localstore.
 
 O aplicativo é exclusivamente local. Authentication, Session, Welcome, PocketBase,
-backend, worker, áudio, IA, Insight, CSV e infraestrutura de compartilhamento
-sem consumidores foram removidos. Documentos históricos não autorizam restaurá-los.
+backend, worker, áudio, IA e Insight foram removidos. CSV local e compartilhamento
+foram reintroduzidos por solicitação explícita, sem restaurar o fluxo remoto.
+Documentos históricos não autorizam restaurar os demais recursos.
 Não há identidade autenticada, `owner` nas despesas ou autorização remota.
 
 ```text
@@ -159,11 +160,11 @@ organização. Rotas, artefato e limites estão em [`site/README.md`](site/READM
 | --- | --- |
 | `core` | Capacidades compartilhadas, componentes visuais, formatadores e clients nativos. |
 | `user` | Leitura e atualização do perfil SQLite: ID inteiro, nome e seed do avatar. |
-| `expense` | Despesas individuais: CRUD, consultas, paginação e sugestões. |
+| `expense` | Despesas individuais: CRUD, consultas, paginação, sugestões e serialização CSV local. |
 | `metrics` | Projeção mensal somente leitura das despesas SQLite, agregadas por categoria. |
 | `dashboard` | Apresentação e composição dos contratos consultados. |
 | `root` | Composição visual, entrada e coordenação dos widgets do sistema. |
-| `settings` | Navegação para perfil, informações e apoio. |
+| `settings` | Navegação para perfil, informações e apoio; coordenação de exportação CSV e compartilhamento. |
 | `information` | Conteúdo local de Termos, Privacidade e Ajuda. |
 | Budget e Family | Planejados, não implementados. |
 
@@ -383,7 +384,40 @@ Erros SQL, constraints, corrupção, parsing e programação propagam. O formatt
 local conhece profile_not_found, expense_not_found e invalid_amount, sem expor
 diagnósticos. Testes reais/interceptor verificam SQL, transações, rollback,
 persistência, concorrência e refresh após commit.
-Não há exportação CSV ou contrato de compartilhamento.
+
+### Exportação CSV local
+
+IExpenseExportRepository expõe `prepare`, retornando bytes ou null para histórico
+vazio. ExpenseExportRepository usa DatabaseClient em uma única consulta ordenada
+por data/ID crescentes, com filtro por perfil via subconsulta. O SELECT fornece
+snapshot consistente sem paginação, transação explícita ou criação de perfil.
+Não reutiliza a listagem paginada nem altera despesas/schema/widget.
+
+ExpenseCsvSerializer recebe entidades puras já validadas pelo mapeamento existente.
+Produz `Identificador;Data;Descrição;Categoria;Valor`, UTF-8 com BOM e
+CRLF. Datas preservam o dia civil em dd/MM/yyyy; categoria é o valor estável
+do enum; dinheiro deriva de centavos inteiros com vírgula e duas casas.
+O pacote csv escapa delimitadores, aspas e quebras de linha; textos suscetíveis
+a fórmulas de planilha recebem apóstrofo somente na representação exportada.
+Nenhum arquivo é preparado se a leitura ou a serialização falhar.
+
+ExportRepository de Settings compõe esse contrato com IShareClient, registrado
+lazy no core. IShareClient e ShareClient ficam juntos em
+`core/infrastructure/clients/share/share_client.dart`, com exceção técnica em
+`share_client_exception.dart`. O SDK share_plus e os arquivos ficam na
+infraestrutura. Contratos transportam bytes e caminho textual, sem coordenadas
+ou tipos Flutter ou do SDK. A origem do compartilhamento no iPad fica fixa no
+canto superior esquerdo, definida somente no ShareClient.
+
+O client prepara arquivos em subdiretórios exclusivos sob `cordato_share` no
+diretório temporário privado. Descarta arquivos abandonados, rejeita caminhos
+externos e links nos artefatos e remove somente diretórios próprios com mais de
+24 horas na preparação seguinte, ignorando operações nativas ativas.
+Arquivos oferecidos ao compartilhamento não são excluídos imediatamente após
+a sheet: o destinatário pode ainda lê-los. Não há limpeza de cópias externas,
+storage público implícito, permissão ampla de arquivos ou confirmação de entrega.
+Falhas técnicas conhecidas viram ShareClientException segura e ExportException;
+ErrorsEntity de Expense é preservada, e inesperadas propagam com causa/stack.
 
 ### Métricas locais
 
@@ -460,7 +494,9 @@ nunca build. Lifecycle substancial fica em mixin específico da screen.
   `scope.addBloc`; formulário/screen recebem a instância e não a fecham.
 - AppWidget possui WidgetLaunchBloc e WidgetSyncBloc por factories
   estáveis, sem singleton ou SessionBloc.
-- Settings, Information e Metrics não possuem Bloc próprio. Dashboard e Root
+- ExportBloc de Settings pertence ao provide/addBloc da rota, sem bind global;
+  BlocProvider.value adapta a instância para o widget sem transferir ownership.
+- Information e Metrics não possuem Bloc próprio. Dashboard e Root
   consultam o repository de Metrics.
 - Para estados de página novos ou explicitamente migrados, prefira `provide`
   com a extension `BlocScopedExtension`; migre todos os consumidores juntos.
@@ -533,17 +569,24 @@ e implementações nativas não mudam incidentalmente com a persistência.
 ## Settings, Information e interface compartilhada
 
 SettingsScreen é StatelessWidget e navega por BuildContext. O módulo único sem
-path oferece Perfil local, Informações e Apoio; não há logout, Bloc, provide,
-seção Dados ou exportação.
+path oferece Perfil local, Dados, Informações e Apoio; não há logout.
+ExportExpensesWidget renderiza ExportBloc, cuja instância é lida pela rota
+e fornecida com BlocProvider.value, sem criação/fechamento pela screen.
+Eventos droppable bloqueiam duplicatas durante preparação e compartilhamento.
+Histórico vazio/falha/conclusão liberam nova solicitação manual, sem retry
+automático. Fechamento durante preparação descarta o caminho retornado sem
+compartilhamento tardio; uma operação nativa já iniciada não é cancelada.
+O mixin cuida dos handlers, origem visual do iPad e feedback por listener.
 
 Pix é apoio voluntário por QR Code estático/copiar código. Não há processamento,
 confirmação ou consulta bancária pelo aplicativo.
 
 Information é somente apresentação, sem repository, Bloc ou WebView. Termos e
-Privacidade 2.1 de 21/11/2026 e Ajuda descrevem perfil/dados locais, sem cadastro,
+Privacidade 2.2 de 24/11/2026 e Ajuda descrevem perfil/dados locais e CSV, sem cadastro,
 backend, e-mails transacionais ou IA. Distinguem snapshot do widget, arquivos
 exportados anteriormente, cópias do sistema e comunicações ao suporte. Não
 prometem criptografia adicional, recuperação ou conformidade jurídica validada.
+CSV não é criptografado e não representa backup restaurável.
 
 UI usa `material_ui`, componentes e tokens do core. Ícones passam pelo IconWidget;
 botões reutilizam bounce compartilhado.

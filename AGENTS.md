@@ -12,8 +12,9 @@ O aplicativo usa persistência exclusivamente local. `tostore` é o nome histór
 da branch de transição, não o banco vigente. Commit e push exigem solicitação
 explícita; uma autorização passada não se estende a tarefas futuras.
 Authentication, Session, Welcome, PocketBase, backend, worker, áudio, IA e Insight foram
-removidos pelo usuário. CSV e compartilhamento sem consumidores também foram
-removidos. Não restaure código, dependências, testes ou doubles desses fluxos
+removidos pelo usuário. CSV local e compartilhamento foram reintroduzidos
+por solicitação explícita, sem restaurar a integração remota antiga.
+Não restaure código, dependências, testes ou doubles dos demais fluxos
 para satisfazer specs históricas ou sanar referências legadas.
 
 O destino aprovado da persistência é Drift/SQLite, com a
@@ -22,7 +23,7 @@ migrados. O `coreModule` registra `DatabaseClient` como singleton lazy;
 MetricsDao e SuggestionsDao usam a mesma instância. Composição global e suporte
 de testes não importam Localstore; não restaure a dependência removida.
 Não há identidade autenticada, `owner`,
-sessão, backend, exportação ou backup/restauração pelo aplicativo.
+sessão, backend ou backup/restauração pelo aplicativo.
 Budget e Family são planejados. Não crie `identity` para reproduzir o backend
 legado; `chat` está fora do escopo. Kotlin legado é referência de domínio,
 não de estrutura Flutter.
@@ -243,7 +244,14 @@ SQL, constraints, corrupção, parsing e programação propagam, sem retry ou re
 ExpenseResponse/ExpenseSuggestionResponse mapeiam registros tipados, sem JSON
 legado. Testes usam SQLite real e ExpenseQueryInterceptor em suporte da feature
 para falhas/operações pendentes. Expense/Expenses preservam ownership pela screen
-e sugestões pelo provide. Não restaure CSV ou compartilhamento.
+e sugestões pelo provide. IExpenseExportRepository e ExpenseExportRepository
+exportam todo o histórico em um SELECT no Drift, ordenado por data/ID crescente,
+com filtro do perfil por subconsulta e sem criar perfil, paginação ou escritas.
+Ausência de despesas retorna null, sem CSV vazio. ExpenseCsvSerializer produz
+UTF-8 com BOM, separador ponto e vírgula, CRLF, datas civis dd/MM/yyyy,
+categoria textual estável e valores calculados de centavos sem double.
+Textos potencialmente interpretados como fórmulas recebem apóstrofo somente
+na exportação. Falhas não geram arquivos parciais apresentados como sucesso.
 
 ### Metrics
 
@@ -304,12 +312,27 @@ ActionButtonDashboardWidget abre Expense por BuildContext com retorno tipado e
 confirmada, com contexto montado e mesma instância viva do DashboardBloc.
 
 Settings usa módulo único sem path e rotas completas, sem autenticação.
-SettingsScreen é StatelessWidget, sem Bloc ou provide, e navega por BuildContext.
-Não restaure LogoutBloc, confirmação de saída, seção Dados, exportação ou
-callbacks de navegação na rota.
+SettingsScreen permanece StatelessWidget, sem ownership de Bloc, e navega por
+BuildContext. A seção Dados contém ExportExpensesWidget. A rota registra
+ExportBloc via provide/addBloc e lê com context.read para BlocProvider.value,
+sem bind global ou fechamento pela screen. Submissões são droppable;
+fechar a rota antes do compartilhamento descarta o arquivo preparado e não
+abre sheet tardia. Falhas preservam ErrorsEntity; inesperadas usam addError.
+ExportRepository de Settings compõe o contrato de Expense e IShareClient.
+IShareClient/ShareClient ficam juntos em core/infrastructure/clients/share/
+share_client.dart, com share_client_exception.dart na mesma pasta.
+O client encapsula share_plus, arquivos privados temporários e origem fixa
+no canto superior esquerdo para iPad, sem SDK ou coordenadas em
+application/presentation. Arquivos abandonados
+são descartados; os oferecidos ao compartilhamento ficam no cache por até
+24 horas antes de se tornarem elegíveis à limpeza na próxima preparação,
+exceto enquanto a operação nativa estiver ativa. Não apague cópias externas
+nem interprete fechamento da sheet como confirmação de salvamento.
+Não restaure LogoutBloc, confirmação de saída ou callbacks de navegação na rota.
 
-Information é somente apresentação. Os documentos 2.1 de 21/11/2026 descrevem
-perfil/dados locais, sem cadastro, backend, e-mails transacionais ou IA.
+Information é somente apresentação. Os documentos 2.2 de 24/11/2026 descrevem
+perfil/dados locais e exportação CSV, sem cadastro, backend, e-mails
+transacionais ou IA. CSV não é criptografado nem um backup restaurável.
 Distinga arquivos exportados anteriormente de backup restaurável, suporte de
 acesso remoto ao banco, cópias do sistema de backup próprio e apoio Pix de
 processamento de pagamentos. Não prometa criptografia, recuperação ou
@@ -554,7 +577,8 @@ Previews manuais permanecem; preserve testes unitários e arquiteturais.
 - Testes do core verificam formatadores/client nativo e registro do DatabaseClient.
   Teste do app verifica instância única no root e ausência de fechamento pela DI.
 - Não restaure testes/doubles exclusivos de PocketBase, sessão/identidade,
-  HTTP/Dio, recording, áudio, CSV ou compartilhamento removidos.
+  HTTP/Dio, recording ou áudio removidos. CSV/compartilhamento têm somente
+  cobertura do novo fluxo local, sem identidade remota.
 - Testes de acessibilidade não enumeram telas removidas, não fazem skip por
   existência nem relaxam asserções dos componentes atuais.
 - Use Completer/sinais observáveis, não sleeps arbitrários para concorrência.
