@@ -3,6 +3,9 @@
 Aplicativo Flutter de finanças pessoais, exclusivamente local, em transição
 para Drift/SQLite. Estado documental revisado em **24/11/2026**.
 
+Versões mínimas suportadas: **Android 12 (API 31)** e **iOS 16.0**,
+incluindo a extensão do widget. Versões anteriores não recebem novos builds.
+
 ## Transição de persistência
 
 Esta etapa entrega a fundação Drift em

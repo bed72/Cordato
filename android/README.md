@@ -2,6 +2,11 @@
 
 ## Estado atual: versão local
 
+Versão mínima: **Android 12 (API 31)**, fixada em `minSdk = 31` no
+`app/build.gradle.kts`, sem depender do default do Flutter. compileSdk e
+targetSdk permanecem inalterados; essa configuração se aplica aos próximos
+artefatos, não modifica AABs já gerados pela CI.
+
 Revisado em 24/11/2026. User/Expense/Metrics usam o mesmo Drift/SQLite, schema 1,
 sem backend, login, sessão ou áudio. Composição e testes não dependem de
 Localstore; Metrics agrega despesas diretamente no SQLite. Consulte o [README](../README.md) e a

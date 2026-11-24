@@ -53,7 +53,7 @@ android {
     }
 
     defaultConfig {
-        minSdk = flutter.minSdkVersion
+        minSdk = 31
         applicationId = "com.bed.cordato"
         versionCode = flutter.versionCode
         versionName = flutter.versionName

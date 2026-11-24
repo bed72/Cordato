@@ -496,6 +496,8 @@ Essas invariantes futuras não comprovam funcionalidades implementadas.
   próprios, sem árvores de ternários; preserve foco/controllers/acessibilidade.
 - Não crie services/stores/flags/hierarquias de mixins/helpers genéricos apenas
   para reduzir linhas. Revise consumidores sem deslocar complexidade.
+- Plataformas mínimas: Android 12 (API 31) e iOS 16.0, incluindo o widget.
+  Preserve o minSdk explícito e os deployment targets Debug/Profile/Release.
 - Flutter >=3.50.0, Dart ^3.14.0. Use primary constructors em declarações novas
   elegíveis, campos imutáveis explícitos e final; preserve const.
   Parâmetros só de inicialização não induzem campos. Avalie semanticamente

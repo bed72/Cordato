@@ -3,6 +3,15 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Android requires Android 12 independently of the Flutter default', () {
+    final app = File('android/app/build.gradle.kts').readAsStringSync();
+    final minimumVersions = RegExp(r'\bminSdk\s*=\s*([^;\r\n]+)')
+        .allMatches(app)
+        .map((match) => match.group(1)!.trim());
+
+    expect(minimumVersions, ['31']);
+  });
+
   test(
     'Android uses built-in Kotlin without applying external KGP to the app',
     () {
