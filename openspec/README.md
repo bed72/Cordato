@@ -1,6 +1,6 @@
 # OpenSpec: estado vigente e histórico
 
-Revisado em **23/11/2026** para a transição local para Drift/SQLite.
+Revisado em **24/11/2026** para Drift/SQLite e exportação CSV local.
 
 ## Precedência
 
@@ -10,8 +10,10 @@ Revisado em **23/11/2026** para a transição local para Drift/SQLite.
 4. Specs e changes: requisitos compatíveis, sujeitos às decisões atuais.
 
 O app é exclusivamente local. Authentication, Session, Welcome, PocketBase, backend,
-worker, áudio, IA, Insight, CSV e compartilhamento foram removidos.
+worker, áudio, IA e Insight foram removidos.
 Não restaure essas funcionalidades para satisfazer uma spec anterior.
+CSV e compartilhamento foram reintroduzidos por solicitação explícita, sobre
+Drift e arquivos temporários locais, sem restaurar o transporte remoto antigo.
 Não há servidor necessário para executar o Flutter, identidade autenticada,
 `owner` em despesas ou backup/restauração disponível.
 
@@ -21,16 +23,17 @@ Não há servidor necessário para executar o Flutter, identidade autenticada,
 Screen/Widget → Bloc → contrato em application
                             ↑
                  repository em infrastructure → DatabaseClient (User/Expense)
-                                             → Localstore legado (Metrics, bloqueado)
+                                             → MetricsDao → DatabaseClient
                                              → client nativo do core
 ```
 
 Contratos usam Future e exceções de aplicação, sem Either, CommandIt ou data
 sources intermediários. Domain é puro; dinheiro usa centavos inteiros.
-Metrics é projeção mensal somente leitura, ainda no código legado Localstore e
-não integrada à tabela SQLite de Expense.
+Metrics é projeção mensal somente leitura da tabela SQLite de Expense, pelo
+MetricsDao sobre o mesmo DatabaseClient compartilhado.
 Seus totais mensal e por categoria usam `total` inteiro em centavos; os grupos
-são construídos em Dart, sem parser JSON de agregados ou Bloc próprio de Metrics.
+são construídos em uma consulta SQL, sem parser JSON de agregados ou Bloc próprio
+de Metrics.
 
 UserRepository cria o perfil padrão na primeira leitura, se ausente, sem
 inicializador no bootstrap. Usa `profiles` com ID int gerado pelo SQLite, nome e
@@ -43,19 +46,27 @@ SuggestionsDao em infrastructure. Sugestões filtram correspondências literais
 Unicode, limitam às 30 mais recentes e deduplicam depois por janela. CategoryEnum
 fica em `expense/domain/enums/category_enum.dart`.
 
-Schema atual 2: default civil local `date('now', 'localtime')` ao omitir a data.
-Migração SQLite 1→2 preserva dados e sequências. Não há migração de
-Localstore/ToStore nem restauração do fork privado, retirado das dependências.
+Schema atual 1 consolidado: IDs AUTOINCREMENT, CHECK de categorias e default civil
+local `date('now', 'localtime')` ao omitir a data. Não há migração de versões
+experimentais anteriores, Localstore/ToStore ou restauração do fork privado,
+retirado das dependências. Bancos experimentais incompatíveis precisam ser
+recriados manualmente; o app não apaga arquivos nem faz reset automático.
 O client registra cordato_lower; executors nativos injetados usam o mesmo setup.
 Detalhes estão na [fundação Drift](../ARCHITECTURE.md#fundação-drift).
 
-Metrics, composição e testes legados ainda impedem análise/compilação globais.
-A migração interrompida foi autorizada; não reintroduza dependências, ownership
-remoto ou wrappers para satisfazer documentos anteriores.
-Apagar perfil/recriar padrão, limpar widget, views e IA continuam pendentes;
+Metrics e composição global já usam Drift, sem bloqueio legado de Localstore.
+Não reintroduza dependências, ownership remoto ou wrappers para satisfazer
+documentos anteriores.
+Apagar perfil/recriar padrão e limpar widget nessa operação continuam pendentes;
 FK/cascade preparados não tornam essas funcionalidades disponíveis.
+Views não fazem parte desta entrega; IA permanece removida.
 
-ExpenseSuggestionsBloc pertence ao provide da rota. Os demais ownerships
+ExpenseSuggestionsBloc e ExportBloc pertencem ao provide das respectivas rotas.
+ExportExpensesWidget mostra progresso no lugar da seta e bloqueia novos cliques
+durante preparação/compartilhamento, sem descrição. Contratos de compartilhamento
+usam caminho String e não transportam coordenadas; a origem fixa do iPad é
+detalhe interno do client. CSV não é criptografado nem um backup restaurável.
+Os demais ownerships
 existentes são preservados: screens com factories estáveis e Root com os Blocs
 de launch/sync no AppWidget. Não há SessionBloc. Navegação nova usa BuildContext,
 argumentos transportam dados e retornos confirmados são tipados.
@@ -78,13 +89,13 @@ torna seu mecanismo atual. Esta revisão não sincroniza deltas nem arquiva chan
 | Documento | Uso atual |
 | --- | --- |
 | `specs/dashboard-monthly-navigation/` | Regras mensais e retorno da listagem; implementação por Bloc e contratos locais. |
-| `specs/expense-category-metrics-cards/` | Cards e navegação por categoria/período; Metrics legado ainda usa Localstore e não está integrado às despesas SQLite. |
+| `specs/expense-category-metrics-cards/` | Cards e navegação por categoria/período; Metrics consulta despesas SQLite por MetricsDao, sem Localstore. |
 | `specs/expenses-period-query/`, `specs/expenses-removable-filters/` | Comportamento de datas/filtros; transporte HTTP e owner remoto não se aplicam. |
 | `specs/expense-reregistration/` | Referência do comportamento de novo cadastro; subordinada à implementação local atual. |
 | `specs/shared-error-screen/`, `specs/dart-primary-constructor-conventions/` | Requisitos visuais/linguagem sujeitos às convenções atuais. |
-| `specs/settings-screen-ui/` | Somente requisitos visuais compatíveis; não há logout ou seção Dados. |
+| `specs/settings-screen-ui/` | Somente requisitos visuais compatíveis; não há logout. Dados contém exportação CSV local. |
 | `specs/authentication-session-logout/` | Histórico de funcionalidade removida. |
-| `specs/expense-csv-export/` | Histórico de funcionalidade removida; CSV não é backup restaurável. |
+| `specs/expense-csv-export/` | Referência histórica da exportação remota. O fluxo atual é local, sem autenticação/internet obrigatória, paginação ou descrição de progresso no item; prevalecem os contratos canônicos. CSV não é backup restaurável. |
 | `specs/insights-monthly-query/` | Histórico de Insight removido; não confundir com Metrics atual. |
 | `specs/presentation-command-*`, `specs/expense-reactive-command-consumption/`, `specs/dashboard-reactive-command-coordination/` | Intenções de UX/concorrência compatíveis podem orientar; commands/Either não são arquitetura aprovada. |
 | `changes/migrate-expense-to-tostore/` | Registro histórico, incluindo CSV removido depois. ToStore foi substituído por Localstore e Expense depois passou a Drift; a change não descreve a persistência vigente. |

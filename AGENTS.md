@@ -315,8 +315,12 @@ Settings usa módulo único sem path e rotas completas, sem autenticação.
 SettingsScreen permanece StatelessWidget, sem ownership de Bloc, e navega por
 BuildContext. A seção Dados contém ExportExpensesWidget. A rota registra
 ExportBloc via provide/addBloc e lê com context.read para BlocProvider.value,
-sem bind global ou fechamento pela screen. Submissões são droppable;
-fechar a rota antes do compartilhamento descarta o arquivo preparado e não
+sem bind global ou fechamento pela screen. Submissões são droppable.
+ExportExpensesWidget mantém somente o título, sem descrição, e usa
+CircularProgressIndicatorWidget no lugar da seta durante ExportPreparing e
+ExportSharing, com onPressed nulo. Loading deriva de ExportState.isBusy, sem
+flags locais; estados finais liberam nova solicitação manual.
+Fechar a rota antes do compartilhamento descarta o arquivo preparado e não
 abre sheet tardia. Falhas preservam ErrorsEntity; inesperadas usam addError.
 ExportRepository de Settings compõe o contrato de Expense e IShareClient.
 IShareClient/ShareClient ficam juntos em core/infrastructure/clients/share/
@@ -328,6 +332,11 @@ são descartados; os oferecidos ao compartilhamento ficam no cache por até
 24 horas antes de se tornarem elegíveis à limpeza na próxima preparação,
 exceto enquanto a operação nativa estiver ativa. Não apague cópias externas
 nem interprete fechamento da sheet como confirmação de salvamento.
+`prepare` retorna caminho String no client e String? no repository de Settings,
+com null para histórico vazio; share/discard recebem path nomeado, sem entidade
+para envolver o caminho ou value object para coordenadas. Ao adicionar/atualizar
+o plugin, reinicie a execução com compilação nativa; hot reload/restart não
+instala o plugin. Não desinstale nem apague dados para corrigir esse caso.
 Não restaure LogoutBloc, confirmação de saída ou callbacks de navegação na rota.
 
 Information é somente apresentação. Os documentos 2.2 de 24/11/2026 descrevem

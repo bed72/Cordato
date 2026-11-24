@@ -114,6 +114,9 @@ Abra **Configurações → Exportar despesas**. O app prepara todo o histórico 
 um CSV local e abre o compartilhamento do sistema para escolher onde salvar ou
 enviar. Não há filtros nem necessidade de internet para gerar o arquivo;
 o destino escolhido pode exigir conexão. Histórico vazio mostra um aviso.
+O item mantém somente o título, sem descrição. Durante a preparação e o
+compartilhamento, a seta dá lugar a um indicador de progresso e novos cliques
+ficam desativados. Conclusão, histórico vazio ou falha liberam nova tentativa.
 
 O arquivo `cordato-despesas-AAAA-MM-DD.csv` usa UTF-8 com BOM, `;`, datas
 `dd/MM/yyyy` e valores em reais com duas casas e vírgula decimal. As colunas são
@@ -128,6 +131,19 @@ são mantidos no cache, elegíveis à limpeza na próxima preparação após 24 
 sem apagar arquivos enquanto o compartilhamento estiver ativo ou cópias externas.
 O sistema também pode limpar temporários. Verificação em dispositivo Android/iOS,
 incluindo compartilhamento no iPad, continua necessária.
+
+### Desenvolvimento: plugin de compartilhamento
+
+Ao adicionar ou atualizar `share_plus`, pare a execução e inicie novamente com
+`flutter run`. Hot reload e hot restart não recompilam a integração nativa.
+Não é necessário desinstalar o app nem apagar os dados.
+
+Um aplicativo instalado antes da inclusão do plugin pode mostrar “Não foi
+possível exportar” sem abrir o compartilhamento. No Android, a instalação
+atualizada deve registrar o provider `com.bed.cordato.flutter.share_provider`,
+fornecido pelo manifest do próprio plugin; não o duplique no manifest do app.
+A origem exigida pelo iPad é fixa no canto superior esquerdo, dentro do client,
+sem cálculo de posição na tela. Isso não substitui homologação em dispositivo.
 
 ## Site público
 

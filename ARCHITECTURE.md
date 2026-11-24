@@ -405,7 +405,9 @@ ExportRepository de Settings compõe esse contrato com IShareClient, registrado
 lazy no core. IShareClient e ShareClient ficam juntos em
 `core/infrastructure/clients/share/share_client.dart`, com exceção técnica em
 `share_client_exception.dart`. O SDK share_plus e os arquivos ficam na
-infraestrutura. Contratos transportam bytes e caminho textual, sem coordenadas
+infraestrutura. prepare retorna String no client e String? no repository de
+Settings; null indica histórico vazio. share/discard recebem path nomeado, sem
+entidade intermediária. Contratos transportam bytes e caminho textual, sem coordenadas
 ou tipos Flutter ou do SDK. A origem do compartilhamento no iPad fica fixa no
 canto superior esquerdo, definida somente no ShareClient.
 
@@ -576,7 +578,16 @@ Eventos droppable bloqueiam duplicatas durante preparação e compartilhamento.
 Histórico vazio/falha/conclusão liberam nova solicitação manual, sem retry
 automático. Fechamento durante preparação descarta o caminho retornado sem
 compartilhamento tardio; uma operação nativa já iniciada não é cancelada.
-O mixin cuida dos handlers, origem visual do iPad e feedback por listener.
+O item mantém somente “Exportar despesas”, sem descrição. ExportState.isBusy
+controla onPressed nulo e CircularProgressIndicatorWidget no lugar da seta
+durante ExportPreparing/ExportSharing, sem flags locais. O mixin cuida do envio
+do evento sem argumentos e do feedback por listener; não calcula coordenadas.
+A origem fixa do iPad pertence somente ao ShareClient.
+
+As cores de categorias são definidas por ExpenseCategoryExtension a partir do
+ColorScheme. Animais de estimação, Investimentos e Presentes e doações usam
+onTertiaryContainer, não a cor de fundo tertiary. Testes puros verificam contraste
+mínimo de 3:1 com o fundo translúcido do ícone nos temas claro e escuro.
 
 Pix é apoio voluntário por QR Code estático/copiar código. Não há processamento,
 confirmação ou consulta bancária pelo aplicativo.

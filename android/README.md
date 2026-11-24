@@ -2,9 +2,9 @@
 
 ## Estado atual: versão local
 
-Revisado em 23/11/2026. User/Expense usam Drift/SQLite, schema 2, sem backend,
-login, sessão ou áudio. Metrics/composição ainda referenciam Localstore removido
-e bloqueiam a compilação global. Consulte o [README](../README.md) e a
+Revisado em 24/11/2026. User/Expense/Metrics usam o mesmo Drift/SQLite, schema 1,
+sem backend, login, sessão ou áudio. Composição e testes não dependem de
+Localstore; Metrics agrega despesas diretamente no SQLite. Consulte o [README](../README.md) e a
 [arquitetura](../ARCHITECTURE.md) para o estado canônico.
 Os comandos e o workflow não exigem nem passam `BASE_URL`.
 O manifest principal não declara `INTERNET`, `RECORD_AUDIO` ou app links de
@@ -13,22 +13,38 @@ A ferramenta de associações e seus testes exclusivos foram removidos.
 O widget continua usando `home_widget`, sem autenticação ou HTTP.
 Builds assinados e comportamento distribuído ainda exigem homologação própria.
 
-Na última execução registrada da transição Drift: análise focada limpa,
-343 testes focados aprovados, 32 diagnósticos globais e suíte global com 869
-aprovados/quatro falhas legadas. Não houve novo build Android/iOS nem execução
-remota de release. O teste de localtime com fusos distintos rodou no host,
+Na verificação de 24/11/2026: flutter analyze sem problemas e 1129 testes Flutter
+aprovados. Os resultados intermediários da transição ficam no
+[registro Drift](../docs/history/drift-transition.md).
+Não houve novo build Android/iOS nem execução remota de release nesta entrega.
+O teste de localtime com fusos distintos rodou no host,
 não homologa datas/defaults no aparelho.
 
 Os 39 testes Android/27 iOS e actionlint/plutil aprovados em 22/11/2026 são
 [históricos](../docs/history/local-transition.md), anteriores a Drift. Permanecem
 os avisos conhecidos de `android.newDsl=false` e da detecção de KGP em home_widget.
 O workflow ainda exige LOCALSTORE_READ_TOKEN por um passo legado, embora o
-pubspec atual não use o fork. Essa exigência e a integração de Metrics precisam
-de revisão separada antes de retomar release; esta atualização só documenta,
+pubspec atual não use o fork. Esse passo precisa de revisão separada antes de
+retomar release; a integração de Metrics já está concluída. Esta atualização só documenta,
 não altera YAML, secrets, assinatura, código de versão ou publicação.
 
 Android release builds require a dedicated signing key. Never use the Android
 debug key or commit signing material, passwords, aliases, or `key.properties`.
+
+## Compartilhamento CSV em desenvolvimento
+
+Configurações oferece exportação local por share_plus. Após adicionar ou
+atualizar o plugin, pare a execução e rode `flutter run` para recompilar e
+instalar a parte nativa; hot reload/hot restart não bastam. Não desinstale o app
+nem limpe seus dados para resolver ausência do plugin.
+
+O manifest da biblioteca fornece ShareFileProvider, com a autoridade
+`com.bed.cordato.flutter.share_provider`. Não duplique esse provider no manifest
+principal nem adicione permissões amplas de arquivos ou rede para exportar CSV.
+Na investigação de 24/11/2026, o pacote instalado no dispositivo não continha esse
+provider; a falha não comprova problema no CSV ou na origem fixa usada no iPad.
+Compartilhamento real, destinos escolhidos e comportamento distribuído ainda
+exigem homologação em aparelho com a instalação atualizada.
 
 ## Signing Configuration
 
@@ -134,9 +150,9 @@ Also verify current-month totals while Dashboard uses a historical filter, a
 successful empty month, storage/publication failures retaining the last valid
 summary, and month rollover showing **Abra para atualizar** until a new sync.
 Totals come from local Metrics, without login, logout or background HTTP.
-User/Expense now share the Drift DatabaseClient. Expense refresh requests follow
-successful writes/commit, but Metrics still uses its removed Localstore dependency
-and cannot produce a new integrated summary yet. The native snapshot format,
+User/Expense/Metrics share the Drift DatabaseClient. Expense refresh requests
+follow successful writes/commit, and WidgetSyncRepository queries the current
+monthly summary through MetricsRepository/MetricsDao. The native snapshot format,
 App Group and URI contract have not changed. Native policy tests do not validate
 Dart persistence, migrations, local-time defaults, power-failure durability or recovery.
 `AddExpenseWidgetProvider` separates lifecycle, JSON parsing, BRL formatting,

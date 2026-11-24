@@ -49,15 +49,18 @@ de dados sensíveis.
 - Cabeçalho e rodapé estão repetidos nas quatro páginas para dispensar templates/build.
 - Conteúdo, links, índice e FAQ funcionam com JavaScript desabilitado.
 - Os documentos refletem o app local, sem conta, backend, áudio ou IA.
-- Preserve os limites: sem exportação, sincronização, backup próprio ou recuperação.
+- O app exporta CSV local por compartilhamento nativo; o site não gera arquivos
+  nem acessa despesas. CSV não é criptografado nem um backup restaurável.
+- Preserve os limites: sem sincronização, importação, backup próprio ou recuperação.
 - Mensagens de suporte e logs da hospedagem são distintos do banco local do app.
 - Mantenha o contato para dados de versões antigas; retirar o formulário não apaga dados antigos.
 - O conteúdo do app em
   [`InformationContent`](../lib/features/information/presentation/content/information_content.dart)
   é a referência para consistência, considerando os tratamentos específicos da web.
 
-Os documentos web são versão 2.1 de 23/11/2026, baseados na versão 2.1 de
-21/11/2026 do aplicativo. A conversão estática não mudou seu conteúdo.
+Os documentos web e do aplicativo são versão 2.2 de 24/11/2026, com perfil,
+despesas locais e exportação CSV. A conversão estática anterior foi preservada;
+a revisão de conteúdo não introduziu backend ou JavaScript de runtime.
 Avisos de terceiros estão em `public/third-party-notices.txt`.
 
 ## Verificações opcionais
